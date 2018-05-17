@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd">
+	
+	 <diskStore path="java.io.tmpdir/ehcache-19500" />
+	 
+	 <!-- 使用单播方式配置 
+	<cacheManagerPeerProviderFactory
+		class="net.sf.ehcache.distribution.jgroups.JGroupsCacheManagerPeerProviderFactory"
+		properties="connect=TCP(bind_addr=127.0.0.1;bind_port=1000):
+							TCPPING(initial_hosts=127.0.0.1[1000],127.0.0.1[2000];port_range=1;timeout=5000;num_initial_members=2):
+							MERGE2(min_interval=3000;max_interval=5000):
+							FD_ALL(interval=5000;timeout=20000):
+							FD(timeout=5000;max_tries=48;):
+							VERIFY_SUSPECT(timeout=1500):
+							pbcast.NAKACK(retransmit_timeout=100,200,300,600,1200,2400,4800;discard_delivered_msgs=true):
+							pbcast.STABLE(stability_delay=1000;desired_avg_gossip=20000;max_bytes=0):
+							pbcast.GMS(print_local_addr=true;join_timeout=5000)"
+		propertySeparator="::" />
+		-->
+		
+	    <!--
+   	   EhCache 的 Groups 集群模式还有另外一种节点发现方式，
+              就是通过多播（ multicast ）来维护集群中的所有有效节点。
+              这也是最为简单而且灵活的方式，与手工模式不同的是，
+              每个节点上的配置信息都相同，大大方便了节点的部署，
+              集群启动时会自动发现同一局域网的缓存服务器
+              以jgroups 多播方式配置集群，自动发现集节点 
+     -->
+     
+     <cacheManagerPeerProviderFactory
+        class="net.sf.ehcache.distribution.jgroups.JGroupsCacheManagerPeerProviderFactory"
+        properties="connect=UDP(mcast_addr=224.1.1.1;mcast_port=45678;ip_ttl=32;mcast_send_buf_size=120000;mcast_recv_buf_size=80000): 
+        PING(timeout=2000;num_initial_members=2): 
+        MERGE2(min_interval=5000;max_interval=10000): 
+        FD_SOCK:VERIFY_SUSPECT(timeout=1500): 
+        pbcast.NAKACK(retransmit_timeout=3000): 
+        UNICAST(timeout=5000): 
+        pbcast.STABLE(desired_avg_gossip=20000): 
+        FRAG: 
+        pbcast.GMS(join_timeout=5000;print_local_addr=true)"
+        propertySeparator="::" />
+
+       	
+	
+	   
+	<!-- 默认缓存 -->
+	<defaultCache maxElementsInMemory="1000" eternal="true"
+		timeToIdleSeconds="120" timeToLiveSeconds="120" overflowToDisk="true"
+		diskSpoolBufferSizeMB="30" maxElementsOnDisk="10000000"
+		diskPersistent="true" diskExpiryThreadIntervalSeconds="120"
+		memoryStoreEvictionPolicy="LRU">
+	</defaultCache>
+
+	<!-- demo缓存 
+	   replicateAsynchronously  对象同步是否异步完成，默认为true。如果比较紧急就设为false。 在一致性时间性要求不强的时候，设为异步可大大提供性能，因为它是异步立即返回的，而且可以批量提交。 
+	   replicateUpdatesViaCopy 是否将对象变更复制到所有节点，还是只是发送一个失效信息，让对方该缓存失效，当对方需要该缓存时重新计算载入。 
+默认为true。鉴于对象复制的消耗挺大的，又有锁的问题，而且对方也未必需要该对象，所以此属性建议设为false。如果业务上真的需要设为true时，就可考虑使用Terracotta了。 
+	   replicatePuts、replicateUpdates、replicateRemovals  增删改是否同步，默认都为true。但因为我们前面选择了失效算法，所以replicatePuts 要设为false。 
+	-->
+	<cache name="appCmd" maxElementsInMemory="1000" eternal="false"
+		timeToIdleSeconds="0" timeToLiveSeconds="0" overflowToDisk="true"
+		diskSpoolBufferSizeMB="30" maxElementsOnDisk="10000000"
+		diskPersistent="false" diskExpiryThreadIntervalSeconds="120"
+		memoryStoreEvictionPolicy="LRU">
+		<cacheEventListenerFactory
+			class="net.sf.ehcache.distribution.jgroups.JGroupsCacheReplicatorFactory"
+			properties="replicateAsynchronously=true, replicatePuts=true,
+        replicateUpdates=true, replicateUpdatesViaCopy=false, replicateRemovals=true" />
+		<!-- 用于在初始化缓存，以及自动设置 -->
+		<bootstrapCacheLoaderFactory
+			class="net.sf.ehcache.distribution.jgroups.JGroupsBootstrapCacheLoaderFactory" />
+	</cache>
+	<cache name="lastFrameMsg" maxElementsInMemory="1000" eternal="false"
+		timeToIdleSeconds="0" timeToLiveSeconds="0" overflowToDisk="true"
+		diskSpoolBufferSizeMB="30" maxElementsOnDisk="10000000"
+		diskPersistent="false" diskExpiryThreadIntervalSeconds="120"
+		memoryStoreEvictionPolicy="LRU">
+		<cacheEventListenerFactory
+			class="net.sf.ehcache.distribution.jgroups.JGroupsCacheReplicatorFactory"
+			properties="replicateAsynchronously=true, replicatePuts=true,
+        replicateUpdates=true, replicateUpdatesViaCopy=false, replicateRemovals=true" />
+		<!-- 用于在初始化缓存，以及自动设置 -->
+		<bootstrapCacheLoaderFactory
+			class="net.sf.ehcache.distribution.jgroups.JGroupsBootstrapCacheLoaderFactory" />
+	</cache>
+	<cache name="filterMap" maxElementsInMemory="1000" eternal="false"
+		timeToIdleSeconds="0" timeToLiveSeconds="0" overflowToDisk="true"
+		diskSpoolBufferSizeMB="30" maxElementsOnDisk="10000000"
+		diskPersistent="false" diskExpiryThreadIntervalSeconds="120"
+		memoryStoreEvictionPolicy="LRU">
+		<cacheEventListenerFactory
+			class="net.sf.ehcache.distribution.jgroups.JGroupsCacheReplicatorFactory"
+			properties="replicateAsynchronously=true, replicatePuts=true,
+        replicateUpdates=true, replicateUpdatesViaCopy=false, replicateRemovals=true" />
+		<!-- 用于在初始化缓存，以及自动设置 -->
+		<bootstrapCacheLoaderFactory
+			class="net.sf.ehcache.distribution.jgroups.JGroupsBootstrapCacheLoaderFactory" />
+	</cache>
+        
+</ehcache>

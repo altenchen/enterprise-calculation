@@ -1,0 +1,59 @@
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/BJ/!svn/ver/1954/qy.cal/src/main/java/storm/handler/fence/input
+END
+CustomAlarmRule.java
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/BJ/!svn/ver/1954/qy.cal/src/main/java/storm/handler/fence/input/CustomAlarmRule.java
+END
+RulePoJo.java
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svn/BJ/!svn/ver/1954/qy.cal/src/main/java/storm/handler/fence/input/RulePoJo.java
+END
+AlarmRule.java
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svn/BJ/!svn/ver/1954/qy.cal/src/main/java/storm/handler/fence/input/AlarmRule.java
+END
+AreaIOAlarmRule.java
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/BJ/!svn/ver/1954/qy.cal/src/main/java/storm/handler/fence/input/AreaIOAlarmRule.java
+END
+SpeedAlarmRule.java
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svn/BJ/!svn/ver/1954/qy.cal/src/main/java/storm/handler/fence/input/SpeedAlarmRule.java
+END
+PresetAlarmRule.java
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/BJ/!svn/ver/1954/qy.cal/src/main/java/storm/handler/fence/input/PresetAlarmRule.java
+END
+Rule.java
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/BJ/!svn/ver/1954/qy.cal/src/main/java/storm/handler/fence/input/Rule.java
+END
+OpenDoorAlarmRule.java
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/BJ/!svn/ver/1954/qy.cal/src/main/java/storm/handler/fence/input/OpenDoorAlarmRule.java
+END
+StopAlarmRule.java
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/BJ/!svn/ver/1954/qy.cal/src/main/java/storm/handler/fence/input/StopAlarmRule.java
+END
