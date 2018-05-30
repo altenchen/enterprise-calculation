@@ -10,10 +10,12 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import storm.util.*;
+import storm.handler.area.AreaFenceHandler;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -26,9 +28,14 @@ public class FilterBolt extends BaseRichBolt {
     public static ScheduledExecutorService service;
     private Map<String, Long> maxMileMap;
     private Map<String, Long> minMileMap;
+    private Map<String, Integer> lastMile;
+    private Map<String, Integer> lastgpsDatMile;//(vid,当前里程值)最后一帧的里程
+    private Map<String, double[]> lastgps;//(vid,经纬度坐标x,y)最后一帧的gps坐标
+    private Map<String, String> lastgpsRegion;//(vid,所在区域id)最后一帧的区域
     private Map<String, Integer> chargeMap;
     private long rebootTime;
     public static long againNoproTime = 1800000;//处理积压数据，至少给予 半小时，1800秒时间
+    AreaFenceHandler areaHandler;
     
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -36,6 +43,10 @@ public class FilterBolt extends BaseRichBolt {
 
         maxMileMap = new HashMap<String, Long>();
         minMileMap = new HashMap<String, Long>();
+        lastMile = new HashMap<String, Integer>();
+        lastgpsDatMile = new HashMap<String, Integer>();
+        lastgps = new HashMap<String, double[]>();
+        lastgpsRegion = new HashMap<String, String>();
         chargeMap = new HashMap<String, Integer>();
         System.currentTimeMillis();
         long now = System.currentTimeMillis();
@@ -44,6 +55,7 @@ public class FilterBolt extends BaseRichBolt {
         if (! ObjectUtils.isNullOrEmpty(nocheckObj)) {
         	againNoproTime=Long.parseLong(nocheckObj)*1000;
 		}
+        areaHandler = new AreaFenceHandler();
     }
     @Override
     public void execute(Tuple tuple) {
@@ -265,6 +277,79 @@ public class FilterBolt extends BaseRichBolt {
         } catch (Exception e) {
             System.out.println("----判断是否充电异常！" + e);
         }
+        //向最后的数据中加入车辆当前所在行政区域id
+        try {
+			if (dataMap.containsKey(ProtocolItem.longitude)
+					&& dataMap.containsKey(ProtocolItem.latitude)) {
+				
+				String longit = dataMap.get(ProtocolItem.longitude);
+				String latit = dataMap.get(ProtocolItem.latitude);
+				if (null != longit && null != latit) {
+					longit = NumberUtils.stringNumber(longit);
+					latit = NumberUtils.stringNumber(latit);
+					if (!"0".equals(longit)
+							&& !"0".equals(latit)) {
+						double x = Double.parseDouble(longit);
+						double y = Double.parseDouble(latit);
+						//是否要重新计算，flase为需要重新计算。
+						boolean isNotCal = false;
+						//当前里程
+						int mileagenow = Integer.parseInt(NumberUtils.stringNumber(dataMap.get("2202")));
+						if (lastgpsRegion.containsKey(vid)) {
+							String lastRegion = lastgpsRegion.get(vid);
+							
+							if (lastgpsDatMile.containsKey(vid)) {
+								int lastMileage = lastgpsDatMile.get(vid);
+								if (0!= mileagenow && Math.abs(mileagenow-lastMileage) < 50) {
+									isNotCal = true;
+								}
+							}
+							if (!isNotCal && lastgps.containsKey(vid)) {
+								double [] gpss = lastgps.get(vid);
+								double distance = GpsUtil.getDistance(x, y, gpss[0], gpss[1]);
+								//如果上次和这次gps之间的距离小于5公里，则不计算新的所属区域，默认还在上一帧的区域中。
+								if (distance < 5) {
+									isNotCal = true;
+								}
+							}
+							//如果不计算则把上一帧中的区域算作这次的。
+							if (isNotCal) {
+								dataMap.put(ProtocolItem.GPS_ADMIN_REGION, lastRegion);
+							} 
+						} 
+						
+						if (!isNotCal) {//需要重新计算
+							//获得（x,y）的区域id集合
+							List<String> areaIds = areaHandler.areaIds(x,y);
+							if (null != areaIds) {
+								String areas = null;
+								
+								if (areaIds.size() == 1) {
+									areas = areaIds.get(0);
+								} else {
+									StringBuilder sb = new StringBuilder();
+									for (String area : areaIds) {
+										sb.append(area).append("|");
+									}
+									areas = sb.substring(0, sb.length()-1);
+								}
+								//areas为所有的区域id拼接字符串
+								dataMap.put(ProtocolItem.GPS_ADMIN_REGION, areas);
+								lastgpsRegion.put(vid, areas);
+								lastgps.put(vid, new double[]{x,y});
+								lastgpsDatMile.put(vid, mileagenow);
+							} else {
+								dataMap.put(ProtocolItem.GPS_ADMIN_REGION, "UNKNOWN");
+							}
+						}
+	                	
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+        
         // 动力蓄电池报警标志
 		/*
 		 * 1：温度差异报警；0：正常 1：电池极柱高温报警；0：正常 1：动力蓄电池包过压报警；0：正常 1：动力蓄电池包欠压报警；0：正常 1：SOC低报警；0：正常 1：单体蓄电池过压报警；0：正常 1：单体蓄电池欠压报警；0：正常 1：SOC太低报警；0：正常 1：SOC过高报警；0：正常 1：动力蓄电池包不匹配报警；0：正常 1：动力蓄电池一致性差报警；0：正常 1：绝缘故障；0：正常

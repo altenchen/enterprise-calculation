@@ -1,12 +1,12 @@
 package storm.util;
 
 public class GpsUtil {
-
 	private static final double EARTH_RADIUS = 6378.137;
+	//弧度
 	private static final double RADIAN = Math.PI / 180.0;
 	
 	/**
-	 * 
+	 * 以地球赤道半径求得弧长即为gps距离，弧长公式nπr/180
 	 * @param lng1 经度
 	 * @param lat1 纬度
 	 * @param lng2 经度

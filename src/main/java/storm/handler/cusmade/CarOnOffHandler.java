@@ -65,9 +65,10 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 	}
 	
 	@Override
-	public List<Map<String, Object>> fulldoseNotice(String type, int status, long now, long timeout) {
+	public List<Map<String, Object>> fulldoseNotice(String type, int status, long now, long timeout) {//status:0全量数据，status:1活跃数据，status:2其他定义
 		if ("TIMEOUT".equals(type)) {
 			Map<String,Map<String,String>> cluster = null;
+			//使用这个队列是为了防止在访问vids时，发生修改，引发错误。
 			LinkedBlockingQueue<String> vids = null;
 			if (0 == status) {
 				cluster=SysRealDataCache.getDataCache().asMap();
@@ -148,11 +149,13 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 	 * @return
 	 */
 	@Override
-	public void onoffCheck(String type, int status, long now, long timeout) {
+	public void onoffCheck(String type, int status, long now, long timeout) {//status的0,1代表什么
 		if ("TIMEOUT".equals(type)) {
 			Map<String,Map<String,String>> cluster = null;
+			//LinkedBlockingQueue是一个单向链表实现的阻塞队列，先进先出的顺序。支持多线程并发操作。无界队列。
 			LinkedBlockingQueue<String> vids = null;
 			if (0 == status) {
+				//获取集群中车辆最后一条数据
 				cluster=SysRealDataCache.getDataCache().asMap();
 				vids = SysRealDataCache.lasts;
 			} else if (1 == status) {
@@ -164,7 +167,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				
 				List<String> allCars =  new LinkedList<String>();
 				List<String> markAlives =  new LinkedList<String>();
-				
+				//poll是队列数据结构实现类的方法，从队首获取元素，同时获取的这个元素将从原队列删除； 
 				String vid = vids.poll();
 				while(null != vid){
 					
@@ -402,9 +405,13 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		String noticetime = timeformat.toDateString(new Date(now));
 		double lastmileage = -1;
 		if (dat.containsKey(ProtocolItem.TOTAL_MILEAGE)) {
-			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(ProtocolItem.TOTAL_MILEAGE)));
-			if (-1 != lastmileage) {
-				vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
+			String mileage = NumberUtils.stringNumber(dat.get(ProtocolItem.TOTAL_MILEAGE));
+			if (! "0".equals(mileage)) {
+				
+				lastmileage = Double.parseDouble(mileage);
+				if (-1 != lastmileage) {
+					vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
+				}
 			}
 		}
 		boolean isoff = isOffline(dat);
@@ -423,7 +430,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			}
 			
 		} else {
-			if (SysDefine.REALTIME.equals(msgType) && -1 != lastmileage){
+			if (SysDefine.REALTIME.equals(msgType) 
+					&& -1 != lastmileage){
 				
 				if (onOffMileNotice.containsKey(vid)) {
 					Map<String, Object> notice = onOffMileNotice.get(vid);

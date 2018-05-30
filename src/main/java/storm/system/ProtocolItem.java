@@ -71,5 +71,7 @@ public final class ProtocolItem extends SysDefine {
 	public static final String CAN_LEN="4410021";//can 会话长度
 	public static final String CAN_CONT="4410022";//can 会话内容
 	public static final String CAN_LIST="4410023";//can 列表
+	public static final String MILE_DISTANCE="DISTANCE";//前后2帧里程值之差
+	public static final String GPS_ADMIN_REGION="GPS_REGION";//行政区域
 	
 }

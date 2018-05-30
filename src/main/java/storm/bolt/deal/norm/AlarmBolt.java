@@ -463,22 +463,22 @@ public class AlarmBolt extends BaseRichBolt {
                 int alarmLevel = warn.levels;
                 String left1 = warn.left1DataItem;
                 
-                String alarmEnd = "VID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+time+",CONST_ID:"+filterId;
+                //String alarmEnd = "VID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+time+",CONST_ID:"+filterId;
                 Map<String,Object> sendMsg = new TreeMap<String,Object>();
                 sendMsg.put("VID", vid);
                 sendMsg.put("ALARM_ID", alarmId);
-                sendMsg.put("STATUS", "3");
+                sendMsg.put("STATUS", 3);
                 sendMsg.put("TIME", time);
                 sendMsg.put("CONST_ID", filterId);
-                
-                
+                String alarmEnd = JSON.toJSONString(sendMsg);
+                		
                 sendMsg.put("ALARM_NAME", alarmName);
                 sendMsg.put("ALARM_LEVEL", alarmLevel);
                 sendMsg.put("LEFT1", left1);
                 String alarmhbase = JSON.toJSONString(sendMsg);
-				//kafka存储
-				sendAlarmKafka(SysDefine.VEH_ALARM,vehAlarmTopic,vid, alarmEnd);
-				//hbase存储
+                //kafka存储
+                sendAlarmKafka(SysDefine.VEH_ALARM,vehAlarmTopic,vid, alarmEnd);
+                //hbase存储
                 sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehAlarmStoreTopic, vid, alarmhbase);
                 
 //                sendMsg.put("COUNT",1234 );
@@ -773,8 +773,8 @@ public class AlarmBolt extends BaseRichBolt {
                             	needListenAlarms.offer(vid);
                         	}
                             filterMap.put(vid, l);
-                            StringBuilder alarmStart=new StringBuilder("VID:");
-                            alarmStart.append(vid).append(",ALARM_ID:").append(alarmId).append(",STATUS:1,TIME:").append(getTimeStr(lastAlarmUtc)).append(",CONST_ID:").append(filterId);
+//                            StringBuilder alarmStart=new StringBuilder("VID:");
+//                            alarmStart.append(vid).append(",ALARM_ID:").append(alarmId).append(",STATUS:1,TIME:").append(getTimeStr(lastAlarmUtc)).append(",CONST_ID:").append(filterId);
                             
                             Map<String,Object> sendMsg = new TreeMap<String,Object>();
                             sendMsg.put("VID", vid);
@@ -783,6 +783,7 @@ public class AlarmBolt extends BaseRichBolt {
                             sendMsg.put("TIME", getTimeStr(lastAlarmUtc));
                             sendMsg.put("CONST_ID", filterId);
                             sendMsg.put("ALARM_LEVEL", alarmLevel);
+                            String alarmStart = JSON.toJSONString(sendMsg);
                             
                             sendMsg.put("ALARM_NAME", alarmName);
                             sendMsg.put("LEFT1", left1);
@@ -790,11 +791,12 @@ public class AlarmBolt extends BaseRichBolt {
                             sendMsg.put("RIGHT1", right1);
                             sendMsg.put("RIGHT2", right2);
                             String alarmHbase = JSON.toJSONString(sendMsg);
- 			    //发送kafka提供数据库存储
-                            sendAlarmKafka(SysDefine.VEH_ALARM,vehAlarmTopic,vid, alarmStart.toString());
+                            //发送kafka提供数据库存储
+                            sendAlarmKafka(SysDefine.VEH_ALARM,vehAlarmTopic,vid, alarmStart);
                             //hbase存储
                             sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehAlarmStoreTopic, vid, alarmHbase);
-                           
+                            
+                            sendMsg.put("UTC_TIME", lastAlarmUtc);
                             //发送到 故障判断处理节点继续
 //                            sendMsg.put("COUNT",1234 );
 //                            sendMsg.put("ALARM_VAL", "xxxxxx");
@@ -833,7 +835,7 @@ public class AlarmBolt extends BaseRichBolt {
                         //vid2alarmInfo.put(vid+"_"+filterId, "0_0_"+alarmUtc);
                         //上条报警，本条不报警，说明是【结束报警】，发送结束报警报文
                         String alarmId = alarmMap.get(vid+"#"+filterId);
-                        String alarmEnd = "VID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+ctArr[1]+",CONST_ID:"+filterId;
+                        //String alarmEnd = "VID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+ctArr[1]+",CONST_ID:"+filterId;
                         
                         Map<String,Object> sendMsg = new TreeMap<String,Object>();
                         sendMsg.put("VID", vid);
@@ -841,13 +843,14 @@ public class AlarmBolt extends BaseRichBolt {
                         sendMsg.put("STATUS", 3);
                         sendMsg.put("TIME", ctArr[1]);
                         sendMsg.put("CONST_ID", filterId);
+                        String alarmEnd = JSON.toJSONString(sendMsg);
                         
                         sendMsg.put("ALARM_NAME", alarmName);
                         sendMsg.put("ALARM_LEVEL", alarmLevel);
                         sendMsg.put("LEFT1", left1);
                         sendMsg.put("LEFT2", left2);
-                        sendMsg.put("RIGHT1", right1+"");
-                        sendMsg.put("RIGHT2", right2+"");
+                        sendMsg.put("RIGHT1", right1);
+                        sendMsg.put("RIGHT2", right2);
                         String alarmHbase = JSON.toJSONString(sendMsg);
                         
                         //kafka存储
@@ -855,7 +858,7 @@ public class AlarmBolt extends BaseRichBolt {
                         //hbase存储
                         sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehAlarmStoreTopic, vid, alarmHbase);
                         //发送到 故障判断处理节点继续
-                        //sendMsg.put("UTC_TIME", ""+getTime(ctArr[1]));
+			//sendMsg.put("UTC_TIME", getTime(ctArr[1]));
                         //sendToNext(SysDefine.FAULT_GROUP,vid, sendMsg);
                         //redis存储
                         saveRedis(vid,"0",ctArr[1]);
@@ -1086,6 +1089,7 @@ public class AlarmBolt extends BaseRichBolt {
 					}
 				}
 			}
+    		
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

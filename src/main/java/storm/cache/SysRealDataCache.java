@@ -26,7 +26,7 @@ import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
-import storm.util.ParamsRedis;
+import storm.util.ParamsRedisUtil;
 
 /**
  * system 
@@ -73,7 +73,7 @@ public class SysRealDataCache {
 			chargeCarCache = new ConcurrentHashMap<String,FillChargeCar>();
 			timeformat = new TimeFormatService();
 			
-	        Object outbyconf = ParamsRedis.PARAMS.get("gt.inidle.timeOut.time");
+	        Object outbyconf = ParamsRedisUtil.PARAMS.get("gt.inidle.timeOut.time");
 			if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
 				timeouttime=1000*(int)outbyconf;
 			}

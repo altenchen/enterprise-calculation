@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import com.alibaba.fastjson.JSON;
+import com.sun.jersey.core.util.Base64;
 
 import storm.cache.SysRealDataCache;
 import storm.dao.DataToRedis;
@@ -21,9 +22,9 @@ import storm.util.ConfigUtils;
 import storm.util.GpsUtil;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
-import storm.util.ParamsRedis;
+import storm.util.ParamsRedisUtil;
 import storm.util.UUIDUtils;
-
+import storm.dto.IsSendNoticeCache;
 /**
  * <p>
  * 临时处理 沃特玛的需求 处理简单实现方法
@@ -33,6 +34,9 @@ import storm.util.UUIDUtils;
  * @author 76304
  *
  */
+
+
+
 public class CarRulehandler implements InfoNotice{
 
 	private Map<String, Integer> vidnogps;
@@ -63,7 +67,10 @@ public class CarRulehandler implements InfoNotice{
 	private Map<String, Map<String, Object>> vidSpeedGtZeroNotice;
 	private Map<String, Map<String, Object>> vidFlyNotice;
 	private Map<String, Map<String, Object>> vidOnOffNotice;
+	
+	private Map<String, Map<String, Object>> vidLastDat;//vid和最后一帧数据的缓存
 	private Map<String, Long> lastTime;
+	private Map<String, IsSendNoticeCache> vidIsSendNoticeCache;
 	
 	DataToRedis redis;
 	private Recorder recorder;
@@ -73,6 +80,14 @@ public class CarRulehandler implements InfoNotice{
 	static int topn;
 	static long offlinetime = 600000;//600秒
 	static int socAlarm = 10;//低于10%
+	static int nogpsJudgeNum = 5;//5次 
+	static int hasgpsJudgeNum = 10;//10次 
+	static int nocanJudgeNum = 5;//5次 
+	static int hascanJudgeNum = 10;//10次 
+	static int mileHop = 20;//2公里 ，单位是0.1km
+	static Long nogpsIntervalTime = (long) 10800000;//10800秒
+	static Long nocanIntervalTime = (long) 10800000;//10800秒
+	
 	
 	static int db =6;
 	static int socRule = 0;//1代表规则启用
@@ -82,6 +97,7 @@ public class CarRulehandler implements InfoNotice{
 	static int abnormalRule = 0;//1代表规则启用
 	static int flyRule = 0;//1代表规则启用
 	static int onoffRule = 0;//1代表规则启用
+	static int mileHopRule = 0;//1代表规则启用
 	
 	static {
 		timeformat = new TimeFormatService();
@@ -135,12 +151,53 @@ public class CarRulehandler implements InfoNotice{
 				value = null;
 			}
 			
+			value = ConfigUtils.sysDefine.getProperty("sys.milehop.rule");
+			if (!ObjectUtils.isNullOrEmpty(value)) {
+				mileHopRule = Integer.parseInt(value);
+				value = null;
+			}
+			
 		}
-		Object socVal = ParamsRedis.PARAMS.get("lt.alarm.soc");
+		init();
+	}
+	//以下参数可以定时进行重新加载
+	static void init(){
+		Object socVal = ParamsRedisUtil.PARAMS.get("lt.alarm.soc");
 		if (null != socVal) {
 			socAlarm = (int)socVal;
 		}
+		Object nocanJugyObj = ParamsRedisUtil.PARAMS.get("can.novalue.continue.no");
+		if (null != nocanJugyObj) {
+			nocanJudgeNum = (int)nocanJugyObj;
+		}
+		Object hascanJugyObj = ParamsRedisUtil.PARAMS.get("can.novalue.continue.no");
+		if (null != hascanJugyObj) {
+			hascanJudgeNum = (int)hascanJugyObj;
+		}
+		
+		Object nogpsNum = ParamsRedisUtil.PARAMS.get("gps.novalue.continue.no");
+		if (null != nogpsNum) {
+			nogpsJudgeNum = (int)nogpsNum;
+		}
+		Object hasgpsNum = ParamsRedisUtil.PARAMS.get("gps.novalue.continue.no");
+		if (null != hasgpsNum) {
+			hasgpsJudgeNum = (int)hasgpsNum;
+		}
+		Object hopnum = ParamsRedisUtil.PARAMS.get("mile.hop.num");
+		if (null != hopnum) {
+			mileHop = ((int)hopnum)*10;
+		}
+		Object nogpsJudgeTime = ParamsRedisUtil.PARAMS.get("gps.judge.time");
+		if (null != nogpsJudgeTime) {
+			nogpsIntervalTime = ((int)nogpsJudgeTime)*1000L;
+		}
+		Object nocanJudgeTime = ParamsRedisUtil.PARAMS.get("can.judge.time");
+		if (null != nocanJudgeTime) {
+			nocanIntervalTime = ((int)nocanJudgeTime)*1000L;
+		}
+		
 	}
+	
 	{
 		vidnogps = new HashMap<String, Integer>();
 		vidnormgps = new HashMap<String, Integer>();
@@ -166,11 +223,20 @@ public class CarRulehandler implements InfoNotice{
 		vidFlyEd = new HashMap<String, Integer>();
 		vidFlyNotice = new HashMap<String, Map<String, Object>>();
 		vidOnOffNotice = new HashMap<String, Map<String, Object>>();
+		vidLastDat = new HashMap<String, Map<String, Object>>();
 		lastTime = new HashMap<String, Long>();
+		vidIsSendNoticeCache = new HashMap<String,IsSendNoticeCache>();
+		
 		redis = new DataToRedis();
 		recorder = new RedisRecorder(redis);
 		restartInit(true);
 	}
+	
+	public static void rebulid(){
+		ParamsRedisUtil.rebulid();
+		init();
+	}
+	
 	@Override
 	public Map<String, Object> genotice(Map<String, String> dat) {
 		
@@ -179,6 +245,7 @@ public class CarRulehandler implements InfoNotice{
 
 	@Override
 	public List<Map<String, Object>> genotices(Map<String, String> dat) {
+		//1、验证dat的有效性
 		if (ObjectUtils.isNullOrEmpty(dat)
 				|| !dat.containsKey(ProtocolItem.VID)
 				|| !dat.containsKey(ProtocolItem.TIME)) {
@@ -192,6 +259,7 @@ public class CarRulehandler implements InfoNotice{
 		}
 		
 		lastTime.put(vid, System.currentTimeMillis());
+		//2、为下面的方法做准备，生成相应的容器。
 		List<Map<String, Object>> list = new LinkedList<Map<String, Object>>();
 		
 		List<Map<String, Object>> socjudges = null;
@@ -201,28 +269,33 @@ public class CarRulehandler implements InfoNotice{
 		Map<String, Object> abnormaljudge = null;
 		Map<String, Object> flyjudge = null;
 		Map<String, Object> onoff = null;
-		
-		if (1 == socRule)
+		Map<String, Object> mileHopjudge = null;
+		//3、如果规则启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
+		if (1 == socRule){
+			//lowsoc(dat)返回一个map，里面有vid和通知消息（treeMap）
 			socjudges = lowsoc(dat);
-		
-		if (1 == canRule)
+		}
+		if (1 == canRule){
 			canjudge = nocan(dat);
-		
-		if (1 == igniteRule)
+		}
+		if (1 == igniteRule){
 			ignite = igniteShut(dat);
-		
-		if (1 == gpsRule)
+		}
+		if (1 == gpsRule){
 			gpsjudge = nogps(dat);
-		
-		if (1 == abnormalRule)
+		}
+		if (1 == abnormalRule){
 			abnormaljudge = abnormalCar(dat);
-		
-		if (1 == flyRule)
+		}
+		if (1 == flyRule){
 			flyjudge = flySe(dat);
-		
-		if (1 == onoffRule)
+		}
+		if (1 == onoffRule){
 			onoff = onOffline(dat);
-		
+		}
+		if (1 == mileHopRule){
+			mileHopjudge = mileHopHandle(dat);
+		}
 		if (! ObjectUtils.isNullOrEmpty(socjudges)) {
 			list.addAll(socjudges);
 		}
@@ -243,6 +316,9 @@ public class CarRulehandler implements InfoNotice{
 		}
 		if (! ObjectUtils.isNullOrEmpty(onoff)) {
 			list.add(onoff);
+		}
+		if (! ObjectUtils.isNullOrEmpty(mileHopjudge)) {
+			list.add(mileHopjudge);
 		}
 		if (list.size()>0) {
 			return list;
@@ -273,6 +349,8 @@ public class CarRulehandler implements InfoNotice{
 			List<Map<String, Object>> noticeMsgs = new LinkedList<Map<String, Object>>();
 			if (! ObjectUtils.isNullOrEmpty(soc)) {
 				double socNum = Double.parseDouble(NumberUtils.stringNumber(soc));
+				//想判断是一个车辆是否为低电量，不能根据一个报文就下结论，而是要连续多个报文都是报低电量才行。
+				//其他的判断也都是类似的。
 				if (socNum < socAlarm) {
 					int cnts = 0;
 					if (vidlowsoc.containsKey(vid)) {
@@ -281,7 +359,7 @@ public class CarRulehandler implements InfoNotice{
 					cnts++;
 					vidlowsoc.put(vid, cnts);
 					if (cnts >=10) {
-						
+						//当计数器大于10以后，就去检查一下低电量列表中有没有这辆车，没有的话，就构造一条信息，放到这个列表中。
 						Map<String, Object> notice = vidsocNotice.get(vid);
 						if (null == notice) {
 							notice =  new TreeMap<String, Object>();
@@ -294,6 +372,7 @@ public class CarRulehandler implements InfoNotice{
 							notice.put("status", 1);
 							notice.put("location", location);
 						}else{
+							//如果有了，则重新插入以下信息，覆盖之前的。
 							notice.put("count", cnts);
 							notice.put("status", 2);
 							notice.put("location", location);
@@ -463,16 +542,91 @@ public class CarRulehandler implements InfoNotice{
 			String latit = dat.get(ProtocolItem.latitude);
 			String longi = dat.get(ProtocolItem.longitude);
 			String location = longi+","+latit;
-			String noticetime = timeformat.toDateString(new Date());
-			if (ObjectUtils.isNullOrEmpty(canList)) {
+			//noticetime为当前时间
+			Date date= new Date();
+			String noticetime = timeformat.toDateString(date);
+			
+			String carStatus = dat.get(ProtocolItem.CAR_STATUS);
+			String soc = dat.get(ProtocolItem.SOC);
+			
+			String macList = dat.get(ProtocolItem.DRIVING_ELE_MAC_LIST);
+			
+			String hignVolt = dat.get(ProtocolItem.SINGLE_VOLT_HIGN_VAL);
+			String lowTemp = dat.get(ProtocolItem.SINGLE_LOWTEMP_VAL);
+			
+			boolean hasMacCan = false;
+			if (!ObjectUtils.isNullOrEmpty(macList)){
+
+		        String[] drivingMotors = macList.split("\\|");
+		        if (drivingMotors !=null && drivingMotors.length >0){
+
+		            for (String drivingMotor : drivingMotors){
+		                String value=null;
+						try {
+							value = new String(Base64.decode(drivingMotor),"GBK");
+							String[] params = value.split(",");
+							Map<String, String> motor = new TreeMap<String, String>();
+							
+							for (String param : params){
+								String[] p = param.split(":", 2);
+								if (p!=null && p.length==2){
+									motor.put(p[0], p[1]);
+								}
+							}
+							
+							if (motor.size() > 0) {
+								String drivingEleMacStatus = motor.get(ProtocolItem.DRIVING_ELE_MAC_STATUS);//"2310";//driving 驱动电机状态
+			        			String drivingEleMacTempCtol = motor.get(ProtocolItem.DRIVING_ELE_MAC_TEMPCTOL);//"2302";//driving 驱动电机温度控制器
+			        			String drivingEleMacRev = motor.get(ProtocolItem.DRIVING_ELE_MAC_REV);//"2303";//driving 驱动电机转速
+			        			String drivingEleMacTorque = motor.get(ProtocolItem.DRIVING_ELE_MAC_TORQUE);//"2311";//driving 驱动电机转矩
+			        			String drivingEleMacTemp = motor.get(ProtocolItem.DRIVING_ELE_MAC_TEMP);//"2304";//driving 驱动电机温度
+			        			String drivingEleMacVolt = motor.get(ProtocolItem.DRIVING_ELE_MAC_VOLT);//"2305";//driving 驱动电机输入电压
+			        			String drivingEleMacEle = motor.get(ProtocolItem.DRIVING_ELE_MAC_ELE);//"2306";//driving 驱动电机母线电流
+			        			//只要有其中之一的数据就说明有电机can状态
+			        			boolean nullAll = ObjectUtils.isNullOrEmpty(drivingEleMacTemp)
+			        					&& ObjectUtils.isNullOrEmpty(drivingEleMacVolt)
+			        					&& ObjectUtils.isNullOrEmpty(drivingEleMacStatus)
+			        					&& ObjectUtils.isNullOrEmpty(drivingEleMacTempCtol)
+			        					&& ObjectUtils.isNullOrEmpty(drivingEleMacRev)
+			        					&& ObjectUtils.isNullOrEmpty(drivingEleMacTorque)
+			        					&& ObjectUtils.isNullOrEmpty(drivingEleMacEle);
+			        			
+			        			if (!nullAll) {
+			        				hasMacCan = true;
+									break;
+								}
+							}
+						} catch (Exception ec) {
+							ec.printStackTrace();
+						}
+		            }
+		        }
+			}
+			/**
+			 * 之前只是根据canList的有无判断是否有can状态，此次做了如下改进。
+			 * 
+			 * 判断规则（车辆状态&soc）|（电机电压&电机温度）|（最高单体电压|最低温度）
+			 * 其中macList中包含了电机电压和电机温度
+			 * canList，因为某些厂家的报文中可能没有这个信息，所以不能把它作为判定条件只能辅助判定。
+			 */
+			boolean hasCan = (
+					!ObjectUtils.isNullOrEmpty(carStatus)
+					&& !ObjectUtils.isNullOrEmpty(soc))
+					|| (hasMacCan)
+					|| (!ObjectUtils.isNullOrEmpty(hignVolt)
+							&&!ObjectUtils.isNullOrEmpty(lowTemp))
+					|| (!ObjectUtils.isNullOrEmpty(canList));
+			
+			if (!hasCan) {
+				//cnts为报文计数
 				int cnts = 0;
+				//已有此vid，将存储的cnts赋给cnts
 				if (vidnocan.containsKey(vid)) {
 					cnts = vidnocan.get(vid);
 				}
 				cnts++;
 				vidnocan.put(vid, cnts);
-				if (cnts >=10) {
-					
+				if (cnts >= nocanJudgeNum) {
 					Map<String, Object> notice = vidcanNotice.get(vid);
 					if (null == notice) {
 						notice =  new TreeMap<String, Object>();
@@ -485,28 +639,53 @@ public class CarRulehandler implements InfoNotice{
 						notice.put("location", location);
 					}else{
 						notice.put("count", cnts);
-						notice.put("status", 2);
-						notice.put("location", location);
+//						notice.put("status", 2);
+//						notice.put("location", location);
 					}
 					notice.put("noticetime", noticetime);
 					vidcanNotice.put(vid, notice);
 					
-					if(1 == (int)notice.get("status"))
-						return notice;
+					Long nowTime = date.getTime();
+					Long firstNogpsTime = timeformat.stringTimeLong(notice.get("stime").toString());
+					//status，1开始，2持续，3结束
+					if( 1 == (int)notice.get("status") && nowTime-firstNogpsTime > nocanIntervalTime){
+						IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
+						if (null == judgeIsSendNotice) {
+							judgeIsSendNotice = new IsSendNoticeCache(false, true);
+							vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
+							return notice;
+						}else if (!judgeIsSendNotice.canIsSend) {
+							judgeIsSendNotice.canIsSend = true;
+							return notice;
+						}
+						
+					}
 				}
 			}else {
 				if (vidnocan.containsKey(vid)){
 					int cnts = 0;
+					//正常发送can报文的车辆vid
 					if (vidnormcan.containsKey(vid)) {
 						cnts = vidnormcan.get(vid);
 					}
 					cnts++;
 					vidnormcan.put(vid, cnts);
 					
-					if (cnts >=10) {
+					if (cnts >=hascanJudgeNum || (cnts >= 3 && null!=dat.get(ProtocolItem.LOGOUT_TIME))) {
+						
+						vidnormcan.remove(vid);
+						
+						//如果无can状态开始通知没有发送，则不会发送结束通知，只会把各个缓存清空
+						if(!vidIsSendNoticeCache.get(vid).canIsSend){
+							vidnocan.remove(vid);
+							vidcanNotice.remove(vid);
+							return null;
+						}
+						
 						Map<String, Object> notice = vidcanNotice.get(vid);
 						vidnocan.remove(vid);
 						vidcanNotice.remove(vid);
+						vidIsSendNoticeCache.get(vid).canIsSend = false;
 						if (null != notice) {
 							notice.put("status", 3);
 							notice.put("location", location);
@@ -522,6 +701,80 @@ public class CarRulehandler implements InfoNotice{
 			e.printStackTrace();
 		}
 		return null;
+	}
+	
+	/**
+	 * 里程跳变处理
+	 * @param dat
+	 * @return 实时里程跳变通知notice，treemap类型。
+	 * 
+	 */
+	private Map<String, Object> mileHopHandle(Map<String, String> dat){
+		if (ObjectUtils.isNullOrEmpty(dat)) {
+			return null;
+		}
+		try {
+			String vid = dat.get(ProtocolItem.VID);
+			String time = dat.get(ProtocolItem.TIME);
+			String msgType = dat.get(ProtocolItem.MESSAGETYPE);
+			if (ObjectUtils.isNullOrEmpty(vid)
+					|| ObjectUtils.isNullOrEmpty(time)
+					|| ObjectUtils.isNullOrEmpty(msgType)) {
+				return null;
+			}
+			Map<String, Object> notice = null;
+			if (ProtocolItem.REALTIME.equals(msgType)) {
+				
+				String mileage = dat.get(ProtocolItem.TOTAL_MILEAGE);//当前总里程
+				
+				if (vidLastDat.containsKey(vid)) {
+					//mileage如果是数字字符串则返回，不是则返回字符串“0”
+					mileage=NumberUtils.stringNumber(mileage);
+					if (!"0".equals(mileage)) {
+						int mile = Integer.parseInt(mileage);//当前总里程
+						Map<String, Object> lastMap = vidLastDat.get(vid);
+						int lastMile = (int)lastMap.get(ProtocolItem.TOTAL_MILEAGE);//上一帧的总里程
+						int nowmileHop = Math.abs(mile-lastMile);//里程跳变
+						
+						if (nowmileHop >= mileHop) {
+							String lastTime = (String)lastMap.get(ProtocolItem.TIME);//上一帧的时间即为跳变的开始时间
+							String vin = dat.get(ProtocolItem.VIN);
+							notice = new TreeMap<String, Object>();
+							notice.put("msgType", "HOP_MILE");//这些字段是前端方面要求的。
+							notice.put("vid", vid);
+							notice.put("vin", vin);
+							notice.put("stime", lastTime);
+							notice.put("etime", time);
+							notice.put("stmile", lastMile);
+							notice.put("edmile", mile);
+							notice.put("hopValue", nowmileHop);
+						}
+					} 
+				}
+				//如果vidLastDat中没有缓存此vid，则把这一帧报文中的vid、time、mileage字段缓存到LastDat
+				setLastDat(dat);
+			}
+			
+			return notice;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	private void setLastDat(Map<String, String> dat){
+		String mileage = dat.get(ProtocolItem.TOTAL_MILEAGE);
+		mileage = NumberUtils.stringNumber(mileage);
+		if (!"0".equals(mileage)) {
+			Map<String, Object> lastMap = new TreeMap<String, Object>();
+			String vid = dat.get(ProtocolItem.VID);
+			String time = dat.get(ProtocolItem.TIME);
+			int mile = Integer.parseInt(mileage);
+			lastMap.put(ProtocolItem.VID, vid);
+			lastMap.put(ProtocolItem.TIME, time);
+			lastMap.put(ProtocolItem.TOTAL_MILEAGE, mile);
+			vidLastDat.put(vid, lastMap);
+		}
 	}
 	/**
 	 * IGNITE_SHUT_MESSAGE
@@ -867,7 +1120,9 @@ public class CarRulehandler implements InfoNotice{
 			}
 			String latit = dat.get(ProtocolItem.latitude);
 			String longi = dat.get(ProtocolItem.longitude);
-			String noticetime = timeformat.toDateString(new Date());
+			//noticetime为当前时间
+			Date date= new Date();
+			String noticetime = timeformat.toDateString(date);
 			
 			boolean isValid = true;
 			if (! ObjectUtils.isNullOrEmpty(latit)
@@ -876,8 +1131,8 @@ public class CarRulehandler implements InfoNotice{
 				longi = NumberUtils.stringNumber(longi);
 				double latitd = Double.parseDouble(latit);
 				double longid = Double.parseDouble(longi);
-				if (latitd > 180000000 
-						|| longid > 180000000) {
+				if (latitd < 0 && latitd > 180000000
+						|| longid < 0 && longid > 180000000) {
 					isValid = false;
 				}
 			}
@@ -886,13 +1141,14 @@ public class CarRulehandler implements InfoNotice{
 					|| ObjectUtils.isNullOrEmpty(longi)) {
 				
 				int cnts = 0;
+				//vidnogps缓存无gps车辆的vid和报文帧数
 				if (vidnogps.containsKey(vid)) {
 					cnts = vidnogps.get(vid);
 				}
 				cnts++;
 				vidnogps.put(vid, cnts);
-				if (cnts >=10) {
-					
+				if (cnts >=nogpsJudgeNum) {
+					//vidgpsNotice缓存通知，第一次发通知
 					Map<String, Object> notice = vidgpsNotice.get(vid);
 					if (null == notice) {
 						notice =  new TreeMap<String, Object>();
@@ -901,29 +1157,54 @@ public class CarRulehandler implements InfoNotice{
 						notice.put("msgId", UUIDUtils.getUUID());
 						notice.put("stime", time);
 						notice.put("count", cnts);
-						notice.put("status", 1);
+						notice.put("status", 1);//1开始，2持续，3结束
+						
 					}else{
+						//不是第一次了
 						notice.put("count", cnts);
-						notice.put("status", 2);
 					}
 					notice.put("noticetime", noticetime);
 					vidgpsNotice.put(vid, notice);
-					if(1 == (int)notice.get("status"))
-						return notice;
+					
+					Long nowTime = date.getTime();
+					Long firstNogpsTime = timeformat.stringTimeLong(notice.get("stime").toString());
+					//如果满足条件，将judgeIsSend中的GpsIsSend置为true，意思是已经发送了未定位通知。
+					if( 1 == (int)notice.get("status") && nowTime-firstNogpsTime > nogpsIntervalTime){
+						IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
+						if (null == judgeIsSendNotice) {
+							judgeIsSendNotice = new IsSendNoticeCache(true, false);
+							vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
+							return notice;
+						}else if (!judgeIsSendNotice.gpsIsSend) {
+							judgeIsSendNotice.gpsIsSend = true;
+							return notice;
+						}
+						
+					}
 				}
 			}else {
-				if (vidnogps.containsKey(vid)){
+				if (vidnogps.containsKey(vid)){//车的GPS是有效的，并且vidnogps中包含这辆车，才有可能发送结束通知报文
 					int cnts = 0;
 					if (vidnormgps.containsKey(vid)) {
 						cnts = vidnormgps.get(vid);
 					}
 					cnts++;
 					vidnormgps.put(vid, cnts);
-					
-					if (cnts >=10) {
+					//有效gps报文超过hasgpsJudgeNum  || 有效gps报文在（3贞以上，10贞以下）同时车辆登出
+					if (cnts >=hasgpsJudgeNum || (cnts > 3 && null!=dat.get(ProtocolItem.LOGOUT_TIME)) ) {
+						
+						vidnormgps.remove(vid);
+						//如果未定位开始通知没有发送，则不会发送结束通知，只会把各个缓存清空
+						if(!vidIsSendNoticeCache.get(vid).gpsIsSend){
+							vidnogps.remove(vid);
+							vidgpsNotice.remove(vid);
+							return null;
+						}
+						
 						Map<String, Object> notice = vidgpsNotice.get(vid);
 						vidnogps.remove(vid);
 						vidgpsNotice.remove(vid);
+						vidIsSendNoticeCache.get(vid).gpsIsSend = false;
 						if (null != notice) {
 							String location = longi+","+latit;
 							notice.put("status", 3);
@@ -933,7 +1214,6 @@ public class CarRulehandler implements InfoNotice{
 							return notice;
 						}
 					}
-				
 				}
 			}
 		} catch (Exception e) {
@@ -1009,19 +1289,19 @@ public class CarRulehandler implements InfoNotice{
 			} else if ("2".equals(type)){
 				return true;
 			} else {
-				String logoutSeq = dat.get(ProtocolItem.LOGOUT_SEQ);
-				String loginSeq = dat.get(ProtocolItem.LOGIN_SEQ);
-				if (! ObjectUtils.isNullOrEmpty(logoutSeq) 
-						&& !ObjectUtils.isNullOrEmpty(logoutSeq)) {
-					int logout = Integer.parseInt(NumberUtils.stringNumber(logoutSeq));
-					int login = Integer.parseInt(NumberUtils.stringNumber(loginSeq));
+				String logoutTime = dat.get(ProtocolItem.LOGOUT_TIME);
+				String loginTime = dat.get(ProtocolItem.LOGIN_TIME);
+				if (! ObjectUtils.isNullOrEmpty(logoutTime) 
+						&& !ObjectUtils.isNullOrEmpty(logoutTime)) {
+					long logout = Long.parseLong(NumberUtils.stringNumber(logoutTime));
+					long login = Long.parseLong(NumberUtils.stringNumber(loginTime));
 					if(login >logout){
 						return false;
 					} 
 					return true;
 					
 				} else{
-					if (ObjectUtils.isNullOrEmpty(loginSeq)) {
+					if (ObjectUtils.isNullOrEmpty(loginTime)) {
 						return false;
 					}
 					return true;
@@ -1051,6 +1331,38 @@ public class CarRulehandler implements InfoNotice{
     	List<String> needRemoves = new LinkedList<String>();
     	for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
     		long last = entry.getValue();
+			if (now - last > offlinetime) {
+				String vid = entry.getKey();
+				needRemoves.add(vid);
+				Map<String, Object> msg = vidOnOffNotice.get(vid);//vidOnOffNotice是车辆在线信息缓存
+				//如果msg不为null，说明之前在线，现在离线，需要发送离线通知
+				if (null != msg) {
+					getOffline(msg,noticetime);
+					if (null != msg) {
+						notices.add(msg);
+					}
+				}
+			}
+		}
+    	for (String vid : needRemoves) {
+    		lastTime.remove(vid);
+    		vidOnOffNotice.remove(vid);
+		}
+    	if (notices.size()>0) {
+			return notices;
+		}
+		return null;
+	}
+	
+	public List<Map<String, Object>> offlineMethod2(long now){
+		if (null == lastTime || lastTime.size() == 0) {
+			return null;
+		}
+		List<Map<String, Object>>notices = new LinkedList<Map<String, Object>>();
+		String noticetime = timeformat.toDateString(new Date(now));
+		List<String> needRemoves = new LinkedList<String>();
+		for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
+			long last = entry.getValue();
 			if (now - last > offlinetime) {
 				String vid = entry.getKey();
 				needRemoves.add(vid);
@@ -1112,35 +1424,35 @@ public class CarRulehandler implements InfoNotice{
 				}
 			}
 		}
-    	
-    	for (String vid : needRemoves) {
-    		lastTime.remove(vid);
-    		vidFlyNotice.remove(vid);
-    		vidsocNotice.remove(vid);
-    		vidcanNotice.remove(vid);
-    		vidgpsNotice.remove(vid);
-    		vidSpeedGtZeroNotice.remove(vid);
-    		vidIgniteShutNotice.remove(vid);
-    		vidOnOffNotice.remove(vid);
-    		
-    		vidFlyEd.remove(vid);
-    		vidFlySt.remove(vid);
-    		vidShut.remove(vid);
-    		vidIgnite.remove(vid);
-    		vidSpeedGtZero.remove(vid);
-    		vidSpeedZero.remove(vid);
-    		vidlowsoc.remove(vid);
-    		vidnormsoc.remove(vid);
-    		vidnocan.remove(vid);
-    		vidnormcan.remove(vid);
-    		vidnogps.remove(vid);
-    		vidnormgps.remove(vid);
-    		
+		
+		for (String vid : needRemoves) {
+			lastTime.remove(vid);
+			vidFlyNotice.remove(vid);
+			vidsocNotice.remove(vid);
+			vidcanNotice.remove(vid);
+			vidgpsNotice.remove(vid);
+			vidSpeedGtZeroNotice.remove(vid);
+			vidIgniteShutNotice.remove(vid);
+			vidOnOffNotice.remove(vid);
+			
+			vidFlyEd.remove(vid);
+			vidFlySt.remove(vid);
+			vidShut.remove(vid);
+			vidIgnite.remove(vid);
+			vidSpeedGtZero.remove(vid);
+			vidSpeedZero.remove(vid);
+			vidlowsoc.remove(vid);
+			vidnormsoc.remove(vid);
+			vidnocan.remove(vid);
+			vidnormcan.remove(vid);
+			vidnogps.remove(vid);
+			vidnormgps.remove(vid);
+			
 		}
-    	if (notices.size()>0) {
+		if (notices.size()>0) {
 			return notices;
 		}
-    	
+		
 		
 		return null;
 	}

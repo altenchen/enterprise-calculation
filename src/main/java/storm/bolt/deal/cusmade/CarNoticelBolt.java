@@ -22,7 +22,7 @@ import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
-import storm.util.ParamsRedis;
+import storm.util.ParamsRedisUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -64,19 +64,19 @@ public class CarNoticelBolt extends BaseRichBolt {
         	timeouttime=1000*Long.parseLong(outtime.toString());
 		}
         try {
-        	ParamsRedis.rebulid();
-			Object outbyconf = ParamsRedis.PARAMS.get("gt.inidle.timeOut.time");
+        	ParamsRedisUtil.rebulid();
+			Object outbyconf = ParamsRedisUtil.PARAMS.get("gt.inidle.timeOut.time");//从配置文件读取超时时间
 			if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
 				timeouttime=1000*(int)outbyconf;
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-        Object off = stormConf.get("redis.offline.time");
+        Object off = stormConf.get("redis.offline.time");//多长时间算是离线
         if (!ObjectUtils.isNullOrEmpty(off)) {
 			offlinetime = Long.parseLong(NumberUtils.stringNumber(off.toString()))*1000;
 		}
-        Object offCheck = stormConf.get("redis.offline.checktime");
+        Object offCheck = stormConf.get("redis.offline.checktime");//多长时间检查一下是否离线
         if (!ObjectUtils.isNullOrEmpty(offCheck)) {
         	offlinecheck = Long.parseLong(NumberUtils.stringNumber(offCheck.toString()))*1000;
         }
@@ -108,6 +108,7 @@ public class CarNoticelBolt extends BaseRichBolt {
     		}
     		ispreCp=1;
     		
+    		//定义一个定时任务，每隔一段时间将闲置车辆发到kafka中。
     		class TimeOutClass implements Runnable{
 
 				@Override
@@ -115,8 +116,14 @@ public class CarNoticelBolt extends BaseRichBolt {
 					try {
 						
 						try {
-							ParamsRedis.rebulid();
-							Object outbyconf = ParamsRedis.PARAMS.get("gt.inidle.timeOut.time");
+//							ParamsRedis.rebulid();
+							/**
+							 * 重新初始化 配置参数，里程跳变数字、未定位的 判断次数等
+							 * 由于此方法内部已经调用了 ParamsRedis.rebulid()
+							 * 因此可以省略 ParamsRedis 重新初始化方法
+							 */
+							CarRulehandler.rebulid();
+							Object outbyconf = ParamsRedisUtil.PARAMS.get("gt.inidle.timeOut.time");//从配置文件中读出超时时间
 							if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
 								timeouttime=1000*(int)outbyconf;
 							}
@@ -141,7 +148,7 @@ public class CarNoticelBolt extends BaseRichBolt {
         		
         	}
         	Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new TimeOutClass(), 0, 300, TimeUnit.SECONDS);
-    		
+        	
     	} catch (Exception e) {
     		e.printStackTrace();
     	}
@@ -171,6 +178,7 @@ public class CarNoticelBolt extends BaseRichBolt {
 				}
 			}*/
         }
+        //如果时间差大于离线检查时间，则进行离线检查,如果车辆离线，则发送此车辆的所有故障码结束通知
         if (now - lastOfflinecheck >= offlinecheck){
         	lastOfflinecheck=now;
         	List<Map<String, Object>> msgs = codeHandler.handle(now);
@@ -184,7 +192,7 @@ public class CarNoticelBolt extends BaseRichBolt {
         			}
         		}
         	}
-        	
+        	//检查所有车辆是否离线，离线则发送离线通知。
         	msgs = carRulehandler.offlineMethod(now);
         	if (null != msgs && msgs.size()>0) {
         		for (Map<String, Object> map : msgs) {
@@ -208,7 +216,8 @@ public class CarNoticelBolt extends BaseRichBolt {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-
+            //返回车辆通知
+            //先检查规则是否启用，启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
             List<Map<String, Object>> msgs = carRulehandler.genotices(data);
         	if (null != msgs && msgs.size()>0) {
 				for (Map<String, Object> map : msgs) {

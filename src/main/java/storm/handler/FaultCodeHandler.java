@@ -71,12 +71,17 @@ public class FaultCodeHandler {
 		}
     	List<Map<String, Object>>notices = new LinkedList<Map<String, Object>>();
     	String noticetime = timeformat.toDateString(new Date(now));
+    	//needRemoves缓存需要移除的故障码id（因为map不能在遍历的时候删除id或者放入id，否则会引发并发修改异常）
     	List<String> needRemoves = new LinkedList<String>();
+    	//lastTime为所有车辆的最后一帧报文的时间（vid，lastTime）
     	for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
     		long last = entry.getValue();
+    		//如果这辆车已经离线，则把这辆车的故障码缓存移除，并且针对每个故障都发一个结束通知
+    		//offlinetime为车辆多长时间算是离线，
 			if (now - last > offlinetime) {
 				String vid = entry.getKey();
 				needRemoves.add(vid);
+				//vidRuleMsgs是每辆车的故障码信息缓存
 				Map<String,Map<String,Object>> ruleMsgs = vidRuleMsgs.get(vid);
 				if (null != ruleMsgs) {
 					for (Map.Entry<String,Map<String,Object>> ruleEntry : ruleMsgs.entrySet()) {
@@ -107,6 +112,7 @@ public class FaultCodeHandler {
 		if (ObjectUtils.isNullOrEmpty(dat)) {
 			return null;
 		}
+		//获得最新的规则规则
 		Collection<FaultRuleCode> rules = getRules();
 		if (null == rules || rules.size() == 0) {
 			return null;
@@ -136,6 +142,7 @@ public class FaultCodeHandler {
 			return null;
 		}
 		List<Map<String, Object>>notices = new LinkedList<Map<String, Object>>();
+		
 		for (FaultRuleCode  ruleCode: rules) {
 			List<Map<String, Object>>msgs = msgFault(dat, msgFcodes, ruleCode);
 			if (null != msgs) {
@@ -174,12 +181,15 @@ public class FaultCodeHandler {
 		String noticetime = timeformat.toDateString(date);
 		long last = date.getTime();
 		Map<String,Map<String,Object>> ruleMsgs = vidRuleMsgs.get(vid);
+		//codes为若干个数字
 		List<FaultCode> codes = rule.codes;
 		for (FaultCode faultCode : codes) {
+			//十六进制转换为十进制
 			String fcode = hexToDec(faultCode.code);
 			if (msgFcodes.contains(fcode)) {
 				lastTime.put(vid, last);
-				boolean end = (faultCode.type ==0 );
+				//如果faultCode为0，则说明故障结束，发送故障结束报文
+				boolean end = (faultCode.type ==0 );//0为正常码
 				if (end) {
 					if (null != ruleMsgs) {
 						Map<String, Object> msg = ruleMsgs.get(rule.ruleId);
