@@ -38,11 +38,11 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		vididleNotice = new HashMap<String, Map<String, Object>>();
 		onOffMileNotice = new HashMap<String, Map<String, Object>>();
 		vidLastTimeMile = new HashMap<String, TimeMileage>();
-		
+
 		vidLastSpeed = new HashMap<String, Integer>();
 		vidLastMileage = new HashMap<String, Integer>();
 		vidLastSoc = new HashMap<String, Integer>();
-		
+
 		recorder = new RedisRecorder();
 		restartInit(true);
 	}
@@ -57,13 +57,13 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 
 		return null;
 	}
-	
+
 	@Override
 	public Map<String, Object> genotice(Map<String, String> dat, long now, long timeout) {
 		Map<String, Object> notice = onoffMile(dat, now, timeout);
 		return notice;
 	}
-	
+
 	@Override
 	public List<Map<String, Object>> fulldoseNotice(String type, int status, long now, long timeout) {//status:0全量数据，status:1活跃数据，status:2其他定义
 		if ("TIMEOUT".equals(type)) {
@@ -77,13 +77,13 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				cluster=SysRealDataCache.getLivelyCache().asMap();
 				vids = SysRealDataCache.alives;
 			}
-			if (null != cluster && cluster.size()>0 
+			if (null != cluster && cluster.size()>0
 					&& null !=vids && vids.size() >0) {
 				List<Map<String, Object>> list = new LinkedList<Map<String, Object>>();
 				List<String> markDel =  new LinkedList<String>();
 				List<String> markAlives =  new LinkedList<String>();
 				List<String> allCars =  new LinkedList<String>();
-				
+
 				String vid = vids.poll();
 				while(null != vid){
 					if (0 == status){
@@ -91,7 +91,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 						allCars.add(vid);
 					}else if (1 == status)
 						SysRealDataCache.removeAliveQueue(vid);
-					
+
 					Map<String,String> dat = cluster.get(vid);
 					Map<String, Object> notice = inidle(dat, now, timeout,markDel,markAlives);
 					if (null != notice) {
@@ -108,13 +108,13 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 						SysRealDataCache.removeAliveQueue(key);
 					}
 				}
-				
+
 				/**
 				 * 活跃车辆再次加入队列
 				 */
 				if (markAlives.size() > 0) {
 					for (String key : markAlives) {
-						
+
 						SysRealDataCache.addAliveQueue(key);
 					}
 				}
@@ -122,13 +122,13 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				 * 最后一帧车辆再次加入队列
 				 */
 				if (0 == status && allCars.size() > 0) {
-						
+
 					for (String key : allCars) {
-						
+
 						SysRealDataCache.addLastQueue(key);
 					}
 				}
-				
+
 				/**
 				 * return result
 				 */
@@ -139,7 +139,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * 此方法检查离线
 	 * @param type
@@ -164,30 +164,30 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			}
 			if (null != cluster && cluster.size()>0
 					&& null !=vids && vids.size() >0) {
-				
+
 				List<String> allCars =  new LinkedList<String>();
 				List<String> markAlives =  new LinkedList<String>();
 				//poll是队列数据结构实现类的方法，从队首获取元素，同时获取的这个元素将从原队列删除； 
 				String vid = vids.poll();
 				while(null != vid){
-					
+
 					if (0 == status){
 						SysRealDataCache.removeLastQueue(vid);
 					}else if (1 == status)
 						SysRealDataCache.removeAliveQueue(vid);
 					allCars.add(vid);
-					
+
 					Map<String,String> dat = cluster.get(vid);
 					offMile(dat, now, timeout,markAlives);
 					vid = vids.poll();
 				}
-				
+
 				/**
 				 * 活跃车辆再次加入队列
 				 */
 				if (markAlives.size() > 0) {
 					for (String key : markAlives) {
-						
+
 						SysRealDataCache.addAliveQueue(key);
 					}
 				}
@@ -195,17 +195,17 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				 * 最后一帧车辆再次加入队列
 				 */
 				if (0 == status && allCars.size() > 0) {
-					
+
 					for (String key : allCars) {
-						
+
 						SysRealDataCache.addLastQueue(key);
 					}
 				}
-				
+
 			}
 		}
 	}
-	
+
 	/**
 	 * 闲置或者停机车辆
 	 */
@@ -225,7 +225,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		int numMileage = -1;
 		try {
 			if (SysDefine.REALTIME.equals(msgType)){
-				
+
 				String speed = dat.get(ProtocolItem.SPEED);
 				String soc = dat.get(ProtocolItem.SOC);
 				String mileage = dat.get(ProtocolItem.TOTAL_MILEAGE);
@@ -237,12 +237,12 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 						speed = "".equals(speed)?"0":speed;
 					}
 					if (! "0".equals(speed)) {
-						
+
 						numSpeed = Integer.parseInt(speed);
 						vidLastSpeed.put(vid, numSpeed);
 					}
 				}
-				
+
 				if (null !=soc && !"".equals(soc)) {
 					soc = NumberUtils.stringNumber(soc);
 					int posidx = soc.indexOf(".");
@@ -251,7 +251,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 						soc = "".equals(soc)?"0":soc;
 					}
 					if (! "0".equals(soc)) {
-						
+
 						numSoc = Integer.parseInt(soc);
 						vidLastSoc.put(vid, numSoc);
 					}
@@ -264,7 +264,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 						mileage = "".equals(mileage)?"0":speed;
 					}
 					if (! "0".equals(mileage)) {
-						
+
 						numMileage = Integer.parseInt(mileage);
 						vidLastMileage.put(vid, numMileage);
 					}
@@ -332,9 +332,9 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		}
 		return null;
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param dat
 	 * @param now
 	 * @param timeout
@@ -365,7 +365,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		boolean isout = istimeout(time, lastUtc, now, timeout);
 		if (isoff || isout) {
 			TimeMileage timeMileage = vidLastTimeMile.get(vid);
-			if (null != timeMileage 
+			if (null != timeMileage
 					&& timeMileage.mileage>0
 					&& !onOffMileNotice.containsKey(vid)) {
 				Map<String, Object> notice =  new TreeMap<String, Object>();
@@ -375,14 +375,13 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				notice.put("smileage", timeMileage.mileage);
 				onOffMileNotice.put(vid, notice);
 			}
-			
-		} else {
-			markAlive.add(vid);
+
 		}
+		markAlive.add(vid);
 		return null;
 	}
 	/**
-	 * 
+	 *
 	 * @param dat
 	 * @param now
 	 * @param timeout
@@ -407,7 +406,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		if (dat.containsKey(ProtocolItem.TOTAL_MILEAGE)) {
 			String mileage = NumberUtils.stringNumber(dat.get(ProtocolItem.TOTAL_MILEAGE));
 			if (! "0".equals(mileage)) {
-				
+
 				lastmileage = Double.parseDouble(mileage);
 				if (-1 != lastmileage) {
 					vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
@@ -418,7 +417,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		boolean isout = istimeout(time, lastUtc, now, timeout);
 		if (isoff || isout) {
 			TimeMileage timeMileage = vidLastTimeMile.get(vid);
-			if (null != timeMileage 
+			if (null != timeMileage
 					&& timeMileage.mileage>0
 					&& !onOffMileNotice.containsKey(vid)) {
 				Map<String, Object> notice =  new TreeMap<String, Object>();
@@ -428,11 +427,11 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				notice.put("smileage", timeMileage.mileage);
 				onOffMileNotice.put(vid, notice);
 			}
-			
+
 		} else {
-			if (SysDefine.REALTIME.equals(msgType) 
+			if (SysDefine.REALTIME.equals(msgType)
 					&& -1 != lastmileage){
-				
+
 				if (onOffMileNotice.containsKey(vid)) {
 					Map<String, Object> notice = onOffMileNotice.get(vid);
 					onOffMileNotice.remove(vid);
@@ -447,12 +446,12 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * 车辆 是否达到 闲置或者停机 超时的标准
 	 */
 	private boolean istimeout(String time, String lastUtc,long now,long timeout){
-		
+
 		if (null == time && null == lastUtc) {
 			return false;
 		}
@@ -466,10 +465,10 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		return false;
 	}
-	
+
 	private boolean isOffline(Map<String, String> dat){
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
 		if (SysDefine.LOGIN.equals(msgType)) {
@@ -481,15 +480,15 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			} else {
 				String logoutSeq = dat.get(ProtocolItem.LOGOUT_SEQ);
 				String loginSeq = dat.get(ProtocolItem.LOGIN_SEQ);
-				if (! ObjectUtils.isNullOrEmpty(logoutSeq) 
+				if (! ObjectUtils.isNullOrEmpty(logoutSeq)
 						&& !ObjectUtils.isNullOrEmpty(logoutSeq)) {
 					int logout = Integer.parseInt(NumberUtils.stringNumber(logoutSeq));
 					int login = Integer.parseInt(NumberUtils.stringNumber(loginSeq));
 					if(login >logout){
 						return false;
-					} 
+					}
 					return true;
-					
+
 				} else{
 					if (ObjectUtils.isNullOrEmpty(loginSeq)) {
 						return false;
@@ -513,7 +512,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 
 	@Override
 	public List<Map<String, Object>> offlineMethod(long now) {
-		
+
 		return null;
 	}
 	void restartInit(boolean isRestart){
@@ -532,5 +531,5 @@ class TimeMileage{
 		this.tertime = tertime;
 		this.mileage = mileage;
 	}
-	
+
 }
