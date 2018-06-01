@@ -200,29 +200,33 @@ public class SysRealDataCache {
 		if (!dat.containsKey(ProtocolItem.VID)) {
 			return;
 		}
-		Map<String, String> newmap =  new TreeMap<String, String>();
-		//不缓存无用的数据项，减小缓存大小
-		for (Map.Entry<String, String> entry : dat.entrySet()) {
-			String mapkey=entry.getKey();
-			String value=entry.getValue();
-			if (null!= mapkey && null !=value 
-					&& !mapkey.startsWith("useful")
-					&& !mapkey.startsWith("newest")
-					&& !"2001".equals(mapkey)
-					&& !"2002".equals(mapkey)
-					&& !"2003".equals(mapkey)
-					&& !"2101".equals(mapkey)
-					&& !"2103".equals(mapkey)
-					&& !"7001".equals(mapkey)
-					&& !"7003".equals(mapkey)
-					&& !"7101".equals(mapkey)
-					&& !"7103".equals(mapkey)) {
-				newmap.put(mapkey, value);
+		try {
+			Map<String, String> newmap =  new TreeMap<String, String>();
+			//不缓存无用的数据项，减小缓存大小
+			for (Map.Entry<String, String> entry : dat.entrySet()) {
+				String mapkey=entry.getKey();
+				String value=entry.getValue();
+				if (null!= mapkey && null !=value 
+						&& !mapkey.startsWith("useful")
+						&& !mapkey.startsWith("newest")
+						&& !"2001".equals(mapkey)
+						&& !"2002".equals(mapkey)
+						&& !"2003".equals(mapkey)
+						&& !"2101".equals(mapkey)
+						&& !"2103".equals(mapkey)
+						&& !"7001".equals(mapkey)
+						&& !"7003".equals(mapkey)
+						&& !"7101".equals(mapkey)
+						&& !"7103".equals(mapkey)) {
+					newmap.put(mapkey, value);
+				}
 			}
+			String vid = newmap.get(ProtocolItem.VID);
+			carlastrecord.put(vid, newmap);
+			addLastQueue(vid);
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-		String vid = newmap.get(ProtocolItem.VID);
-		carlastrecord.put(vid, newmap);
-		addLastQueue(vid);
 	}
 	
 	/**
@@ -251,7 +255,7 @@ public class SysRealDataCache {
 				dat.put(SysDefine.ONLINEUTC, ""+lastTime);
 			} 
 			if(lastTime>0){
-				if (now-lastTime <= timeout && lastTime < now +30000){//最后一条报文时间小于当前系统时间 + 30秒的误差
+				if (now-lastTime <= timeout ){//最后一条报文时间小于当前系统时间 + 30秒的误差
 					addAliveQueue(vid);
 					livelyCarCache.put(vid, dat);
 					return true;

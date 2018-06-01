@@ -36,7 +36,7 @@ public class FileSource {
 		List<String> lines = new LinkedList<String>();
 		try {
 			
-			in = ConfigUtils.class.getClassLoader().getResourceAsStream("area.gps");
+			in = FileSource.class.getClassLoader().getResourceAsStream("area.gps");
 			BufferedReader reader =  new BufferedReader(new InputStreamReader(in, "UTF-8"));
 			String line = null;
 			
@@ -137,7 +137,6 @@ public class FileSource {
 			//冒泡排序法，按照xmin进行从大到小排序
 			for (int idx = 0; idx < len-1; idx++) {
 				AreaFence fence = fences.get(idx);
-				setParentArea(fence, areaIds);
 				//每次从idx+1到len中找到最小的一个
 				for (int byidx = idx+1; byidx < len; byidx++) {
 					AreaFence byfence = fences.get(byidx);
@@ -150,7 +149,7 @@ public class FileSource {
 				}
 				
 			}
-			for (int idx = 0; idx < len-1; idx++) {
+			for (int idx = 0; idx < len; idx++) {
 				AreaFence fence = fences.get(idx);
 				setParentArea(fence, areaIds);
 			}

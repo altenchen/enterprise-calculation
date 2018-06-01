@@ -149,8 +149,8 @@ public class TopologiesByConf {
             conf.put("offline.check.time", p.get("offline.check.time"));
             conf.put("kafka.platform.veh.reg", p.get("kafka.platform.veh.reg"));
             conf.put("redis.cluster.data.syn", p.get("redis.cluster.data.syn"));
-            conf.put("kafka.topic.notice", p.get("kafka.topic.notice"));
             conf.put("inidle.timeOut.check.time", p.get("inidle.timeOut.check.time"));
+            conf.put("kafka.topic.notice", p.get("kafka.topic.notice"));
             conf.put("alarm.continue.counts", p.get("alarm.continue.counts"));
             conf.put("es.send.time", p.get("es.send.time"));
         }

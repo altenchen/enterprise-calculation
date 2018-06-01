@@ -280,23 +280,26 @@ public class AlarmBoltBak extends BaseRichBolt {
         		|| ObjectUtils.isNullOrEmpty(vType) ) 
         	return;
 		
-        Set<EarlyWarn> warns = EarlyWarnsGetter.allWarns(vType);
-        if (ObjectUtils.isNullOrEmpty(warns)) 
-        	return;
 		
         if(SysDefine.LINKSTATUS.equals(type)
         		|| SysDefine.LOGIN.equals(type)){
             try {
-            	sendOverAlarmMessage(vid,warns);
+            	sendOverAlarmMessage(vid);
             } catch (Exception e) {
                 System.out.println("---自动发送结束报警异常！" + e);
             }
             return;
         }
+        
+        List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vType);
+        if (ObjectUtils.isNullOrEmpty(warns)) 
+        	return;
 
         try {
-			for(EarlyWarn warn : warns){
-				if (null == warn) 
+        	int len = warns.size();
+        	for (int i = 0; i < len; i++) {
+        		EarlyWarn warn = warns.get(i);
+        		if (null == warn) 
 					continue;
 				
 			    int ret = 0;
@@ -330,7 +333,7 @@ public class AlarmBoltBak extends BaseRichBolt {
      * 车辆发离线通知，系统自动发送结束报警通知
      * @param vid
      */
-    private void sendOverAlarmMessage(String vid, Set<EarlyWarn> warns) {
+    private void sendOverAlarmMessage(String vid) {
         if(filterMap.containsKey(vid)){
             String time = VID2_ALARM.get(vid).split("_")[2];
             List<String> list = filterMap.get(vid);
@@ -912,11 +915,11 @@ public class AlarmBoltBak extends BaseRichBolt {
 							        		|| ObjectUtils.isNullOrEmpty(vType) ) 
 							        	return;
 									
-							        Set<EarlyWarn> warns = EarlyWarnsGetter.allWarns(vType);
+							        List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vType);
 							        if (ObjectUtils.isNullOrEmpty(warns)) 
 							        	return;
 									
-							        sendOverAlarmMessage(vid,warns);
+							        sendOverAlarmMessage(vid);
 								}
 								
 							} else if (dat.containsKey(SysDefine.TIME)){

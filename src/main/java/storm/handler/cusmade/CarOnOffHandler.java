@@ -522,7 +522,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		}
 	}
 }
-class TimeMileage {
+class TimeMileage{
 	long sertime;
 	String tertime;
 	double mileage;
@@ -532,4 +532,5 @@ class TimeMileage {
 		this.tertime = tertime;
 		this.mileage = mileage;
 	}
+	
 }

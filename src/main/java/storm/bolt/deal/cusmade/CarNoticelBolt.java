@@ -59,10 +59,7 @@ public class CarNoticelBolt extends BaseRichBolt {
         if (null != checktime) {
         	timeoutchecktime=1000*Long.parseLong(checktime.toString());
 		}
-        Object outtime = stormConf.get("gt.inidle.timeOut.time");
-        if (null != outtime) {
-        	timeouttime=1000*Long.parseLong(outtime.toString());
-		}
+        
         try {
         	ParamsRedisUtil.rebulid();
 			Object outbyconf = ParamsRedisUtil.PARAMS.get("gt.inidle.timeOut.time");//从配置文件读取超时时间
@@ -156,28 +153,6 @@ public class CarNoticelBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
     	long now = System.currentTimeMillis();
-        if (now - lastExeTime >= timeoutchecktime){
-        	lastExeTime=now;
-        	/*try {
-        		ParamsRedis.rebulid();
-    			Object outbyconf = ParamsRedis.PARAMS.get("gt.inidle.timeOut.time");
-    			if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
-    				timeouttime=1000*(int)outbyconf;
-    			}
-    		} catch (Exception e) {
-    			e.printStackTrace();
-    		}
-        	List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT",1,now,timeouttime);
-        	if (null != msgs && msgs.size()>0) {
-				for (Map<String, Object> map : msgs) {
-					if (null != map && map.size() > 0) {
-						Object vid = map.get("vid");
-						String json=JSON.toJSONString(map);
-						sendToKafka(SysDefine.CUS_NOTICE,noticeTopic,vid, json);
-					}
-				}
-			}*/
-        }
         //如果时间差大于离线检查时间，则进行离线检查,如果车辆离线，则发送此车辆的所有故障码结束通知
         if (now - lastOfflinecheck >= offlinecheck){
         	lastOfflinecheck=now;

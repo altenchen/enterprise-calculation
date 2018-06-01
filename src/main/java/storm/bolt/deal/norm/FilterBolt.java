@@ -162,7 +162,8 @@ public class FilterBolt extends BaseRichBolt {
             Map<String, String> stateNewKV = stateKV; // 状态键值
             if (SysDefine.LINKSTATUS.equals(type)
         			|| SysDefine.LOGIN.equals(type)
-        			|| SysDefine.REALTIME.equals(type)){
+        			|| SysDefine.REALTIME.equals(type)
+        			|| SysDefine.TERMSTATUS.equals(type)){
             	stateNewKV = new TreeMap<String, String>();
             	stateNewKV.putAll(stateKV);
             }
@@ -278,7 +279,7 @@ public class FilterBolt extends BaseRichBolt {
             System.out.println("----判断是否充电异常！" + e);
         }
         //向最后的数据中加入车辆当前所在行政区域id
-        try {
+        /*try {
 			if (dataMap.containsKey(ProtocolItem.longitude)
 					&& dataMap.containsKey(ProtocolItem.latitude)) {
 				
@@ -349,7 +350,7 @@ public class FilterBolt extends BaseRichBolt {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-        
+        */
         // 动力蓄电池报警标志
 		/*
 		 * 1：温度差异报警；0：正常 1：电池极柱高温报警；0：正常 1：动力蓄电池包过压报警；0：正常 1：动力蓄电池包欠压报警；0：正常 1：SOC低报警；0：正常 1：单体蓄电池过压报警；0：正常 1：单体蓄电池欠压报警；0：正常 1：SOC太低报警；0：正常 1：SOC过高报警；0：正常 1：动力蓄电池包不匹配报警；0：正常 1：动力蓄电池一致性差报警；0：正常 1：绝缘故障；0：正常

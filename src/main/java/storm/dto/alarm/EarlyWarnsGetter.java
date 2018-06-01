@@ -1,5 +1,6 @@
 package storm.dto.alarm;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -8,6 +9,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import storm.util.dbconn.Conn;
 
@@ -15,14 +18,19 @@ public class EarlyWarnsGetter {
 	final static String ALL = "ALL";
 	private static ConcurrentHashMap<String, EarlyWarn> earlyWarns;
 	private static ConcurrentHashMap<String, Set<EarlyWarn>> typeWarns;
-	private static ConcurrentHashMap<String, Set<EarlyWarn>> typeAllWarns;
+	//private static ConcurrentHashMap<String, Set<EarlyWarn>> typeAllWarns;
+	private static ConcurrentHashMap<String, List<EarlyWarn>> typeAllWarnArrs;
 	private static Conn conn ;
 	private static List<Object[]>allEarlyWarns;
 	private static boolean bulidSuccess;
+	private static Lock lock;
 	static {
 		earlyWarns = new ConcurrentHashMap<String, EarlyWarn>();
 		typeWarns = new ConcurrentHashMap<String, Set<EarlyWarn>>();
-		typeAllWarns = new ConcurrentHashMap<String, Set<EarlyWarn>>();
+		//typeAllWarns = new ConcurrentHashMap<String, Set<EarlyWarn>>();
+		typeAllWarnArrs = new ConcurrentHashMap<String, List<EarlyWarn>>();
+		lock = new ReentrantLock();
+		
 		try {
 			
 			bulidSuccess = false;
@@ -49,7 +57,8 @@ public class EarlyWarnsGetter {
 			allEarlyWarns = conn.getAllWarns();
 			initRules(allEarlyWarns);
 			initTypeRules();
-			typeAllWarns.clear();
+			//typeAllWarns.clear();
+			typeAllWarnArrs.clear();
 			bulidSuccess = true;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -57,40 +66,44 @@ public class EarlyWarnsGetter {
 	}
 	
 	static void initRules(List<Object[]>allWarns){
-		//ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL
-		List<String> nowIds = null;
-		if (null != allWarns && allWarns.size() > 0) {
-			nowIds = new LinkedList<String>();
-			for (Object[] rule : allWarns) {
-				if (null != rule) {
+		try {
+			//ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL
+			List<String> nowIds = null;
+			if (null != allWarns && allWarns.size() > 0) {
+				nowIds = new LinkedList<String>();
+				for (Object[] rule : allWarns) {
+					if (null != rule) {
+						
+						EarlyWarn warn = getEarlyByRule(rule);
+						if (null != warn && null != rule[0]) {
+							String id = (String)rule[0];
+							earlyWarns.put(id, warn);
+							nowIds.add(id);
+						}
+					}
+				}
+			}
+			if (null ==nowIds || 0== nowIds.size()) {
+				earlyWarns.clear();
+			} else {
+				if (earlyWarns.size() >0) {
 					
-					EarlyWarn warn = getEarlyByRule(rule);
-					if (null != warn && null != rule[0]) {
-						String id = (String)rule[0];
-						earlyWarns.put(id, warn);
-						nowIds.add(id);
+					Enumeration<String> allKeys = earlyWarns.keys();
+					List<String> needRemovekeys = new LinkedList<String>();
+					while (allKeys.hasMoreElements()) {
+						String key = (String) allKeys.nextElement();
+						if (! nowIds.contains(key)) {
+							needRemovekeys.add(key);
+						}
+					}
+					
+					for (String key : needRemovekeys) {
+						earlyWarns.remove(key);
 					}
 				}
 			}
-		}
-		if (null ==nowIds || 0== nowIds.size()) {
-			earlyWarns.clear();
-		} else {
-			if (earlyWarns.size() >0) {
-				
-				Enumeration<String> allKeys = earlyWarns.keys();
-				List<String> needRemovekeys = new LinkedList<String>();
-				while (allKeys.hasMoreElements()) {
-					String key = (String) allKeys.nextElement();
-					if (! nowIds.contains(key)) {
-						needRemovekeys.add(key);
-					}
-				}
-				
-				for (String key : needRemovekeys) {
-					earlyWarns.remove(key);
-				}
-			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		
 	}
@@ -176,18 +189,50 @@ public class EarlyWarnsGetter {
 	}
 	
 	//synchronized
-	public static Set<EarlyWarn> allWarnsByType(String type){
+	/*public static Set<EarlyWarn> allWarnsByType(String type){
 		boolean buildSucc = bulidSuccessRetryTimes(150);
 		if (!buildSucc) {
 			return null;
 		}
+		
 		Set<EarlyWarn> warns = typeAllWarns.get(type);
 		if (null != warns) {
 			return warns;
 		}
-		warns = allWarns(type);
+		warns = getAllWarnRules(type);
 		if (null != warns) {
 			typeAllWarns.put(type, warns);
+		}
+		return warns;
+	}*/
+	/**
+	 * 
+	 * @param type
+	 * @return
+	 */
+	public static List<EarlyWarn> allWarnArrsByType(String type){
+		boolean buildSucc = bulidSuccessRetryTimes(150);
+		if (!buildSucc) {
+			return null;
+		}
+		List<EarlyWarn> warns = typeAllWarnArrs.get(type);
+		if (null != warns) {
+			return warns;
+		}
+		try {
+			
+			lock.lock();
+			Set<EarlyWarn> warnSet = getAllWarnRules(type);
+			if (null != warnSet) {
+				warns = new ArrayList<EarlyWarn>(warnSet.size());
+				warns.addAll(warnSet);
+				typeAllWarnArrs.put(type, warns);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			
+			lock.unlock();
 		}
 		return warns;
 	}
@@ -196,7 +241,7 @@ public class EarlyWarnsGetter {
 	 * 所有的报警信息
 	 * @return
 	 */
-	public static Set<EarlyWarn> allWarns(String type){
+	private synchronized static Set<EarlyWarn> getAllWarnRules(String type){
 		Set<EarlyWarn> commonWarns = commonWarns();
 		Set<EarlyWarn> customWarns = customWarns(type);
 		if (null == commonWarns) 
