@@ -1,6 +1,7 @@
 package storm.topology;
 
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.spout.Scheme;
 import org.jetbrains.annotations.NotNull;
 import storm.bolt.deal.KafkaSendBolt;
 import storm.bolt.deal.cusmade.CarNoticelBolt;
@@ -12,6 +13,9 @@ import storm.bolt.deal.norm.FilterBolt;
 import storm.bolt.deal.norm.SynEsculBolt;
 
 import java.util.Properties;
+
+import storm.kafka.scheme.ErrorDataScheme;
+import storm.kafka.scheme.RegScheme;
 import storm.util.ConfigUtils;
 import storm.kafka.scheme.RealinfoScheme;
 import storm.kafka.KafkaConfig;
@@ -158,7 +162,8 @@ public class TopologiesByConf {
         // KafkaSpout: 实时数据
         final KafkaConfig kafkaRealinfoConfig = buildKafkaConfig(
             SysDefine.VEH_REALINFO_DATA_TOPIC,
-            SysDefine.VEH_REALINFO_GROUPID);
+            SysDefine.VEH_REALINFO_GROUPID,
+            new RealinfoScheme());
         builder
             // kafka实时报文消息
             .setSpout(
@@ -169,7 +174,8 @@ public class TopologiesByConf {
         // KafkaSpout: 错误报文
         final KafkaConfig kafkaErrordataConfig = buildKafkaConfig(
             SysDefine.ERROR_DATA_TOPIC,
-            SysDefine.ERROR_DATA_GROUPID);
+            SysDefine.ERROR_DATA_GROUPID,
+            new ErrorDataScheme());
         builder
             // kafka错误报文消息
             .setSpout(
@@ -180,7 +186,8 @@ public class TopologiesByConf {
         // KafkaSpout: 平台注册报文
         final KafkaConfig kafkaRegConfig = buildKafkaConfig(
             SysDefine.PLAT_REG_TOPIC,
-            SysDefine.PLAT_REG_GROUPID);
+            SysDefine.PLAT_REG_GROUPID,
+            new RegScheme());
         kafkaRegConfig.setOutputStreamId(SysDefine.REG_STREAM_ID);
         builder
             // kafka平台注册报文消息
@@ -363,13 +370,13 @@ public class TopologiesByConf {
      * @param topic kafka主题
      * @return kafka配置
      */
-    private static KafkaConfig buildKafkaConfig(String topic, String spoutId) {
+    private static KafkaConfig buildKafkaConfig(String topic, String spoutId, Scheme scheme) {
         KafkaConfig kafkaConfig = new KafkaConfig(
                 topic,
                 SysDefine.ZKROOT,
                 spoutId,
                 SysDefine.ZK_HOSTS,
-                new RealinfoScheme());
+                scheme);
         kafkaConfig.setZKConfig(
                 SysDefine.ZKPORT,
                 SysDefine.ZKSERVERS.split(","));
