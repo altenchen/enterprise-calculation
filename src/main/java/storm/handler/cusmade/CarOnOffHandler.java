@@ -71,9 +71,11 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			//使用这个队列是为了防止在访问vids时，发生修改，引发错误。
 			LinkedBlockingQueue<String> vids = null;
 			if (ScanRange.AllData == status) {
+				//获得所有车辆的最后一帧数据
 				cluster=SysRealDataCache.getDataCache().asMap();
 				vids = SysRealDataCache.lasts;
 			} else if (ScanRange.AliveData == status) {
+				//获得活跃车辆的最后一帧数据
 				cluster=SysRealDataCache.getLivelyCache().asMap();
 				vids = SysRealDataCache.alives;
 			}
@@ -93,6 +95,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 						SysRealDataCache.removeAliveQueue(vid);
 
 					Map<String,String> dat = cluster.get(vid);
+					//闲置车辆通知
 					Map<String, Object> notice = inidle(dat, now, timeout,markDel,markAlives);
 					if (null != notice) {
 						list.add(notice);
@@ -229,6 +232,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				String speed = dat.get(ProtocolItem.SPEED);
 				String soc = dat.get(ProtocolItem.SOC);
 				String mileage = dat.get(ProtocolItem.TOTAL_MILEAGE);
+				//下面三个if类似，都是校验一下，然后将vid和最后一帧的数据存入
 				if (null !=speed && !"".equals(speed)) {
 					speed = NumberUtils.stringNumber(speed);
 					int posidx = speed.indexOf(".");
@@ -275,8 +279,9 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		}
 		String lastUtc = dat.get(ProtocolItem.ONLINEUTC);
 		String noticetime = timeformat.toDateString(new Date(now));
+		//车辆 是否达到 闲置或者停机 超时的标准
 		boolean isout = istimeout(time, lastUtc, now, timeout);
-		if (isout) {
+		if (isout) {//是闲置车辆
 			Map<String, Object> notice = vididleNotice.get(vid);
 			if (null == notice) {
 				notice =  new TreeMap<String, Object>();
@@ -301,7 +306,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				recorder.save(db, idleRedisKeys,vid, notice);
 				return notice;
 			}
-		} else {
+		} else {//不是闲置车辆
 			markAlive.add(vid);
 			if (vididleNotice.containsKey(vid)) {
 				int lastSoc = -1;
@@ -318,7 +323,9 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				}
 				Map<String, Object> notice = vididleNotice.get(vid);
 				vididleNotice.remove(vid);
+				//删除redis中的闲置车辆数据
 				recorder.del(db, idleRedisKeys, vid);
+				//发送结束报文
 				if (null != notice) {
 					notice.put("status", 3);
 					notice.put("etime", time);
