@@ -525,7 +525,7 @@ public class CarRulehandler implements InfoNotice{
 		return null;
 	}
 	/**
-	 * 无can车辆
+	 * 无can车辆_于心沼
 	 */
 	private Map<String, Object> nocan(Map<String, String> dat){
 		if (ObjectUtils.isNullOrEmpty(dat)) {
@@ -1105,7 +1105,7 @@ public class CarRulehandler implements InfoNotice{
 	}
 	
 	/**
-	 * 未定位车辆
+	 * 未定位车辆_于心沼
 	 */
 	Map<String, Object> nogps(Map<String, String> dat){
 		if (ObjectUtils.isNullOrEmpty(dat)) {

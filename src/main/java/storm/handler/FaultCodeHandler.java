@@ -38,7 +38,7 @@ public class FaultCodeHandler {
 	}
     private Conn conn;
     private Collection<FaultRuleCode>rules;
-    Map<String, Map<String,Map<String,Object>>>vidRuleMsgs;
+    Map<String, Map<String,Map<String,Object>>>vidRuleMsgs;//vidRuleMsgs是每辆车的故障码信息缓存
     private Map<String, Long> lastTime;
     {
     	try {
