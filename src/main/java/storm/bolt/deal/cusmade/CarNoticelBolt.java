@@ -11,14 +11,8 @@ import org.apache.storm.tuple.Values;
 import com.alibaba.fastjson.JSON;
 
 import storm.cache.SysRealDataCache;
-import storm.cache.SystemCache;
 import storm.handler.FaultCodeHandler;
-import storm.handler.cal.EsRealCalHandler;
-import storm.handler.cusmade.CarOnOffHandler;
-import storm.handler.cusmade.CarRulehandler;
-import storm.handler.cusmade.InfoNotice;
-import storm.handler.cusmade.OnOffInfoNotice;
-import storm.system.ProtocolItem;
+import storm.handler.cusmade.*;
 import storm.system.SysDefine;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
@@ -90,7 +84,7 @@ public class CarNoticelBolt extends BaseRichBolt {
         	carOnOffhandler = new CarOnOffHandler();
     		if (2 == ispreCp){
     			carOnOffhandler.onoffCheck("TIMEOUT",0,now,offlinetime);
-    			List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT",0,now,timeouttime);
+    			List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AllData,now,timeouttime);
     			if (null != msgs && msgs.size()>0) {
     				System.out.println("---------------syn redis cluster data--------");
     				for (Map<String, Object> map : msgs) {
@@ -128,7 +122,7 @@ public class CarNoticelBolt extends BaseRichBolt {
 							e.printStackTrace();
 						}
 						
-						List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT",1,System.currentTimeMillis(),timeouttime);
+						List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT",ScanRange.AliveData,System.currentTimeMillis(),timeouttime);
 			        	if (null != msgs && msgs.size()>0) {
 							for (Map<String, Object> map : msgs) {
 								if (null != map && map.size() > 0) {

@@ -16,5 +16,5 @@ public interface InfoNotice {
 
 	Map<String, Object> genotice(Map<String, String> dat);
 	List<Map<String, Object>> genotices(Map<String, String> dat);
-	public List<Map<String, Object>> offlineMethod(long now);
+	List<Map<String, Object>> offlineMethod(long now);
 }

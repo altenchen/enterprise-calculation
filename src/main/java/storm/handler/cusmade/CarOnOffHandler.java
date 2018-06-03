@@ -65,15 +65,15 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 	}
 
 	@Override
-	public List<Map<String, Object>> fulldoseNotice(String type, int status, long now, long timeout) {//status:0全量数据，status:1活跃数据，status:2其他定义
+	public List<Map<String, Object>> fulldoseNotice(String type, ScanRange status, long now, long timeout) {//status:0全量数据，status:1活跃数据，status:2其他定义
 		if ("TIMEOUT".equals(type)) {
 			Map<String,Map<String,String>> cluster = null;
 			//使用这个队列是为了防止在访问vids时，发生修改，引发错误。
 			LinkedBlockingQueue<String> vids = null;
-			if (0 == status) {
+			if (ScanRange.AllData == status) {
 				cluster=SysRealDataCache.getDataCache().asMap();
 				vids = SysRealDataCache.lasts;
-			} else if (1 == status) {
+			} else if (ScanRange.AliveData == status) {
 				cluster=SysRealDataCache.getLivelyCache().asMap();
 				vids = SysRealDataCache.alives;
 			}
@@ -86,10 +86,10 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 
 				String vid = vids.poll();
 				while(null != vid){
-					if (0 == status){
+					if (ScanRange.AllData == status){
 						SysRealDataCache.removeLastQueue(vid);
 						allCars.add(vid);
-					}else if (1 == status)
+					}else if (ScanRange.AliveData == status)
 						SysRealDataCache.removeAliveQueue(vid);
 
 					Map<String,String> dat = cluster.get(vid);
@@ -121,7 +121,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				/**
 				 * 最后一帧车辆再次加入队列
 				 */
-				if (0 == status && allCars.size() > 0) {
+				if (ScanRange.AllData == status && allCars.size() > 0) {
 
 					for (String key : allCars) {
 
@@ -338,7 +338,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 	 * @param dat
 	 * @param now
 	 * @param timeout
-	 * @param markDel
+	 * @param markAlive
 	 * @return
 	 */
 	private Map<String, Object> offMile(Map<String, String> dat,long now,long timeout,List<String> markAlive){
@@ -385,7 +385,6 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 	 * @param dat
 	 * @param now
 	 * @param timeout
-	 * @param markDel
 	 * @return
 	 */
 	private Map<String, Object> onoffMile(Map<String, String> dat,long now,long timeout){
