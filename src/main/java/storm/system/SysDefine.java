@@ -1,6 +1,6 @@
 package storm.system;
 
-public final class SysDefine {
+public class SysDefine {
 	//接收实时数据TOPIC
     public static String VEH_REALINFO_DATA_TOPIC ;
 
