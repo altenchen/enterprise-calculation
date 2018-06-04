@@ -5,7 +5,10 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Properties;
 
-public class ConfigUtils implements Serializable{
+/**
+ * 配置工具
+ */
+public final class ConfigUtils implements Serializable{
 	/**
 	 * 
 	 */

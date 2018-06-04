@@ -8,9 +8,12 @@ import com.alibaba.fastjson.JSONObject;
 
 import storm.dao.DataToRedis;
 
-public class RedisRecorder implements Recorder {
+/**
+ * Redis记录器实现
+ */
+public final class RedisRecorder implements Recorder {
 
-	DataToRedis redis;
+	private DataToRedis redis;
 	private void init(DataToRedis redis){
 		if (null != redis) {
 			this.redis = redis;
@@ -30,20 +33,20 @@ public class RedisRecorder implements Recorder {
 	}
 
 	@Override
-	public void save(int db,String type, String id, Map<String, Object> ctx) {
+	public void save(int dbIndex, String type, String id, Map<String, Object> ctx) {
 		try {
 			String json = JSON.toJSONString(ctx);
 			if (null == this.redis) {
 				this.redis = new DataToRedis();
 			}
-			redis.hset(db, type, id, json);
+			redis.hset(dbIndex, type, id, json);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
 	@Override
-	public void save(int db,String type, Map<String, Map<String, Object>> ctxs) {
+	public void save(int dbIndex, String type, Map<String, Map<String, Object>> ctxs) {
 		try {
 			if (null == this.redis) {
 				this.redis = new DataToRedis();
@@ -52,7 +55,7 @@ public class RedisRecorder implements Recorder {
 				String id = entry.getKey();
 				Map<String, Object> ctx = entry.getValue();
 				String json = JSON.toJSONString(ctx);
-				redis.hset(db, type, id, json);
+				redis.hset(dbIndex, type, id, json);
 			}
 			
 		} catch (Exception e) {
@@ -61,14 +64,14 @@ public class RedisRecorder implements Recorder {
 	}
 
 	@Override
-	public void rebootInit(int db, String type,Map<String, Map<String, Object>> initMap){
+	public void rebootInit(int dbIndex, String type, Map<String, Map<String, Object>> initMap){
 		if (null == initMap) {
 			throw new RuntimeException("InitMapContainerNullException");
 		}
 		if (null == this.redis) {
 			this.redis = new DataToRedis();
 		}
-		Map<String, String> redisCache = redis.hgetallMapByKeyAndDb(type, db);
+		Map<String, String> redisCache = redis.hgetallMapByKeyAndDb(type, dbIndex);
 		if (null != redisCache && redisCache.size() > 0) {
 			
 			for (Map.Entry<String, String> entry : redisCache.entrySet()) {
@@ -86,8 +89,8 @@ public class RedisRecorder implements Recorder {
 	}
 
 	@Override
-	public void del(int db, String type, String ... ids) {
-		redis.hdel(db, type, ids);
+	public void del(int dbIndex, String type, String ... ids) {
+		redis.hdel(dbIndex, type, ids);
 	}
 	
 }

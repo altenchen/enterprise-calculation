@@ -8,21 +8,27 @@ import redis.clients.jedis.JedisPoolConfig;
 
 import java.util.Properties;
 
-public class RedisPoolUtils {
+/**
+ * Redis池工具
+ */
+public final class RedisPoolUtils {
+
 	private static Logger logger = LoggerFactory.getLogger(RedisPoolUtils.class);
+
     /** 连接池  */
 	private static JedisPool jedisPool = null;
-    static{
+
+    static {
 		try {
 			Properties conf = ConfigUtils.sysDefine;
-			initRedisConn(conf);
+			initRedisConnect(conf);
 			logger.info("初始化 redis 线程池");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
     }
 
-	private static void initRedisConn(Properties conf) {
+	private static void initRedisConnect(Properties conf) {
 		/** 主机地址  */
 		String host ;
 		/** 端口号	*/
@@ -68,6 +74,7 @@ public class RedisPoolUtils {
 		}
 		System.out.println("---redis 线程池连接完成");
 	}
+
 	private static boolean isNull(String string) {
 	        if (null == string 
 	        		||"".equals(string.trim())) {
@@ -79,9 +86,10 @@ public class RedisPoolUtils {
 	
 	public static final JedisPool getJedisPool(){
 		if(jedisPool == null)
-			initRedisConn(ConfigUtils.sysDefine);
+			initRedisConnect(ConfigUtils.sysDefine);
 		return jedisPool;
 	}
+
 	public static final Jedis getJedis(){
 		return jedisPool.getResource();
 	}

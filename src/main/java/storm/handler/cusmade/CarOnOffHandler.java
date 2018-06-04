@@ -18,6 +18,9 @@ import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.util.UUIDUtils;
 
+/**
+ * 车辆上下线及相关处理
+ */
 public class CarOnOffHandler implements OnOffInfoNotice {
 
 	private Map<String, Map<String, Object>> vididleNotice;
