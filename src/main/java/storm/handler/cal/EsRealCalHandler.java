@@ -269,9 +269,9 @@ public class EsRealCalHandler{
 			Map<String, Object> esmap = new TreeMap<String, Object>();
 			esmap.put(EsField.vid, vid);
 			
-			if (SysDefine.REALTIME.equals(msgType) ) {
+			if (CommandType.SUBMIT_REALTIME.equals(msgType) ) {
 				esDat(esmap, dat, time, now);
-			} else if (SysDefine.LOGIN.equals(msgType)) {
+			} else if (CommandType.SUBMIT_LOGIN.equals(msgType)) {
 				String type = dat.get(ProtocolItem.REG_TYPE);
 				if ("1".equals(type)){
 					esmap.put(EsField.carStatus, 1);
@@ -301,9 +301,9 @@ public class EsRealCalHandler{
 					esmap.put(EsField.serverTime, toEsDateString(new Date()));
 					esmap.put(EsField.terminalTime, toTimeString(time));
 				}
-			} else if (SysDefine.TERMSTATUS.equals(msgType)) {
-			} else if (SysDefine.HISTORYDATA.equals(msgType)) {
-			} else if (SysDefine.CARSTATUS.equals(msgType)) {
+			} else if (CommandType.SUBMIT_TERMSTATUS.equals(msgType)) {
+			} else if (CommandType.SUBMIT_HISTORY.equals(msgType)) {
+			} else if (CommandType.SUBMIT_CARSTATUS.equals(msgType)) {
 			} else if (SysDefine.RENTCAR.equals(msgType)) { // 租赁数据
 			} else if (SysDefine.CHARGE.equals(msgType)) { // 充电设施数据
 			}
@@ -541,7 +541,7 @@ public class EsRealCalHandler{
 					|| ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time))
 				return false;
-			if (SysDefine.LOGIN.equals(msgType) 
+			if (CommandType.SUBMIT_LOGIN.equals(msgType)
 					&& dat.containsKey(ProtocolItem.LOGOUT_TIME)) {//离线
 				
 				if (! dat.containsKey(ProtocolItem.LOGIN_TIME)) {

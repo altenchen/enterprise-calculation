@@ -191,15 +191,15 @@ public class AlarmBolt extends BaseRichBolt {
                 System.out.println("Receive kafka message REALINFO-------------------------------MSG:" + JSON.toJSONString(dat));
             }
 
-            if (!dat.containsKey(SysDefine.TIME) 
+            if (!dat.containsKey(SysDefine.TIME)
             		|| ObjectUtils.isNullOrEmpty(dat.get(SysDefine.TIME))) {
 				return;
 			}
             String type = dat.get(SysDefine.MESSAGETYPE);
 
-            if (SysDefine.REALTIME.equals(type) 
+            if (CommandType.SUBMIT_REALTIME.equals(type)
             		|| (CommandType.SUBMIT_LINKSTATUS.equals(type) && "3".equals(dat.get("TYPE")))
-            		|| (SysDefine.LOGIN.equals(type) 
+            		|| (CommandType.SUBMIT_LOGIN.equals(type)
                 			&& (dat.containsKey(ProtocolItem.LOGOUT_SEQ)
                 					|| dat.containsKey(ProtocolItem.LOGOUT_TIME)))
             		) {
@@ -211,7 +211,7 @@ public class AlarmBolt extends BaseRichBolt {
                 }
             }
 
-            if (SysDefine.REALTIME.equals(type) || SysDefine.LOGIN.equals(type) || SysDefine.TERMSTATUS.equals(type) || SysDefine.CARSTATUS.equals(type)) {
+            if (CommandType.SUBMIT_REALTIME.equals(type) || CommandType.SUBMIT_LOGIN.equals(type) || CommandType.SUBMIT_TERMSTATUS.equals(type) || CommandType.SUBMIT_CARSTATUS.equals(type)) {
                 // hbase存储
 //                sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehRealinfoStoreTopic, vid, JSON.toJSONString(dat));
                 try {
@@ -247,11 +247,11 @@ public class AlarmBolt extends BaseRichBolt {
             	dat.putAll(linkmap);
             }
 
-            if (SysDefine.REALTIME.equals(type) 
-            		|| SysDefine.LOGIN.equals(type) 
+            if (CommandType.SUBMIT_REALTIME.equals(type)
+            		|| CommandType.SUBMIT_LOGIN.equals(type)
             		|| CommandType.SUBMIT_LINKSTATUS.equals(type)
-            		|| SysDefine.TERMSTATUS.equals(type) 
-            		|| SysDefine.CARSTATUS.equals(type)){
+            		|| CommandType.SUBMIT_TERMSTATUS.equals(type)
+            		|| CommandType.SUBMIT_CARSTATUS.equals(type)){
             	
             	lastCache.put(vid, dat);
             	if (! aliveSet.contains(vid)) {
@@ -262,7 +262,7 @@ public class AlarmBolt extends BaseRichBolt {
             	//实时发送(不缓存)到 实时含告警的报文信息 到es同步服务
             	//sendToNext(SysDefine.SYNES_GROUP,vid, dat);
             }
-            if (SysDefine.REALTIME.equals(type)) {
+            if (CommandType.SUBMIT_REALTIME.equals(type)) {
                 try {
                 	String veh2000=dat.get("2000");
                     if (!ObjectUtils.isNullOrEmpty(veh2000)) {
@@ -313,7 +313,7 @@ public class AlarmBolt extends BaseRichBolt {
 		 * </p>
 		 */
         if(CommandType.SUBMIT_LINKSTATUS.equals(type)
-        		|| SysDefine.LOGIN.equals(type)){
+        		|| CommandType.SUBMIT_LOGIN.equals(type)){
             try {
             	sendOverAlarmMessage(vid);
             } catch (Exception e) {
@@ -403,7 +403,7 @@ public class AlarmBolt extends BaseRichBolt {
 		
 		
         if(CommandType.SUBMIT_LINKSTATUS.equals(type)
-        		|| SysDefine.LOGIN.equals(type)){
+        		|| CommandType.SUBMIT_LOGIN.equals(type)){
             try {
             	sendOverAlarmMessage(vid);
             } catch (Exception e) {

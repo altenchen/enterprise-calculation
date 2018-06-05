@@ -1,5 +1,7 @@
 package storm.system;
 
+import storm.protocol.CommandType;
+
 /**
  * 协议项
  */
@@ -30,7 +32,7 @@ public final class ProtocolItem {
 
     /** 指令类型 实时信息上报 */
     public static String getREALTIME() {
-        return SysDefine.REALTIME;
+        return CommandType.SUBMIT_REALTIME;
     }
 	
 	public static final String MSG_TIME="2000";//实时报文消息时间

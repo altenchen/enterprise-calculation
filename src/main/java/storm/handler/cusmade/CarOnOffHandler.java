@@ -231,7 +231,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		int numSoc = -1;
 		int numMileage = -1;
 		try {
-			if (SysDefine.REALTIME.equals(msgType)){
+			if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 
 				String speed = dat.get(ProtocolItem.SPEED);
 				String soc = dat.get(ProtocolItem.SOC);
@@ -439,7 +439,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			}
 
 		} else {
-			if (SysDefine.REALTIME.equals(msgType)
+			if (CommandType.SUBMIT_REALTIME.equals(msgType)
 					&& -1 != lastmileage){
 
 				if (onOffMileNotice.containsKey(vid)) {
@@ -481,7 +481,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 
 	private boolean isOffline(Map<String, String> dat){
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		if (SysDefine.LOGIN.equals(msgType)) {
+		if (CommandType.SUBMIT_LOGIN.equals(msgType)) {
 			String type = dat.get(ProtocolItem.REG_TYPE);
 			if ("1".equals(type)){
 				return false;
@@ -514,7 +514,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			} else if("3".equals(linkType)){
 				return true;
 			}
-		} else if (SysDefine.REALTIME.equals(msgType)){
+		} else if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 			return false;
 		}
 		return false;

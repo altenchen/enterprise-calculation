@@ -175,15 +175,15 @@ public class AlarmBoltBak extends BaseRichBolt {
                 System.out.println("Receive kafka message REALINFO-------------------------------MSG:" + JSON.toJSONString(dat));
             }
 
-            if (!dat.containsKey(SysDefine.TIME) 
+            if (!dat.containsKey(SysDefine.TIME)
             		|| ObjectUtils.isNullOrEmpty(dat.get(SysDefine.TIME))) {
 				return;
 			}
             String type = dat.get(SysDefine.MESSAGETYPE);
 
-            if (SysDefine.REALTIME.equals(type) 
+            if (CommandType.SUBMIT_REALTIME.equals(type)
             		|| (CommandType.SUBMIT_LINKSTATUS.equals(type) && "3".equals(dat.get("TYPE")))
-            		|| (SysDefine.LOGIN.equals(type) 
+            		|| (CommandType.SUBMIT_LOGIN.equals(type)
                 			&& (dat.containsKey(ProtocolItem.LOGOUT_SEQ)
                 					|| dat.containsKey(ProtocolItem.LOGOUT_TIME)))
             		) {
@@ -195,7 +195,7 @@ public class AlarmBoltBak extends BaseRichBolt {
                 }
             }
 
-            if (SysDefine.REALTIME.equals(type) || SysDefine.LOGIN.equals(type) || SysDefine.TERMSTATUS.equals(type) || SysDefine.CARSTATUS.equals(type)) {
+            if (CommandType.SUBMIT_REALTIME.equals(type) || CommandType.SUBMIT_LOGIN.equals(type) || CommandType.SUBMIT_TERMSTATUS.equals(type) || CommandType.SUBMIT_CARSTATUS.equals(type)) {
                 // hbase存储
 //                sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehRealinfoStoreTopic, vid, JSON.toJSONString(dat));
                 try {
@@ -235,7 +235,7 @@ public class AlarmBoltBak extends BaseRichBolt {
                 sendToNext(SysDefine.SYNES_GROUP,vid, linkmap);
             }
 
-            if (SysDefine.REALTIME.equals(type)) {
+            if (CommandType.SUBMIT_REALTIME.equals(type)) {
                 try {
                 	String veh2000=dat.get("2000");
                     if (!ObjectUtils.isNullOrEmpty(veh2000)) {
@@ -281,7 +281,7 @@ public class AlarmBoltBak extends BaseRichBolt {
 		
 		
         if(CommandType.SUBMIT_LINKSTATUS.equals(type)
-        		|| SysDefine.LOGIN.equals(type)){
+        		|| CommandType.SUBMIT_LOGIN.equals(type)){
             try {
             	sendOverAlarmMessage(vid);
             } catch (Exception e) {

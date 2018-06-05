@@ -9,6 +9,7 @@ import org.apache.storm.spout.Scheme;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 
+import storm.protocol.CommandType;
 import storm.util.ObjectUtils;
 import storm.system.SysDefine;
 
@@ -21,7 +22,7 @@ public class ErrorDataScheme implements Scheme {
         	if(null == msg)return null;
             String[] data = msg.split(" ");
 
-            if (data.length==5 && data[3].equals("PACKET")) {
+            if (data.length==5 && data[3].equals(CommandType.SUBMIT_PACKET)) {
                 Map<String, String> map = new TreeMap<String, String>();
                 String val = data[4].replaceAll("[\\pC{}]", "");
                 String[] ERROR = val.split(",");

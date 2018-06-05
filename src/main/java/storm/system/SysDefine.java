@@ -173,28 +173,13 @@ public final class SysDefine {
     public final static String PLATECOLORID = "platecolorid"; // 车牌颜色ID
     public final static String TID = "tid"; // 终端ID
     public final static String VEHICLENO = "vehicleno"; // 车牌号
-    public final static String SUBMIT = "SUBMIT";
-    /** 指令类型 原始报文 */
-    public final static String PACKET = "PACKET";
 
-	/*-------------------------------指令-------------------------------------*/
+  /*-------------------------------指令-------------------------------------*/
     /** 消息类型 */
     public static final String MESSAGETYPE = "MESSAGETYPE";
     /** 时间 */
     public static final String TIME = "TIME";
-    /** 未知 */
-    public static final String UNKNOW = "UNKNOW";
-  /** 指令类型 终端注册消息 */
-    public static final String LOGIN = "LOGIN";
-    /** 指令类型 实时信息上报 */
-    public static final String REALTIME = "REALTIME";
-    /** 指令类型 状态信息上报 */
-    public static final String TERMSTATUS = "TERMSTATUS";
-    /** 指令类型 补发信息上报 */
-    public static final String HISTORYDATA = "HISTORY";
-    /** 指令类型 车辆运行状态 */
-    public static final String CARSTATUS = "CARSTATUS";
-    /** 指令类型 租赁点更新数据 */
+  /** 指令类型 租赁点更新数据 */
     public static final String RENTALSTATION = "RENTALSTATION";
     /** 指令类型 租赁点更新数据 */
     public static final String CHARGESTATION = "CHARGESTATION";

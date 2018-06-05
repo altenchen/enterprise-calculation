@@ -1283,7 +1283,7 @@ public class CarRulehandler implements InfoNotice{
 	
 	private boolean isOffline(Map<String, String> dat){
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		if (SysDefine.LOGIN.equals(msgType)) {
+		if (CommandType.SUBMIT_LOGIN.equals(msgType)) {
 			String type = dat.get(ProtocolItem.REG_TYPE);
 			if ("1".equals(type)){
 				return false;
@@ -1316,7 +1316,7 @@ public class CarRulehandler implements InfoNotice{
 			} else if("3".equals(linkType)){
 				return true;
 			}
-		} else if (SysDefine.REALTIME.equals(msgType)){
+		} else if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 			return false;
 		}
 		return false;
