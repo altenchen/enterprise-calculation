@@ -1,6 +1,6 @@
 package storm.system;
 
-public class SysDefine {
+public final class SysDefine {
 	//接收实时数据TOPIC
     public static String VEH_REALINFO_DATA_TOPIC ;
 
@@ -184,9 +184,7 @@ public class SysDefine {
     public static final String TIME = "TIME";
     /** 未知 */
     public static final String UNKNOW = "UNKNOW";
-    /** 指令类型 链接状态通知 */
-    public static final String LINKSTATUS = "LINKSTATUS";
-    /** 指令类型 终端注册消息 */
+  /** 指令类型 终端注册消息 */
     public static final String LOGIN = "LOGIN";
     /** 指令类型 实时信息上报 */
     public static final String REALTIME = "REALTIME";

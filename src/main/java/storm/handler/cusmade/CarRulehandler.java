@@ -15,6 +15,7 @@ import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
+import storm.protocol.CommandType;
 import storm.service.TimeFormatService;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
@@ -1307,7 +1308,7 @@ public class CarRulehandler implements InfoNotice{
 					return true;
 				}
 			}
-		} else if (SysDefine.LINKSTATUS.equals(msgType)){
+		} else if (CommandType.SUBMIT_LINKSTATUS.equals(msgType)){
 			String linkType = dat.get(ProtocolItem.LINK_TYPE);
 			if ("1".equals(linkType)
 					||"2".equals(linkType)) {

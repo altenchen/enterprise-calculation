@@ -16,7 +16,6 @@ import java.util.Properties;
 
 import storm.kafka.scheme.ErrorDataScheme;
 import storm.kafka.scheme.RegScheme;
-import storm.system.ProtocolItem;
 import storm.util.ConfigUtils;
 import storm.kafka.scheme.RealinfoScheme;
 import storm.kafka.KafkaConfig;

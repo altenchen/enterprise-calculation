@@ -9,7 +9,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +24,7 @@ import org.apache.storm.tuple.Values;
 import com.alibaba.fastjson.JSON;
 import com.sun.jersey.core.util.Base64;
 
-import storm.util.CTFOUtils;
+import storm.protocol.CommandType;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.dto.alarm.CoefOffset;
@@ -183,7 +182,7 @@ public class AlarmBoltBak extends BaseRichBolt {
             String type = dat.get(SysDefine.MESSAGETYPE);
 
             if (SysDefine.REALTIME.equals(type) 
-            		|| (SysDefine.LINKSTATUS.equals(type) && "3".equals(dat.get("TYPE")))
+            		|| (CommandType.SUBMIT_LINKSTATUS.equals(type) && "3".equals(dat.get("TYPE")))
             		|| (SysDefine.LOGIN.equals(type) 
                 			&& (dat.containsKey(ProtocolItem.LOGOUT_SEQ)
                 					|| dat.containsKey(ProtocolItem.LOGOUT_TIME)))
@@ -218,7 +217,7 @@ public class AlarmBoltBak extends BaseRichBolt {
                 } catch (Exception e) {
                     System.out.println("实时数据redis存储出错！map:" + JSON.toJSONString(dat));
                 }
-            } else if (SysDefine.LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
+            } else if (CommandType.SUBMIT_LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
                 Map<String, String> linkmap = new TreeMap<String, String>();
                 if ("1".equals(dat.get("TYPE"))) {
                     linkmap.put(SysDefine.ISONLINE, "1");
@@ -281,7 +280,7 @@ public class AlarmBoltBak extends BaseRichBolt {
         	return;
 		
 		
-        if(SysDefine.LINKSTATUS.equals(type)
+        if(CommandType.SUBMIT_LINKSTATUS.equals(type)
         		|| SysDefine.LOGIN.equals(type)){
             try {
             	sendOverAlarmMessage(vid);

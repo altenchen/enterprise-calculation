@@ -9,13 +9,13 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import storm.protocol.CommandType;
 import storm.util.*;
 import storm.handler.area.AreaFenceHandler;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -74,6 +74,7 @@ public class FilterBolt extends BaseRichBolt {
                 return;
             }
 
+            // 命令标识
             String type = message[3];
             if (SysDefine.PACKET.equals(type) 
             		|| SysDefine.RENTALSTATION.equals(type) 
@@ -111,7 +112,7 @@ public class FilterBolt extends BaseRichBolt {
             			}
 				}
             }
-            if (SysDefine.LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
+            if (CommandType.SUBMIT_LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
                 Map<String, String> linkmap = new TreeMap<String, String>();
                 if ("1".equals(stateKV.get("TYPE"))
                 		||"2".equals(stateKV.get("TYPE"))) {
@@ -160,7 +161,7 @@ public class FilterBolt extends BaseRichBolt {
 				e1.printStackTrace();
 			}
             Map<String, String> stateNewKV = stateKV; // 状态键值
-            if (SysDefine.LINKSTATUS.equals(type)
+            if (CommandType.SUBMIT_LINKSTATUS.equals(type)
         			|| SysDefine.LOGIN.equals(type)
         			|| SysDefine.REALTIME.equals(type)
         			|| SysDefine.TERMSTATUS.equals(type)){
@@ -168,7 +169,7 @@ public class FilterBolt extends BaseRichBolt {
             	stateNewKV.putAll(stateKV);
             }
             try {
-            	if (SysDefine.LINKSTATUS.equals(type) 
+            	if (CommandType.SUBMIT_LINKSTATUS.equals(type)
             			|| SysDefine.LOGIN.equals(type) 
             			|| SysDefine.TERMSTATUS.equals(type) 
             			|| SysDefine.CARSTATUS.equals(type)) {
@@ -179,14 +180,14 @@ public class FilterBolt extends BaseRichBolt {
 //            		sendMessages(SysDefine.YAACTION_GROUP,null,vid,stateKV,true);
             	}
             	if (SysDefine.REALTIME.equals(type)
-            			|| SysDefine.LINKSTATUS.equals(type) 
+            			|| CommandType.SUBMIT_LINKSTATUS.equals(type)
             			|| SysDefine.LOGIN.equals(type) 
             			|| SysDefine.TERMSTATUS.equals(type) 
             			|| SysDefine.CARSTATUS.equals(type)){
             		sendMessages(SysDefine.CUS_NOTICE_GROUP,null,vid,stateNewKV,true);
             	}
             	if (SysDefine.REALTIME.equals(type)
-            			|| SysDefine.LINKSTATUS.equals(type)
+            			|| CommandType.SUBMIT_LINKSTATUS.equals(type)
             			|| SysDefine.LOGIN.equals(type)){
             		sendMessages(SysDefine.SPLIT_GROUP,null,vid,stateKV,true);
             	}

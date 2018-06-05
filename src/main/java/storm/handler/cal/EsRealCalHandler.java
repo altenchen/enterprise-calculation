@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
+import storm.protocol.CommandType;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
@@ -283,7 +284,7 @@ public class EsRealCalHandler{
 					esmap.put(EsField.serverTime, toEsDateString(new Date()));
 					esmap.put(EsField.terminalTime, toTimeString(time));
 				}
-			} else if (SysDefine.LINKSTATUS.equals(msgType)){
+			} else if (CommandType.SUBMIT_LINKSTATUS.equals(msgType)){
 				String linkType = dat.get(ProtocolItem.LINK_TYPE);
 				boolean isValid = false;
 				if ("1".equals(linkType)
@@ -560,7 +561,7 @@ public class EsRealCalHandler{
 						}
 					}
 				}
-			} else if (SysDefine.LINKSTATUS.equals(msgType)
+			} else if (CommandType.SUBMIT_LINKSTATUS.equals(msgType)
 					&& "3".equals(dat.get("TYPE"))){
 				//离线
 				return true;
