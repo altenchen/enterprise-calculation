@@ -1,6 +1,37 @@
 package storm.system;
 
-public final class ProtocolItem extends SysDefine {
+/**
+ * 协议项
+ */
+public final class ProtocolItem {
+
+	public static final String getVID() {
+	    return SysDefine.VID;
+	}
+    public static String getVIN() {
+        return SysDefine.VIN;
+    }
+    /** 时间 */
+    public static final String getTIME() {
+        return SysDefine.TIME;
+    }
+    /** 定时任务关键字，当前总里程 */
+    public static String getTotalMileage() {
+        return SysDefine.TOTAL_MILEAGE;
+    }
+    /** 定时任务关键字 */
+    public static String getONLINEUTC() {
+        return SysDefine.ONLINEUTC;
+    }
+    /** 消息类型 */
+    public static String getMESSAGETYPE() {
+        return SysDefine.MESSAGETYPE;
+    }
+
+    /** 指令类型 实时信息上报 */
+    public static String getREALTIME() {
+        return SysDefine.REALTIME;
+    }
 	
 	public static final String MSG_TIME="2000";//实时报文消息时间
 	public static final String ALARM_STATUS="2920"; //充电状态
@@ -73,5 +104,5 @@ public final class ProtocolItem extends SysDefine {
 	public static final String CAN_LIST="4410023";//can 列表
 	public static final String MILE_DISTANCE="DISTANCE";//前后2帧里程值之差
 	public static final String GPS_ADMIN_REGION="GPS_REGION";//行政区域
-	
+
 }

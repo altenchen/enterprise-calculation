@@ -162,12 +162,12 @@ public class SysRealDataCache {
 		if (null == dat || dat.size() ==0) {
 			return;
 		}
-		if ( !dat.containsKey(ProtocolItem.VID)
-				|| !dat.containsKey(ProtocolItem.VIN)) {
+		if ( !dat.containsKey(ProtocolItem.getVID())
+				|| !dat.containsKey(ProtocolItem.getVIN())) {
 			return;
 		}
-		String vid = dat.get(ProtocolItem.VID);
-		String vin = dat.get(ProtocolItem.VIN);
+		String vid = dat.get(ProtocolItem.getVID());
+		String vin = dat.get(ProtocolItem.getVIN());
 		String[] strings = carInfoByVin(vin);
 		if(null ==strings || strings.length != 15)
 			return ;
@@ -176,7 +176,7 @@ public class SysRealDataCache {
 			return;
 		}
 		if (chargeTypes.contains(cartypeId.trim())) {
-			String time = dat.get(ProtocolItem.TIME);
+			String time = dat.get(ProtocolItem.getTIME());
 			String latit = dat.get(ProtocolItem.latitude);
 			String longi = dat.get(ProtocolItem.longitude);
 			
@@ -197,7 +197,7 @@ public class SysRealDataCache {
 		if (null == dat || dat.size() ==0) {
 			return;
 		}
-		if (!dat.containsKey(ProtocolItem.VID)) {
+		if (!dat.containsKey(ProtocolItem.getVID())) {
 			return;
 		}
 		try {
@@ -221,7 +221,7 @@ public class SysRealDataCache {
 					newmap.put(mapkey, value);
 				}
 			}
-			String vid = newmap.get(ProtocolItem.VID);
+			String vid = newmap.get(ProtocolItem.getVID());
 			carlastrecord.put(vid, newmap);
 			addLastQueue(vid);
 		} catch (Exception e) {

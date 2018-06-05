@@ -16,6 +16,7 @@ import java.util.Properties;
 
 import storm.kafka.scheme.ErrorDataScheme;
 import storm.kafka.scheme.RegScheme;
+import storm.system.ProtocolItem;
 import storm.util.ConfigUtils;
 import storm.kafka.scheme.RealinfoScheme;
 import storm.kafka.KafkaConfig;
@@ -389,7 +390,6 @@ public class TopologiesByConf {
      */
     private static void fillKafkaConf(@NotNull Properties properties){
 	    // TODO: 转为存储到单例类
-
         SysDefine.BROKER_HOSTS = properties.getProperty("kafka.broker.hosts");
 
         SysDefine.ERROR_DATA_GROUPID = properties.getProperty("kafka.metadata.veh_error_groupid");

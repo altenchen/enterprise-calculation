@@ -219,8 +219,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		if (null == dat || dat.size() ==0) {
 			return null;
 		}
-		String vid = dat.get(ProtocolItem.VID);
-		String time = dat.get(ProtocolItem.TIME);
+		String vid = dat.get(ProtocolItem.getVID());
+		String time = dat.get(ProtocolItem.getTIME());
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
 		if (ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
@@ -234,7 +234,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 
 				String speed = dat.get(ProtocolItem.SPEED);
 				String soc = dat.get(ProtocolItem.SOC);
-				String mileage = dat.get(ProtocolItem.TOTAL_MILEAGE);
+				String mileage = dat.get(ProtocolItem.getTotalMileage());
 				//下面三个if类似，都是校验一下，然后将vid和最后一帧的数据存入
 				if (null !=speed && !"".equals(speed)) {
 					speed = NumberUtils.stringNumber(speed);
@@ -280,7 +280,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		String lastUtc = dat.get(ProtocolItem.ONLINEUTC);
+		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
 		String noticetime = timeformat.toDateString(new Date(now));
 		//车辆 是否达到 闲置或者停机 超时的标准
 		boolean isout = istimeout(time, lastUtc, now, timeout);
@@ -356,17 +356,17 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		String vid = dat.get(ProtocolItem.VID);
-		String time = dat.get(ProtocolItem.TIME);
+		String vid = dat.get(ProtocolItem.getVID());
+		String time = dat.get(ProtocolItem.getTIME());
 		if (ObjectUtils.isNullOrEmpty(msgType)
 				||ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
 			return null;
 		}
-		String lastUtc = dat.get(ProtocolItem.ONLINEUTC);
+		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
 		double lastmileage = -1;
-		if (dat.containsKey(ProtocolItem.TOTAL_MILEAGE)) {
-			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(ProtocolItem.TOTAL_MILEAGE)));
+		if (dat.containsKey(ProtocolItem.getTotalMileage())) {
+			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(ProtocolItem.getTotalMileage())));
 			if (-1 != lastmileage) {
 				vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
 			}
@@ -402,18 +402,18 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		String vid = dat.get(ProtocolItem.VID);
-		String time = dat.get(ProtocolItem.TIME);
+		String vid = dat.get(ProtocolItem.getVID());
+		String time = dat.get(ProtocolItem.getTIME());
 		if (ObjectUtils.isNullOrEmpty(msgType)
 				||ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
 			return null;
 		}
-		String lastUtc = dat.get(ProtocolItem.ONLINEUTC);
+		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
 		String noticetime = timeformat.toDateString(new Date(now));
 		double lastmileage = -1;
-		if (dat.containsKey(ProtocolItem.TOTAL_MILEAGE)) {
-			String mileage = NumberUtils.stringNumber(dat.get(ProtocolItem.TOTAL_MILEAGE));
+		if (dat.containsKey(ProtocolItem.getTotalMileage())) {
+			String mileage = NumberUtils.stringNumber(dat.get(ProtocolItem.getTotalMileage()));
 			if (! "0".equals(mileage)) {
 
 				lastmileage = Double.parseDouble(mileage);

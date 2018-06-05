@@ -247,14 +247,14 @@ public class CarRulehandler implements InfoNotice{
 	public List<Map<String, Object>> genotices(Map<String, String> dat) {
 		//1、验证dat的有效性
 		if (ObjectUtils.isNullOrEmpty(dat)
-				|| !dat.containsKey(ProtocolItem.VID)
-				|| !dat.containsKey(ProtocolItem.TIME)) {
+				|| !dat.containsKey(ProtocolItem.getVID())
+				|| !dat.containsKey(ProtocolItem.getTIME())) {
 			return null;
 		}
 		
-		String vid = dat.get(ProtocolItem.VID);
+		String vid = dat.get(ProtocolItem.getVID());
 		if (ObjectUtils.isNullOrEmpty(vid)
-				|| ObjectUtils.isNullOrEmpty(dat.get(ProtocolItem.TIME))) {
+				|| ObjectUtils.isNullOrEmpty(dat.get(ProtocolItem.getTIME()))) {
 			return null;
 		}
 		
@@ -335,8 +335,8 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
@@ -532,8 +532,8 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
@@ -714,18 +714,18 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
-			String msgType = dat.get(ProtocolItem.MESSAGETYPE);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
+			String msgType = dat.get(ProtocolItem.getMESSAGETYPE());
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(msgType)) {
 				return null;
 			}
 			Map<String, Object> notice = null;
-			if (ProtocolItem.REALTIME.equals(msgType)) {
+			if (ProtocolItem.getREALTIME().equals(msgType)) {
 				
-				String mileage = dat.get(ProtocolItem.TOTAL_MILEAGE);//当前总里程
+				String mileage = dat.get(ProtocolItem.getTotalMileage());//当前总里程
 				
 				if (vidLastDat.containsKey(vid)) {
 					//mileage如果是数字字符串则返回，不是则返回字符串“0”
@@ -733,12 +733,12 @@ public class CarRulehandler implements InfoNotice{
 					if (!"0".equals(mileage)) {
 						int mile = Integer.parseInt(mileage);//当前总里程
 						Map<String, Object> lastMap = vidLastDat.get(vid);
-						int lastMile = (int)lastMap.get(ProtocolItem.TOTAL_MILEAGE);//上一帧的总里程
+						int lastMile = (int)lastMap.get(ProtocolItem.getTotalMileage());//上一帧的总里程
 						int nowmileHop = Math.abs(mile-lastMile);//里程跳变
 						
 						if (nowmileHop >= mileHop) {
-							String lastTime = (String)lastMap.get(ProtocolItem.TIME);//上一帧的时间即为跳变的开始时间
-							String vin = dat.get(ProtocolItem.VIN);
+							String lastTime = (String)lastMap.get(ProtocolItem.getTIME());//上一帧的时间即为跳变的开始时间
+							String vin = dat.get(ProtocolItem.getVIN());
 							notice = new TreeMap<String, Object>();
 							notice.put("msgType", "HOP_MILE");//这些字段是前端方面要求的。
 							notice.put("vid", vid);
@@ -763,16 +763,16 @@ public class CarRulehandler implements InfoNotice{
 		return null;
 	}
 	private void setLastDat(Map<String, String> dat){
-		String mileage = dat.get(ProtocolItem.TOTAL_MILEAGE);
+		String mileage = dat.get(ProtocolItem.getTotalMileage());
 		mileage = NumberUtils.stringNumber(mileage);
 		if (!"0".equals(mileage)) {
 			Map<String, Object> lastMap = new TreeMap<String, Object>();
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
 			int mile = Integer.parseInt(mileage);
-			lastMap.put(ProtocolItem.VID, vid);
-			lastMap.put(ProtocolItem.TIME, time);
-			lastMap.put(ProtocolItem.TOTAL_MILEAGE, mile);
+			lastMap.put(ProtocolItem.getVID(), vid);
+			lastMap.put(ProtocolItem.getTIME(), time);
+			lastMap.put(ProtocolItem.getTotalMileage(), mile);
 			vidLastDat.put(vid, lastMap);
 		}
 	}
@@ -787,9 +787,9 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String vin = dat.get(ProtocolItem.VIN);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String vin = dat.get(ProtocolItem.getVIN());
+			String time = dat.get(ProtocolItem.getTIME());
 			String carStatus = dat.get(ProtocolItem.CAR_STATUS);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
@@ -803,7 +803,7 @@ public class CarRulehandler implements InfoNotice{
 			String noticetime = timeformat.toDateString(new Date());
 			String speed = dat.get(ProtocolItem.SPEED);
 			String socStr = dat.get(ProtocolItem.SOC);
-			String mileageStr = dat.get(ProtocolItem.TOTAL_MILEAGE);
+			String mileageStr = dat.get(ProtocolItem.getTotalMileage());
 			
 			double soc = -1;
 			if (!ObjectUtils.isNullOrEmpty(socStr)) {
@@ -931,8 +931,8 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
 			String speed = dat.get(ProtocolItem.SPEED);
 			String rev = dat.get(ProtocolItem.DRIVING_ELE_MAC_REV);
 			if (ObjectUtils.isNullOrEmpty(vid)
@@ -1017,8 +1017,8 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
 			String speed = dat.get(ProtocolItem.SPEED);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
@@ -1112,8 +1112,8 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
@@ -1227,9 +1227,9 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String vin = dat.get(ProtocolItem.VIN);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String vin = dat.get(ProtocolItem.getVIN());
+			String time = dat.get(ProtocolItem.getTIME());
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(vin)) {
