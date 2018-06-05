@@ -6,6 +6,7 @@ import java.util.TreeMap;
 
 import com.sun.jersey.core.util.Base64;
 
+import storm.protocol.SUBMIT_LOGIN;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.ObjectUtils;
@@ -39,7 +40,7 @@ class RegHanler {
 			    	iccid = new String(Base64.decode(icc),"GBK");
 				}
 			    if (iccid==null || "".equals(iccid.trim())) {
-			    	icc = msg.get(ProtocolItem.ICCID_ITEM);
+			    	icc = msg.get(SUBMIT_LOGIN.ICCID_ITEM);
 				    if (!ObjectUtils.isNullOrEmpty(icc)) {
 				    	iccid = new String(Base64.decode(icc),"GBK");
 					}

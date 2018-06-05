@@ -27,6 +27,9 @@ import com.alibaba.fastjson.JSON;
 import com.sun.jersey.core.util.Base64;
 
 import storm.protocol.CommandType;
+import storm.protocol.SUBMIT_LINKSTATUS;
+import storm.protocol.SUBMIT_LOGIN;
+import storm.protocol.SUBMIT_REALTIME;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.dto.alarm.CoefOffset;
@@ -35,7 +38,6 @@ import storm.dto.alarm.EarlyWarn;
 import storm.dto.alarm.EarlyWarnsGetter;
 import storm.dto.alarm.WarnRecord;
 import storm.dto.alarm.WarnningRecorder;
-import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 
 //@SuppressWarnings("all")
@@ -198,10 +200,10 @@ public class AlarmBolt extends BaseRichBolt {
             String type = dat.get(SysDefine.MESSAGETYPE);
 
             if (CommandType.SUBMIT_REALTIME.equals(type)
-            		|| (CommandType.SUBMIT_LINKSTATUS.equals(type) && "3".equals(dat.get("TYPE")))
+            		|| (CommandType.SUBMIT_LINKSTATUS.equals(type) && SUBMIT_LINKSTATUS.isOfflineNotice(dat.get(SUBMIT_LINKSTATUS.LINK_TYPE)))
             		|| (CommandType.SUBMIT_LOGIN.equals(type)
-                			&& (dat.containsKey(ProtocolItem.LOGOUT_SEQ)
-                					|| dat.containsKey(ProtocolItem.LOGOUT_TIME)))
+                			&& (dat.containsKey(SUBMIT_LOGIN.LOGOUT_SEQ)
+                					|| dat.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)))
             		) {
                 try {
                     processAlarm(dat, type);
@@ -697,7 +699,7 @@ public class AlarmBolt extends BaseRichBolt {
         String left2 = warn.left2DataItem; //左2数据项ID
         double right1 = warn.right1Value;
         double right2 = warn.right2Value;
-        String alarmGb = dataMap.get(ProtocolItem.ALARM_STATUS);
+        String alarmGb = dataMap.get(SUBMIT_REALTIME.ALARM_STATUS);
         alarmGb = NumberUtils.stringNumber(alarmGb);
         if (!"0".equals(alarmGb)) {
         	int gbAlarm = Integer.parseInt(alarmGb);

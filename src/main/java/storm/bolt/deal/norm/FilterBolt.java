@@ -10,6 +10,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import storm.protocol.CommandType;
+import storm.protocol.SUBMIT_LOGIN;
 import storm.util.*;
 import storm.handler.area.AreaFenceHandler;
 import storm.system.ProtocolItem;
@@ -102,8 +103,8 @@ public class FilterBolt extends BaseRichBolt {
             if (CommandType.SUBMIT_REALTIME.equals(type) || CommandType.SUBMIT_LOGIN.equals(type) || CommandType.SUBMIT_TERMSTATUS.equals(type) || CommandType.SUBMIT_CARSTATUS.equals(type)) {
             	stateKV.put(SysDefine.ISONLINE, "1");
             	if (CommandType.SUBMIT_LOGIN.equals(type) ) {
-            			if( stateKV.containsKey(ProtocolItem.LOGOUT_SEQ)
-            					|| stateKV.containsKey(ProtocolItem.LOGOUT_TIME)) {
+            			if( stateKV.containsKey(SUBMIT_LOGIN.LOGOUT_SEQ)
+            					|| stateKV.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)) {
             				
             				stateKV.put(SysDefine.ISONLINE, "0");
             				stateKV.put(ProtocolItem.REG_TYPE, "2");
@@ -133,10 +134,10 @@ public class FilterBolt extends BaseRichBolt {
             if (CommandType.SUBMIT_REALTIME.equals(type)) {
                 stateKV.put(SysDefine.TIME, stateKV.get("2000"));
             } else if (CommandType.SUBMIT_LOGIN.equals(type)) {
-            	if (stateKV.containsKey(ProtocolItem.LOGIN_TIME)) {
-					stateKV.put(SysDefine.TIME, stateKV.get(ProtocolItem.LOGIN_TIME));
-				} else if (stateKV.containsKey(ProtocolItem.LOGOUT_TIME)){
-					stateKV.put(SysDefine.TIME, stateKV.get(ProtocolItem.LOGOUT_TIME));
+            	if (stateKV.containsKey(SUBMIT_LOGIN.LOGIN_TIME)) {
+					stateKV.put(SysDefine.TIME, stateKV.get(SUBMIT_LOGIN.LOGIN_TIME));
+				} else if (stateKV.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)){
+					stateKV.put(SysDefine.TIME, stateKV.get(SUBMIT_LOGIN.LOGOUT_TIME));
 				} else {
 					stateKV.put(SysDefine.TIME, stateKV.get("1001"));
 				}
@@ -281,11 +282,11 @@ public class FilterBolt extends BaseRichBolt {
         }
         //向最后的数据中加入车辆当前所在行政区域id
         /*try {
-			if (dataMap.containsKey(ProtocolItem.longitude)
-					&& dataMap.containsKey(ProtocolItem.latitude)) {
+			if (dataMap.containsKey(ProtocolItem.LONGITUDE)
+					&& dataMap.containsKey(ProtocolItem.LATITUDE)) {
 				
-				String longit = dataMap.get(ProtocolItem.longitude);
-				String latit = dataMap.get(ProtocolItem.latitude);
+				String longit = dataMap.get(ProtocolItem.LONGITUDE);
+				String latit = dataMap.get(ProtocolItem.LATITUDE);
 				if (null != longit && null != latit) {
 					longit = NumberUtils.stringNumber(longit);
 					latit = NumberUtils.stringNumber(latit);

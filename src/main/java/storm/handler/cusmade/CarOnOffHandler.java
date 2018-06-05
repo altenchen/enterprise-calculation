@@ -12,6 +12,9 @@ import storm.cache.SysRealDataCache;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
+import storm.protocol.SUBMIT_LINKSTATUS;
+import storm.protocol.SUBMIT_LOGIN;
+import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
@@ -233,9 +236,9 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		try {
 			if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 
-				String speed = dat.get(ProtocolItem.SPEED);
-				String soc = dat.get(ProtocolItem.SOC);
-				String mileage = dat.get(ProtocolItem.getTotalMileage());
+				String speed = dat.get(SUBMIT_REALTIME.SPEED);
+				String soc = dat.get(SUBMIT_REALTIME.SOC);
+				String mileage = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);
 				//下面三个if类似，都是校验一下，然后将vid和最后一帧的数据存入
 				if (null !=speed && !"".equals(speed)) {
 					speed = NumberUtils.stringNumber(speed);
@@ -366,8 +369,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		}
 		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
 		double lastmileage = -1;
-		if (dat.containsKey(ProtocolItem.getTotalMileage())) {
-			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(ProtocolItem.getTotalMileage())));
+		if (dat.containsKey(SUBMIT_REALTIME.TOTAL_MILEAGE)) {
+			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE)));
 			if (-1 != lastmileage) {
 				vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
 			}
@@ -413,8 +416,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
 		String noticetime = timeformat.toDateString(new Date(now));
 		double lastmileage = -1;
-		if (dat.containsKey(ProtocolItem.getTotalMileage())) {
-			String mileage = NumberUtils.stringNumber(dat.get(ProtocolItem.getTotalMileage()));
+		if (dat.containsKey(SUBMIT_REALTIME.TOTAL_MILEAGE)) {
+			String mileage = NumberUtils.stringNumber(dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE));
 			if (! "0".equals(mileage)) {
 
 				lastmileage = Double.parseDouble(mileage);
@@ -488,8 +491,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			} else if ("2".equals(type)){
 				return true;
 			} else {
-				String logoutSeq = dat.get(ProtocolItem.LOGOUT_SEQ);
-				String loginSeq = dat.get(ProtocolItem.LOGIN_SEQ);
+				String logoutSeq = dat.get(SUBMIT_LOGIN.LOGOUT_SEQ);
+				String loginSeq = dat.get(SUBMIT_LOGIN.LOGIN_SEQ);
 				if (! ObjectUtils.isNullOrEmpty(logoutSeq)
 						&& !ObjectUtils.isNullOrEmpty(logoutSeq)) {
 					int logout = Integer.parseInt(NumberUtils.stringNumber(logoutSeq));
@@ -507,7 +510,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				}
 			}
 		} else if (CommandType.SUBMIT_LINKSTATUS.equals(msgType)){
-			String linkType = dat.get(ProtocolItem.LINK_TYPE);
+			String linkType = dat.get(SUBMIT_LINKSTATUS.LINK_TYPE);
 			if ("1".equals(linkType)
 					||"2".equals(linkType)) {
 				return false;

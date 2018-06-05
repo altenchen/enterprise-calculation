@@ -25,13 +25,13 @@ import com.alibaba.fastjson.JSON;
 import com.sun.jersey.core.util.Base64;
 
 import storm.protocol.CommandType;
+import storm.protocol.SUBMIT_LOGIN;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.dto.alarm.CoefOffset;
 import storm.dto.alarm.CoefOffsetGetter;
 import storm.dto.alarm.EarlyWarn;
 import storm.dto.alarm.EarlyWarnsGetter;
-import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 
 //@SuppressWarnings("all")
@@ -184,8 +184,8 @@ public class AlarmBoltBak extends BaseRichBolt {
             if (CommandType.SUBMIT_REALTIME.equals(type)
             		|| (CommandType.SUBMIT_LINKSTATUS.equals(type) && "3".equals(dat.get("TYPE")))
             		|| (CommandType.SUBMIT_LOGIN.equals(type)
-                			&& (dat.containsKey(ProtocolItem.LOGOUT_SEQ)
-                					|| dat.containsKey(ProtocolItem.LOGOUT_TIME)))
+                			&& (dat.containsKey(SUBMIT_LOGIN.LOGOUT_SEQ)
+                					|| dat.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)))
             		) {
                 try {
                     processAlarm(dat, type);

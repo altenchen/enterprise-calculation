@@ -19,6 +19,9 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
 import storm.protocol.CommandType;
+import storm.protocol.SUBMIT_LINKSTATUS;
+import storm.protocol.SUBMIT_LOGIN;
+import storm.protocol.SUBMIT_REALTIME;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
@@ -285,14 +288,14 @@ public class EsRealCalHandler{
 					esmap.put(EsField.terminalTime, toTimeString(time));
 				}
 			} else if (CommandType.SUBMIT_LINKSTATUS.equals(msgType)){
-				String linkType = dat.get(ProtocolItem.LINK_TYPE);
+				String linkType = dat.get(SUBMIT_LINKSTATUS.LINK_TYPE);
 				boolean isValid = false;
-				if ("1".equals(linkType)
-						||"2".equals(linkType)) {
+				if (SUBMIT_LINKSTATUS.isOnlineNotice(linkType)
+						||SUBMIT_LINKSTATUS.isHeartbeatNotice(linkType)) {
 					esmap.put(EsField.carStatus, 1);
 					esmap.put(EsField.onlineStatus, 2);
 					isValid=true;
-				} else if("3".equals(linkType)){
+				} else if(SUBMIT_LINKSTATUS.isOfflineNotice(linkType)){
 					esmap.put(EsField.carStatus, 0);
 					esmap.put(EsField.alarmStatus, 0);
 					isValid=true;
@@ -329,10 +332,10 @@ public class EsRealCalHandler{
 	 * @param kmNeedDiv km是否 需要除以10
 	 */
 	private void esDat(Map<String, Object> esmap,Map<String, String> dat,String time,long now){
-		String tenthKm = dat.get(SysDefine.TOTAL_MILEAGE);
-		String longitude = dat.get(ProtocolItem.longitude);
-		String latitude = dat.get(ProtocolItem.latitude);
-		String orientation = dat.get(ProtocolItem.orientation);
+		String tenthKm = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);
+		String longitude = dat.get(SUBMIT_REALTIME.LONGITUDE);
+		String latitude = dat.get(SUBMIT_REALTIME.LATITUDE);
+		String orientation = dat.get(SUBMIT_REALTIME.ORIENTATION);
 		
 		char[] oris = toBinaryCharArr(orientation);
 		if (null != oris && '0' == oris[3] 
@@ -373,8 +376,8 @@ public class EsRealCalHandler{
 			}
 		}
 		
-		if(dat.containsKey(ProtocolItem.CHARGE_STATUS)){
-			String chargeStatus = dat.get(ProtocolItem.CHARGE_STATUS);
+		if(dat.containsKey(SUBMIT_REALTIME.CHARGE_STATUS)){
+			String chargeStatus = dat.get(SUBMIT_REALTIME.CHARGE_STATUS);
 			if (null != chargeStatus && !"".equals(chargeStatus.trim()) 
 					&& !"255".equals(chargeStatus) 
 					&& !"254".equals(chargeStatus)){
@@ -542,13 +545,13 @@ public class EsRealCalHandler{
 					|| ObjectUtils.isNullOrEmpty(time))
 				return false;
 			if (CommandType.SUBMIT_LOGIN.equals(msgType)
-					&& dat.containsKey(ProtocolItem.LOGOUT_TIME)) {//离线
+					&& dat.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)) {//离线
 				
-				if (! dat.containsKey(ProtocolItem.LOGIN_TIME)) {
+				if (! dat.containsKey(SUBMIT_LOGIN.LOGIN_TIME)) {
 					return true;
 				} else {
-					String logintime = dat.get(ProtocolItem.LOGIN_TIME);
-					String logouttime = dat.get(ProtocolItem.LOGOUT_TIME);
+					String logintime = dat.get(SUBMIT_LOGIN.LOGIN_TIME);
+					String logouttime = dat.get(SUBMIT_LOGIN.LOGOUT_TIME);
 					if (null == logintime) {
 						return true;
 					} else {
@@ -587,24 +590,24 @@ public class EsRealCalHandler{
 	boolean isStop(Map<String, String> map){
 		try {
 			String vid = map.get(SysDefine.VID);
-			String rev = map.get(ProtocolItem.DRIVING_ELE_MAC_REV);
-			String spd = map.get(ProtocolItem.SPEED);
+			String rev = map.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_REV);
+			String spd = map.get(SUBMIT_REALTIME.SPEED);
 			if (!"0".equals(spd) || !"20000".equals(rev)) {
 				zeroCache.remove(vid);
 				return false;
 			}
 			if ("0".equals(spd) && "20000".equals(rev)){
 				String timelong = map.get(SysDefine.ONLINEUTC);
-				String lon = map.get(ProtocolItem.longitude);//经度
-				String lan = map.get(ProtocolItem.latitude);//纬度
+				String lon = map.get(SUBMIT_REALTIME.LONGITUDE);//经度
+				String lan = map.get(SUBMIT_REALTIME.LATITUDE);//纬度
 				
 				Map<String , String>startZero=zeroCache.get(vid);
 				if (null == startZero) {
 					startZero = new TreeMap<String , String>();
-					startZero.put(ProtocolItem.DRIVING_ELE_MAC_REV, rev);
-					startZero.put(ProtocolItem.SPEED, spd);
-					startZero.put(ProtocolItem.longitude, lon);
-					startZero.put(ProtocolItem.latitude, lan);
+					startZero.put(SUBMIT_REALTIME.DRIVING_ELE_MAC_REV, rev);
+					startZero.put(SUBMIT_REALTIME.SPEED, spd);
+					startZero.put(SUBMIT_REALTIME.LONGITUDE, lon);
+					startZero.put(SUBMIT_REALTIME.LATITUDE, lan);
 					startZero.put(SysDefine.ONLINEUTC, timelong);
 					
 					zeroCache.put(vid, startZero);
@@ -613,8 +616,8 @@ public class EsRealCalHandler{
 					long lastTime=Long.valueOf(map.get(SysDefine.ONLINEUTC));
 					long starttime=Long.valueOf(startZero.get(SysDefine.ONLINEUTC));
 					if (lastTime - starttime >= stoptime) {
-						String slon = startZero.get(ProtocolItem.longitude);//经度
-						String slan = startZero.get(ProtocolItem.latitude);//纬度
+						String slon = startZero.get(SUBMIT_REALTIME.LONGITUDE);//经度
+						String slan = startZero.get(SUBMIT_REALTIME.LATITUDE);//纬度
 						if ( ( ObjectUtils.isNullOrEmpty(lon) 
 									|| ObjectUtils.isNullOrEmpty(lan) )
 								&& ( ObjectUtils.isNullOrEmpty(slon)

@@ -195,9 +195,7 @@ public final class SysDefine {
     public static final String ISCHARGE = "10003";
     /** 定时任务关键字 */
     public static final String MILEAGE = "10004";
-    /** 定时任务关键字，当前总里程 */
-    public static final String TOTAL_MILEAGE = "2202";
-    /** 定时任务关键字 */
+  /** 定时任务关键字 */
     public static final String ONLINEUTC = "10005";
     /** 定时任务关键字 */
     public static final String ALARMUTC = "ALARMUTC";

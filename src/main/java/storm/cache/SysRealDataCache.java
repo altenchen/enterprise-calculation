@@ -20,6 +20,7 @@ import com.google.common.cache.CacheBuilder;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.handler.cal.RedisClusterLoaderUseCtfo;
+import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
@@ -162,7 +163,7 @@ public class SysRealDataCache {
 		if (null == dat || dat.size() ==0) {
 			return;
 		}
-		if ( !dat.containsKey(ProtocolItem.getVID())
+		if ( !dat.containsKey(SUBMIT_REALTIME.VEHICLE_ID)
 				|| !dat.containsKey(ProtocolItem.getVIN())) {
 			return;
 		}
@@ -177,8 +178,8 @@ public class SysRealDataCache {
 		}
 		if (chargeTypes.contains(cartypeId.trim())) {
 			String time = dat.get(ProtocolItem.getTIME());
-			String latit = dat.get(ProtocolItem.latitude);
-			String longi = dat.get(ProtocolItem.longitude);
+			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
+			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
 			
 			if (! ObjectUtils.isNullOrEmpty(time)
 					&& ! ObjectUtils.isNullOrEmpty(latit)
@@ -197,7 +198,7 @@ public class SysRealDataCache {
 		if (null == dat || dat.size() ==0) {
 			return;
 		}
-		if (!dat.containsKey(ProtocolItem.getVID())) {
+		if (!dat.containsKey(SUBMIT_REALTIME.VEHICLE_ID)) {
 			return;
 		}
 		try {
@@ -221,7 +222,7 @@ public class SysRealDataCache {
 					newmap.put(mapkey, value);
 				}
 			}
-			String vid = newmap.get(ProtocolItem.getVID());
+			String vid = newmap.get(SUBMIT_REALTIME.VEHICLE_ID);
 			carlastrecord.put(vid, newmap);
 			addLastQueue(vid);
 		} catch (Exception e) {

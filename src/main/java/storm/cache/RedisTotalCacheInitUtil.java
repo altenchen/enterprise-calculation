@@ -23,6 +23,7 @@ import com.google.common.cache.CacheBuilder;
 
 import storm.cache.util.RedisOrganizationUtil;
 import storm.dao.DataToRedis;
+import storm.protocol.SUBMIT_REALTIME;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
@@ -830,7 +831,7 @@ public class RedisTotalCacheInitUtil {
 				long runningonline=null==disMap.get(SysDefine.RUNNING_ONLINE)?0:Long.valueOf(disMap.get(SysDefine.RUNNING_ONLINE));
 				long stoponline=null==disMap.get(SysDefine.STOP_ONLINE)?0:Long.valueOf(disMap.get(SysDefine.STOP_ONLINE));
 				
-				mileage +=Double.valueOf(NumberUtils.stringNumber(map.get(SysDefine.TOTAL_MILEAGE)));
+				mileage +=Double.valueOf(NumberUtils.stringNumber(map.get(SUBMIT_REALTIME.TOTAL_MILEAGE)));
 				long lastTime=Long.valueOf(map.get(SysDefine.ONLINEUTC));
 				boolean istoday = timeIsToday(now, lastTime);
 				if (now-lastTime<time){

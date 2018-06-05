@@ -11,35 +11,35 @@ public final class BatteryInfo {
     /**
      * 序号
      */
-    public static final int Serial = 0;
+    public static final int SERIAL = 0;
 
     /**
      * 厂商代码
      */
-    public static final int Vendor = 1;
+    public static final int VENDOR = 1;
 
     /**
      * 电池类型
      */
-    public static final int BatteryType = 2;
+    public static final int BATTERY_TYPE = 2;
 
     /**
      * 额定能量
      */
-    public static final int RatedEnergy = 3;
+    public static final int RATED_ENERGY = 3;
 
     /**
      * 额定电压
      */
-    public static final int RatedVoltage = 4;
+    public static final int RATED_VOLTAGE = 4;
 
     /**
      * 生产日期
      */
-    public static final int ProductionDate = 5;
+    public static final int PRODUCTION_DATE = 5;
 
     /**
      * 流水号
      */
-    public static final int SerialNo = 6;
+    public static final int SERIAL_NO = 6;
 }
