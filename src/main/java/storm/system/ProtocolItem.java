@@ -1,30 +1,9 @@
 package storm.system;
 
-import storm.protocol.SUBMIT_REALTIME;
-
 /**
  * 协议项
  */
 public final class ProtocolItem {
-
-	public static final String getVID() {
-	    return SysDefine.VID;
-	}
-    public static String getVIN() {
-        return SysDefine.VIN;
-    }
-    /** 时间 */
-    public static final String getTIME() {
-        return SysDefine.TIME;
-    }
-    /** 定时任务关键字 */
-    public static String getONLINEUTC() {
-        return SysDefine.ONLINEUTC;
-    }
-    /** 消息类型 */
-    public static String getMESSAGETYPE() {
-        return SysDefine.MESSAGETYPE;
-    }
 
     public static final String ICCID = "ICCID";//新的报文定义 给web 字段为 ICCID
     public static final String REG_TYPE="TYPE"; //平台注册通知类型 0:从未上过线，1:车机终端上线 ，2:车机离线，3:平台上线，4:平台下线

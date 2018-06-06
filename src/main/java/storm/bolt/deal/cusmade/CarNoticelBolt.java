@@ -10,9 +10,11 @@ import org.apache.storm.tuple.Values;
 
 import com.alibaba.fastjson.JSON;
 
+import storm.bolt.deal.norm.FilterBolt;
 import storm.cache.SysRealDataCache;
 import storm.handler.FaultCodeHandler;
 import storm.handler.cusmade.*;
+import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.SysDefine;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
@@ -25,7 +27,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-@SuppressWarnings("all")
 public final class CarNoticelBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1700001L;
@@ -49,6 +50,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
     private FaultCodeHandler codeHandler;
     public static ScheduledExecutorService service;
     private static int ispreCp=0;
+
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
@@ -182,7 +184,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
         	carOnOffhandler.onoffCheck("TIMEOUT",1,now,offlinetime);
         }
-    	if(SysDefine.CUS_NOTICE_GROUP.equals(tuple.getSourceStreamId())){
+    	if(CUS_NOTICE_GROUP.streamId.equals(tuple.getSourceStreamId())){
     		String vid = tuple.getString(0);
             Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
             if (null == data.get(SysDefine.VID)) 
@@ -195,15 +197,13 @@ public final class CarNoticelBolt extends BaseRichBolt {
 			}
             //返回车辆通知
             //先检查规则是否启用，启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
-            List<Map<String, Object>> msgs = carRulehandler.genotices(data);
-        	if (null != msgs && msgs.size()>0) {
-				for (Map<String, Object> map : msgs) {
-					if (null != map && map.size() > 0) {
-						String json=JSON.toJSONString(map);
-						sendToKafka(SysDefine.CUS_NOTICE,noticeTopic,vid, json);
-					}
-				}
-			}
+            List<Map<String, Object>> msgs = carRulehandler.generateNotices(data);
+            for(Map<String, Object> map: msgs) {
+                if (null != map && map.size() > 0) {
+                    String json=JSON.toJSONString(map);
+                    sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
+                }
+            }
         	
         	List<Map<String, Object>> faultcodemsgs = codeHandler.handle(data);
         	if (null != faultcodemsgs && faultcodemsgs.size()>0) {

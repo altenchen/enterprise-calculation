@@ -12,6 +12,7 @@ import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import storm.protocol.*;
+import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
 import storm.util.*;
 import storm.system.ProtocolItem;
@@ -32,6 +33,7 @@ import java.util.TreeMap;
 public class FilterBolt extends BaseRichBolt {
 	private static final long serialVersionUID = 1700001L;
 	private OutputCollector collector;
+	private CUS_NOTICE_GROUP _cus_notice_group;
 //    public static long redisUpdateTime = 0L;
     
 //    public static ScheduledExecutorService service;
@@ -58,6 +60,7 @@ public class FilterBolt extends BaseRichBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
+        _cus_notice_group = CUS_NOTICE_GROUP.prepareOnce(collector);
 
         maxMileMap = new HashMap<String, Long>();
         minMileMap = new HashMap<String, Long>();
@@ -253,7 +256,7 @@ public class FilterBolt extends BaseRichBolt {
             			|| CommandType.SUBMIT_TERMSTATUS.equals(type)
             			|| CommandType.SUBMIT_CARSTATUS.equals(type)){
             	    // consumer: SOC与超时处理
-            		sendMessages(SysDefine.CUS_NOTICE_GROUP,null,vid,stateNewKV,true);
+                    _cus_notice_group.emit(vid, stateNewKV);
             	}
             	if (CommandType.SUBMIT_REALTIME.equals(type)
             			|| CommandType.SUBMIT_LINKSTATUS.equals(type)
@@ -284,7 +287,7 @@ public class FilterBolt extends BaseRichBolt {
         declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(SysDefine.VID, "DATA"));
         declarer.declareStream(SysDefine.YAACTION_GROUP, new Fields(SysDefine.VID, "DATA"));
         declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(SysDefine.VID, "DATA"));
-        declarer.declareStream(SysDefine.CUS_NOTICE_GROUP, new Fields(SysDefine.VID, "DATA"));
+        CUS_NOTICE_GROUP.declareStreamOnce(declarer);
         declarer.declareStream(SysDefine.HISTORY, new Fields("TOPIC", SysDefine.VID, "VALUE"));
     }
 

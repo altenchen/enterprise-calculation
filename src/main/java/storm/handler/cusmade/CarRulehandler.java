@@ -10,6 +10,7 @@ import java.util.TreeMap;
 import com.alibaba.fastjson.JSON;
 import com.sun.jersey.core.util.Base64;
 
+import org.jetbrains.annotations.NotNull;
 import storm.cache.SysRealDataCache;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
@@ -20,6 +21,7 @@ import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
+import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
@@ -247,24 +249,31 @@ public class CarRulehandler implements InfoNotice{
 		return null;
 	}
 
+	/**
+	 * 生成通知
+	 * @param data
+	 * @return
+	 */
 	@Override
-	public List<Map<String, Object>> genotices(Map<String, String> dat) {
-		//1、验证dat的有效性
-		if (ObjectUtils.isNullOrEmpty(dat)
-				|| !dat.containsKey(ProtocolItem.getVID())
-				|| !dat.containsKey(ProtocolItem.getTIME())) {
-			return null;
+    @NotNull
+	public List<Map<String, Object>> generateNotices(@NotNull Map<String, String> data) {
+        // 为下面的方法做准备，生成相应的容器。
+        final List<Map<String, Object>> list = new LinkedList<>();
+
+		// 验证data的有效性
+		if (ObjectUtils.isNullOrEmpty(data)
+				|| !data.containsKey(DataKey.VEHICLE_ID)
+				|| !data.containsKey(DataKey.TIME)) {
+			return list;
 		}
-		
-		String vid = dat.get(ProtocolItem.getVID());
-		if (ObjectUtils.isNullOrEmpty(vid)
-				|| ObjectUtils.isNullOrEmpty(dat.get(ProtocolItem.getTIME()))) {
-			return null;
+
+        String vid = data.get(DataKey.VEHICLE_ID);
+        if (ObjectUtils.isNullOrEmpty(vid)
+				|| ObjectUtils.isNullOrEmpty(data.get(DataKey.TIME))) {
+			return list;
 		}
 		
 		lastTime.put(vid, System.currentTimeMillis());
-		//2、为下面的方法做准备，生成相应的容器。
-		List<Map<String, Object>> list = new LinkedList<Map<String, Object>>();
 		
 		List<Map<String, Object>> socjudges = null;
 		Map<String, Object> canjudge = null;
@@ -276,29 +285,29 @@ public class CarRulehandler implements InfoNotice{
 		Map<String, Object> mileHopjudge = null;
 		//3、如果规则启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
 		if (1 == socRule){
-			//lowsoc(dat)返回一个map，里面有vid和通知消息（treeMap）
-			socjudges = lowsoc(dat);
+			//lowsoc(data)返回一个map，里面有vid和通知消息（treeMap）
+			socjudges = lowsoc(data);
 		}
 		if (1 == enableCanRule){
-			canjudge = nocan(dat);
+			canjudge = nocan(data);
 		}
 		if (1 == igniteRule){
-			ignite = igniteShut(dat);
+			ignite = igniteShut(data);
 		}
 		if (1 == gpsRule){
-			gpsjudge = nogps(dat);
+			gpsjudge = nogps(data);
 		}
 		if (1 == abnormalRule){
-			abnormaljudge = abnormalCar(dat);
+			abnormaljudge = abnormalCar(data);
 		}
 		if (1 == flyRule){
-			flyjudge = flySe(dat);
+			flyjudge = flySe(data);
 		}
 		if (1 == onoffRule){
-			onoff = onOffline(dat);
+			onoff = onOffline(data);
 		}
 		if (1 == mileHopRule){
-			mileHopjudge = mileHopHandle(dat);
+			mileHopjudge = mileHopHandle(data);
 		}
 		if (! ObjectUtils.isNullOrEmpty(socjudges)) {
 			list.addAll(socjudges);
@@ -324,10 +333,8 @@ public class CarRulehandler implements InfoNotice{
 		if (! ObjectUtils.isNullOrEmpty(mileHopjudge)) {
 			list.add(mileHopjudge);
 		}
-		if (list.size()>0) {
-			return list;
-		}
-		return null;
+
+		return list;
 	}
 	
 	//soc<30 后面抽象成通用的规则
@@ -339,8 +346,8 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.getVID());
-			String time = dat.get(ProtocolItem.getTIME());
+            String vid = dat.get(DataKey.VEHICLE_ID);
+            String time = dat.get(DataKey.TIME);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
@@ -536,8 +543,8 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.getVID());
-			String time = dat.get(ProtocolItem.getTIME());
+            String vid = dat.get(DataKey.VEHICLE_ID);
+            String time = dat.get(DataKey.TIME);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
@@ -718,9 +725,9 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.getVID());
-			String time = dat.get(ProtocolItem.getTIME());
-			String msgType = dat.get(ProtocolItem.getMESSAGETYPE());
+            String vid = dat.get(DataKey.VEHICLE_ID);
+            String time = dat.get(DataKey.TIME);
+            String msgType = dat.get(SysDefine.MESSAGETYPE);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(msgType)) {
@@ -741,8 +748,8 @@ public class CarRulehandler implements InfoNotice{
 						int nowmileHop = Math.abs(mile-lastMile);//里程跳变
 						
 						if (nowmileHop >= mileHop) {
-							String lastTime = (String)lastMap.get(ProtocolItem.getTIME());//上一帧的时间即为跳变的开始时间
-							String vin = dat.get(ProtocolItem.getVIN());
+                            String lastTime = (String)lastMap.get(DataKey.TIME);//上一帧的时间即为跳变的开始时间
+                            String vin = dat.get(DataKey.VEHICLE_NUMBER);
 							notice = new TreeMap<String, Object>();
 							notice.put("msgType", "HOP_MILE");//这些字段是前端方面要求的。
 							notice.put("vid", vid);
@@ -771,11 +778,11 @@ public class CarRulehandler implements InfoNotice{
 		mileage = NumberUtils.stringNumber(mileage);
 		if (!"0".equals(mileage)) {
 			Map<String, Object> lastMap = new TreeMap<String, Object>();
-			String vid = dat.get(ProtocolItem.getVID());
-			String time = dat.get(ProtocolItem.getTIME());
+            String vid = dat.get(DataKey.VEHICLE_ID);
+            String time = dat.get(DataKey.TIME);
 			int mile = Integer.parseInt(mileage);
-			lastMap.put(ProtocolItem.getVID(), vid);
-			lastMap.put(ProtocolItem.getTIME(), time);
+            lastMap.put(DataKey.VEHICLE_ID, vid);
+            lastMap.put(DataKey.TIME, time);
 			lastMap.put(SUBMIT_REALTIME.TOTAL_MILEAGE, mile);
 			vidLastDat.put(vid, lastMap);
 		}
@@ -791,9 +798,9 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.getVID());
-			String vin = dat.get(ProtocolItem.getVIN());
-			String time = dat.get(ProtocolItem.getTIME());
+            String vid = dat.get(DataKey.VEHICLE_ID);
+            String vin = dat.get(DataKey.VEHICLE_NUMBER);
+            String time = dat.get(DataKey.TIME);
 			String carStatus = dat.get(SUBMIT_REALTIME.CAR_STATUS);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
@@ -935,8 +942,8 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.getVID());
-			String time = dat.get(ProtocolItem.getTIME());
+            String vid = dat.get(DataKey.VEHICLE_ID);
+            String time = dat.get(DataKey.TIME);
 			String speed = dat.get(SUBMIT_REALTIME.SPEED);
 			String rev = dat.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_REV);
 			if (ObjectUtils.isNullOrEmpty(vid)
@@ -1021,8 +1028,8 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.getVID());
-			String time = dat.get(ProtocolItem.getTIME());
+            String vid = dat.get(DataKey.VEHICLE_ID);
+            String time = dat.get(DataKey.TIME);
 			String speed = dat.get(SUBMIT_REALTIME.SPEED);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
@@ -1116,8 +1123,8 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.getVID());
-			String time = dat.get(ProtocolItem.getTIME());
+            String vid = dat.get(DataKey.VEHICLE_ID);
+            String time = dat.get(DataKey.TIME);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
@@ -1231,9 +1238,9 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.getVID());
-			String vin = dat.get(ProtocolItem.getVIN());
-			String time = dat.get(ProtocolItem.getTIME());
+            String vid = dat.get(DataKey.VEHICLE_ID);
+            String vin = dat.get(DataKey.VEHICLE_NUMBER);
+            String time = dat.get(DataKey.TIME);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(vin)) {

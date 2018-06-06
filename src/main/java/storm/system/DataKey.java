@@ -15,6 +15,16 @@ public final class DataKey {
     public static final String VEHICLE_ID = "VID";
 
     /**
+     * VIN
+     */
+    public static final String VEHICLE_NUMBER = "VIN";
+
+    /**
+     * 时间
+     */
+    public static final String TIME = "TIME";
+
+    /**
      * 车辆类型, 预警用于匹配约束条件
      */
     public static final String VEHICLE_TYPE = "VTYPE";

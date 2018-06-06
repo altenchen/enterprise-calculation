@@ -1,5 +1,7 @@
 package storm.handler.cusmade;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +17,14 @@ import java.util.Map;
 public interface InfoNotice {
 
 	Map<String, Object> genotice(Map<String, String> dat);
-	List<Map<String, Object>> genotices(Map<String, String> dat);
+
+	/**
+	 * 生成通知
+	 * @param dat
+	 * @return 通知列表
+	 */
+	@NotNull
+	List<Map<String, Object>> generateNotices(@NotNull Map<String, String> dat);
+
 	List<Map<String, Object>> offlineMethod(long now);
 }

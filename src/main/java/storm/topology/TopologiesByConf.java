@@ -16,6 +16,7 @@ import java.util.Properties;
 
 import storm.kafka.scheme.ErrorDataScheme;
 import storm.kafka.scheme.RegScheme;
+import storm.stream.CUS_NOTICE_GROUP;
 import storm.util.ConfigUtils;
 import storm.kafka.scheme.RealinfoScheme;
 import storm.kafka.KafkaConfig;
@@ -267,7 +268,7 @@ public class TopologiesByConf {
             // soc 与超时处理实时数据
             .fieldsGrouping(
                 SysDefine.CHECKFILTER_BOLT_ID,
-                SysDefine.CUS_NOTICE_GROUP,
+                CUS_NOTICE_GROUP.streamId,
                 new Fields(SysDefine.VID));
 
         builder

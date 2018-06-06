@@ -23,7 +23,6 @@ import storm.handler.cal.RedisClusterLoaderUseCtfo;
 import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
-import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
@@ -165,11 +164,11 @@ public class SysRealDataCache {
 			return;
 		}
 		if ( !dat.containsKey(DataKey.VEHICLE_ID)
-				|| !dat.containsKey(ProtocolItem.getVIN())) {
+				|| !dat.containsKey(DataKey.VEHICLE_NUMBER)) {
 			return;
 		}
-		String vid = dat.get(ProtocolItem.getVID());
-		String vin = dat.get(ProtocolItem.getVIN());
+		String vid = dat.get(DataKey.VEHICLE_ID);
+		String vin = dat.get(DataKey.VEHICLE_NUMBER);
 		String[] strings = carInfoByVin(vin);
 		if(null ==strings || strings.length != 15)
 			return ;
@@ -178,7 +177,7 @@ public class SysRealDataCache {
 			return;
 		}
 		if (chargeTypes.contains(cartypeId.trim())) {
-			String time = dat.get(ProtocolItem.getTIME());
+			String time = dat.get(DataKey.TIME);
 			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
 			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
 			

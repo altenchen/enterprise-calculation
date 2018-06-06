@@ -246,6 +246,5 @@ public final class SysDefine {
 	public static final String REG_STREAM_ID = "regStreamId";
 	/** 接收传送过来的同步es streamId分组 **/
 	public static final String CUS_NOTICE_BOLT_ID = "cusnoticeboltid";
-	public static final String CUS_NOTICE_GROUP = "cusnoticeGroup";
 	public static final String CUS_NOTICE = "cusnotice";
 }
