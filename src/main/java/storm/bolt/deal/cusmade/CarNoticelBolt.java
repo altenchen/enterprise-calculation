@@ -26,12 +26,19 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("all")
-public class CarNoticelBolt extends BaseRichBolt {
+public final class CarNoticelBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1700001L;
+
 	private OutputCollector collector;
-	private static String noticeTopic;
+
+	// 输出到Kafka的主题
+	private String noticeTopic;
+
+	//
 	private long lastExeTime;
+
+	//
     private long timeoutchecktime = 1800000;//半小时
     private long timeouttime = 86400000;//1天 用于闲置车辆
     private long lastOfflinecheck;//用于离线判断

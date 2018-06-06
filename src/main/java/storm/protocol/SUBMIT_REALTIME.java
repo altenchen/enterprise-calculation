@@ -4,7 +4,7 @@ package storm.protocol;
  * @author: xzp
  * @date: 2018-06-05
  * @description: 实时信息上报
- * TODO: 变量命名
+ * 数字下标的采用 _索引数字_易读命名 的格式
  */
 public final class SUBMIT_REALTIME {
 
@@ -25,11 +25,6 @@ public final class SUBMIT_REALTIME {
      * 协议版本:1.0.0
      */
     public static final String CAR_TYPE = "CTYPE";
-
-    /**
-     * 采集时间
-     */
-    public static final String COLLECT_TIME = "2000";
 
     /**
      * 单体蓄电池总数
@@ -344,7 +339,7 @@ public final class SUBMIT_REALTIME {
     /**
      * 动力蓄电池报警标志
      */
-    public static final String _2801 = "2801";
+    public static final String POWER_BATTERY_ALARM_FLAG_2801 = "2801";
 
     /**
      * 动力蓄电池其他故障总数
@@ -394,7 +389,9 @@ public final class SUBMIT_REALTIME {
     /**
      * 充电状态
      */
-    public static final String ALARM_STATUS="2920";
+    public static final String ALARM_STATUS = "2920";
+    public static final String 充电状态_2920 = "2920";
+    public static final String _2920_充电状态 = "2920";
 
     /**
      * 车辆状态

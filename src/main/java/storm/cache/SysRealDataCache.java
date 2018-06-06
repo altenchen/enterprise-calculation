@@ -22,6 +22,7 @@ import storm.dto.FillChargeCar;
 import storm.handler.cal.RedisClusterLoaderUseCtfo;
 import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
+import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
@@ -163,7 +164,7 @@ public class SysRealDataCache {
 		if (null == dat || dat.size() ==0) {
 			return;
 		}
-		if ( !dat.containsKey(SUBMIT_REALTIME.VEHICLE_ID)
+		if ( !dat.containsKey(DataKey.VEHICLE_ID)
 				|| !dat.containsKey(ProtocolItem.getVIN())) {
 			return;
 		}
@@ -198,7 +199,7 @@ public class SysRealDataCache {
 		if (null == dat || dat.size() ==0) {
 			return;
 		}
-		if (!dat.containsKey(SUBMIT_REALTIME.VEHICLE_ID)) {
+		if (!dat.containsKey(DataKey.VEHICLE_ID)) {
 			return;
 		}
 		try {
@@ -222,7 +223,7 @@ public class SysRealDataCache {
 					newmap.put(mapkey, value);
 				}
 			}
-			String vid = newmap.get(SUBMIT_REALTIME.VEHICLE_ID);
+			String vid = newmap.get(DataKey.VEHICLE_ID);
 			carlastrecord.put(vid, newmap);
 			addLastQueue(vid);
 		} catch (Exception e) {

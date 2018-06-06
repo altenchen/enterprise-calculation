@@ -175,6 +175,8 @@ public final class SysDefine {
     public final static String VEHICLENO = "vehicleno"; // 车牌号
 
   /*-------------------------------指令-------------------------------------*/
+    /** 消息前缀 */
+    public static final String PREFIX = "PREFIX";
     /** 消息类型 */
     public static final String MESSAGETYPE = "MESSAGETYPE";
     /** 时间 */
