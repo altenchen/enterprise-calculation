@@ -389,7 +389,6 @@ public class TopologiesByConf {
      */
     private static void fillKafkaConf(@NotNull Properties properties){
 	    // TODO: 转为存储到单例类
-
         SysDefine.BROKER_HOSTS = properties.getProperty("kafka.broker.hosts");
 
         SysDefine.ERROR_DATA_GROUPID = properties.getProperty("kafka.metadata.veh_error_groupid");

@@ -15,6 +15,10 @@ import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
+import storm.protocol.CommandType;
+import storm.protocol.SUBMIT_LINKSTATUS;
+import storm.protocol.SUBMIT_LOGIN;
+import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
@@ -247,14 +251,14 @@ public class CarRulehandler implements InfoNotice{
 	public List<Map<String, Object>> genotices(Map<String, String> dat) {
 		//1、验证dat的有效性
 		if (ObjectUtils.isNullOrEmpty(dat)
-				|| !dat.containsKey(ProtocolItem.VID)
-				|| !dat.containsKey(ProtocolItem.TIME)) {
+				|| !dat.containsKey(ProtocolItem.getVID())
+				|| !dat.containsKey(ProtocolItem.getTIME())) {
 			return null;
 		}
 		
-		String vid = dat.get(ProtocolItem.VID);
+		String vid = dat.get(ProtocolItem.getVID());
 		if (ObjectUtils.isNullOrEmpty(vid)
-				|| ObjectUtils.isNullOrEmpty(dat.get(ProtocolItem.TIME))) {
+				|| ObjectUtils.isNullOrEmpty(dat.get(ProtocolItem.getTIME()))) {
 			return null;
 		}
 		
@@ -335,15 +339,15 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
 			}
-			String soc = dat.get(ProtocolItem.SOC);
-			String latit = dat.get(ProtocolItem.latitude);
-			String longi = dat.get(ProtocolItem.longitude);
+			String soc = dat.get(SUBMIT_REALTIME.SOC);
+			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
+			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
 			String location = longi+","+latit;
 			String noticetime = timeformat.toDateString(new Date());
 			List<Map<String, Object>> noticeMsgs = new LinkedList<Map<String, Object>>();
@@ -455,8 +459,8 @@ public class CarRulehandler implements InfoNotice{
 				//save to redis map
 				Map<String, Object> jsonMap = new TreeMap<String, Object>();
 				jsonMap.put("vid", chargeCar.vid);
-				jsonMap.put("longitude", chargeCar.longitude);
-				jsonMap.put("latitude", chargeCar.latitude);
+				jsonMap.put("LONGITUDE", chargeCar.longitude);
+				jsonMap.put("LATITUDE", chargeCar.latitude);
 				jsonMap.put("lastOnline", chargeCar.lastOnline);
 				jsonMap.put("distance", distance);
 				
@@ -532,27 +536,27 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
 			}
 			String canList = dat.get(ProtocolItem.CAN_LIST);
-			String latit = dat.get(ProtocolItem.latitude);
-			String longi = dat.get(ProtocolItem.longitude);
+			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
+			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
 			String location = longi+","+latit;
 			//noticetime为当前时间
 			Date date= new Date();
 			String noticetime = timeformat.toDateString(date);
 			
-			String carStatus = dat.get(ProtocolItem.CAR_STATUS);
-			String soc = dat.get(ProtocolItem.SOC);
+			String carStatus = dat.get(SUBMIT_REALTIME.CAR_STATUS);
+			String soc = dat.get(SUBMIT_REALTIME.SOC);
 			
-			String macList = dat.get(ProtocolItem.DRIVING_ELE_MAC_LIST);
+			String macList = dat.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_LIST);
 			
-			String hignVolt = dat.get(ProtocolItem.SINGLE_VOLT_HIGN_VAL);
-			String lowTemp = dat.get(ProtocolItem.SINGLE_LOWTEMP_VAL);
+			String hignVolt = dat.get(SUBMIT_REALTIME.SINGLE_VOLT_HIGN_VAL);
+			String lowTemp = dat.get(SUBMIT_REALTIME.SINGLE_LOWTEMP_VAL);
 			
 			boolean hasMacCan = false;
 			if (!ObjectUtils.isNullOrEmpty(macList)){
@@ -575,13 +579,13 @@ public class CarRulehandler implements InfoNotice{
 							}
 							
 							if (motor.size() > 0) {
-								String drivingEleMacStatus = motor.get(ProtocolItem.DRIVING_ELE_MAC_STATUS);//"2310";//driving 驱动电机状态
-			        			String drivingEleMacTempCtol = motor.get(ProtocolItem.DRIVING_ELE_MAC_TEMPCTOL);//"2302";//driving 驱动电机温度控制器
-			        			String drivingEleMacRev = motor.get(ProtocolItem.DRIVING_ELE_MAC_REV);//"2303";//driving 驱动电机转速
-			        			String drivingEleMacTorque = motor.get(ProtocolItem.DRIVING_ELE_MAC_TORQUE);//"2311";//driving 驱动电机转矩
-			        			String drivingEleMacTemp = motor.get(ProtocolItem.DRIVING_ELE_MAC_TEMP);//"2304";//driving 驱动电机温度
-			        			String drivingEleMacVolt = motor.get(ProtocolItem.DRIVING_ELE_MAC_VOLT);//"2305";//driving 驱动电机输入电压
-			        			String drivingEleMacEle = motor.get(ProtocolItem.DRIVING_ELE_MAC_ELE);//"2306";//driving 驱动电机母线电流
+								String drivingEleMacStatus = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_STATUS);//"2310";//driving 驱动电机状态
+			        			String drivingEleMacTempCtol = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_TEMPCTOL);//"2302";//driving 驱动电机温度控制器
+			        			String drivingEleMacRev = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_REV);//"2303";//driving 驱动电机转速
+			        			String drivingEleMacTorque = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_TORQUE);//"2311";//driving 驱动电机转矩
+			        			String drivingEleMacTemp = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_TEMP);//"2304";//driving 驱动电机温度
+			        			String drivingEleMacVolt = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_VOLT);//"2305";//driving 驱动电机输入电压
+			        			String drivingEleMacEle = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_ELE);//"2306";//driving 驱动电机母线电流
 			        			//只要有其中之一的数据就说明有电机can状态
 			        			boolean nullAll = ObjectUtils.isNullOrEmpty(drivingEleMacTemp)
 			        					&& ObjectUtils.isNullOrEmpty(drivingEleMacVolt)
@@ -671,7 +675,7 @@ public class CarRulehandler implements InfoNotice{
 					cnts++;
 					vidnormcan.put(vid, cnts);
 					
-					if (cnts >=hascanJudgeNum || (cnts >= 3 && null!=dat.get(ProtocolItem.LOGOUT_TIME))) {
+					if (cnts >=hascanJudgeNum || (cnts >= 3 && null!=dat.get(SUBMIT_LOGIN.LOGOUT_TIME))) {
 						
 						vidnormcan.remove(vid);
 						
@@ -714,18 +718,18 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
-			String msgType = dat.get(ProtocolItem.MESSAGETYPE);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
+			String msgType = dat.get(ProtocolItem.getMESSAGETYPE());
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(msgType)) {
 				return null;
 			}
 			Map<String, Object> notice = null;
-			if (ProtocolItem.REALTIME.equals(msgType)) {
+			if (CommandType.SUBMIT_REALTIME.equals(msgType)) {
 				
-				String mileage = dat.get(ProtocolItem.TOTAL_MILEAGE);//当前总里程
+				String mileage = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);//当前总里程
 				
 				if (vidLastDat.containsKey(vid)) {
 					//mileage如果是数字字符串则返回，不是则返回字符串“0”
@@ -733,12 +737,12 @@ public class CarRulehandler implements InfoNotice{
 					if (!"0".equals(mileage)) {
 						int mile = Integer.parseInt(mileage);//当前总里程
 						Map<String, Object> lastMap = vidLastDat.get(vid);
-						int lastMile = (int)lastMap.get(ProtocolItem.TOTAL_MILEAGE);//上一帧的总里程
+						int lastMile = (int)lastMap.get(SUBMIT_REALTIME.TOTAL_MILEAGE);//上一帧的总里程
 						int nowmileHop = Math.abs(mile-lastMile);//里程跳变
 						
 						if (nowmileHop >= mileHop) {
-							String lastTime = (String)lastMap.get(ProtocolItem.TIME);//上一帧的时间即为跳变的开始时间
-							String vin = dat.get(ProtocolItem.VIN);
+							String lastTime = (String)lastMap.get(ProtocolItem.getTIME());//上一帧的时间即为跳变的开始时间
+							String vin = dat.get(ProtocolItem.getVIN());
 							notice = new TreeMap<String, Object>();
 							notice.put("msgType", "HOP_MILE");//这些字段是前端方面要求的。
 							notice.put("vid", vid);
@@ -763,16 +767,16 @@ public class CarRulehandler implements InfoNotice{
 		return null;
 	}
 	private void setLastDat(Map<String, String> dat){
-		String mileage = dat.get(ProtocolItem.TOTAL_MILEAGE);
+		String mileage = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);
 		mileage = NumberUtils.stringNumber(mileage);
 		if (!"0".equals(mileage)) {
 			Map<String, Object> lastMap = new TreeMap<String, Object>();
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
 			int mile = Integer.parseInt(mileage);
-			lastMap.put(ProtocolItem.VID, vid);
-			lastMap.put(ProtocolItem.TIME, time);
-			lastMap.put(ProtocolItem.TOTAL_MILEAGE, mile);
+			lastMap.put(ProtocolItem.getVID(), vid);
+			lastMap.put(ProtocolItem.getTIME(), time);
+			lastMap.put(SUBMIT_REALTIME.TOTAL_MILEAGE, mile);
 			vidLastDat.put(vid, lastMap);
 		}
 	}
@@ -787,23 +791,23 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String vin = dat.get(ProtocolItem.VIN);
-			String time = dat.get(ProtocolItem.TIME);
-			String carStatus = dat.get(ProtocolItem.CAR_STATUS);
+			String vid = dat.get(ProtocolItem.getVID());
+			String vin = dat.get(ProtocolItem.getVIN());
+			String time = dat.get(ProtocolItem.getTIME());
+			String carStatus = dat.get(SUBMIT_REALTIME.CAR_STATUS);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(carStatus)) {
 				return null;
 			}
 			
-			String latit = dat.get(ProtocolItem.latitude);
-			String longi = dat.get(ProtocolItem.longitude);
+			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
+			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
 			String location = longi+","+latit;
 			String noticetime = timeformat.toDateString(new Date());
-			String speed = dat.get(ProtocolItem.SPEED);
-			String socStr = dat.get(ProtocolItem.SOC);
-			String mileageStr = dat.get(ProtocolItem.TOTAL_MILEAGE);
+			String speed = dat.get(SUBMIT_REALTIME.SPEED);
+			String socStr = dat.get(SUBMIT_REALTIME.SOC);
+			String mileageStr = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);
 			
 			double soc = -1;
 			if (!ObjectUtils.isNullOrEmpty(socStr)) {
@@ -931,10 +935,10 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
-			String speed = dat.get(ProtocolItem.SPEED);
-			String rev = dat.get(ProtocolItem.DRIVING_ELE_MAC_REV);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
+			String speed = dat.get(SUBMIT_REALTIME.SPEED);
+			String rev = dat.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_REV);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(speed)
@@ -943,8 +947,8 @@ public class CarRulehandler implements InfoNotice{
 			}
 			double spd = Double.parseDouble(NumberUtils.stringNumber(speed));
 			double rv = Double.parseDouble(NumberUtils.stringNumber(rev));
-			String latit = dat.get(ProtocolItem.latitude);
-			String longi = dat.get(ProtocolItem.longitude);
+			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
+			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
 			String location = longi+","+latit;
 			String noticetime = timeformat.toDateString(new Date());
 			if (spd > 0 && rv>0) {
@@ -1017,16 +1021,16 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
-			String speed = dat.get(ProtocolItem.SPEED);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
+			String speed = dat.get(SUBMIT_REALTIME.SPEED);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(speed)) {
 				return null;
 			}
-			String latit = dat.get(ProtocolItem.latitude);
-			String longi = dat.get(ProtocolItem.longitude);
+			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
+			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
 			String location = longi+","+latit;
 			String noticetime = timeformat.toDateString(new Date());
 			long msgtime = timeformat.stringTimeLong(time);
@@ -1112,14 +1116,14 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String time = dat.get(ProtocolItem.getTIME());
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
 			}
-			String latit = dat.get(ProtocolItem.latitude);
-			String longi = dat.get(ProtocolItem.longitude);
+			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
+			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
 			//noticetime为当前时间
 			Date date= new Date();
 			String noticetime = timeformat.toDateString(date);
@@ -1191,7 +1195,7 @@ public class CarRulehandler implements InfoNotice{
 					cnts++;
 					vidnormgps.put(vid, cnts);
 					//有效gps报文超过hasgpsJudgeNum  || 有效gps报文在（3贞以上，10贞以下）同时车辆登出
-					if (cnts >=hasgpsJudgeNum || (cnts > 3 && null!=dat.get(ProtocolItem.LOGOUT_TIME)) ) {
+					if (cnts >=hasgpsJudgeNum || (cnts > 3 && null!=dat.get(SUBMIT_LOGIN.LOGOUT_TIME)) ) {
 						
 						vidnormgps.remove(vid);
 						//如果未定位开始通知没有发送，则不会发送结束通知，只会把各个缓存清空
@@ -1227,9 +1231,9 @@ public class CarRulehandler implements InfoNotice{
 			return null;
 		}
 		try {
-			String vid = dat.get(ProtocolItem.VID);
-			String vin = dat.get(ProtocolItem.VIN);
-			String time = dat.get(ProtocolItem.TIME);
+			String vid = dat.get(ProtocolItem.getVID());
+			String vin = dat.get(ProtocolItem.getVIN());
+			String time = dat.get(ProtocolItem.getTIME());
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(vin)) {
@@ -1282,15 +1286,15 @@ public class CarRulehandler implements InfoNotice{
 	
 	private boolean isOffline(Map<String, String> dat){
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		if (SysDefine.LOGIN.equals(msgType)) {
+		if (CommandType.SUBMIT_LOGIN.equals(msgType)) {
 			String type = dat.get(ProtocolItem.REG_TYPE);
 			if ("1".equals(type)){
 				return false;
 			} else if ("2".equals(type)){
 				return true;
 			} else {
-				String logoutTime = dat.get(ProtocolItem.LOGOUT_TIME);
-				String loginTime = dat.get(ProtocolItem.LOGIN_TIME);
+				String logoutTime = dat.get(SUBMIT_LOGIN.LOGOUT_TIME);
+				String loginTime = dat.get(SUBMIT_LOGIN.LOGIN_TIME);
 				if (! ObjectUtils.isNullOrEmpty(logoutTime) 
 						&& !ObjectUtils.isNullOrEmpty(logoutTime)) {
 					long logout = Long.parseLong(NumberUtils.stringNumber(logoutTime));
@@ -1307,15 +1311,15 @@ public class CarRulehandler implements InfoNotice{
 					return true;
 				}
 			}
-		} else if (SysDefine.LINKSTATUS.equals(msgType)){
-			String linkType = dat.get(ProtocolItem.LINK_TYPE);
+		} else if (CommandType.SUBMIT_LINKSTATUS.equals(msgType)){
+			String linkType = dat.get(SUBMIT_LINKSTATUS.LINK_TYPE);
 			if ("1".equals(linkType)
 					||"2".equals(linkType)) {
 				return false;
 			} else if("3".equals(linkType)){
 				return true;
 			}
-		} else if (SysDefine.REALTIME.equals(msgType)){
+		} else if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 			return false;
 		}
 		return false;

@@ -17,11 +17,17 @@ import redis.clients.jedis.exceptions.JedisException;
 import storm.util.ObjectUtils;
 import storm.util.RedisPoolUtils;
 
-public class DataToRedis {
+/**
+ * 将数据存储到Redis
+ */
+public final class DataToRedis {
+
 	private static Logger logger = LoggerFactory.getLogger(DataToRedis.class);
+
 	public void saveVehData(String VID, Object obj){
 		saveVehData(RedisPoolUtils.getJedisPool(),VID,obj);
 	}
+
 	public void saveVehData(JedisPool jedisPool,String VID, Object obj) {
 		Jedis jedis=null;
 		try{
@@ -33,11 +39,12 @@ public class DataToRedis {
 		}catch(Exception ex){
 			logger.error("存储测试车辆数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null){ 
+			if(jedis != null){
 				jedisPool.returnResourceObject(jedis);
 			}
 		}
 	}
+
 	public Object getVehData(String VID){
 		return getVehData(RedisPoolUtils.getJedisPool(), VID);
 	}
@@ -186,8 +193,8 @@ public class DataToRedis {
     }
     /**
 	 * 存储实时数据缓存
-	 * @param vid
-	 * @param sh
+	 * @param map
+	 * @param jedisPool
 	 */
 	public void saveRealtimeMessage(Map<String,String> map,JedisPool jedisPool) {
 		String vid = map.get("VID");
@@ -215,8 +222,8 @@ public class DataToRedis {
 	}
 	/**
 	 * 存储充电缓存
-	 * @param vid
-	 * @param sh
+	 * @param map
+	 * @param jedisPool
 	 */
 	public void saveChargeMessage(Map<String,String> map,JedisPool jedisPool) {
 		
@@ -244,8 +251,8 @@ public class DataToRedis {
 	
 	/**
 	 * 存储实时租赁缓存
-	 * @param vid
-	 * @param sh
+	 * @param map
+	 * @param jedisPool
 	 */
 	public void saveRentcarMessage(Map<String,String> map,JedisPool jedisPool) {
 		
@@ -461,9 +468,8 @@ public class DataToRedis {
 	}
 	/**
 	 * 存储特定数据项的实时数据
-	 * @param vid
-	 * @param string
-	 * @param jedis
+	 * @param map
+	 * @param jedisPool
 	 */
 	public void saveStatisticsMessage(Map<String,String> map,JedisPool jedisPool) {
 		Jedis jedis = null ;
@@ -525,8 +531,9 @@ public class DataToRedis {
 	}
 	/**
 	 * 定时任务更新车辆[在线]/[故障]状态
-	 * @param vid2utc
+	 * @param vidList
 	 * @param dataId
+	 * @param jedisPool
 	 */
 	public void updateStatusByDataId(List<String> vidList,String dataId,JedisPool jedisPool){
 		Jedis jedis = null;

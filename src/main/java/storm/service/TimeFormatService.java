@@ -3,10 +3,18 @@ package storm.service;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class TimeFormatService {
+/**
+ * 时间格式化服务
+ * 精确到毫秒
+ */
+public final class TimeFormatService {
 	private static ThreadLocal<SimpleDateFormat> formatlocal = new ThreadLocal<SimpleDateFormat>();
 
-	public static long stand = 1510243200000L;//2017-11-10 00:00:00
+	private static final long oneDayTotalMillisecond = 1000 * 60 * 60 * 24;
+
+    //2017-11-10 00:00:00
+	private static long stand = 1510243200000L;
+
 	public String toDateString(Date date){
 		if(null == date)
 			return null;
@@ -50,12 +58,14 @@ public class TimeFormatService {
 	 * @return
 	 */
 	public static boolean newDayNearZeroTime(long now){
-		long space = now - stand;
-		int days = (int)(space/86400000);
-		if (now-(stand+86400000L*(days)) < 150000) {// 150秒钟;300000 5分钟
-			return true;
-		}
-		return false;
+//		long space = now - stand;
+//		int days = (int)(space/86400000);
+//		if (now-(stand+86400000L*(days)) < 150000) {// 150秒钟;300000 5分钟
+//			return true;
+//		}
+//		return false;
+
+		return (now % oneDayTotalMillisecond) < (1000 * 150);
 	}
 	/**
 	 * 每天最后的2分钟数据不会计入
@@ -63,12 +73,15 @@ public class TimeFormatService {
 	 * @return
 	 */
 	public static boolean nowNearNextZeroTime(long now){
-		long space = now - stand;
-		int days = (int)(space/86400000);
-		if ((stand+86400000L*(days+1)-now) < 150000) {// 150秒钟;300000 5分钟
-			return true;
-		}
-		return false;
+//		long space = now - stand;
+//		int days = (int)(space/86400000);
+//		if ((stand+86400000L*(days+1)-now) < 150000) {// 150秒钟;300000 5分钟
+//			return true;
+//		}
+//		return false;
+
+
+        return (now % oneDayTotalMillisecond) > (oneDayTotalMillisecond - 1000 * 150);
 	}
 	/**
 	 * 

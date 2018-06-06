@@ -11,6 +11,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 import storm.cache.SysRealDataCache;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
+import storm.protocol.CommandType;
+import storm.protocol.SUBMIT_LINKSTATUS;
+import storm.protocol.SUBMIT_LOGIN;
+import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
@@ -18,6 +22,9 @@ import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.util.UUIDUtils;
 
+/**
+ * 车辆上下线及相关处理
+ */
 public class CarOnOffHandler implements OnOffInfoNotice {
 
 	private Map<String, Map<String, Object>> vididleNotice;
@@ -217,8 +224,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		if (null == dat || dat.size() ==0) {
 			return null;
 		}
-		String vid = dat.get(ProtocolItem.VID);
-		String time = dat.get(ProtocolItem.TIME);
+		String vid = dat.get(ProtocolItem.getVID());
+		String time = dat.get(ProtocolItem.getTIME());
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
 		if (ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
@@ -228,11 +235,11 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		int numSoc = -1;
 		int numMileage = -1;
 		try {
-			if (SysDefine.REALTIME.equals(msgType)){
+			if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 
-				String speed = dat.get(ProtocolItem.SPEED);
-				String soc = dat.get(ProtocolItem.SOC);
-				String mileage = dat.get(ProtocolItem.TOTAL_MILEAGE);
+				String speed = dat.get(SUBMIT_REALTIME.SPEED);
+				String soc = dat.get(SUBMIT_REALTIME.SOC);
+				String mileage = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);
 				//下面三个if类似，都是校验一下，然后将vid和最后一帧的数据存入
 				if (null !=speed && !"".equals(speed)) {
 					speed = NumberUtils.stringNumber(speed);
@@ -278,7 +285,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		String lastUtc = dat.get(ProtocolItem.ONLINEUTC);
+		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
 		String noticetime = timeformat.toDateString(new Date(now));
 		//车辆 是否达到 闲置或者停机 超时的标准
 		boolean isout = istimeout(time, lastUtc, now, timeout);
@@ -354,17 +361,17 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		String vid = dat.get(ProtocolItem.VID);
-		String time = dat.get(ProtocolItem.TIME);
+		String vid = dat.get(ProtocolItem.getVID());
+		String time = dat.get(ProtocolItem.getTIME());
 		if (ObjectUtils.isNullOrEmpty(msgType)
 				||ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
 			return null;
 		}
-		String lastUtc = dat.get(ProtocolItem.ONLINEUTC);
+		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
 		double lastmileage = -1;
-		if (dat.containsKey(ProtocolItem.TOTAL_MILEAGE)) {
-			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(ProtocolItem.TOTAL_MILEAGE)));
+		if (dat.containsKey(SUBMIT_REALTIME.TOTAL_MILEAGE)) {
+			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE)));
 			if (-1 != lastmileage) {
 				vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
 			}
@@ -402,18 +409,18 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		String vid = dat.get(ProtocolItem.VID);
-		String time = dat.get(ProtocolItem.TIME);
+		String vid = dat.get(ProtocolItem.getVID());
+		String time = dat.get(ProtocolItem.getTIME());
 		if (ObjectUtils.isNullOrEmpty(msgType)
 				||ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
 			return null;
 		}
-		String lastUtc = dat.get(ProtocolItem.ONLINEUTC);
+		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
 		String noticetime = timeformat.toDateString(new Date(now));
 		double lastmileage = -1;
-		if (dat.containsKey(ProtocolItem.TOTAL_MILEAGE)) {
-			String mileage = NumberUtils.stringNumber(dat.get(ProtocolItem.TOTAL_MILEAGE));
+		if (dat.containsKey(SUBMIT_REALTIME.TOTAL_MILEAGE)) {
+			String mileage = NumberUtils.stringNumber(dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE));
 			if (! "0".equals(mileage)) {
 
 				lastmileage = Double.parseDouble(mileage);
@@ -438,7 +445,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			}
 
 		} else {
-			if (SysDefine.REALTIME.equals(msgType)
+			if (CommandType.SUBMIT_REALTIME.equals(msgType)
 					&& -1 != lastmileage){
 
 				if (onOffMileNotice.containsKey(vid)) {
@@ -485,7 +492,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 	 */
 	private boolean isOffline(Map<String, String> dat){
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		if (SysDefine.LOGIN.equals(msgType)) {
+		if (CommandType.SUBMIT_LOGIN.equals(msgType)) {
 			//1、先根据自带的TYPE字段进行判断。平台注册通知类型 0:从未上过线，1:车机终端上线 ，2:车机离线，3:平台上线，4:平台下线
 			String type = dat.get(ProtocolItem.REG_TYPE);
 			if ("1".equals(type)){
@@ -494,8 +501,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				return true;
 			} else {
 				//2、如果自带的type字段没数据，则根据登入登出流水号判断。
-				String logoutSeq = dat.get(ProtocolItem.LOGOUT_SEQ);
-				String loginSeq = dat.get(ProtocolItem.LOGIN_SEQ);
+				String logoutSeq = dat.get(SUBMIT_LOGIN.LOGOUT_SEQ);
+				String loginSeq = dat.get(SUBMIT_LOGIN.LOGIN_SEQ);
 				if (! ObjectUtils.isNullOrEmpty(logoutSeq)
 						&& !ObjectUtils.isNullOrEmpty(logoutSeq)) {
 					int logout = Integer.parseInt(NumberUtils.stringNumber(logoutSeq));
@@ -512,16 +519,16 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 					return true;
 				}
 			}
-		} else if (SysDefine.LINKSTATUS.equals(msgType)){
+		} else if (CommandType.SUBMIT_LINKSTATUS.equals(msgType)){
 			//3、如果是链接状态通知，则根据连接状态字段进行判断，1上线，2心跳，3离线
-			String linkType = dat.get(ProtocolItem.LINK_TYPE);
+			String linkType = dat.get(SUBMIT_LINKSTATUS.LINK_TYPE);
 			if ("1".equals(linkType)
 					||"2".equals(linkType)) {
 				return false;
 			} else if("3".equals(linkType)){
 				return true;
 			}
-		} else if (SysDefine.REALTIME.equals(msgType)){
+		} else if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 			//4、如果是实时数据直接返回false
 			return false;
 		}

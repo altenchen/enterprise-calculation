@@ -14,6 +14,9 @@ import storm.dto.fault.FaultMessage;
 import storm.dto.fault.FaultRule;
 import storm.util.dbconn.Conn;
 
+/**
+ * 检查服务
+ */
 public class ExamineService {
 
 	Map<String, Map<String,AlarmMessage>>vidAlarmMsgs;//<vid,<alarmRruleid,msg>>

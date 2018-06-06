@@ -10,6 +10,7 @@ import java.util.TreeMap;
 
 import storm.dto.FaultCode;
 import storm.dto.FaultRuleCode;
+import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
 import storm.system.ProtocolItem;
 import storm.util.ConfigUtils;
@@ -117,8 +118,8 @@ public class FaultCodeHandler {
 		if (null == rules || rules.size() == 0) {
 			return null;
 		}
-		String vid = dat.get(ProtocolItem.VID);
-		String time = dat.get(ProtocolItem.TIME);
+		String vid = dat.get(ProtocolItem.getVID());
+		String time = dat.get(ProtocolItem.getTIME());
 		if (ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
 			return null;
@@ -168,14 +169,14 @@ public class FaultCodeHandler {
 	
 	private List<Map<String, Object>> msgFault(Map<String, String>dat,List<String>msgFcodes,FaultRuleCode rule){
 		List<Map<String, Object>>notices = new LinkedList<Map<String, Object>>();
-		String vid = dat.get(ProtocolItem.VID);
-		String time = dat.get(ProtocolItem.TIME);
+		String vid = dat.get(ProtocolItem.getVID());
+		String time = dat.get(ProtocolItem.getTIME());
 		if (ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
 			return null;
 		}
-		String latit = dat.get(ProtocolItem.latitude);
-		String longi = dat.get(ProtocolItem.longitude);
+		String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
+		String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
 		String location = longi+","+latit;
 		Date date = new Date();
 		String noticetime = timeformat.toDateString(date);

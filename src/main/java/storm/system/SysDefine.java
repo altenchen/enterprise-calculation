@@ -1,6 +1,6 @@
 package storm.system;
 
-public class SysDefine {
+public final class SysDefine {
 	//接收实时数据TOPIC
     public static String VEH_REALINFO_DATA_TOPIC ;
 
@@ -173,30 +173,13 @@ public class SysDefine {
     public final static String PLATECOLORID = "platecolorid"; // 车牌颜色ID
     public final static String TID = "tid"; // 终端ID
     public final static String VEHICLENO = "vehicleno"; // 车牌号
-    public final static String SUBMIT = "SUBMIT";
-    /** 指令类型 原始报文 */
-    public final static String PACKET = "PACKET";
 
-	/*-------------------------------指令-------------------------------------*/
+  /*-------------------------------指令-------------------------------------*/
     /** 消息类型 */
     public static final String MESSAGETYPE = "MESSAGETYPE";
     /** 时间 */
     public static final String TIME = "TIME";
-    /** 未知 */
-    public static final String UNKNOW = "UNKNOW";
-    /** 指令类型 链接状态通知 */
-    public static final String LINKSTATUS = "LINKSTATUS";
-    /** 指令类型 终端注册消息 */
-    public static final String LOGIN = "LOGIN";
-    /** 指令类型 实时信息上报 */
-    public static final String REALTIME = "REALTIME";
-    /** 指令类型 状态信息上报 */
-    public static final String TERMSTATUS = "TERMSTATUS";
-    /** 指令类型 补发信息上报 */
-    public static final String HISTORYDATA = "HISTORY";
-    /** 指令类型 车辆运行状态 */
-    public static final String CARSTATUS = "CARSTATUS";
-    /** 指令类型 租赁点更新数据 */
+  /** 指令类型 租赁点更新数据 */
     public static final String RENTALSTATION = "RENTALSTATION";
     /** 指令类型 租赁点更新数据 */
     public static final String CHARGESTATION = "CHARGESTATION";
@@ -212,9 +195,7 @@ public class SysDefine {
     public static final String ISCHARGE = "10003";
     /** 定时任务关键字 */
     public static final String MILEAGE = "10004";
-    /** 定时任务关键字，当前总里程 */
-    public static final String TOTAL_MILEAGE = "2202";
-    /** 定时任务关键字 */
+  /** 定时任务关键字 */
     public static final String ONLINEUTC = "10005";
     /** 定时任务关键字 */
     public static final String ALARMUTC = "ALARMUTC";

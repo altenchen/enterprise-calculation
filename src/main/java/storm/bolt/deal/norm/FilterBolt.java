@@ -9,13 +9,14 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import storm.protocol.CommandType;
+import storm.protocol.SUBMIT_LOGIN;
 import storm.util.*;
 import storm.handler.area.AreaFenceHandler;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -63,20 +64,21 @@ public class FilterBolt extends BaseRichBolt {
     	if (now - rebootTime <againNoproTime) {
 			return;
 		}
-        if (tuple.size() == 2) {//实时数据  消息前缀 序列号 VIN码 命令标识 参数集 SUBMIT 1 LVBV4J0B2AJ063987 LOGIN {1001:20150623120000,1002:京A12345}
+        if (tuple.size() == 2) {//实时数据  消息前缀 序列号 VIN码 命令标识 参数集 SUBMIT 1 LVBV4J0B2AJ063987 SUBMIT_LOGIN {1001:20150623120000,1002:京A12345}
             String[] parm = null;
             String[] message = null;
             String[] tempKV = null;
 
             message = StringUtils.split(tuple.getString(1), SysDefine.SPACES);
             if (message.length != 5 // 非业务包
-            		||!SysDefine.SUBMIT.equals(message[0])) { // 非主动发送
+            		||!CommandType.SUBMIT.equals(message[0])) { // 非主动发送
                 return;
             }
 
+            // 命令标识
             String type = message[3];
-            if (SysDefine.PACKET.equals(type) 
-            		|| SysDefine.RENTALSTATION.equals(type) 
+            if (CommandType.SUBMIT_PACKET.equals(type)
+            		|| SysDefine.RENTALSTATION.equals(type)
             		|| SysDefine.CHARGESTATION.equals(type)) {
                 return;
             }
@@ -98,11 +100,11 @@ public class FilterBolt extends BaseRichBolt {
             stateKV.put(SysDefine.VIN, new String(message[2]));
             stateKV.put(SysDefine.MESSAGETYPE, new String(message[3]));
  
-            if (SysDefine.REALTIME.equals(type) || SysDefine.LOGIN.equals(type) || SysDefine.TERMSTATUS.equals(type) || SysDefine.CARSTATUS.equals(type)) {
+            if (CommandType.SUBMIT_REALTIME.equals(type) || CommandType.SUBMIT_LOGIN.equals(type) || CommandType.SUBMIT_TERMSTATUS.equals(type) || CommandType.SUBMIT_CARSTATUS.equals(type)) {
             	stateKV.put(SysDefine.ISONLINE, "1");
-            	if (SysDefine.LOGIN.equals(type) ) {
-            			if( stateKV.containsKey(ProtocolItem.LOGOUT_SEQ)
-            					|| stateKV.containsKey(ProtocolItem.LOGOUT_TIME)) {
+            	if (CommandType.SUBMIT_LOGIN.equals(type) ) {
+            			if( stateKV.containsKey(SUBMIT_LOGIN.LOGOUT_SEQ)
+            					|| stateKV.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)) {
             				
             				stateKV.put(SysDefine.ISONLINE, "0");
             				stateKV.put(ProtocolItem.REG_TYPE, "2");
@@ -111,7 +113,7 @@ public class FilterBolt extends BaseRichBolt {
             			}
 				}
             }
-            if (SysDefine.LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
+            if (CommandType.SUBMIT_LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
                 Map<String, String> linkmap = new TreeMap<String, String>();
                 if ("1".equals(stateKV.get("TYPE"))
                 		||"2".equals(stateKV.get("TYPE"))) {
@@ -123,27 +125,27 @@ public class FilterBolt extends BaseRichBolt {
                 linkmap.put(SysDefine.ONLINEUTC,now + ""); // 增加utc字段，插入系统时间
             }
             String vid = stateKV.get(SysDefine.VID);
-            if (SysDefine.HISTORYDATA.equals(type)) {//补发历史原始数据存储
+            if (CommandType.SUBMIT_HISTORY.equals(type)) {//补发历史原始数据存储
 //            	sendMessages(SysDefine.SUPPLY_GROUP,null,vid,stateKV,true);
             	return;
             }
             
             // 时间加入map
-            if (SysDefine.REALTIME.equals(type)) {
+            if (CommandType.SUBMIT_REALTIME.equals(type)) {
                 stateKV.put(SysDefine.TIME, stateKV.get("2000"));
-            } else if (SysDefine.LOGIN.equals(type)) {
-            	if (stateKV.containsKey(ProtocolItem.LOGIN_TIME)) {
-					stateKV.put(SysDefine.TIME, stateKV.get(ProtocolItem.LOGIN_TIME));
-				} else if (stateKV.containsKey(ProtocolItem.LOGOUT_TIME)){
-					stateKV.put(SysDefine.TIME, stateKV.get(ProtocolItem.LOGOUT_TIME));
+            } else if (CommandType.SUBMIT_LOGIN.equals(type)) {
+            	if (stateKV.containsKey(SUBMIT_LOGIN.LOGIN_TIME)) {
+					stateKV.put(SysDefine.TIME, stateKV.get(SUBMIT_LOGIN.LOGIN_TIME));
+				} else if (stateKV.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)){
+					stateKV.put(SysDefine.TIME, stateKV.get(SUBMIT_LOGIN.LOGOUT_TIME));
 				} else {
 					stateKV.put(SysDefine.TIME, stateKV.get("1001"));
 				}
-            } else if (SysDefine.TERMSTATUS.equals(type)) {
+            } else if (CommandType.SUBMIT_TERMSTATUS.equals(type)) {
                 stateKV.put(SysDefine.TIME, stateKV.get("3101"));
-            } else if (SysDefine.HISTORYDATA.equals(type)) {
+            } else if (CommandType.SUBMIT_HISTORY.equals(type)) {
                 stateKV.put(SysDefine.TIME, stateKV.get("2000"));
-            } else if (SysDefine.CARSTATUS.equals(type)) {
+            } else if (CommandType.SUBMIT_CARSTATUS.equals(type)) {
                 stateKV.put(SysDefine.TIME, stateKV.get("3201"));
             } else if (SysDefine.RENTCAR.equals(type)) { // 租赁数据
                 stateKV.put(SysDefine.TIME, stateKV.get("4001"));
@@ -153,41 +155,41 @@ public class FilterBolt extends BaseRichBolt {
 
             stateKV.put(SysDefine.ONLINEUTC, now + ""); // 增加utc字段，插入系统时间
             try {
-            	if (SysDefine.REALTIME.equals(type)
-            			|| SysDefine.HISTORYDATA.equals(type))
+            	if (CommandType.SUBMIT_REALTIME.equals(type)
+            			|| CommandType.SUBMIT_HISTORY.equals(type))
             		processValid(stateKV);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
             Map<String, String> stateNewKV = stateKV; // 状态键值
-            if (SysDefine.LINKSTATUS.equals(type)
-        			|| SysDefine.LOGIN.equals(type)
-        			|| SysDefine.REALTIME.equals(type)
-        			|| SysDefine.TERMSTATUS.equals(type)){
+            if (CommandType.SUBMIT_LINKSTATUS.equals(type)
+        			|| CommandType.SUBMIT_LOGIN.equals(type)
+        			|| CommandType.SUBMIT_REALTIME.equals(type)
+        			|| CommandType.SUBMIT_TERMSTATUS.equals(type)){
             	stateNewKV = new TreeMap<String, String>();
             	stateNewKV.putAll(stateKV);
             }
             try {
-            	if (SysDefine.LINKSTATUS.equals(type) 
-            			|| SysDefine.LOGIN.equals(type) 
-            			|| SysDefine.TERMSTATUS.equals(type) 
-            			|| SysDefine.CARSTATUS.equals(type)) {
+            	if (CommandType.SUBMIT_LINKSTATUS.equals(type)
+            			|| CommandType.SUBMIT_LOGIN.equals(type)
+            			|| CommandType.SUBMIT_TERMSTATUS.equals(type)
+            			|| CommandType.SUBMIT_CARSTATUS.equals(type)) {
             		sendMessages(SysDefine.SYNES_GROUP,null,vid,stateNewKV,true);
             	}
-            	if (SysDefine.REALTIME.equals(type)){
+            	if (CommandType.SUBMIT_REALTIME.equals(type)){
             		sendMessages(SysDefine.FENCE_GROUP,null,vid,stateNewKV,true);
 //            		sendMessages(SysDefine.YAACTION_GROUP,null,vid,stateKV,true);
             	}
-            	if (SysDefine.REALTIME.equals(type)
-            			|| SysDefine.LINKSTATUS.equals(type) 
-            			|| SysDefine.LOGIN.equals(type) 
-            			|| SysDefine.TERMSTATUS.equals(type) 
-            			|| SysDefine.CARSTATUS.equals(type)){
+            	if (CommandType.SUBMIT_REALTIME.equals(type)
+            			|| CommandType.SUBMIT_LINKSTATUS.equals(type)
+            			|| CommandType.SUBMIT_LOGIN.equals(type)
+            			|| CommandType.SUBMIT_TERMSTATUS.equals(type)
+            			|| CommandType.SUBMIT_CARSTATUS.equals(type)){
             		sendMessages(SysDefine.CUS_NOTICE_GROUP,null,vid,stateNewKV,true);
             	}
-            	if (SysDefine.REALTIME.equals(type)
-            			|| SysDefine.LINKSTATUS.equals(type)
-            			|| SysDefine.LOGIN.equals(type)){
+            	if (CommandType.SUBMIT_REALTIME.equals(type)
+            			|| CommandType.SUBMIT_LINKSTATUS.equals(type)
+            			|| CommandType.SUBMIT_LOGIN.equals(type)){
             		sendMessages(SysDefine.SPLIT_GROUP,null,vid,stateKV,true);
             	}
             } catch (Exception e) {
@@ -254,7 +256,7 @@ public class FilterBolt extends BaseRichBolt {
 
         try {
             // 充放电状态 1充电，2放电
-            if (dataMap.get(SysDefine.MESSAGETYPE).equals(SysDefine.REALTIME)) {
+            if (dataMap.get(SysDefine.MESSAGETYPE).equals(CommandType.SUBMIT_REALTIME)) {
                 if (dataMap.containsKey("2301") && !"".equals(dataMap.get("2301"))) {
                     String status = dataMap.get("2301");
                     if (chargeMap.get(vid) == null) 
@@ -280,11 +282,11 @@ public class FilterBolt extends BaseRichBolt {
         }
         //向最后的数据中加入车辆当前所在行政区域id
         /*try {
-			if (dataMap.containsKey(ProtocolItem.longitude)
-					&& dataMap.containsKey(ProtocolItem.latitude)) {
+			if (dataMap.containsKey(ProtocolItem.LONGITUDE)
+					&& dataMap.containsKey(ProtocolItem.LATITUDE)) {
 				
-				String longit = dataMap.get(ProtocolItem.longitude);
-				String latit = dataMap.get(ProtocolItem.latitude);
+				String longit = dataMap.get(ProtocolItem.LONGITUDE);
+				String latit = dataMap.get(ProtocolItem.LATITUDE);
 				if (null != longit && null != latit) {
 					longit = NumberUtils.stringNumber(longit);
 					latit = NumberUtils.stringNumber(latit);

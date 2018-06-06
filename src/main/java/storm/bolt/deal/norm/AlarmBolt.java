@@ -26,7 +26,10 @@ import org.apache.storm.tuple.Values;
 import com.alibaba.fastjson.JSON;
 import com.sun.jersey.core.util.Base64;
 
-import storm.util.CTFOUtils;
+import storm.protocol.CommandType;
+import storm.protocol.SUBMIT_LINKSTATUS;
+import storm.protocol.SUBMIT_LOGIN;
+import storm.protocol.SUBMIT_REALTIME;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.dto.alarm.CoefOffset;
@@ -35,7 +38,6 @@ import storm.dto.alarm.EarlyWarn;
 import storm.dto.alarm.EarlyWarnsGetter;
 import storm.dto.alarm.WarnRecord;
 import storm.dto.alarm.WarnningRecorder;
-import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 
 //@SuppressWarnings("all")
@@ -191,17 +193,17 @@ public class AlarmBolt extends BaseRichBolt {
                 System.out.println("Receive kafka message REALINFO-------------------------------MSG:" + JSON.toJSONString(dat));
             }
 
-            if (!dat.containsKey(SysDefine.TIME) 
+            if (!dat.containsKey(SysDefine.TIME)
             		|| ObjectUtils.isNullOrEmpty(dat.get(SysDefine.TIME))) {
 				return;
 			}
             String type = dat.get(SysDefine.MESSAGETYPE);
 
-            if (SysDefine.REALTIME.equals(type) 
-            		|| (SysDefine.LINKSTATUS.equals(type) && "3".equals(dat.get("TYPE")))
-            		|| (SysDefine.LOGIN.equals(type) 
-                			&& (dat.containsKey(ProtocolItem.LOGOUT_SEQ)
-                					|| dat.containsKey(ProtocolItem.LOGOUT_TIME)))
+            if (CommandType.SUBMIT_REALTIME.equals(type)
+            		|| (CommandType.SUBMIT_LINKSTATUS.equals(type) && SUBMIT_LINKSTATUS.isOfflineNotice(dat.get(SUBMIT_LINKSTATUS.LINK_TYPE)))
+            		|| (CommandType.SUBMIT_LOGIN.equals(type)
+                			&& (dat.containsKey(SUBMIT_LOGIN.LOGOUT_SEQ)
+                					|| dat.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)))
             		) {
                 try {
                     processAlarm(dat, type);
@@ -211,7 +213,7 @@ public class AlarmBolt extends BaseRichBolt {
                 }
             }
 
-            if (SysDefine.REALTIME.equals(type) || SysDefine.LOGIN.equals(type) || SysDefine.TERMSTATUS.equals(type) || SysDefine.CARSTATUS.equals(type)) {
+            if (CommandType.SUBMIT_REALTIME.equals(type) || CommandType.SUBMIT_LOGIN.equals(type) || CommandType.SUBMIT_TERMSTATUS.equals(type) || CommandType.SUBMIT_CARSTATUS.equals(type)) {
                 // hbase存储
 //                sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehRealinfoStoreTopic, vid, JSON.toJSONString(dat));
                 try {
@@ -231,7 +233,7 @@ public class AlarmBolt extends BaseRichBolt {
                 } catch (Exception e) {
                     System.out.println("实时数据redis存储出错！map:" + JSON.toJSONString(dat));
                 }
-            } else if (SysDefine.LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
+            } else if (CommandType.SUBMIT_LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
                 Map<String, String> linkmap = new TreeMap<String, String>();
                 if ("1".equals(dat.get("TYPE"))) {
                     linkmap.put(SysDefine.ISONLINE, "1");
@@ -247,11 +249,11 @@ public class AlarmBolt extends BaseRichBolt {
             	dat.putAll(linkmap);
             }
 
-            if (SysDefine.REALTIME.equals(type) 
-            		|| SysDefine.LOGIN.equals(type) 
-            		|| SysDefine.LINKSTATUS.equals(type)
-            		|| SysDefine.TERMSTATUS.equals(type) 
-            		|| SysDefine.CARSTATUS.equals(type)){
+            if (CommandType.SUBMIT_REALTIME.equals(type)
+            		|| CommandType.SUBMIT_LOGIN.equals(type)
+            		|| CommandType.SUBMIT_LINKSTATUS.equals(type)
+            		|| CommandType.SUBMIT_TERMSTATUS.equals(type)
+            		|| CommandType.SUBMIT_CARSTATUS.equals(type)){
             	
             	lastCache.put(vid, dat);
             	if (! aliveSet.contains(vid)) {
@@ -262,7 +264,7 @@ public class AlarmBolt extends BaseRichBolt {
             	//实时发送(不缓存)到 实时含告警的报文信息 到es同步服务
             	//sendToNext(SysDefine.SYNES_GROUP,vid, dat);
             }
-            if (SysDefine.REALTIME.equals(type)) {
+            if (CommandType.SUBMIT_REALTIME.equals(type)) {
                 try {
                 	String veh2000=dat.get("2000");
                     if (!ObjectUtils.isNullOrEmpty(veh2000)) {
@@ -312,8 +314,8 @@ public class AlarmBolt extends BaseRichBolt {
 		 *因此不需要再次判定是否下线
 		 * </p>
 		 */
-        if(SysDefine.LINKSTATUS.equals(type)
-        		|| SysDefine.LOGIN.equals(type)){
+        if(CommandType.SUBMIT_LINKSTATUS.equals(type)
+        		|| CommandType.SUBMIT_LOGIN.equals(type)){
             try {
             	sendOverAlarmMessage(vid);
             } catch (Exception e) {
@@ -402,8 +404,8 @@ public class AlarmBolt extends BaseRichBolt {
         	return;
 		
 		
-        if(SysDefine.LINKSTATUS.equals(type)
-        		|| SysDefine.LOGIN.equals(type)){
+        if(CommandType.SUBMIT_LINKSTATUS.equals(type)
+        		|| CommandType.SUBMIT_LOGIN.equals(type)){
             try {
             	sendOverAlarmMessage(vid);
             } catch (Exception e) {
@@ -697,7 +699,7 @@ public class AlarmBolt extends BaseRichBolt {
         String left2 = warn.left2DataItem; //左2数据项ID
         double right1 = warn.right1Value;
         double right2 = warn.right2Value;
-        String alarmGb = dataMap.get(ProtocolItem.ALARM_STATUS);
+        String alarmGb = dataMap.get(SUBMIT_REALTIME.ALARM_STATUS);
         alarmGb = NumberUtils.stringNumber(alarmGb);
         if (!"0".equals(alarmGb)) {
         	int gbAlarm = Integer.parseInt(alarmGb);
