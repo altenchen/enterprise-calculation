@@ -95,7 +95,7 @@ public class CarRulehandler implements InfoNotice{
 	
 	static int db =6;
 	static int socRule = 0;//1代表规则启用
-	static int canRule = 0;//1代表规则启用
+	static int enableCanRule = 0;//1代表规则启用
 	static int igniteRule = 0;//1代表规则启用
 	static int gpsRule = 0;//1代表规则启用
 	static int abnormalRule = 0;//1代表规则启用
@@ -121,7 +121,7 @@ public class CarRulehandler implements InfoNotice{
 			
 			value = ConfigUtils.sysDefine.getProperty("sys.can.rule");
 			if (!ObjectUtils.isNullOrEmpty(value)) {
-				canRule = Integer.parseInt(value);
+				enableCanRule = Integer.parseInt(value);
 				value = null;
 			}
 			
@@ -279,7 +279,7 @@ public class CarRulehandler implements InfoNotice{
 			//lowsoc(dat)返回一个map，里面有vid和通知消息（treeMap）
 			socjudges = lowsoc(dat);
 		}
-		if (1 == canRule){
+		if (1 == enableCanRule){
 			canjudge = nocan(dat);
 		}
 		if (1 == igniteRule){

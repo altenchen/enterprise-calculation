@@ -10,6 +10,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import storm.protocol.*;
 import storm.system.DataKey;
 import storm.util.*;
@@ -21,7 +22,12 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * 1. 缓存了每辆车的最大里程数和最小里程数
+ * 1. 将报文转换成字典, 最后通过tuple发出
+ * 2. 解析了告警并写入字典中
+ * 3. 计算最大里程数和最小里程数, 并将当前里程写入字典
+ * 4. 计算充电状态并写入字典
+ *
+ * Question: 最小里程数是不稳定的, 算出的里程数是指什么? 目前Storm内部没有使用, 前端是否还有使用?
  */
 public class FilterBolt extends BaseRichBolt {
 	private static final long serialVersionUID = 1700001L;
@@ -43,8 +49,9 @@ public class FilterBolt extends BaseRichBolt {
     // 每辆车的连续充电报文计次
     private Map<String, Integer> chargeMap;
 
-    // 重启时间?
+    // 重启时间
     private long rebootTime;
+    // 启动Storm计算时, kafka会从topic开始处消费, 所以需要一定的时间来扔掉这些数据.
     public static long againNoproTime = 1800 * 1000;//处理积压数据，至少给予 半小时，1800秒时间
 //    AreaFenceHandler areaHandler;
     
@@ -72,6 +79,7 @@ public class FilterBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
 
         // region Blot启动后againNoproTime的时长内, 忽略任何收到的数据
+        // 启动Storm计算时, kafka会从topic开始处消费, 所以需要一定的时间来扔掉这些数据.
     	long now = System.currentTimeMillis();
     	if (now - rebootTime < againNoproTime) {
 			return;
@@ -284,7 +292,8 @@ public class FilterBolt extends BaseRichBolt {
 //        return null;
 //    }
 
-    private Map<String, String> processValid(@NotNull Map<String, String> dataMap) throws Exception {
+    @Nullable
+    private Map<String, String> processValid(@NotNull Map<String, String> dataMap) {
         if(ObjectUtils.isNullOrEmpty(dataMap))
         	return null;
         
@@ -296,7 +305,11 @@ public class FilterBolt extends BaseRichBolt {
             if (dataMap.containsKey(SUBMIT_REALTIME.TOTAL_MILEAGE)
                 && !"".equals(dataMap.get(SUBMIT_REALTIME.TOTAL_MILEAGE))) {
 
-                long mileage = Long.parseLong(NumberUtils.stringNumber(dataMap.get(SUBMIT_REALTIME.TOTAL_MILEAGE)));
+                long mileage = Long.parseLong(
+                    NumberUtils.stringNumber(
+                        dataMap.get(SUBMIT_REALTIME.TOTAL_MILEAGE)
+                    )
+                );
                 Long maxCacheMileage = maxMileMap.get(vid);
                 Long minCacheMileage = minMileMap.get(vid);
                 maxCacheMileage = ObjectUtils.isNullOrEmpty(maxCacheMileage) ? 0L : maxCacheMileage;
@@ -481,7 +494,16 @@ public class FilterBolt extends BaseRichBolt {
 
             // region 国标: 通用报警标志值, 见表18
             else if(dataMap.containsKey(SUBMIT_REALTIME.ALARM_MARK) && !"".equals(dataMap.get(SUBMIT_REALTIME.ALARM_MARK))) {
-                String binaryStr = TimeUtils.fillNBitBefore(Long.toBinaryString(Long.parseLong(NumberUtils.stringNumber(dataMap.get("3801")))), 32, "0");
+                String binaryStr = TimeUtils.fillNBitBefore(
+                    Long.toBinaryString(
+                        Long.parseLong(
+                            NumberUtils.stringNumber(
+                                dataMap.get(SUBMIT_REALTIME.ALARM_MARK)
+                            )
+                        )
+                    ),
+                    32,
+                    "0");
                 dataMap.put("2919", new String(binaryStr.substring(13, 14)));//车载储能装置类型过充(第18位)
                 dataMap.put("2918", new String(binaryStr.substring(14, 15)));//驱动电机温度报警
                 dataMap.put("2917", new String(binaryStr.substring(15, 16)));//高压互锁状态报警
@@ -503,13 +525,13 @@ public class FilterBolt extends BaseRichBolt {
                 dataMap.put("2901", new String(binaryStr.substring(31, 32)));//温度差异报警(第0位)
                 
                 generalAlarmToFaultCode(dataMap, binaryStr);
-                binaryStr=null;
             }
             // endregion
         } catch (Exception e) {
             System.out.println("----动力蓄电池报警标志处理异常！" + e);
         }
 
+        // region 北京地标: 车载终端状态解析存储
         // 车载终端状态3110
 		/*
 		 * 1：通电；0：断开 BIT 3102 1：电源正常；0：电源异常 BIT 3103 1：通信传输正常；0：通信传输异常 BIT 3104 其他异常，1：正常；0：异常 BIT 3105
@@ -535,12 +557,15 @@ public class FilterBolt extends BaseRichBolt {
         } catch (Exception e) {
             System.out.println("----车载终端状态标志处理异常！" + e);
         }
+        // endregion
 
         return dataMap;
     }
-    
-    private void generalAlarmToFaultCode(Map<String, String> dat,String binaryStr){
-    	
+
+    // 解析并填充其他故障列表
+    private void generalAlarmToFaultCode(@NotNull Map<String, String> dataMap, @NotNull String binaryStr){
+
+        // region 解析告警值
     	String unit19 = new String(binaryStr.substring(12, 13));//第19位
         String unit20 = new String(binaryStr.substring(11, 12));//第20位
         String unit21 = new String(binaryStr.substring(10, 11));//第21位
@@ -554,41 +579,45 @@ public class FilterBolt extends BaseRichBolt {
         String unit29 = new String(binaryStr.substring(2, 3));//第29位
         String unit30 = new String(binaryStr.substring(1, 2));//第30位
         String unit31 = new String(binaryStr.substring(0, 1));//第31位
-        dat.put("380119", unit19);
-        dat.put("380120", unit20);
-        dat.put("380121", unit21);
-        dat.put("380122", unit22);
-        dat.put("380123", unit23);
-        dat.put("380124", unit24);
-        dat.put("380125", unit25);
-        dat.put("380126", unit26);
-        dat.put("380127", unit27);
-        dat.put("380128", unit28);
-        dat.put("380129", unit29);
-        dat.put("380130", unit30);
-        dat.put("380131", unit31);
-        
+        dataMap.put("380119", unit19);
+        dataMap.put("380120", unit20);
+        dataMap.put("380121", unit21);
+        dataMap.put("380122", unit22);
+        dataMap.put("380123", unit23);
+        dataMap.put("380124", unit24);
+        dataMap.put("380125", unit25);
+        dataMap.put("380126", unit26);
+        dataMap.put("380127", unit27);
+        dataMap.put("380128", unit28);
+        dataMap.put("380129", unit29);
+        dataMap.put("380130", unit30);
+        dataMap.put("380131", unit31);
+        // endregion
+
+        // region 拼装其他故障代码列表(2809)
         StringBuffer sb = new StringBuffer();
+        // 如果值为1, 则追加key01, 否则追加key00, 多个项之间用|连接
+        sb
+            .append("1".equals(unit19) ? "38011901" : "38011900").append("|")
+            .append("1".equals(unit20) ? "38012001" : "38012000").append("|")
+            .append("1".equals(unit21) ? "38012101" : "38012100").append("|")
+            .append("1".equals(unit22) ? "38012201" : "38012200").append("|")
+            .append("1".equals(unit23) ? "38012301" : "38012300").append("|")
+            .append("1".equals(unit24) ? "38012401" : "38012400").append("|")
+            .append("1".equals(unit25) ? "38012501" : "38012500").append("|")
+            .append("1".equals(unit26) ? "38012601" : "38012600").append("|")
+            .append("1".equals(unit27) ? "38012701" : "38012700").append("|")
+            .append("1".equals(unit28) ? "38012801" : "38012800").append("|")
+            .append("1".equals(unit29) ? "38012901" : "38012900").append("|")
+            .append("1".equals(unit30) ? "38013001" : "38013000").append("|")
+            .append("1".equals(unit31) ? "38013101" : "38013100");
         
-        sb.append("1".equals(unit19)?"38011901":"38011900").append("|")
-        .append("1".equals(unit20)?"38012001":"38012000").append("|")
-        .append("1".equals(unit21)?"38012101":"38012100").append("|")
-        .append("1".equals(unit22)?"38012201":"38012200").append("|")
-        .append("1".equals(unit23)?"38012301":"38012300").append("|")
-        .append("1".equals(unit24)?"38012401":"38012400").append("|")
-        .append("1".equals(unit25)?"38012501":"38012500").append("|")
-        .append("1".equals(unit26)?"38012601":"38012600").append("|")
-        .append("1".equals(unit27)?"38012701":"38012700").append("|")
-        .append("1".equals(unit28)?"38012801":"38012800").append("|")
-        .append("1".equals(unit29)?"38012901":"38012900").append("|")
-        .append("1".equals(unit30)?"38013001":"38013000").append("|")
-        .append("1".equals(unit31)?"38013101":"38013100");
-        
-        String faultCode2809 = dat.get("2809");
+        String faultCode2809 = dataMap.get("2809");
         if (null != faultCode2809 && ! "".equals(faultCode2809.trim())) {
         	sb.append("|").append(faultCode2809);
         }
-        dat.put("2809", sb.toString());
+        dataMap.put("2809", sb.toString());
+        // endregion
         
 //        .append("1".equals(unit00)?"38010001":"38010000")
 //        .append("1".equals(unit01)?"38010101":"38010100")
