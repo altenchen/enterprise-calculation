@@ -646,9 +646,9 @@ public class CarRulehandler implements InfoNotice{
 					vidcanNotice.put(vid, notice);
 					
 					Long nowTime = date.getTime();
-					Long firstNogpsTime = timeformat.stringTimeLong(notice.get("stime").toString());
+					Long firstNocanTime = timeformat.stringTimeLong(notice.get("stime").toString());
 					//status，1开始，2持续，3结束
-					if( 1 == (int)notice.get("status") && nowTime-firstNogpsTime > nocanIntervalTime){
+					if( 1 == (int)notice.get("status") && nowTime-firstNocanTime > nocanIntervalTime){
 						IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
 						if (null == judgeIsSendNotice) {
 							judgeIsSendNotice = new IsSendNoticeCache(false, true);
@@ -1334,7 +1334,7 @@ public class CarRulehandler implements InfoNotice{
 			if (now - last > offlinetime) {
 				String vid = entry.getKey();
 				needRemoves.add(vid);
-				Map<String, Object> msg = vidOnOffNotice.get(vid);//vidOnOffNotice是车辆在线信息缓存
+				Map<String, Object> msg = vidOnOffNotice.get(vid);//vidOnOffNotice是车辆上线通知缓存
 				//如果msg不为null，说明之前在线，现在离线，需要发送离线通知
 				if (null != msg) {
 					getOffline(msg,noticetime);

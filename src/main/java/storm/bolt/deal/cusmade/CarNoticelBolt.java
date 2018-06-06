@@ -172,6 +172,7 @@ public class CarNoticelBolt extends BaseRichBolt {
         			}
         		}
         	}
+
         	carOnOffhandler.onoffCheck("TIMEOUT",1,now,offlinetime);
         }
     	if(SysDefine.CUS_NOTICE_GROUP.equals(tuple.getSourceStreamId())){

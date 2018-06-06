@@ -152,7 +152,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 	 * @return
 	 */
 	@Override
-	public void onoffCheck(String type, int status, long now, long timeout) {//status的0,1代表什么
+	public void onoffCheck(String type, int status, long now, long timeout) {
 		if ("TIMEOUT".equals(type)) {
 			Map<String,Map<String,String>> cluster = null;
 			//LinkedBlockingQueue是一个单向链表实现的阻塞队列，先进先出的顺序。支持多线程并发操作。无界队列。
@@ -172,6 +172,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				List<String> markAlives =  new LinkedList<String>();
 				//poll是队列数据结构实现类的方法，从队首获取元素，同时获取的这个元素将从原队列删除； 
 				String vid = vids.poll();
+				//循环访问队列中的vid，并清空队列
 				while(null != vid){
 
 					if (0 == status){
@@ -368,7 +369,9 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
 			}
 		}
+		//车辆是否离线
 		boolean isoff = isOffline(dat);
+		//车辆 是否达到 闲置或者停机 超时的标准
 		boolean isout = istimeout(time, lastUtc, now, timeout);
 		if (isoff || isout) {
 			TimeMileage timeMileage = vidLastTimeMile.get(vid);
@@ -475,15 +478,22 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		return false;
 	}
 
+	/**
+	 * 判断车辆是否离线
+	 * @param dat
+	 * @return 是否离线
+	 */
 	private boolean isOffline(Map<String, String> dat){
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
 		if (SysDefine.LOGIN.equals(msgType)) {
+			//1、先根据自带的TYPE字段进行判断。平台注册通知类型 0:从未上过线，1:车机终端上线 ，2:车机离线，3:平台上线，4:平台下线
 			String type = dat.get(ProtocolItem.REG_TYPE);
 			if ("1".equals(type)){
 				return false;
 			} else if ("2".equals(type)){
 				return true;
 			} else {
+				//2、如果自带的type字段没数据，则根据登入登出流水号判断。
 				String logoutSeq = dat.get(ProtocolItem.LOGOUT_SEQ);
 				String loginSeq = dat.get(ProtocolItem.LOGIN_SEQ);
 				if (! ObjectUtils.isNullOrEmpty(logoutSeq)
@@ -503,6 +513,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				}
 			}
 		} else if (SysDefine.LINKSTATUS.equals(msgType)){
+			//3、如果是链接状态通知，则根据连接状态字段进行判断，1上线，2心跳，3离线
 			String linkType = dat.get(ProtocolItem.LINK_TYPE);
 			if ("1".equals(linkType)
 					||"2".equals(linkType)) {
@@ -511,6 +522,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				return true;
 			}
 		} else if (SysDefine.REALTIME.equals(msgType)){
+			//4、如果是实时数据直接返回false
 			return false;
 		}
 		return false;
