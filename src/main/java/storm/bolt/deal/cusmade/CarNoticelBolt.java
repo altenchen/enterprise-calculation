@@ -72,6 +72,7 @@ public class CarNoticelBolt extends BaseRichBolt {
         	offlinecheck = Long.parseLong(NumberUtils.stringNumber(offCheck.toString()))*1000;
         }
         carRulehandler = new CarRulehandler();
+        //闲置车辆判断，发送闲置车辆通知
         try {
         	SysRealDataCache.init();
         	codeHandler = new FaultCodeHandler();
@@ -82,6 +83,7 @@ public class CarNoticelBolt extends BaseRichBolt {
         		}
         	}
         	carOnOffhandler = new CarOnOffHandler();
+        	//2代表着读取历史车辆数据，即全部车辆
     		if (2 == ispreCp){
     			carOnOffhandler.onoffCheck("TIMEOUT",0,now,offlinetime);
     			List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AllData,now,timeouttime);
@@ -114,7 +116,7 @@ public class CarNoticelBolt extends BaseRichBolt {
 							 * 因此可以省略 ParamsRedis 重新初始化方法
 							 */
 							CarRulehandler.rebulid();
-							Object outbyconf = ParamsRedisUtil.PARAMS.get("gt.inidle.timeOut.time");//从配置文件中读出超时时间
+							Object outbyconf = ParamsRedisUtil.PARAMS.get("gt.inidle.timeOut.time");//从redis中读出闲置车辆超时时间阈值
 							if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
 								timeouttime=1000*(int)outbyconf;
 							}

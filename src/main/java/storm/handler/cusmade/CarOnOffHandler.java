@@ -71,6 +71,16 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		return notice;
 	}
 
+	/**
+	 * 扫描所有车辆数据，找出闲置车辆，车辆闲置通知，并返回从缓存中清除。
+	 * 注意：此处定义的所有车辆可以理解为只有两种状态，（闲置和活跃），下线了也还属于活跃，只有下线时间超过阈值才归为闲置
+	 * 闲置车辆将从活跃缓存车辆中删除
+	 * @param type
+	 * @param status
+	 * @param now
+	 * @param timeout
+	 * @return 闲置车辆通知
+	 */
 	@Override
 	public List<Map<String, Object>> fulldoseNotice(String type, ScanRange status, long now, long timeout) {//status:0全量数据，status:1活跃数据，status:2其他定义
 		if ("TIMEOUT".equals(type)) {
@@ -78,11 +88,9 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			//使用这个队列是为了防止在访问vids时，发生修改，引发错误。
 			LinkedBlockingQueue<String> vids = null;
 			if (ScanRange.AllData == status) {
-				//获得所有车辆的最后一帧数据
 				cluster=SysRealDataCache.getDataCache().asMap();
 				vids = SysRealDataCache.lasts;
 			} else if (ScanRange.AliveData == status) {
-				//获得活跃车辆的最后一帧数据
 				cluster=SysRealDataCache.getLivelyCache().asMap();
 				vids = SysRealDataCache.alives;
 			}
@@ -93,8 +101,10 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				List<String> markAlives =  new LinkedList<String>();
 				List<String> allCars =  new LinkedList<String>();
 
+				//循环访问队列中的vid，并清空队列
 				String vid = vids.poll();
 				while(null != vid){
+					//全量数据为什么要全清空，然后在全加载回来？
 					if (ScanRange.AllData == status){
 						SysRealDataCache.removeLastQueue(vid);
 						allCars.add(vid);
@@ -114,6 +124,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 				 */
 				if (markDel.size() > 0) {
 					for (String key : markDel) {
+						//cluster.remove(key);是不是没什么用？
 						cluster.remove(key);
 						SysRealDataCache.removeAliveQueue(key);
 					}
@@ -151,7 +162,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 	}
 
 	/**
-	 * 此方法检查离线
+	 * 此方法检查离线。
+	 * 里面逻辑有问题，可以优化
 	 * @param type
 	 * @param status
 	 * @param now
@@ -218,7 +230,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 	}
 
 	/**
-	 * 闲置或者停机车辆
+	 * 闲置或者停机车辆。（重要）
 	 */
 	private Map<String, Object> inidle(Map<String, String> dat,long now,long timeout,List<String> markDel,List<String> markAlive){
 		if (null == dat || dat.size() ==0) {
@@ -288,6 +300,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
 		String noticetime = timeformat.toDateString(new Date(now));
 		//车辆 是否达到 闲置或者停机 超时的标准
+		//判断标准就是当前时间与缓存中的最后一帧报文时间差值是否大于阈值，
+		//需要注意的是，此时已经的下线车辆也是在全量数据或者活跃数据缓存中的。
 		boolean isout = istimeout(time, lastUtc, now, timeout);
 		if (isout) {//是闲置车辆
 			Map<String, Object> notice = vididleNotice.get(vid);
@@ -311,6 +325,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			 */
 			markDel.add(vid);
 			if (1 == (int)notice.get("status")) {
+				//将通知存到redis中。
 				recorder.save(db, idleRedisKeys,vid, notice);
 				return notice;
 			}
@@ -349,7 +364,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 	}
 
 	/**
-	 *
+	 *判断车辆是否下线，如果下线了，则将车辆下线通知放到onOffMileNotice缓存。
+	 * 同时将所有的车辆id放到markAlive中。
 	 * @param dat
 	 * @param now
 	 * @param timeout
@@ -394,6 +410,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			}
 
 		}
+		//原本是有else的，只有不是下线车辆的时候才放到markAlive缓存中。
+		//但是为了判断闲置车辆，当车辆下线了也要先放到markAlive缓存中。
 		markAlive.add(vid);
 		return null;
 	}
