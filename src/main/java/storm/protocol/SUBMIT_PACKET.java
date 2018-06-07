@@ -52,7 +52,7 @@ public final class SUBMIT_PACKET {
      * @return 是否校验成功
      */
     public static final boolean isVerifySucess(String verifyState) {
-        return "0" == verifyState;
+        return "0".equals(verifyState);
     }
 
     /**
@@ -61,6 +61,6 @@ public final class SUBMIT_PACKET {
      * @return 是否校验失败
      */
     public static final boolean isVerifyFailure(String verifyState) {
-        return "1" == verifyState;
+        return "1".equals(verifyState);
     }
 }

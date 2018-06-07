@@ -25,7 +25,7 @@ public class NumberUtils {
 		    return false;
         }
 
-        value._ = Long.parseLong(str);
+        value.value = Long.parseLong(str);
 		return true;
 	}
 }

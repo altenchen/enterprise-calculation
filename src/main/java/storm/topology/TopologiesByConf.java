@@ -14,12 +14,12 @@ import storm.bolt.deal.norm.SynEsculBolt;
 
 import java.util.Properties;
 
-import storm.kafka.scheme.ErrorDataScheme;
-import storm.kafka.scheme.RegScheme;
+import storm.kafka.scheme.PacketScheme;
+import storm.kafka.scheme.RegistScheme;
 import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
 import storm.util.ConfigUtils;
-import storm.kafka.scheme.RealinfoScheme;
+import storm.kafka.scheme.GeneralScheme;
 import storm.kafka.KafkaConfig;
 import storm.system.SysDefine;
 
@@ -165,7 +165,7 @@ public class TopologiesByConf {
         final KafkaConfig kafkaRealinfoConfig = buildKafkaConfig(
             SysDefine.VEH_REALINFO_DATA_TOPIC,
             SysDefine.VEH_REALINFO_GROUPID,
-            new RealinfoScheme());
+            new GeneralScheme());
         builder
             // kafka实时报文消息
             .setSpout(
@@ -177,7 +177,7 @@ public class TopologiesByConf {
         final KafkaConfig kafkaErrordataConfig = buildKafkaConfig(
             SysDefine.ERROR_DATA_TOPIC,
             SysDefine.ERROR_DATA_GROUPID,
-            new ErrorDataScheme());
+            new PacketScheme());
         builder
             // kafka错误报文消息
             .setSpout(
@@ -189,7 +189,7 @@ public class TopologiesByConf {
         final KafkaConfig kafkaRegConfig = buildKafkaConfig(
             SysDefine.PLAT_REG_TOPIC,
             SysDefine.PLAT_REG_GROUPID,
-            new RegScheme());
+            new RegistScheme());
         kafkaRegConfig.setOutputStreamId(SysDefine.REG_STREAM_ID);
         builder
             // kafka平台注册报文消息

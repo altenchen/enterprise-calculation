@@ -11,20 +11,22 @@ import org.slf4j.LoggerFactory;
 
 import storm.util.ObjectUtils;
 
-public class RegScheme implements Scheme {
+public final class RegistScheme implements Scheme {
+
 	private static final long serialVersionUID = 18700005L;
-	static Logger logger = LoggerFactory.getLogger(RegScheme.class);
+	private static Logger logger = LoggerFactory.getLogger(RegistScheme.class);
+
 	@Override
 	public List<Object> deserialize(ByteBuffer buffer) {
-		try {
-			String string=ObjectUtils.deserialize(buffer);
-			if(null != string)
-				return new Values(string);
-		} catch (Exception e) {
-			e.printStackTrace();
-			logger.info(e.getMessage());
-		}
-		return null;
+	    try {
+            String string=ObjectUtils.deserialize(buffer);
+            return new Values(string);
+        }
+        catch (Exception exception) {
+            exception.printStackTrace();
+	        logger.error(exception.getMessage(), exception);
+        }
+        return new Values();
     }
 	@Override
 	public Fields getOutputFields() {

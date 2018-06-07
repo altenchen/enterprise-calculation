@@ -2,11 +2,14 @@ package storm.kafka.scheme;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.storm.spout.Scheme;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,50 +20,44 @@ import storm.util.ObjectUtils;
  * 实时信息方案
  * 在消息中提取出VID, 然后将VID和消息本身作为一个元组(VID, 消息)发射
  */
-public class RealinfoScheme implements Scheme {
+public final class GeneralScheme implements Scheme {
 
 	private static final long serialVersionUID = 18700005L;
-	static Logger logger = LoggerFactory.getLogger(RealinfoScheme.class);
+	private static Logger logger = LoggerFactory.getLogger(GeneralScheme.class);
 
+    @SuppressWarnings("Duplicates")
 	@Override
 	public List<Object> deserialize(ByteBuffer buffer) {
-        try {
-        	String msg = ObjectUtils.deserialize(buffer);
-        	if(null == msg) {
-        	    return null;
-            }
-            return generateValues(msg);
-        } catch (Exception e) {
-            e.printStackTrace();
+	    try {
+            String message = ObjectUtils.deserialize(buffer);
+            return generateValues(message);
+        }
+        catch (Exception exception) {
+            exception.printStackTrace();
+            logger.error(exception.getMessage(), exception);
+        }
+        return new Values();
+    }
+
+    @Override
+    public Fields getOutputFields() {
+        return new Fields(DataKey.VEHICLE_ID, "msg");
+    }
+
+    // 消息结构：消息前缀 序列号 VIN码 命令标识 参数集
+    @NotNull
+    private static final Pattern pattern = Pattern.compile("^[^{]+\\{VID:([^,]+)");
+
+    @Nullable
+    private static Values generateValues(@NotNull String message) {
+        Matcher matcher = pattern.matcher(message);
+        if(matcher.find()) {
+            String vid = matcher.group(1);
+            return new Values(vid, message);
         }
 
         return null;
     }
-
-    private static final Values generateValues(@NotNull String msg) {
-        // 消息结构：消息前缀 序列号 VIN码 命令标识 参数集
-        String[] data = msg.split(" ");
-        if (data.length == 5){
-            // 参数集移除括号和反斜杠
-            String val = data[4].replaceAll("[\\pC{}]", "");
-            int index = val.indexOf(",VTYPE");
-            if (index > 0) {
-                String header = val.substring(0, index);
-                String[] VID = header.split(":", 2);
-                if (VID.length == 2){
-                    // 转换后格式: (VEHICLE_ID, msg)
-                    return new Values(new String(VID[1]), msg);
-                }
-            }
-        }
-        return null;
-    }
-
-	@Override
-	public Fields getOutputFields() {
-		
-		return new Fields(DataKey.VEHICLE_ID, "msg");
-	}
 
 	public static void main(String[] args) {
 	    String[] messages = new String[]{
@@ -73,7 +70,7 @@ public class RealinfoScheme implements Scheme {
 	    };
 
         for (String message : messages) {
-            Values values = RealinfoScheme.generateValues(message);
+            Values values = GeneralScheme.generateValues(message);
             if(values != null) {
                 System.out.println(values.toString());
             }
