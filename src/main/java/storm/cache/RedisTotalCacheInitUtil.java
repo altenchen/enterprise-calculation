@@ -24,6 +24,7 @@ import com.google.common.cache.CacheBuilder;
 import storm.cache.util.RedisOrganizationUtil;
 import storm.dao.DataToRedis;
 import storm.protocol.SUBMIT_REALTIME;
+import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
@@ -708,12 +709,12 @@ public class RedisTotalCacheInitUtil {
         				String []strings=carInfoArray.get(vin);
 						if(null == strings || strings.length != 15){
 							logger.info("carInfo vin:"+vin);
-							logger.info("carInfo vid is gc:"+map.get("VID"));
+							logger.info("carInfo vid is gc:"+map.get(DataKey.VEHICLE_ID));
 							continue;
 						}
-						if (null == strings[0] || !strings[0].equals(map.get("VID"))) {
+						if (null == strings[0] || !strings[0].equals(map.get(DataKey.VEHICLE_ID))) {
 							logger.info("vin map not exist:"+vin);
-							logger.info("---- vid is not exist:"+map.get("VID"));
+							logger.info("---- vid is not exist:"+map.get(DataKey.VEHICLE_ID));
 							continue;
 						}
 						long now = System.currentTimeMillis();
@@ -875,7 +876,7 @@ public class RedisTotalCacheInitUtil {
 		}
 		boolean isStop(Map<String, String> map){
 			try {
-				String vid = map.get("VID");
+				String vid = map.get(DataKey.VEHICLE_ID);
 				String rev = map.get("2303");
 				String spd = map.get("2201");
 				if (!"0".equals(spd) || !"20000".equals(rev)) {

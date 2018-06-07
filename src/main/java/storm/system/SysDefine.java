@@ -77,10 +77,7 @@ public final class SysDefine {
     //
     public static final String SPLIT_GROUP = "splitgroup";
 
-    //
-    public static final String VID = "VID";
-
-    //
+  //
     public static final String ALARM_BOLT_ID = "alarmboltid";
 
     //
@@ -98,43 +95,6 @@ public final class SysDefine {
     //
     public static final String ERRORDATA_SPOUT_ID = "errordataspoutid";
 
-    //
-    public static final String INIT_CMD = "INIT";
-
-    //
-    public static final String LOGIN_CMD = "LOGIN";
-
-    //
-    public static final String REALTIME_CMD = "REALTIME";
-
-    //
-    public static final String HISTORY_CMD = "HISTORY";
-
-    //
-    public static final String LOGOUT_CMD = "LOGOUT";
-
-    //
-    public static final String ALARM_CMD = "ALARM";
-
-    //
-    public static final String STATIC_CMD = "STATIC";
-
-    //
-    public static final String CHARGE_CMD = "CHARGE";
-
-    //
-    public static final String FULL_CMD = "FULL";
-
-    //
-    public static final String END_CMD = "END";
-
-    public static final String ALARM_HISTORY="ALARMHISTORY";
-    public static final String EVENT_RANDOM1_CMD="EVENT_RUN_RANDOM1LOW";
-    public static final String EVENT_RANDOM2_CMD="EVENT_RUN_RANDOM2STOPD";
-    public static final String EVENT_RANDOM3_CMD="EVENT_RUN_RANDOM3ACC20KM";
-    public static final String EVENT_RANDOM4_CMD="EVENT_RUN_RANDOM4ACC25KM";
-    public static final String EVENT_RANDOM5_CMD="EVENT_RUN_RANDOM5ACC30KM";
-    public static final String EVENT_RANDOM6_CMD="EVENT_RUN_RANDOM6ACC35KM";
     //
     public static final String TERMINAL_FLAG = "terminalflag";
 

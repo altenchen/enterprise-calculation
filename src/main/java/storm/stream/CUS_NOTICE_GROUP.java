@@ -4,7 +4,7 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
-import storm.system.SysDefine;
+import storm.system.DataKey;
 
 /**
  * @author: xzp
@@ -15,7 +15,7 @@ public final class CUS_NOTICE_GROUP {
 
     public static final String streamId = "cusnoticeGroup";
 
-    public static final Fields fields = new Fields(SysDefine.VID, "DATA");
+    public static final Fields fields = new Fields(DataKey.VEHICLE_ID, "DATA");
 
     public static CUS_NOTICE_GROUP prepareOnce(OutputCollector collector) {
         return new CUS_NOTICE_GROUP(collector);

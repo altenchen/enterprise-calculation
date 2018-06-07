@@ -24,6 +24,7 @@ import com.google.common.cache.CacheBuilder;
 import storm.cache.util.RedisOrganizationUtil;
 import storm.dao.DataToRedis;
 import storm.protocol.SUBMIT_REALTIME;
+import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
@@ -198,7 +199,7 @@ public class MailCalHandler {
 				newmap.put(mapkey, value);
 			}
 		}
-		String vid = newmap.get("VID");
+		String vid = newmap.get(DataKey.VEHICLE_ID);
 		carlastrecord.put(vid, newmap);
 	}
 	
@@ -532,7 +533,7 @@ public class MailCalHandler {
 									logger.info("vin carInfo:"+vin);
 									strings=unknowArray;
 								}
-								if (null != strings[0] && strings[0].equals(map.get("VID"))){
+								if (null != strings[0] && strings[0].equals(map.get(DataKey.VEHICLE_ID))){
 									
 									String org=strings[3];
 									String plant=strings[5];
@@ -681,7 +682,7 @@ public class MailCalHandler {
 
 		boolean isStop(Map<String, String> map){
 			try {
-				String vid = map.get("VID");
+				String vid = map.get(DataKey.VEHICLE_ID);
 				String rev = map.get("2303");
 				String spd = map.get("2201");
 				if (!"0".equals(spd) || !"20000".equals(rev)) {

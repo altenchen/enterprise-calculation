@@ -241,7 +241,7 @@ public class SysRealDataCache {
 			return false;
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
-			String vid = dat.get(SysDefine.VID);
+			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
@@ -305,7 +305,7 @@ public class SysRealDataCache {
 			return false;
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
-			String vid = dat.get(SysDefine.VID);
+			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)

@@ -37,7 +37,7 @@ public class InvokeCtxMtd extends InvokeMtd implements Invoke {
 	}
 	
 	Object invoke(Map<String, String> dat,Rule rule){
-		String vid = dat.get("VID");
+		String vid = dat.get(DataKey.VEHICLE_ID);
 		if(rule instanceof StopAlarmRule)
 			return invoke(rule,dat,vid);
 		addData(vid,dat,datsize);

@@ -26,6 +26,7 @@ import com.sun.jersey.core.util.Base64;
 
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LOGIN;
+import storm.system.DataKey;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.dto.alarm.CoefOffset;
@@ -256,10 +257,10 @@ public class AlarmBoltBak extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SysDefine.VEH_ALARM, new Fields("TOPIC", SysDefine.VID, "VALUE"));
-        declarer.declareStream(SysDefine.VEH_ALARM_REALINFO_STORE, new Fields("TOPIC", SysDefine.VID, "VALUE"));
-        declarer.declareStream(SysDefine.FAULT_GROUP, new Fields(SysDefine.VID, "DATA"));
-        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(SysDefine.VID, "DATA"));
+        declarer.declareStream(SysDefine.VEH_ALARM, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
+        declarer.declareStream(SysDefine.VEH_ALARM_REALINFO_STORE, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
+        declarer.declareStream(SysDefine.FAULT_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
+        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
     }
 
     public Map<String, Object> getComponentConfiguration() {
@@ -273,7 +274,7 @@ public class AlarmBoltBak extends BaseRichBolt {
     public void processAlarm(Map<String, String> dataMap ,String type) {
     	if(ObjectUtils.isNullOrEmpty(dataMap))
     		return;
-        String vid = dataMap.get("VID");
+        String vid = dataMap.get(DataKey.VEHICLE_ID);
         String vType = dataMap.get("VTYPE");
         if (ObjectUtils.isNullOrEmpty(vid)
         		|| ObjectUtils.isNullOrEmpty(vType) ) 
@@ -343,9 +344,9 @@ public class AlarmBoltBak extends BaseRichBolt {
                 if (null ==warn) 
 					continue;
 				
-                String alarmEnd_kafka = "VID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+time+",CONST_ID:"+filterId;
+                String alarmEnd_kafka = "VEHICLE_ID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+time+",CONST_ID:"+filterId;
                 Map<String,String> sendFault = new TreeMap<String,String>();
-                sendFault.put("VID", vid);
+                sendFault.put(DataKey.VEHICLE_ID, vid);
                 sendFault.put("ALARM_ID", alarmId);
                 sendFault.put("STATUS", "3");
                 sendFault.put("TIME", time);
@@ -357,7 +358,7 @@ public class AlarmBoltBak extends BaseRichBolt {
                 String left1 = warn.left1DataItem;
                 
                 Map<String,String> hbaseMap = new TreeMap<String, String>();
-                hbaseMap.put("VID", vid);
+                hbaseMap.put(DataKey.VEHICLE_ID, vid);
                 hbaseMap.put("ALARM_ID", alarmId);
                 hbaseMap.put("ALARM_NAME", alarmName);
                 hbaseMap.put("ALARM_LEVEL", alarmLevel);
@@ -590,11 +591,11 @@ public class AlarmBoltBak extends BaseRichBolt {
             if(!ObjectUtils.isNullOrEmpty(list) && list.contains(filterId)){
                 //上条报警，本条也报警，说明是【报警进行中】，发送报警进行中报文
                 String alarmId = ALARM_MAP.get(vid+"#"+filterId);
-                StringBuilder alarmKafka=new StringBuilder("VID:");
+                StringBuilder alarmKafka=new StringBuilder("VEHICLE_ID:");
                 alarmKafka.append(vid).append(",ALARM_ID:").append(alarmId).append(",STATUS:2,TIME:").append(time).append(",CONST_ID:").append(filterId);
                 
                 Map<String,String> sendFault = new TreeMap<String,String>();
-                sendFault.put("VID", vid);
+                sendFault.put(DataKey.VEHICLE_ID, vid);
                 sendFault.put("ALARM_ID", alarmId);
                 sendFault.put("STATUS", "2");
                 sendFault.put("TIME", time);
@@ -639,18 +640,18 @@ public class AlarmBoltBak extends BaseRichBolt {
                             }
                             l.add(filterId);
                             filterMap.put(vid, l);
-                            StringBuilder alarmStart=new StringBuilder("VID:");
+                            StringBuilder alarmStart=new StringBuilder("VEHICLE_ID:");
                             alarmStart.append(vid).append(",ALARM_ID:").append(alarmId).append(",STATUS:1,TIME:").append(getTimeStr(lastAlarmUtc)).append(",CONST_ID:").append(filterId);
                             
                             Map<String,String> sendFault = new TreeMap<String,String>();
-                            sendFault.put("VID", vid);
+                            sendFault.put(DataKey.VEHICLE_ID, vid);
                             sendFault.put("ALARM_ID", alarmId);
                             sendFault.put("STATUS", "1");
                             sendFault.put("TIME", getTimeStr(lastAlarmUtc));
                             sendFault.put("CONST_ID", filterId);
                             sendFault.put("UTC_TIME", ""+lastAlarmUtc);
                             
-                            hbaseMap.put("VID", vid);
+                            hbaseMap.put(DataKey.VEHICLE_ID, vid);
                             hbaseMap.put("ALARM_ID", alarmId);
                             hbaseMap.put("ALARM_NAME", alarmName);
                             hbaseMap.put("ALARM_LEVEL", ""+alarmLevel);
@@ -697,17 +698,17 @@ public class AlarmBoltBak extends BaseRichBolt {
                         //vid2alarmInfo.put(vid+"_"+filterId, "0_0_"+alarmUtc);
                         //上条报警，本条不报警，说明是【结束报警】，发送结束报警报文
                         String alarmId = ALARM_MAP.get(vid+"#"+filterId);
-                        String alarmEnd_kafka = "VID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+ctArr[1]+",CONST_ID:"+filterId;
+                        String alarmEnd_kafka = "VEHICLE_ID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+ctArr[1]+",CONST_ID:"+filterId;
                         
                         Map<String,String> sendFault = new TreeMap<String,String>();
-                        sendFault.put("VID", vid);
+                        sendFault.put(DataKey.VEHICLE_ID, vid);
                         sendFault.put("ALARM_ID", alarmId);
                         sendFault.put("STATUS", "3");
                         sendFault.put("TIME", ctArr[1]);
                         sendFault.put("CONST_ID", filterId);
                         sendFault.put("UTC_TIME", ""+getTime(ctArr[1]));
                         
-                        hbaseMap.put("VID", vid);
+                        hbaseMap.put(DataKey.VEHICLE_ID, vid);
                         hbaseMap.put("ALARM_ID", alarmId);
                         hbaseMap.put("ALARM_NAME", alarmName);
                         hbaseMap.put("ALARM_LEVEL", ""+alarmLevel);

@@ -10,8 +10,8 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 
 import storm.protocol.CommandType;
+import storm.system.DataKey;
 import storm.util.ObjectUtils;
-import storm.system.SysDefine;
 
 public class ErrorDataScheme implements Scheme {
 	private static final long serialVersionUID = 134009L;
@@ -33,8 +33,8 @@ public class ErrorDataScheme implements Scheme {
                     }
                 }
 
-                if (map.get("VID")!=null && map.get("4")!=null && map.get("4").equals("1")) {
-                    return new Values(new String(map.get("VID")), map, 1);
+                if (map.get(DataKey.VEHICLE_ID)!=null && map.get("4")!=null && map.get("4").equals("1")) {
+                    return new Values(new String(map.get(DataKey.VEHICLE_ID)), map, 1);
                 }
                 ERROR=null;
                 val=null;
@@ -47,6 +47,6 @@ public class ErrorDataScheme implements Scheme {
     }
 	@Override
 	public Fields getOutputFields() {
-        return new Fields(SysDefine.VID, "msg", "flag");
+        return new Fields(DataKey.VEHICLE_ID, "msg", "flag");
     }
 }

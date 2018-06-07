@@ -6,5 +6,5 @@ package storm.util;
  * @description:
  */
 public class Reference<T> {
-    public T _;
+    public T value;
 }

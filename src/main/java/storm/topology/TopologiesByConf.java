@@ -17,6 +17,7 @@ import java.util.Properties;
 import storm.kafka.scheme.ErrorDataScheme;
 import storm.kafka.scheme.RegScheme;
 import storm.stream.CUS_NOTICE_GROUP;
+import storm.system.DataKey;
 import storm.util.ConfigUtils;
 import storm.kafka.scheme.RealinfoScheme;
 import storm.kafka.KafkaConfig;
@@ -213,11 +214,11 @@ public class TopologiesByConf {
             // 接收车辆错误报文数据
             .fieldsGrouping(
                 SysDefine.ERRORDATA_SPOUT_ID,
-                new Fields(SysDefine.VID))
+                new Fields(DataKey.VEHICLE_ID))
             // 接收车辆实时数据
             .fieldsGrouping(
                 SysDefine.REALINFO_SPOUT_ID,
-                new Fields(SysDefine.VID));
+                new Fields(DataKey.VEHICLE_ID));
 
         builder
             // 预警处理
@@ -230,7 +231,7 @@ public class TopologiesByConf {
             .fieldsGrouping(
                 SysDefine.CHECKFILTER_BOLT_ID,
                 SysDefine.SPLIT_GROUP,
-                new Fields(SysDefine.VID));
+                new Fields(DataKey.VEHICLE_ID));
 
         builder
             // 故障处理
@@ -243,7 +244,7 @@ public class TopologiesByConf {
             .fieldsGrouping(
                 SysDefine.ALARM_BOLT_ID,
                 SysDefine.FAULT_GROUP,
-                new Fields(SysDefine.VID));
+                new Fields(DataKey.VEHICLE_ID));
 
         builder
             // 电子围栏告警处理
@@ -256,7 +257,7 @@ public class TopologiesByConf {
             .fieldsGrouping(
                 SysDefine.CHECKFILTER_BOLT_ID,
                 SysDefine.FENCE_GROUP,
-                new Fields(SysDefine.VID));
+                new Fields(DataKey.VEHICLE_ID));
 
         builder
             // soc 与超时处理
@@ -269,7 +270,7 @@ public class TopologiesByConf {
             .fieldsGrouping(
                 SysDefine.CHECKFILTER_BOLT_ID,
                 CUS_NOTICE_GROUP.streamId,
-                new Fields(SysDefine.VID));
+                new Fields(DataKey.VEHICLE_ID));
 
         builder
             // 雅安用户行为处理
@@ -282,7 +283,7 @@ public class TopologiesByConf {
             .fieldsGrouping(
                 SysDefine.CHECKFILTER_BOLT_ID,
                 SysDefine.YAACTION_GROUP,
-                new Fields(SysDefine.VID));
+                new Fields(DataKey.VEHICLE_ID));
 
         builder
             // es数据同步处理
@@ -295,12 +296,12 @@ public class TopologiesByConf {
 //            .fieldsGrouping(
 //                SysDefine.ALARM_BOLT_ID,
 //                SysDefine.SYNES_GROUP,
-//                new Fields(SysDefine.VID))
+//                new Fields(SysDefine.VEHICLE_ID))
             // 电子围栏告警实时数据
             .fieldsGrouping(
                 SysDefine.CHECKFILTER_BOLT_ID,
                 SysDefine.SYNES_GROUP,
-                new Fields(SysDefine.VID))
+                new Fields(DataKey.VEHICLE_ID))
             .noneGrouping(
                 SysDefine.REG_SPOUT_ID,
                 SysDefine.REG_STREAM_ID);
@@ -315,7 +316,7 @@ public class TopologiesByConf {
 //            .fieldsGrouping(
 //                SysDefine.CHECKFILTER_BOLT_ID,
 //                SysDefine.SUPPLY_GROUP,
-//                new Fields(SysDefine.VID));
+//                new Fields(SysDefine.VEHICLE_ID));
 
         builder
             // 发送kafka消息，必要时可以动态增加线程数以增加发送线程数据
@@ -328,42 +329,42 @@ public class TopologiesByConf {
             .fieldsGrouping(
                 SysDefine.ALARM_BOLT_ID,
                 SysDefine.VEH_ALARM,
-                new Fields(SysDefine.VID))
+                new Fields(DataKey.VEHICLE_ID))
             // 车辆报警状态、实时需要存储的数据
             .fieldsGrouping(
                 SysDefine.ALARM_BOLT_ID,
                 SysDefine.VEH_ALARM_REALINFO_STORE,
-                new Fields(SysDefine.VID))
+                new Fields(DataKey.VEHICLE_ID))
             // 电子围栏
             .fieldsGrouping(
                 SysDefine.FENCE_BOLT_ID,
                 SysDefine.FENCE_ALARM,
-                new Fields(SysDefine.VID))
+                new Fields(DataKey.VEHICLE_ID))
             // 故障处理
             .fieldsGrouping(
                 SysDefine.FAULT_BOLT_ID,
                 SysDefine.FAULT_STREAM,
-                new Fields(SysDefine.VID))
+                new Fields(DataKey.VEHICLE_ID))
             // 雅安公交驾驶行为
             .fieldsGrouping(
                 SysDefine.YAACTION_BOLT_ID,
                 SysDefine.YAACTION_NOTICE,
-                new Fields(SysDefine.VID))
+                new Fields(DataKey.VEHICLE_ID))
             // es 同步推送
             .fieldsGrouping(
                 SysDefine.SYNES_BOLT_ID,
                 SysDefine.SYNES_NOTICE,
-                new Fields(SysDefine.VID))
+                new Fields(DataKey.VEHICLE_ID))
             // 告警 同步推送
             .fieldsGrouping(
                 SysDefine.CUS_NOTICE_BOLT_ID,
                 SysDefine.CUS_NOTICE,
-                new Fields(SysDefine.VID))
+                new Fields(DataKey.VEHICLE_ID))
             // 历史数据直接存储
             .fieldsGrouping(
                 SysDefine.CHECKFILTER_BOLT_ID,
                 SysDefine.HISTORY,
-                new Fields(SysDefine.VID));
+                new Fields(DataKey.VEHICLE_ID));
     }
 
     /**

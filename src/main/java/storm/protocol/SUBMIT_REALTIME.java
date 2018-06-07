@@ -1,5 +1,7 @@
 package storm.protocol;
 
+import storm.system.DataKey;
+
 /**
  * @author: xzp
  * @date: 2018-06-05
@@ -11,7 +13,7 @@ public final class SUBMIT_REALTIME {
     /**
      * 车辆ID, 车辆在平台中唯一编码
      */
-    public static final String VEHICLE_ID = "VID";
+    public static final String VEHICLE_ID = DataKey.VEHICLE_ID;
 
     /**
      * 车辆类型, 预警用于匹配约束条件

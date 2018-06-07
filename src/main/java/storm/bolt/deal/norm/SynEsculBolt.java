@@ -11,6 +11,7 @@ import org.apache.storm.tuple.Values;
 import com.alibaba.fastjson.JSON;
 
 import storm.handler.cal.EsRealCalHandler;
+import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
@@ -122,8 +123,8 @@ public class SynEsculBolt extends BaseRichBolt {
     	if(SysDefine.SYNES_GROUP.equals(tuple.getSourceStreamId())){
     		String vid = tuple.getString(0);
             Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
-            if (null == data.get(SysDefine.VID)) 
-				data.put(SysDefine.VID, vid);
+            if (null == data.get(DataKey.VEHICLE_ID))
+				data.put(DataKey.VEHICLE_ID, vid);
 
             Map<String, Object> esMap = handler.getSendEsMsgAndSetAliveLast(data,now);
             if (null != esMap && esMap.size()>0) {
@@ -165,7 +166,7 @@ public class SynEsculBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    	declarer.declareStream(SysDefine.SYNES_NOTICE, new Fields("TOPIC", SysDefine.VID, "VALUE"));
+    	declarer.declareStream(SysDefine.SYNES_NOTICE, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
     }
     
     void sendToKafka(String define,String topic,Object vid, String message) {

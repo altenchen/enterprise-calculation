@@ -235,7 +235,7 @@ public class FilterBolt extends BaseRichBolt {
             	stateNewKV.putAll(stateKV);
             }
 
-            String vid = stateKV.get(SysDefine.VID);
+            String vid = stateKV.get(DataKey.VEHICLE_ID);
             try {
             	if (CommandType.SUBMIT_LINKSTATUS.equals(type)
             			|| CommandType.SUBMIT_LOGIN.equals(type)
@@ -282,13 +282,13 @@ public class FilterBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-//        declarer.declareStream(SysDefine.SUPPLY_GROUP, new Fields(SysDefine.VID, "DATA"));
-        declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(SysDefine.VID, "DATA"));
-        declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(SysDefine.VID, "DATA"));
-        declarer.declareStream(SysDefine.YAACTION_GROUP, new Fields(SysDefine.VID, "DATA"));
-        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(SysDefine.VID, "DATA"));
+//        declarer.declareStream(SysDefine.SUPPLY_GROUP, new Fields(SysDefine.VEHICLE_ID, "DATA"));
+        declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
+        declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
+        declarer.declareStream(SysDefine.YAACTION_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
+        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
         CUS_NOTICE_GROUP.declareStreamOnce(declarer);
-        declarer.declareStream(SysDefine.HISTORY, new Fields("TOPIC", SysDefine.VID, "VALUE"));
+        declarer.declareStream(SysDefine.HISTORY, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
     }
 
 //    public Map<String, Object> getComponentConfiguration() {

@@ -10,11 +10,11 @@ import org.apache.storm.tuple.Values;
 
 import com.alibaba.fastjson.JSON;
 
-import storm.bolt.deal.norm.FilterBolt;
 import storm.cache.SysRealDataCache;
 import storm.handler.FaultCodeHandler;
 import storm.handler.cusmade.*;
 import storm.stream.CUS_NOTICE_GROUP;
+import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
@@ -187,8 +187,8 @@ public final class CarNoticelBolt extends BaseRichBolt {
     	if(CUS_NOTICE_GROUP.streamId.equals(tuple.getSourceStreamId())){
     		String vid = tuple.getString(0);
             Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
-            if (null == data.get(SysDefine.VID)) 
-				data.put(SysDefine.VID, vid);
+            if (null == data.get(DataKey.VEHICLE_ID))
+				data.put(DataKey.VEHICLE_ID, vid);
             
             try {
 				SysRealDataCache.addCaChe(data,now);
@@ -227,7 +227,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    	declarer.declareStream(SysDefine.CUS_NOTICE, new Fields("TOPIC", SysDefine.VID, "VALUE"));
+    	declarer.declareStream(SysDefine.CUS_NOTICE, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
     }
     
     void sendToKafka(String define,String topic,Object vid, String message) {

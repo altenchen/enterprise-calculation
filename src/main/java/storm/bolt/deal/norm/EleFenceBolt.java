@@ -10,21 +10,17 @@ import org.apache.storm.tuple.Values;
 
 import com.alibaba.fastjson.JSON;
 
-import storm.dto.fence.Circle;
 import storm.dto.fence.Coordinate;
 import storm.dto.fence.EleFence;
-import storm.dto.fence.PolygonCal;
-import storm.dto.fence.Segment;
 import storm.handler.fence.input.Rule;
 import storm.handler.fence.output.Invoke;
 import storm.handler.fence.output.Invoke.Result;
 import storm.handler.fence.output.InvokeCtxMtd;
 import storm.handler.fence.output.InvokeSglMtd;
+import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.dbconn.Conn;
 
-import java.awt.Polygon;
-import java.awt.geom.Point2D;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -94,8 +90,8 @@ public class EleFenceBolt extends BaseRichBolt {
     	if(tuple.getSourceStreamId().equals(SysDefine.FENCE_GROUP)){
     		String vid = tuple.getString(0);
             Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
-            if (null == data.get("VID")) 
-				data.put("VID", vid);
+            if (null == data.get(DataKey.VEHICLE_ID))
+				data.put(DataKey.VEHICLE_ID, vid);
 
             //fence
             List<Map<String, Object>>resuts = handle(data);
@@ -114,7 +110,7 @@ public class EleFenceBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    	declarer.declareStream(SysDefine.FENCE_ALARM, new Fields("TOPIC", SysDefine.VID, "VALUE"));
+    	declarer.declareStream(SysDefine.FENCE_ALARM, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
     }
     
     void sendAlarmKafka(String define,String topic,String vid, String message) {
@@ -133,7 +129,7 @@ public class EleFenceBolt extends BaseRichBolt {
     private List<Map<String, Object>> handle(Map<String, String> data){
 
     	if (!isNullOrEmpty(data)) {
-    		String vid = data.get("VID");
+    		String vid = data.get(DataKey.VEHICLE_ID);
     		List<EleFence> fences = new LinkedList<EleFence>();
     		if (!isNullOrEmpty(defaultfences)) 
     			fences.addAll(defaultfences);
@@ -171,7 +167,7 @@ public class EleFenceBolt extends BaseRichBolt {
 						
 						Map<String, Object> judge = new TreeMap<String, Object>();
 						judge.put("NOTIFYTYPE", "FENCE_ALARM");
-						judge.put("VID", vid);
+						judge.put(DataKey.VEHICLE_ID, vid);
 						judge.put("FENCEID", eleFence.id);
 						judge.put("LOCATION", lon+","+lan);
 						judge.put("TIME", msgTime);

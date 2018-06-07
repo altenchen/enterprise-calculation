@@ -22,6 +22,7 @@ import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.protocol.SUBMIT_REALTIME;
+import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
@@ -263,7 +264,7 @@ public class EsRealCalHandler{
 		
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
-			String vid = dat.get(SysDefine.VID);
+			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			Date date = inDate(time);
 			if (ObjectUtils.isNullOrEmpty(msgType) || ObjectUtils.isNullOrEmpty(vid) || null == time || time.length() != 14 || null ==date) {
@@ -431,7 +432,7 @@ public class EsRealCalHandler{
 			return false;
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
-			String vid = dat.get(SysDefine.VID);
+			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
@@ -474,7 +475,7 @@ public class EsRealCalHandler{
 			return false;
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
-			String vid = dat.get(SysDefine.VID);
+			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
@@ -538,7 +539,7 @@ public class EsRealCalHandler{
 			return false;
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
-			String vid = dat.get(SysDefine.VID);
+			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
@@ -589,7 +590,7 @@ public class EsRealCalHandler{
 	
 	boolean isStop(Map<String, String> map){
 		try {
-			String vid = map.get(SysDefine.VID);
+			String vid = map.get(DataKey.VEHICLE_ID);
 			String rev = map.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_REV);
 			String spd = map.get(SUBMIT_REALTIME.SPEED);
 			if (!"0".equals(spd) || !"20000".equals(rev)) {
