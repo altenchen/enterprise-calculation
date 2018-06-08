@@ -10,6 +10,7 @@ import java.util.TreeMap;
 
 import storm.handler.fence.input.Rule;
 import storm.handler.fence.input.StopAlarmRule;
+import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.ObjectUtils;
@@ -37,7 +38,7 @@ public class InvokeCtxMtd extends InvokeMtd implements Invoke {
 	}
 	
 	Object invoke(Map<String, String> dat,Rule rule){
-		String vid = dat.get("VID");
+		String vid = dat.get(DataKey.VEHICLE_ID);
 		if(rule instanceof StopAlarmRule)
 			return invoke(rule,dat,vid);
 		addData(vid,dat,datsize);

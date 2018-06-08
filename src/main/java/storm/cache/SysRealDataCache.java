@@ -20,9 +20,8 @@ import com.google.common.cache.CacheBuilder;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.handler.cal.RedisClusterLoaderUseCtfo;
-import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
-import storm.system.ProtocolItem;
+import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
@@ -163,12 +162,12 @@ public class SysRealDataCache {
 		if (null == dat || dat.size() ==0) {
 			return;
 		}
-		if ( !dat.containsKey(SUBMIT_REALTIME.VEHICLE_ID)
-				|| !dat.containsKey(ProtocolItem.getVIN())) {
+		if ( !dat.containsKey(DataKey.VEHICLE_ID)
+				|| !dat.containsKey(DataKey.VEHICLE_NUMBER)) {
 			return;
 		}
-		String vid = dat.get(ProtocolItem.getVID());
-		String vin = dat.get(ProtocolItem.getVIN());
+		String vid = dat.get(DataKey.VEHICLE_ID);
+		String vin = dat.get(DataKey.VEHICLE_NUMBER);
 		String[] strings = carInfoByVin(vin);
 		if(null ==strings || strings.length != 15)
 			return ;
@@ -177,9 +176,9 @@ public class SysRealDataCache {
 			return;
 		}
 		if (chargeTypes.contains(cartypeId.trim())) {
-			String time = dat.get(ProtocolItem.getTIME());
-			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
-			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
+			String time = dat.get(DataKey.TIME);
+			String latit = dat.get(DataKey._2503_LATITUDE);
+			String longi = dat.get(DataKey._2502_LONGITUDE);
 			
 			if (! ObjectUtils.isNullOrEmpty(time)
 					&& ! ObjectUtils.isNullOrEmpty(latit)
@@ -198,7 +197,7 @@ public class SysRealDataCache {
 		if (null == dat || dat.size() ==0) {
 			return;
 		}
-		if (!dat.containsKey(SUBMIT_REALTIME.VEHICLE_ID)) {
+		if (!dat.containsKey(DataKey.VEHICLE_ID)) {
 			return;
 		}
 		try {
@@ -222,7 +221,7 @@ public class SysRealDataCache {
 					newmap.put(mapkey, value);
 				}
 			}
-			String vid = newmap.get(SUBMIT_REALTIME.VEHICLE_ID);
+			String vid = newmap.get(DataKey.VEHICLE_ID);
 			carlastrecord.put(vid, newmap);
 			addLastQueue(vid);
 		} catch (Exception e) {
@@ -241,7 +240,7 @@ public class SysRealDataCache {
 			return false;
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
-			String vid = dat.get(SysDefine.VID);
+			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
@@ -305,7 +304,7 @@ public class SysRealDataCache {
 			return false;
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
-			String vid = dat.get(SysDefine.VID);
+			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)

@@ -1,17 +1,29 @@
-package storm.protocol;
+package storm.system;
 
 /**
  * @author: xzp
- * @date: 2018-06-05
- * @description: 实时信息上报
- * TODO: 变量命名
+ * @date: 2018-06-06
+ * @description: Storm流中数据字典的键
+ *
+ * 数字下标的采用 _索引数字_易读命名 的格式
  */
-public final class SUBMIT_REALTIME {
+@SuppressWarnings("unused")
+public final class DataKey {
 
     /**
      * 车辆ID, 车辆在平台中唯一编码
      */
     public static final String VEHICLE_ID = "VID";
+
+    /**
+     * VIN
+     */
+    public static final String VEHICLE_NUMBER = "VIN";
+
+    /**
+     * 时间
+     */
+    public static final String TIME = "TIME";
 
     /**
      * 车辆类型, 预警用于匹配约束条件
@@ -25,11 +37,13 @@ public final class SUBMIT_REALTIME {
      * 协议版本:1.0.0
      */
     public static final String CAR_TYPE = "CTYPE";
+//------
+
 
     /**
      * 采集时间
      */
-    public static final String COLLECT_TIME = "2000";
+    public static final String _2000_COLLECT_TIME = "2000";
 
     /**
      * 单体蓄电池总数
@@ -44,7 +58,7 @@ public final class SUBMIT_REALTIME {
     /**
      * 单体蓄电池电压值列表
      */
-    public static final String SINGLE_VOLT = "2003";
+    public static final String _2003_SINGLE_VOLT = "2003";
 
     /**
      * 蓄电池包温度探针总数
@@ -55,46 +69,46 @@ public final class SUBMIT_REALTIME {
      * 蓄电池包总数
      */
     public static final String _2102 = "2102";
-
+    
     /**
      * 单体温度值列表
      */
-    public static final String SINGLE_TEMP = "2103";
+    public static final String _2103_SINGLE_TEMP = "2103";
 
     /**
      * 车速
      */
-    public static final String SPEED = "2201";
+    public static final String _2201_SPEED = "2201";
 
     /**
      * 当前总里程, 定时任务关键字
      */
-    public static final String TOTAL_MILEAGE = "2202";
+    public static final String _2202_TOTAL_MILEAGE = "2202";
 
     /**
      * GEARS 档位
      */
-    public static final String GEARS = "2203";
+    public static final String _2203_GEARS = "2203";
 
     /**
      * braking force 制动力
      */
-    public static final String BRAKING_FORCE="2204";
+    public static final String _2204_BRAKING_FORCE = "2204";
 
     /**
      * driving force 驱动力
      */
-    public static final String DRIVING_FORCE="2205";
+    public static final String _2205_DRIVING_FORCE = "2205";
 
     /**
      * 加速踏板行程值
      */
-    public static final String ACCELERATOR_PEDAL = "2208";
+    public static final String _2208_ACCELERATOR_PEDAL = "2208";
 
     /**
      * 制动踏板行程值
      */
-    public static final String BRAKING_PEDAL = "2209";
+    public static final String _2209_BRAKING_PEDAL = "2209";
 
     /**
      * 空调设定温度
@@ -104,7 +118,7 @@ public final class SUBMIT_REALTIME {
     /**
      * SOC 过高告警
      */
-    public static final String RUNNING_MODE="2213";
+    public static final String _2213_RUNNING_MODE = "2213";
 
     /**
      * 续驶里程
@@ -114,57 +128,57 @@ public final class SUBMIT_REALTIME {
     /**
      * 充放电状态
      */
-    public static final String CHARGE_STATUS = "2301";
+    public static final String _2301_CHARGE_STATUS = "2301";
 
     /**
      * 电机控制器温度
      */
-    public static final String DRIVING_ELE_MAC_TEMPCTOL = "2302";
+    public static final String _2302_DRIVING_ELE_MAC_TEMPCTOL = "2302";
 
     /**
      * 驱动电机转速
      */
-    public static final String DRIVING_ELE_MAC_REV = "2303";
+    public static final String _2303_DRIVING_ELE_MAC_REV = "2303";
 
     /**
      * 驱动电机温度
      */
-    public static final String DRIVING_ELE_MAC_TEMP = "2304";
+    public static final String _2304_DRIVING_ELE_MAC_TEMP = "2304";
 
     /**
      * 驱动电机输入电压
      */
-    public static final String DRIVING_ELE_MAC_VOLT = "2305";
+    public static final String _2305_DRIVING_ELE_MAC_VOLT = "2305";
 
     /**
      * 驱动电机母线电流
      */
-    public static final String DRIVING_ELE_MAC_ELE = "2306";
+    public static final String _2306_DRIVING_ELE_MAC_ELE = "2306";
 
     /**
      * 驱动电机列表
      */
-    public static final String DRIVING_ELE_MAC_LIST="2308";
+    public static final String _2308_DRIVING_ELE_MAC_LIST = "2308";
 
     /**
      * 驱动电机序号
      */
-    public static final String DRIVING_ELE_MAC_SEQ="2309";
+    public static final String _2309_DRIVING_ELE_MAC_SEQ = "2309";
 
     /**
      * 驱动电机状态
      */
-    public static final String DRIVING_ELE_MAC_STATUS="2310";
+    public static final String _2310_DRIVING_ELE_MAC_STATUS = "2310";
 
     /**
      * 驱动电机转矩
      */
-    public static final String DRIVING_ELE_MAC_TORQUE="2311";
+    public static final String _2311_DRIVING_ELE_MAC_TORQUE = "2311";
 
     /**
      * 发动机状态
      */
-    public static final String ENGINES = "2401";
+    public static final String _2401_ENGINES = "2401";
 
     /**
      * ECU温度
@@ -224,17 +238,17 @@ public final class SUBMIT_REALTIME {
     /**
      * 定位状态
      */
-    public static final String ORIENTATION = "2501";
+    public static final String _2501_ORIENTATION = "2501";
 
     /**
      * 经度
      */
-    public static final String LONGITUDE = "2502";
+    public static final String _2502_LONGITUDE = "2502";
 
     /**
-     * 维度
+     * 纬度
      */
-    public static final String LATITUDE = "2503";
+    public static final String _2503_LATITUDE = "2503";
 
     /**
      * 速度
@@ -249,77 +263,77 @@ public final class SUBMIT_REALTIME {
     /**
      * 最高电压动力蓄电池单体所在电池包序号, 最高电压电池子系统号
      */
-    public static final String HIGHVOLT_CHILD_NUM = "2601";
+    public static final String _2601_HIGHVOLT_CHILD_NUM = "2601";
 
     /**
      * 最高电压单体蓄电池序号, 最高电压电池单体代号
      */
-    public static final String HIGHVOLT_SINGLE_NUM = "2602";
+    public static final String _2602_HIGHVOLT_SINGLE_NUM = "2602";
 
     /**
      * 电池单体电压最高值
      */
-    public static final String SINGLE_VOLT_HIGN_VAL = "2603";
+    public static final String _2603_SINGLE_VOLT_HIGN_VAL = "2603";
 
     /**
      * 最低电压动力蓄电池包序号, 最低电压电池子系统号
      */
-    public static final String LOWVOLT_CHILD_NUM = "2604";
+    public static final String _2604_LOWVOLT_CHILD_NUM = "2604";
 
     /**
      * 最低电压单体蓄电池序号, 最低电压电池单体代号
      */
-    public static final String LOWVOLT_SINGLE_NUM = "2605";
+    public static final String _2605_LOWVOLT_SINGLE_NUM = "2605";
 
     /**
      * 电池单体电压最低值
      */
-    public static final String SINGLE_VOLT_LOW_VAL = "2606";
+    public static final String _2606_SINGLE_VOLT_LOW_VAL = "2606";
 
     /**
      * 最高温度子系统号
      */
-    public static final String HIGNTEMP_CHILD = "2607";
+    public static final String _2607_HIGNTEMP_CHILD = "2607";
 
     /**
      * 最高温度探针单体代号
      */
-    public static final String SINGLE_HIGNTEMP_NUM = "2608";
+    public static final String _2608_SINGLE_HIGNTEMP_NUM = "2608";
 
     /**
      * 电池单体最高温度值
      */
-    public static final String SINGLE_HIGNTEMP_VAL = "2609";
+    public static final String _2609_SINGLE_HIGNTEMP_VAL = "2609";
 
     /**
      * 最低温度子系统号
      */
-    public static final String LOWTEMP_CHILD = "2610";
+    public static final String _2610_LOWTEMP_CHILD = "2610";
 
     /**
      * 最低温度探针单体代号
      */
-    public static final String SINGLE_LOWTEMP_NUM = "2611";
+    public static final String _2611_SINGLE_LOWTEMP_NUM = "2611";
 
     /**
      * 电池单体最低温度值
      */
-    public static final String SINGLE_LOWTEMP_VAL = "2612";
+    public static final String _2612_SINGLE_LOWTEMP_VAL = "2612";
 
     /**
      * 总电压
      */
-    public static final String TOTAL_VOLT = "2613";
+    public static final String _2613_TOTAL_VOLT = "2613";
 
     /**
      * 总电流
      */
-    public static final String TOTAL_ELE = "2614";
+    public static final String _2614_TOTAL_ELE = "2614";
 
     /**
      * SOC 电池剩余电量百分比
      */
-    public static final String SOC = "2615";
+    public static final String _2615_SOC = "2615";
 
     /**
      * 剩余能量
@@ -329,7 +343,7 @@ public final class SUBMIT_REALTIME {
     /**
      * 绝缘电阻
      */
-    public static final String INSULATION_RESISTANCE = "2617";
+    public static final String _2617_INSULATION_RESISTANCE = "2617";
 
     /**
      * 自定义类型编码列表
@@ -344,7 +358,7 @@ public final class SUBMIT_REALTIME {
     /**
      * 动力蓄电池报警标志
      */
-    public static final String _2801 = "2801";
+    public static final String _2801_POWER_BATTERY_ALARM_FLAG_2801 = "2801";
 
     /**
      * 动力蓄电池其他故障总数
@@ -389,35 +403,50 @@ public final class SUBMIT_REALTIME {
     /**
      * SOC 过高告警
      */
-    public static final String SOC_HIGH_ALARM="2909";
+    public static final String _2909_SOC_HIGH_ALARM = "2909";
 
     /**
      * 充电状态
      */
-    public static final String ALARM_STATUS="2920";
+    public static final String _2920_ALARM_STATUS = "2920";
 
     /**
-     * 车辆状态
+     * 采集时间
      */
-    public static final String CAR_STATUS="3201";
+    public static final String _3101_COLLECT_TIME = "3101";
+
+    /**
+     * 状态标志
+     */
+    public static final String _3110_STATUS_FLAGS = "3110";
+
+    /**
+     * 车辆状态, 1-车辆启动状态, 2-熄火, 3-其他状态
+     */
+    public static final String _3201_CAR_STATUS = "3201";
 
     /**
      * 通用报警标志值
      */
-    public static final String ALARM_MARK="3801";
+    public static final String _3801_ALARM_MARK = "3801";
 
     /**
      * 单体电压原始报文
      */
-    public static final String SINGLE_VOLT_ORIG="7003";
+    public static final String _7003_SINGLE_VOLT_ORIG = "7003";
 
     /**
      * 单体文档原始报文
      */
-    public static final String SINGLE_TEMP_ORGI="7103";
+    public static final String _7103_SINGLE_TEMP_ORGI = "7103";
 
     /**
      * SOC2
      */
     public static final String _7615 = "7615";
+
+    /**
+     * SERVER_TIME服务器接收到报文的时间
+     */
+    public static final String _9999_SERVER_RECEIVE_TIME = "9999";
 }

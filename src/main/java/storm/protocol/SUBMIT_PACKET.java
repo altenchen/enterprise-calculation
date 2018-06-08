@@ -1,28 +1,13 @@
 package storm.protocol;
 
+import storm.system.DataKey;
+
 /**
  * @author: xzp
  * @date: 2018-06-05
  * @description: 原始报文
  */
 public final class SUBMIT_PACKET {
-    /**
-     * 车辆ID, 车辆在平台中唯一编码
-     */
-    public static final String VEHICLE_ID = "VID";
-
-    /**
-     * 车辆类型, 预警用于匹配约束条件
-     */
-    public static final String VEHICLE_TYPE = "VTYPE";
-
-    /**
-     * 车机类型, 接入标识_协议种类_协议版本, 可通过CommandUtils工具类解析.
-     * 接入标识:1.前置机接入 2.平台转发接入
-     * 协议种类:1.国标协议 2.地标协议
-     * 协议版本:1.0.0
-     */
-    public static final String CAR_TYPE = "CTYPE";
 
     /**
      * 消息类型, 见车载终端协议《命令标识定义》表
@@ -50,7 +35,7 @@ public final class SUBMIT_PACKET {
      * @return 是否校验成功
      */
     public static final boolean isVerifySucess(String verifyState) {
-        return "0" == verifyState;
+        return "0".equals(verifyState);
     }
 
     /**
@@ -59,6 +44,6 @@ public final class SUBMIT_PACKET {
      * @return 是否校验失败
      */
     public static final boolean isVerifyFailure(String verifyState) {
-        return "1" == verifyState;
+        return "1".equals(verifyState);
     }
 }

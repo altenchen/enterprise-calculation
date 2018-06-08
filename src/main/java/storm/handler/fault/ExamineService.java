@@ -12,6 +12,7 @@ import com.alibaba.fastjson.JSON;
 import storm.dto.fault.AlarmMessage;
 import storm.dto.fault.FaultMessage;
 import storm.dto.fault.FaultRule;
+import storm.system.DataKey;
 import storm.util.dbconn.Conn;
 
 /**
@@ -49,7 +50,7 @@ public class ExamineService {
 		if (null == faultRules) 
 			return null;
 		List<String>sendMsg = null;
-		String vid = alarmMsg.get("VID");
+		String vid = alarmMsg.get(DataKey.VEHICLE_ID);
 		long utctime = Long.valueOf(alarmMsg.get("UTC_TIME"));
 		Map<String,FaultMessage> faultRuleResult = vidFaultMsgs.get(vid);
 		if (null == faultRuleResult) 
@@ -102,7 +103,7 @@ public class ExamineService {
 			Map<String, Object> map = new TreeMap<String,Object>();
 			map.put("MSG_ID", message.msgId);
 			map.put("FAULT_ID", message.faultRuleId);
-			map.put("VID", message.vid);
+			map.put(DataKey.VEHICLE_ID, message.vid);
 			map.put("STATUS", message.status);
 			map.put("RISK", message.risk);
 			map.put("START_TIME", message.startTime);
@@ -119,7 +120,7 @@ public class ExamineService {
 		if (null == alarmMsg || alarmMsg.size()<5) 
 			return null;
 		
-		String vid = alarmMsg.get("VID");
+		String vid = alarmMsg.get(DataKey.VEHICLE_ID);
 		String alarmRuleId = alarmMsg.get("CONST_ID");
 		String status = alarmMsg.get("STATUS");
 		String alarmId = alarmMsg.get("ALARM_ID");
@@ -155,7 +156,7 @@ public class ExamineService {
 	public static void main(String[] args) {
 		ExamineService service = new ExamineService();
 		Map<String,String> sendFault = new TreeMap<String,String>();
-        sendFault.put("VID", "003c45bd-692f-49f2-9f03-a558e8a9f6f5");
+        sendFault.put(DataKey.VEHICLE_ID, "003c45bd-692f-49f2-9f03-a558e8a9f6f5");
         sendFault.put("ALARM_ID", "003c45bd-692f-49f2-9f03-a558e8a9f6f5_20170926162628_402871815ebbd134015ebbe8885e0008");
         sendFault.put("STATUS", "1");
         sendFault.put("TIME", "20170926162458");
@@ -165,7 +166,7 @@ public class ExamineService {
 		List<String> reStrings=service.handler(sendFault);
 		
 		Map<String,String> alarmmsgs = new TreeMap<String,String>();
-		alarmmsgs.put("VID", "003c45bd-692f-49f2-9f03-a558e8a9f6f5");
+		alarmmsgs.put(DataKey.VEHICLE_ID, "003c45bd-692f-49f2-9f03-a558e8a9f6f5");
 		alarmmsgs.put("ALARM_ID", "003c45bd-692f-49f2-9f03-a558e8a9f6f5_20170926162628_402871815ebbd134015ebbe8885e0008");
 		alarmmsgs.put("STATUS", "2");
 		alarmmsgs.put("TIME", "20170926162638");
@@ -175,7 +176,7 @@ public class ExamineService {
 		List<String> res=service.handler(alarmmsgs);
 		
 		alarmmsgs = new TreeMap<String,String>();
-		alarmmsgs.put("VID", "003c45bd-692f-49f2-9f03-a558e8a9f6f5");
+		alarmmsgs.put(DataKey.VEHICLE_ID, "003c45bd-692f-49f2-9f03-a558e8a9f6f5");
 		alarmmsgs.put("ALARM_ID", "003c45bd-692f-49f2-9f03-a558e8a9f6f5_20170926162628_402871815ebbd134015ebbe8885e0008");
 		alarmmsgs.put("STATUS", "2");
 		alarmmsgs.put("TIME", "20170926162648");

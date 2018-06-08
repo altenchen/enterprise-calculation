@@ -8,13 +8,12 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import com.alibaba.fastjson.JSON;
 import com.sun.jersey.core.util.Base64;
 
+import storm.system.DataKey;
 import storm.system.SysDefine;
 
 import java.io.UnsupportedEncodingException;
-import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +45,8 @@ public class UserActionBolt extends BaseRichBolt {
     	if(tuple.getSourceStreamId().equals(SysDefine.YAACTION_GROUP)){
     		String vid = tuple.getString(0);
             Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
-            if (null == data.get("VID")) 
-				data.put("VID", vid);
+            if (null == data.get(DataKey.VEHICLE_ID))
+				data.put(DataKey.VEHICLE_ID, vid);
 
             List<Map<String, String>> actions = handle(data);
             if (null != actions) {
@@ -81,7 +80,7 @@ public class UserActionBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    	declarer.declareStream(SysDefine.YAACTION_NOTICE, new Fields("TOPIC", SysDefine.VID, "VALUE"));
+    	declarer.declareStream(SysDefine.YAACTION_NOTICE, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
     }
     
     void sendAlarmKafka(String define,String topic,String vid, String message) {
@@ -91,7 +90,7 @@ public class UserActionBolt extends BaseRichBolt {
     private List<Map<String, String>> handle(Map<String, String> data){
 
     	if (!isNullOrEmpty(data)) {
-    		String vid = data.get("VID");
+    		String vid = data.get(DataKey.VEHICLE_ID);
     		String actions = data.get("4001");
     		return analysisToListMap(vid,actions);
     	}
@@ -113,7 +112,7 @@ public class UserActionBolt extends BaseRichBolt {
 				if (null !=arr[i]) {
 					Map<String,String> map = analysisToMap(arr[i]);
 					if (null != map) {
-						map.put("VID", vid);
+						map.put(DataKey.VEHICLE_ID, vid);
 						list.add(map);
 					}
 				}

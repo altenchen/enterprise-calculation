@@ -9,6 +9,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import storm.handler.fault.ExamineService;
+import storm.system.DataKey;
 import storm.system.SysDefine;
 
 import java.util.List;
@@ -43,8 +44,8 @@ public class FaultBolt extends BaseRichBolt {
     	if(tuple.getSourceStreamId().equals(SysDefine.FAULT_GROUP)){
     		String vid = tuple.getString(0);
             Map<String, String> alarmMsg = (TreeMap<String, String>) tuple.getValue(1);
-            if (null == alarmMsg.get("VID")) 
-            	alarmMsg.put("VID", vid);
+            if (null == alarmMsg.get(DataKey.VEHICLE_ID))
+            	alarmMsg.put(DataKey.VEHICLE_ID, vid);
 
             //fault result
             List<String>resuts = service.handler(alarmMsg);
@@ -61,7 +62,7 @@ public class FaultBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    	declarer.declareStream(SysDefine.FAULT_STREAM, new Fields("TOPIC", SysDefine.VID, "VALUE"));
+    	declarer.declareStream(SysDefine.FAULT_STREAM, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
     }
     
     void sendAlarmKafka(String define,String topic,String vid, String message) {

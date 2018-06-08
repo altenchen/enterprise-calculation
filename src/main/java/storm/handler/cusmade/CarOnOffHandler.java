@@ -1,21 +1,17 @@
 package storm.handler.cusmade;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.jetbrains.annotations.NotNull;
 import storm.cache.SysRealDataCache;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
+import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.NumberUtils;
@@ -25,7 +21,7 @@ import storm.util.UUIDUtils;
 /**
  * 车辆上下线及相关处理
  */
-public class CarOnOffHandler implements OnOffInfoNotice {
+public final class CarOnOffHandler implements OnOffInfoNotice {
 
 	private Map<String, Map<String, Object>> vididleNotice;
 	private Map<String, Map<String, Object>> onOffMileNotice;
@@ -53,20 +49,23 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		recorder = new RedisRecorder();
 		restartInit(true);
 	}
-	@Override
-	public Map<String, Object> genotice(Map<String, String> dat) {
 
-		return null;
+    @NotNull
+	@Override
+	public Map<String, Object> genotice(@NotNull Map<String, String> dat) {
+
+		return new TreeMap<>();
+	}
+
+	@NotNull
+	@Override
+	public List<Map<String, Object>> generateNotices(@NotNull Map<String, String> dat) {
+
+		return new ArrayList<>();
 	}
 
 	@Override
-	public List<Map<String, Object>> genotices(Map<String, String> dat) {
-
-		return null;
-	}
-
-	@Override
-	public Map<String, Object> genotice(Map<String, String> dat, long now, long timeout) {
+	public Map<String, Object> genotice(@NotNull Map<String, String> dat, long now, long timeout) {
 		Map<String, Object> notice = onoffMile(dat, now, timeout);
 		return notice;
 	}
@@ -236,8 +235,8 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		if (null == dat || dat.size() ==0) {
 			return null;
 		}
-		String vid = dat.get(ProtocolItem.getVID());
-		String time = dat.get(ProtocolItem.getTIME());
+		String vid = dat.get(DataKey.VEHICLE_ID);
+		String time = dat.get(DataKey.TIME);
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
 		if (ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
@@ -249,9 +248,9 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		try {
 			if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 
-				String speed = dat.get(SUBMIT_REALTIME.SPEED);
-				String soc = dat.get(SUBMIT_REALTIME.SOC);
-				String mileage = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);
+				String speed = dat.get(DataKey._2201_SPEED);
+				String soc = dat.get(DataKey._2615_SOC);
+				String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
 				//下面三个if类似，都是校验一下，然后将vid和最后一帧的数据存入
 				if (null !=speed && !"".equals(speed)) {
 					speed = NumberUtils.stringNumber(speed);
@@ -297,7 +296,7 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
+		String lastUtc = dat.get(SysDefine.ONLINEUTC);
 		String noticetime = timeformat.toDateString(new Date(now));
 		//车辆 是否达到 闲置或者停机 超时的标准
 		//判断标准就是当前时间与缓存中的最后一帧报文时间差值是否大于阈值，
@@ -377,17 +376,17 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		String vid = dat.get(ProtocolItem.getVID());
-		String time = dat.get(ProtocolItem.getTIME());
+		String vid = dat.get(DataKey.VEHICLE_ID);
+		String time = dat.get(DataKey.TIME);
 		if (ObjectUtils.isNullOrEmpty(msgType)
 				||ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
 			return null;
 		}
-		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
+		String lastUtc = dat.get(SysDefine.ONLINEUTC);
 		double lastmileage = -1;
-		if (dat.containsKey(SUBMIT_REALTIME.TOTAL_MILEAGE)) {
-			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE)));
+		if (dat.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
+			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(DataKey._2202_TOTAL_MILEAGE)));
 			if (-1 != lastmileage) {
 				vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
 			}
@@ -427,18 +426,18 @@ public class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		String vid = dat.get(ProtocolItem.getVID());
-		String time = dat.get(ProtocolItem.getTIME());
+		String vid = dat.get(DataKey.VEHICLE_ID);
+		String time = dat.get(DataKey.TIME);
 		if (ObjectUtils.isNullOrEmpty(msgType)
 				||ObjectUtils.isNullOrEmpty(vid)
 				|| ObjectUtils.isNullOrEmpty(time)) {
 			return null;
 		}
-		String lastUtc = dat.get(ProtocolItem.getONLINEUTC());
+		String lastUtc = dat.get(SysDefine.ONLINEUTC);
 		String noticetime = timeformat.toDateString(new Date(now));
 		double lastmileage = -1;
-		if (dat.containsKey(SUBMIT_REALTIME.TOTAL_MILEAGE)) {
-			String mileage = NumberUtils.stringNumber(dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE));
+		if (dat.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
+			String mileage = NumberUtils.stringNumber(dat.get(DataKey._2202_TOTAL_MILEAGE));
 			if (! "0".equals(mileage)) {
 
 				lastmileage = Double.parseDouble(mileage);

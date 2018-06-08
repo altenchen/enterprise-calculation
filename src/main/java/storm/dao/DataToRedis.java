@@ -14,6 +14,7 @@ import com.alibaba.fastjson.JSON;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
+import storm.system.DataKey;
 import storm.util.ObjectUtils;
 import storm.util.RedisPoolUtils;
 
@@ -197,7 +198,7 @@ public final class DataToRedis {
 	 * @param jedisPool
 	 */
 	public void saveRealtimeMessage(Map<String,String> map,JedisPool jedisPool) {
-		String vid = map.get("VID");
+		String vid = map.get(DataKey.VEHICLE_ID);
 		Jedis jedis=null;
 		try{
 			jedis=jedisPool.getResource();
@@ -206,9 +207,9 @@ public final class DataToRedis {
 				jedis.hmset(vid, map);
 			}
 		}catch(JedisException e){
-			logger.error("存储实时数据缓存Jedis异常:"+map.get("VID")+ e.getMessage() ,e);
+			logger.error("存储实时数据缓存Jedis异常:"+map.get(DataKey.VEHICLE_ID)+ e.getMessage() ,e);
 		}catch(Exception ex){
-			logger.error("存储实时数据缓存异常:"+map.get("VID")+ex.getMessage() ,ex);
+			logger.error("存储实时数据缓存异常:"+map.get(DataKey.VEHICLE_ID)+ex.getMessage() ,ex);
 		}
 		finally{
 			if(jedis != null ){ 
@@ -229,15 +230,15 @@ public final class DataToRedis {
 		
 		Jedis jedis=null;
 		try{
-			if(map.get("VID") != null){
+			if(map.get(DataKey.VEHICLE_ID) != null){
 				jedis = jedisPool.getResource();
 				jedis.select(3);
-				jedis.hmset(map.get("VID"), map);
+				jedis.hmset(map.get(DataKey.VEHICLE_ID), map);
 			}
 		}catch(JedisException e){
-			logger.error("存储充电数据缓存Jedis异常:"+map.get("VID")+ e.getMessage() ,e);
+			logger.error("存储充电数据缓存Jedis异常:"+map.get(DataKey.VEHICLE_ID)+ e.getMessage() ,e);
 		}catch(Exception ex){
-			logger.error("存储充电数据缓存异常:"+map.get("VID")+ex.getMessage() ,ex);
+			logger.error("存储充电数据缓存异常:"+map.get(DataKey.VEHICLE_ID)+ex.getMessage() ,ex);
 		}finally{
 			if(jedis != null ){ 
 				jedisPool.returnResourceObject(jedis);
@@ -258,15 +259,15 @@ public final class DataToRedis {
 		
 		Jedis jedis=null;
 		try{
-			if(map.get("VID") != null){
+			if(map.get(DataKey.VEHICLE_ID) != null){
 				jedis = jedisPool.getResource();
 				jedis.select(2);
-				jedis.hmset(map.get("VID"), map);
+				jedis.hmset(map.get(DataKey.VEHICLE_ID), map);
 			}
 		}catch(JedisException e){
-			logger.error("存储租赁数据缓存Jedis异常:"+map.get("VID")+ e.getMessage() ,e);
+			logger.error("存储租赁数据缓存Jedis异常:"+map.get(DataKey.VEHICLE_ID)+ e.getMessage() ,e);
 		}catch(Exception ex){
-			logger.error("存储租赁数据缓存异常:"+map.get("VID")+ex.getMessage() ,ex);
+			logger.error("存储租赁数据缓存异常:"+map.get(DataKey.VEHICLE_ID)+ex.getMessage() ,ex);
 		}finally{
 			if(jedis != null ){ 
 				jedisPool.returnResourceObject(jedis);

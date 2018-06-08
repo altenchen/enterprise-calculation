@@ -7,6 +7,7 @@ import java.util.TreeMap;
 import com.sun.jersey.core.util.Base64;
 
 import storm.protocol.SUBMIT_LOGIN;
+import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.ObjectUtils;
@@ -27,9 +28,9 @@ class RegHanler {
 
         try {
 			if ("1".equals(type)) {//车辆上线
-			    String vid = msg.get(SysDefine.VID);
+			    String vid = msg.get(DataKey.VEHICLE_ID);
 			    if (vid==null || vid.equals("")){
-			        System.out.println("Login Error VID: ");
+			        System.out.println("Login Error VEHICLE_ID: ");
 			        return null;
 			    }
 
@@ -73,7 +74,7 @@ class RegHanler {
 				}
 			    return esmap;
 			}else if ("2".equals(type)) {//车辆离线
-				String vid = msg.get(SysDefine.VID);
+				String vid = msg.get(DataKey.VEHICLE_ID);
 			    if (vid==null || vid.equals("")){
 			        System.out.println("Login Error VID: ");
 			        return null;
@@ -90,7 +91,7 @@ class RegHanler {
 			   
 			}else if ("0".equals(type)){
 			    /*try {
-			        String vid = msg.get(SysDefine.VID);
+			        String vid = msg.get(SysDefine.VEHICLE_ID);
 			        if (vid==null || "".equals(vid.trim()) || null == time || "".equals(time.trim())){
 			            System.out.println("Login Error VID: " + vid);
 			            return null;
