@@ -305,12 +305,12 @@ public class FilterBolt extends BaseRichBolt {
     	// region 更新所有车的最大里程数和最小里程数
         try {
             // 判断处理实时里程数据
-            if (dataMap.containsKey(SUBMIT_REALTIME.TOTAL_MILEAGE)
-                && !"".equals(dataMap.get(SUBMIT_REALTIME.TOTAL_MILEAGE))) {
+            if (dataMap.containsKey(DataKey._2202_TOTAL_MILEAGE)
+                && !"".equals(dataMap.get(DataKey._2202_TOTAL_MILEAGE))) {
 
                 long mileage = Long.parseLong(
                     NumberUtils.stringNumber(
-                        dataMap.get(SUBMIT_REALTIME.TOTAL_MILEAGE)
+                        dataMap.get(DataKey._2202_TOTAL_MILEAGE)
                     )
                 );
                 Long maxCacheMileage = maxMileMap.get(vid);
@@ -344,16 +344,16 @@ public class FilterBolt extends BaseRichBolt {
             final String charging = "1";
             final String disCharging = "2";
             if (CommandType.SUBMIT_REALTIME.equals(dataMap.get(SysDefine.MESSAGETYPE))) {
-                if (dataMap.containsKey(SUBMIT_REALTIME.CHARGE_STATUS)
-                    && !ObjectUtils.isNullOrEmpty(dataMap.get(SUBMIT_REALTIME.CHARGE_STATUS))) {
-                    String status = dataMap.get(SUBMIT_REALTIME.CHARGE_STATUS);
+                if (dataMap.containsKey(DataKey._2301_CHARGE_STATUS)
+                    && !ObjectUtils.isNullOrEmpty(dataMap.get(DataKey._2301_CHARGE_STATUS))) {
+                    String status = dataMap.get(DataKey._2301_CHARGE_STATUS);
                     if (chargeMap.get(vid) == null) 
                     	chargeMap.put(vid, 0);
                     
                     int cacheNum = chargeMap.get(vid);
                     if (charging.equals(status) &&
                         // 车速为0
-                        "0".equals(NumberUtils.stringNumber(dataMap.get(SUBMIT_REALTIME.SPEED)))) {
+                        "0".equals(NumberUtils.stringNumber(dataMap.get(DataKey._2201_SPEED)))) {
                     	chargeMap.put(vid, cacheNum + 1);
                         if (cacheNum >= 10) {
                             dataMap.put(SysDefine.ISCHARGE, "1");
@@ -375,11 +375,11 @@ public class FilterBolt extends BaseRichBolt {
 
         // region [忽略] 向最后的数据中加入车辆当前所在行政区域id
         /*try {
-			if (dataMap.containsKey(ProtocolItem.LONGITUDE)
-					&& dataMap.containsKey(ProtocolItem.LATITUDE)) {
+			if (dataMap.containsKey(DataKey._2502_LONGITUDE)
+					&& dataMap.containsKey(DataKey._2503_LATITUDE)) {
 				
-				String longit = dataMap.get(ProtocolItem.LONGITUDE);
-				String latit = dataMap.get(ProtocolItem.LATITUDE);
+				String longit = dataMap.get(DataKey._2502_LONGITUDE);
+				String latit = dataMap.get(DataKey._2503_LATITUDE);
 				if (null != longit && null != latit) {
 					longit = NumberUtils.stringNumber(longit);
 					latit = NumberUtils.stringNumber(latit);
@@ -454,14 +454,14 @@ public class FilterBolt extends BaseRichBolt {
 		 */
         try {
             // region 北京地标: 动力蓄电池报警标志解析存储, 见表20
-            if (dataMap.containsKey(SUBMIT_REALTIME.POWER_BATTERY_ALARM_FLAG_2801)
-                && !"".equals(dataMap.get(SUBMIT_REALTIME.POWER_BATTERY_ALARM_FLAG_2801))) {
+            if (dataMap.containsKey(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801)
+                && !"".equals(dataMap.get(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801))) {
                 // WORD通过二进制标识(预留部分填0)
                 String binaryStr = TimeUtils.fillNBitBefore(
                     Long.toBinaryString(
                         Long.parseLong(
                             NumberUtils.stringNumber(
-                                dataMap.get(SUBMIT_REALTIME.POWER_BATTERY_ALARM_FLAG_2801)
+                                dataMap.get(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801)
                             )
                         )
                     ),
@@ -496,12 +496,12 @@ public class FilterBolt extends BaseRichBolt {
             // endregion
 
             // region 国标: 通用报警标志值, 见表18
-            else if(dataMap.containsKey(SUBMIT_REALTIME.ALARM_MARK) && !"".equals(dataMap.get(SUBMIT_REALTIME.ALARM_MARK))) {
+            else if(dataMap.containsKey(DataKey._3801_ALARM_MARK) && !"".equals(dataMap.get(DataKey._3801_ALARM_MARK))) {
                 String binaryStr = TimeUtils.fillNBitBefore(
                     Long.toBinaryString(
                         Long.parseLong(
                             NumberUtils.stringNumber(
-                                dataMap.get(SUBMIT_REALTIME.ALARM_MARK)
+                                dataMap.get(DataKey._3801_ALARM_MARK)
                             )
                         )
                     ),

@@ -8,23 +8,6 @@ import storm.system.DataKey;
  * @description: 原始报文
  */
 public final class SUBMIT_PACKET {
-    /**
-     * 车辆ID, 车辆在平台中唯一编码
-     */
-    public static final String VEHICLE_ID = DataKey.VEHICLE_ID;
-
-    /**
-     * 车辆类型, 预警用于匹配约束条件
-     */
-    public static final String VEHICLE_TYPE = "VTYPE";
-
-    /**
-     * 车机类型, 接入标识_协议种类_协议版本, 可通过CommandUtils工具类解析.
-     * 接入标识:1.前置机接入 2.平台转发接入
-     * 协议种类:1.国标协议 2.地标协议
-     * 协议版本:1.0.0
-     */
-    public static final String CAR_TYPE = "CTYPE";
 
     /**
      * 消息类型, 见车载终端协议《命令标识定义》表

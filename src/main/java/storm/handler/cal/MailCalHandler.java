@@ -23,7 +23,6 @@ import com.google.common.cache.CacheBuilder;
 
 import storm.cache.util.RedisOrganizationUtil;
 import storm.dao.DataToRedis;
-import storm.protocol.SUBMIT_REALTIME;
 import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
@@ -650,7 +649,7 @@ public class MailCalHandler {
 				long runningonline=null==disMap.get(SysDefine.RUNNING_ONLINE)?0:Long.valueOf(disMap.get(SysDefine.RUNNING_ONLINE));
 				long stoponline=null==disMap.get(SysDefine.STOP_ONLINE)?0:Long.valueOf(disMap.get(SysDefine.STOP_ONLINE));
 				
-				mileage +=Long.parseLong(NumberUtils.stringNumber(map.get(SUBMIT_REALTIME.TOTAL_MILEAGE)));
+				mileage +=Long.parseLong(NumberUtils.stringNumber(map.get(DataKey._2202_TOTAL_MILEAGE)));
 				long lastTime=Long.valueOf(map.get(SysDefine.ONLINEUTC));
 				if (System.currentTimeMillis()-lastTime<time){
 					online++;

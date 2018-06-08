@@ -15,7 +15,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
 import storm.dao.DataToRedis;
-import storm.protocol.SUBMIT_REALTIME;
+import storm.system.DataKey;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
@@ -237,7 +237,7 @@ public class SystemCache {
                     		if (keyarr.length>=3) {
                     			key = keyarr[2];
                     			if (!ObjectUtils.isNullOrEmpty(key)) {
-                    				mileage = mileage + Double.parseDouble(NumberUtils.stringNumber((CTFOUtils.getDefaultCTFOCacheTable().queryHash(key, SUBMIT_REALTIME.TOTAL_MILEAGE))));
+                    				mileage = mileage + Double.parseDouble(NumberUtils.stringNumber((CTFOUtils.getDefaultCTFOCacheTable().queryHash(key, DataKey._2202_TOTAL_MILEAGE))));
 								}
 							}
                     		

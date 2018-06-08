@@ -1,20 +1,15 @@
 package storm.handler.cusmade;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.jetbrains.annotations.NotNull;
 import storm.cache.SysRealDataCache;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
@@ -54,20 +49,23 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		recorder = new RedisRecorder();
 		restartInit(true);
 	}
-	@Override
-	public Map<String, Object> genotice(Map<String, String> dat) {
 
-		return null;
+    @NotNull
+	@Override
+	public Map<String, Object> genotice(@NotNull Map<String, String> dat) {
+
+		return new TreeMap<>();
+	}
+
+	@NotNull
+	@Override
+	public List<Map<String, Object>> generateNotices(@NotNull Map<String, String> dat) {
+
+		return new ArrayList<>();
 	}
 
 	@Override
-	public List<Map<String, Object>> generateNotices(Map<String, String> dat) {
-
-		return null;
-	}
-
-	@Override
-	public Map<String, Object> genotice(Map<String, String> dat, long now, long timeout) {
+	public Map<String, Object> genotice(@NotNull Map<String, String> dat, long now, long timeout) {
 		Map<String, Object> notice = onoffMile(dat, now, timeout);
 		return notice;
 	}
@@ -238,9 +236,9 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		try {
 			if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 
-				String speed = dat.get(SUBMIT_REALTIME.SPEED);
-				String soc = dat.get(SUBMIT_REALTIME.SOC);
-				String mileage = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);
+				String speed = dat.get(DataKey._2201_SPEED);
+				String soc = dat.get(DataKey._2615_SOC);
+				String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
 				//下面三个if类似，都是校验一下，然后将vid和最后一帧的数据存入
 				if (null !=speed && !"".equals(speed)) {
 					speed = NumberUtils.stringNumber(speed);
@@ -371,8 +369,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		}
 		String lastUtc = dat.get(SysDefine.ONLINEUTC);
 		double lastmileage = -1;
-		if (dat.containsKey(SUBMIT_REALTIME.TOTAL_MILEAGE)) {
-			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE)));
+		if (dat.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
+			lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(DataKey._2202_TOTAL_MILEAGE)));
 			if (-1 != lastmileage) {
 				vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
 			}
@@ -420,8 +418,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		String lastUtc = dat.get(SysDefine.ONLINEUTC);
 		String noticetime = timeformat.toDateString(new Date(now));
 		double lastmileage = -1;
-		if (dat.containsKey(SUBMIT_REALTIME.TOTAL_MILEAGE)) {
-			String mileage = NumberUtils.stringNumber(dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE));
+		if (dat.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
+			String mileage = NumberUtils.stringNumber(dat.get(DataKey._2202_TOTAL_MILEAGE));
 			if (! "0".equals(mileage)) {
 
 				lastmileage = Double.parseDouble(mileage);

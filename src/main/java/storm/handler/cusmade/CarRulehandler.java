@@ -11,6 +11,7 @@ import com.alibaba.fastjson.JSON;
 import com.sun.jersey.core.util.Base64;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import storm.cache.SysRealDataCache;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
@@ -19,7 +20,6 @@ import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
@@ -352,9 +352,9 @@ public class CarRulehandler implements InfoNotice{
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
 			}
-			String soc = dat.get(SUBMIT_REALTIME.SOC);
-			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
-			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
+			String soc = dat.get(DataKey._2615_SOC);
+			String latit = dat.get(DataKey._2503_LATITUDE);
+			String longi = dat.get(DataKey._2502_LONGITUDE);
 			String location = longi+","+latit;
 			String noticetime = timeformat.toDateString(new Date());
 			List<Map<String, Object>> noticeMsgs = new LinkedList<Map<String, Object>>();
@@ -538,32 +538,35 @@ public class CarRulehandler implements InfoNotice{
 	/**
 	 * 无can车辆_于心沼
 	 */
-	private Map<String, Object> nocan(Map<String, String> dat){
-		if (ObjectUtils.isNullOrEmpty(dat)) {
-			return null;
-		}
+	@Nullable
+    private Map<String, Object> nocan(Map<String, String> data){
 		try {
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(DataKey.TIME);
+            String vid = data.get(DataKey.VEHICLE_ID);
+            String time = data.get(DataKey.TIME);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
 			}
-			String canList = dat.get(ProtocolItem.CAN_LIST);
-			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
-			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
+			// can 列表
+			String canList = data.get(ProtocolItem.CAN_LIST);
+			// 纬度
+			String latit = data.get(DataKey._2503_LATITUDE);
+			// 经度
+			String longi = data.get(DataKey._2502_LONGITUDE);
 			String location = longi+","+latit;
+
 			//noticetime为当前时间
 			Date date= new Date();
 			String noticetime = timeformat.toDateString(date);
+
+			// 车辆状态
+			String carStatus = data.get(DataKey._3201_CAR_STATUS);
+			String soc = data.get(DataKey._2615_SOC);
 			
-			String carStatus = dat.get(SUBMIT_REALTIME.CAR_STATUS);
-			String soc = dat.get(SUBMIT_REALTIME.SOC);
+			String macList = data.get(DataKey._2308_DRIVING_ELE_MAC_LIST);
 			
-			String macList = dat.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_LIST);
-			
-			String hignVolt = dat.get(SUBMIT_REALTIME.SINGLE_VOLT_HIGN_VAL);
-			String lowTemp = dat.get(SUBMIT_REALTIME.SINGLE_LOWTEMP_VAL);
+			String hignVolt = data.get(DataKey._2603_SINGLE_VOLT_HIGN_VAL);
+			String lowTemp = data.get(DataKey._2612_SINGLE_LOWTEMP_VAL);
 			
 			boolean hasMacCan = false;
 			if (!ObjectUtils.isNullOrEmpty(macList)){
@@ -586,13 +589,13 @@ public class CarRulehandler implements InfoNotice{
 							}
 							
 							if (motor.size() > 0) {
-								String drivingEleMacStatus = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_STATUS);//"2310";//driving 驱动电机状态
-			        			String drivingEleMacTempCtol = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_TEMPCTOL);//"2302";//driving 驱动电机温度控制器
-			        			String drivingEleMacRev = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_REV);//"2303";//driving 驱动电机转速
-			        			String drivingEleMacTorque = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_TORQUE);//"2311";//driving 驱动电机转矩
-			        			String drivingEleMacTemp = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_TEMP);//"2304";//driving 驱动电机温度
-			        			String drivingEleMacVolt = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_VOLT);//"2305";//driving 驱动电机输入电压
-			        			String drivingEleMacEle = motor.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_ELE);//"2306";//driving 驱动电机母线电流
+								String drivingEleMacStatus = motor.get(DataKey._2310_DRIVING_ELE_MAC_STATUS);//"2310";//driving 驱动电机状态
+			        			String drivingEleMacTempCtol = motor.get(DataKey._2302_DRIVING_ELE_MAC_TEMPCTOL);//"2302";//driving 驱动电机温度控制器
+			        			String drivingEleMacRev = motor.get(DataKey._2303_DRIVING_ELE_MAC_REV);//"2303";//driving 驱动电机转速
+			        			String drivingEleMacTorque = motor.get(DataKey._2311_DRIVING_ELE_MAC_TORQUE);//"2311";//driving 驱动电机转矩
+			        			String drivingEleMacTemp = motor.get(DataKey._2304_DRIVING_ELE_MAC_TEMP);//"2304";//driving 驱动电机温度
+			        			String drivingEleMacVolt = motor.get(DataKey._2305_DRIVING_ELE_MAC_VOLT);//"2305";//driving 驱动电机输入电压
+			        			String drivingEleMacEle = motor.get(DataKey._2306_DRIVING_ELE_MAC_ELE);//"2306";//driving 驱动电机母线电流
 			        			//只要有其中之一的数据就说明有电机can状态
 			        			boolean nullAll = ObjectUtils.isNullOrEmpty(drivingEleMacTemp)
 			        					&& ObjectUtils.isNullOrEmpty(drivingEleMacVolt)
@@ -682,7 +685,7 @@ public class CarRulehandler implements InfoNotice{
 					cnts++;
 					vidnormcan.put(vid, cnts);
 					
-					if (cnts >=hascanJudgeNum || (cnts >= 3 && null!=dat.get(SUBMIT_LOGIN.LOGOUT_TIME))) {
+					if (cnts >=hascanJudgeNum || (cnts >= 3 && null!=data.get(SUBMIT_LOGIN.LOGOUT_TIME))) {
 						
 						vidnormcan.remove(vid);
 						
@@ -736,7 +739,7 @@ public class CarRulehandler implements InfoNotice{
 			Map<String, Object> notice = null;
 			if (CommandType.SUBMIT_REALTIME.equals(msgType)) {
 				
-				String mileage = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);//当前总里程
+				String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);//当前总里程
 				
 				if (vidLastDat.containsKey(vid)) {
 					//mileage如果是数字字符串则返回，不是则返回字符串“0”
@@ -744,7 +747,7 @@ public class CarRulehandler implements InfoNotice{
 					if (!"0".equals(mileage)) {
 						int mile = Integer.parseInt(mileage);//当前总里程
 						Map<String, Object> lastMap = vidLastDat.get(vid);
-						int lastMile = (int)lastMap.get(SUBMIT_REALTIME.TOTAL_MILEAGE);//上一帧的总里程
+						int lastMile = (int)lastMap.get(DataKey._2202_TOTAL_MILEAGE);//上一帧的总里程
 						int nowmileHop = Math.abs(mile-lastMile);//里程跳变
 						
 						if (nowmileHop >= mileHop) {
@@ -774,7 +777,7 @@ public class CarRulehandler implements InfoNotice{
 		return null;
 	}
 	private void setLastDat(Map<String, String> dat){
-		String mileage = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);
+		String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
 		mileage = NumberUtils.stringNumber(mileage);
 		if (!"0".equals(mileage)) {
 			Map<String, Object> lastMap = new TreeMap<String, Object>();
@@ -783,7 +786,7 @@ public class CarRulehandler implements InfoNotice{
 			int mile = Integer.parseInt(mileage);
             lastMap.put(DataKey.VEHICLE_ID, vid);
             lastMap.put(DataKey.TIME, time);
-			lastMap.put(SUBMIT_REALTIME.TOTAL_MILEAGE, mile);
+			lastMap.put(DataKey._2202_TOTAL_MILEAGE, mile);
 			vidLastDat.put(vid, lastMap);
 		}
 	}
@@ -801,20 +804,20 @@ public class CarRulehandler implements InfoNotice{
             String vid = dat.get(DataKey.VEHICLE_ID);
             String vin = dat.get(DataKey.VEHICLE_NUMBER);
             String time = dat.get(DataKey.TIME);
-			String carStatus = dat.get(SUBMIT_REALTIME.CAR_STATUS);
+			String carStatus = dat.get(DataKey._3201_CAR_STATUS);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(carStatus)) {
 				return null;
 			}
 			
-			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
-			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
+			String latit = dat.get(DataKey._2503_LATITUDE);
+			String longi = dat.get(DataKey._2502_LONGITUDE);
 			String location = longi+","+latit;
 			String noticetime = timeformat.toDateString(new Date());
-			String speed = dat.get(SUBMIT_REALTIME.SPEED);
-			String socStr = dat.get(SUBMIT_REALTIME.SOC);
-			String mileageStr = dat.get(SUBMIT_REALTIME.TOTAL_MILEAGE);
+			String speed = dat.get(DataKey._2201_SPEED);
+			String socStr = dat.get(DataKey._2615_SOC);
+			String mileageStr = dat.get(DataKey._2202_TOTAL_MILEAGE);
 			
 			double soc = -1;
 			if (!ObjectUtils.isNullOrEmpty(socStr)) {
@@ -944,8 +947,8 @@ public class CarRulehandler implements InfoNotice{
 		try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             String time = dat.get(DataKey.TIME);
-			String speed = dat.get(SUBMIT_REALTIME.SPEED);
-			String rev = dat.get(SUBMIT_REALTIME.DRIVING_ELE_MAC_REV);
+			String speed = dat.get(DataKey._2201_SPEED);
+			String rev = dat.get(DataKey._2303_DRIVING_ELE_MAC_REV);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(speed)
@@ -954,8 +957,8 @@ public class CarRulehandler implements InfoNotice{
 			}
 			double spd = Double.parseDouble(NumberUtils.stringNumber(speed));
 			double rv = Double.parseDouble(NumberUtils.stringNumber(rev));
-			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
-			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
+			String latit = dat.get(DataKey._2503_LATITUDE);
+			String longi = dat.get(DataKey._2502_LONGITUDE);
 			String location = longi+","+latit;
 			String noticetime = timeformat.toDateString(new Date());
 			if (spd > 0 && rv>0) {
@@ -1030,14 +1033,14 @@ public class CarRulehandler implements InfoNotice{
 		try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             String time = dat.get(DataKey.TIME);
-			String speed = dat.get(SUBMIT_REALTIME.SPEED);
+			String speed = dat.get(DataKey._2201_SPEED);
 			if (ObjectUtils.isNullOrEmpty(vid)
 					|| ObjectUtils.isNullOrEmpty(time)
 					|| ObjectUtils.isNullOrEmpty(speed)) {
 				return null;
 			}
-			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
-			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
+			String latit = dat.get(DataKey._2503_LATITUDE);
+			String longi = dat.get(DataKey._2502_LONGITUDE);
 			String location = longi+","+latit;
 			String noticetime = timeformat.toDateString(new Date());
 			long msgtime = timeformat.stringTimeLong(time);
@@ -1129,8 +1132,8 @@ public class CarRulehandler implements InfoNotice{
 					|| ObjectUtils.isNullOrEmpty(time)) {
 				return null;
 			}
-			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
-			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
+			String latit = dat.get(DataKey._2503_LATITUDE);
+			String longi = dat.get(DataKey._2502_LONGITUDE);
 			//noticetime为当前时间
 			Date date= new Date();
 			String noticetime = timeformat.toDateString(date);

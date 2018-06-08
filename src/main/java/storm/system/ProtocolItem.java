@@ -16,7 +16,6 @@ public final class ProtocolItem {
 
 
     public static final String LOCATION="LOCATION";//GPS 经度，纬度
-	public static final String SERVER_RECEIVE_TIME="9999";//SERVER_TIME服务器接收时间
 	
 	public static final String CAN_LEN="4410021";//can 会话长度
 	public static final String CAN_CONT="4410022";//can 会话内容

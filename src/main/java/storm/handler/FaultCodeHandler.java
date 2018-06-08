@@ -10,10 +10,8 @@ import java.util.TreeMap;
 
 import storm.dto.FaultCode;
 import storm.dto.FaultRuleCode;
-import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
-import storm.system.ProtocolItem;
 import storm.util.ConfigUtils;
 import storm.util.ObjectUtils;
 import storm.util.UUIDUtils;
@@ -176,8 +174,8 @@ public class FaultCodeHandler {
 				|| ObjectUtils.isNullOrEmpty(time)) {
 			return null;
 		}
-		String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
-		String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
+		String latit = dat.get(DataKey._2503_LATITUDE);
+		String longi = dat.get(DataKey._2502_LONGITUDE);
 		String location = longi+","+latit;
 		Date date = new Date();
 		String noticetime = timeformat.toDateString(date);

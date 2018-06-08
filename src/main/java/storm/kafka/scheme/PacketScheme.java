@@ -43,7 +43,7 @@ public final class PacketScheme implements Scheme {
 
     // 消息结构：消息前缀 序列号 VIN码 命令标识 参数集
     @NotNull
-    private static final Pattern pattern = Pattern.compile("^[^{]+PACKET \\{(VID:[^}]+,4:1,[^}]+)\\}$");
+    private static final Pattern pattern = Pattern.compile("^[^{]+PACKET \\{(VID:[^}]+)\\}$");
 
     @Nullable
     private static final Values generateValues(@NotNull String message) {

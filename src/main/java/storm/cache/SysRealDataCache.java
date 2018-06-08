@@ -20,7 +20,6 @@ import com.google.common.cache.CacheBuilder;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.handler.cal.RedisClusterLoaderUseCtfo;
-import storm.protocol.SUBMIT_REALTIME;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.SysDefine;
@@ -178,8 +177,8 @@ public class SysRealDataCache {
 		}
 		if (chargeTypes.contains(cartypeId.trim())) {
 			String time = dat.get(DataKey.TIME);
-			String latit = dat.get(SUBMIT_REALTIME.LATITUDE);
-			String longi = dat.get(SUBMIT_REALTIME.LONGITUDE);
+			String latit = dat.get(DataKey._2503_LATITUDE);
+			String longi = dat.get(DataKey._2502_LONGITUDE);
 			
 			if (! ObjectUtils.isNullOrEmpty(time)
 					&& ! ObjectUtils.isNullOrEmpty(latit)
