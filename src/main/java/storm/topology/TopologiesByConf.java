@@ -18,6 +18,7 @@ import storm.kafka.scheme.PacketScheme;
 import storm.kafka.scheme.RegistScheme;
 import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
+import storm.system.StormConfigKey;
 import storm.util.ConfigUtils;
 import storm.kafka.scheme.GeneralScheme;
 import storm.kafka.KafkaConfig;
@@ -124,7 +125,7 @@ public class TopologiesByConf {
         stormConf.put("redis.timeInterval", properties.getProperty("redis.timeInterval"));
         stormConf.put("redis.timeOut", properties.getProperty("redis.timeOut"));
         stormConf.put("redis.offline.checktime", properties.get("redis.offline.checktime"));
-        stormConf.put("redis.offline.time", properties.get("redis.offline.time"));
+        stormConf.put("redis.offline.time", properties.get(StormConfigKey.REDIS_OFFLINE_SECOND));
         //endregion
 
         //region storm

@@ -30,6 +30,7 @@ import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
+import storm.system.StormConfigKey;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.dto.alarm.CoefOffset;
@@ -96,7 +97,7 @@ public class AlarmBolt extends BaseRichBolt {
                 oncesend = Long.valueOf(oncetime.toString());
             flushtime=Long.parseLong(stormConf.get("db.cache.flushtime").toString());
             
-            Object offli=stormConf.get("redis.offline.time");
+            Object offli=stormConf.get(StormConfigKey.REDIS_OFFLINE_SECOND);
             if(null != offli)
                 onlinetime=1000*Long.valueOf(offli.toString());
         } catch (Exception e) {

@@ -12,6 +12,7 @@ import storm.dto.FaultCode;
 import storm.dto.FaultRuleCode;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
+import storm.system.StormConfigKey;
 import storm.util.ConfigUtils;
 import storm.util.ObjectUtils;
 import storm.util.UUIDUtils;
@@ -30,7 +31,7 @@ public class FaultCodeHandler {
 			if (!ObjectUtils.isNullOrEmpty(dbflush)) {
 				dbflushtime = Long.parseLong(dbflush)*1000;
 			}
-			String off = ConfigUtils.sysDefine.getProperty("redis.offline.time");
+			String off = ConfigUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
 			if (!ObjectUtils.isNullOrEmpty(off)) {
 				offlinetime = Long.parseLong(off)*1000;
 			}

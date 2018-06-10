@@ -23,6 +23,7 @@ import storm.protocol.SUBMIT_LOGIN;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
+import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.GpsUtil;
@@ -110,7 +111,7 @@ public class CarRulehandler implements InfoNotice{
 		topn = 20;
 		onOffRedisKeys = "vehCache.qy.onoff.notice";
 		if (null != ConfigUtils.sysDefine) {
-			String off = ConfigUtils.sysDefine.getProperty("redis.offline.time");
+			String off = ConfigUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
 			if (!ObjectUtils.isNullOrEmpty(off)) {
 				offlinetime = Long.parseLong(off)*1000;
 			}

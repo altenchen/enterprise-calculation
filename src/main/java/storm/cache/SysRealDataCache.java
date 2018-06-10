@@ -29,7 +29,7 @@ import storm.util.ObjectUtils;
 import storm.util.ParamsRedisUtil;
 
 /**
- * system 
+ * 系统实时数据缓存
  * @author 76304
  *
  */

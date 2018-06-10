@@ -15,6 +15,7 @@ import storm.handler.FaultCodeHandler;
 import storm.handler.cusmade.*;
 import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
+import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
@@ -33,17 +34,23 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
 	private OutputCollector collector;
 
-	// 输出到Kafka的主题
+    /**
+     * 输出到Kafka的主题
+     */
 	private String noticeTopic;
 
-	//
-	private long lastExeTime;
-
-	//
-    private long timeoutchecktime = 1800000;//半小时
-    private long timeouttime = 86400000;//1天 用于闲置车辆
-    private long lastOfflinecheck;//用于离线判断
-    private long offlinecheck = 120000;//2分钟
+    /**
+     * 闲置车辆判定, 达到闲置状态时长, 默认1天
+     */
+    private long timeoutTime = 86400000;
+    /**
+     * 最后进行离线检查的时间, 用于离线判断
+     */
+    private long lastOfflineCheckTime;
+    /**
+     * 离线检查间隔2分钟
+     */
+    private long offlineCheckSpan = 120000;
     private static long offlinetime = 600000;//600秒
     private InfoNotice carRulehandler;
     private OnOffInfoNotice carOnOffhandler;
@@ -54,46 +61,51 @@ public final class CarNoticelBolt extends BaseRichBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
+
         noticeTopic = stormConf.get("kafka.topic.notice").toString();
+
         long now = System.currentTimeMillis();
-        lastExeTime = now;
-        lastOfflinecheck =now;
-        Object checktime = stormConf.get("inidle.timeOut.check.time");
-        if (null != checktime) {
-        	timeoutchecktime=1000*Long.parseLong(checktime.toString());
-		}
-        
+        lastOfflineCheckTime = now;
+
         try {
         	ParamsRedisUtil.rebulid();
-			Object outbyconf = ParamsRedisUtil.PARAMS.get("gt.inidle.timeOut.time");//从配置文件读取超时时间
+            // 从Redis读取超时时间
+			Object outbyconf = ParamsRedisUtil.PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
 			if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
-				timeouttime=1000*(int)outbyconf;
+				timeoutTime =1000*(int)outbyconf;
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-        Object off = stormConf.get("redis.offline.time");//多长时间算是离线
+
+        // 多长时间算是离线
+        Object off = stormConf.get(StormConfigKey.REDIS_OFFLINE_SECOND);
         if (!ObjectUtils.isNullOrEmpty(off)) {
 			offlinetime = Long.parseLong(NumberUtils.stringNumber(off.toString()))*1000;
 		}
-        Object offCheck = stormConf.get("redis.offline.checktime");//多长时间检查一下是否离线
+
+        // 多长时间检查一下是否离线
+        Object offCheck = stormConf.get(StormConfigKey.REDIS_OFFLINE_CHECK_SPAN_SECOND);
         if (!ObjectUtils.isNullOrEmpty(offCheck)) {
-        	offlinecheck = Long.parseLong(NumberUtils.stringNumber(offCheck.toString()))*1000;
+        	offlineCheckSpan = Long.parseLong(NumberUtils.stringNumber(offCheck.toString()))*1000;
         }
+
         carRulehandler = new CarRulehandler();
         try {
         	SysRealDataCache.init();
         	codeHandler = new FaultCodeHandler();
-        	if (stormConf.containsKey("redis.cluster.data.syn")) {
-        		Object precp = stormConf.get("redis.cluster.data.syn");
+            carOnOffhandler = new CarOnOffHandler();
+
+            // region 如果从配置读到ispreCp为2, 则进行一次全量数据扫描
+        	if (stormConf.containsKey(StormConfigKey.REDIS_CLUSTER_DATA_SYN)) {
+        		Object precp = stormConf.get(StormConfigKey.REDIS_CLUSTER_DATA_SYN);
         		if (null != precp && !"".equals(precp.toString().trim())) {
         			ispreCp = Integer.valueOf(NumberUtils.stringNumber(precp.toString()));
         		}
         	}
-        	carOnOffhandler = new CarOnOffHandler();
     		if (2 == ispreCp){
     			carOnOffhandler.onoffCheck("TIMEOUT",0,now,offlinetime);
-    			List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AllData,now,timeouttime);
+    			List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AllData,now, timeoutTime);
     			if (null != msgs && msgs.size()>0) {
     				System.out.println("---------------syn redis cluster data--------");
     				for (Map<String, Object> map : msgs) {
@@ -107,6 +119,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
     			
     		}
     		ispreCp=1;
+        	// endregion
     		
     		//定义一个定时任务，每隔一段时间将闲置车辆发到kafka中。
     		class TimeOutClass implements Runnable{
@@ -125,13 +138,13 @@ public final class CarNoticelBolt extends BaseRichBolt {
 							CarRulehandler.rebulid();
 							Object outbyconf = ParamsRedisUtil.PARAMS.get("gt.inidle.timeOut.time");//从配置文件中读出超时时间
 							if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
-								timeouttime=1000*(int)outbyconf;
+								timeoutTime =1000*(int)outbyconf;
 							}
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
 						
-						List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT",ScanRange.AliveData,System.currentTimeMillis(),timeouttime);
+						List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT",ScanRange.AliveData,System.currentTimeMillis(), timeoutTime);
 			        	if (null != msgs && msgs.size()>0) {
 							for (Map<String, Object> map : msgs) {
 								if (null != map && map.size() > 0) {
@@ -157,8 +170,8 @@ public final class CarNoticelBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
     	long now = System.currentTimeMillis();
         //如果时间差大于离线检查时间，则进行离线检查,如果车辆离线，则发送此车辆的所有故障码结束通知
-        if (now - lastOfflinecheck >= offlinecheck){
-        	lastOfflinecheck=now;
+        if (now - lastOfflineCheckTime >= offlineCheckSpan){
+        	lastOfflineCheckTime =now;
         	List<Map<String, Object>> msgs = codeHandler.handle(now);
         	
         	if (null != msgs && msgs.size()>0) {
