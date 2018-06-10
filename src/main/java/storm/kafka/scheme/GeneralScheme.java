@@ -72,17 +72,25 @@ public final class GeneralScheme implements Scheme {
 
         ImmutableList
             .of(
-                "SUBMIT 0 LKJTBKBY3HF012267 REALTIME {VID:5e87d889-f029-4767-a9bc-3fdfecdb5a08,VTYPE:ff8080816252c33a016260d31c1a04b0,CTYPE:2_1_1,2000:20180604224708,2501:0,2502:120243408,2503:31626550,9999:20180604224711}",
-                "SUBMIT 0 LKJTBKBY3HF012267 HISTORY {VID:5e87d889-f029-4767-a9bc-3fdfecdb5a08,VTYPE:ff8080816252c33a016260d31c1a04b0,CTYPE:2_1_1,2000:20180604224657,2501:0,2502:120243408,2503:31626502,9999:20180604224701}",
-                "SUBMIT 0 LKJTBKBY9HF012256 LOGIN {VID:074dcc9a-ee6f-4160-8ead-c310a3251856,VTYPE:ff8080816252c33a016260d31c1a04b0,CTYPE:2_1_1,RESULT:0,1025:20180605160704,1020:1,1021:ODk4NjAyQjUyNjE2MzAwNDM2ODU=,1022:1,1023:0,9999:20180605160705,1024:,PLATID:07e3aac0-87d3-4647-a06c-f409a1b060c3}",
-                "SUBMIT 0 LKJTBKBY3HF012219 LINKSTATUS {VID:cc97b5df-ce83-49dc-8b31-a3898078d32a,VTYPE:ff8080816252c33a016260d31c1a04b0,CTYPE:2_1_1,TIME:20180605112409,TYPE:3}",
-                "ERROR FORMAT",
-                ""
+                new Values("5e87d889-f029-4767-a9bc-3fdfecdb5a08", "SUBMIT 0 LKJTBKBY3HF012267 REALTIME {VID:5e87d889-f029-4767-a9bc-3fdfecdb5a08,VTYPE:ff8080816252c33a016260d31c1a04b0,CTYPE:2_1_1,2000:20180604224708,2501:0,2502:120243408,2503:31626550,9999:20180604224711}"),
+                new Values("5e87d889-f029-4767-a9bc-3fdfecdb5a08", "SUBMIT 0 LKJTBKBY3HF012267 HISTORY {VID:5e87d889-f029-4767-a9bc-3fdfecdb5a08,VTYPE:ff8080816252c33a016260d31c1a04b0,CTYPE:2_1_1,2000:20180604224657,2501:0,2502:120243408,2503:31626502,9999:20180604224701}"),
+                new Values("074dcc9a-ee6f-4160-8ead-c310a3251856", "SUBMIT 0 LKJTBKBY9HF012256 LOGIN {VID:074dcc9a-ee6f-4160-8ead-c310a3251856,VTYPE:ff8080816252c33a016260d31c1a04b0,CTYPE:2_1_1,RESULT:0,1025:20180605160704,1020:1,1021:ODk4NjAyQjUyNjE2MzAwNDM2ODU=,1022:1,1023:0,9999:20180605160705,1024:,PLATID:07e3aac0-87d3-4647-a06c-f409a1b060c3}"),
+                new Values("cc97b5df-ce83-49dc-8b31-a3898078d32a", "SUBMIT 0 LKJTBKBY3HF012219 LINKSTATUS {VID:cc97b5df-ce83-49dc-8b31-a3898078d32a,VTYPE:ff8080816252c33a016260d31c1a04b0,CTYPE:2_1_1,TIME:20180605112409,TYPE:3}"),
+                new Values("", "ERROR FORMAT"),
+                new Values("", "")
             )
             .stream()
-            .map(message -> GeneralScheme.generateValues(message))
-            .filter(values -> !values.isEmpty())
-            .map(values -> values.toString())
-            .forEach(s -> System.out.println(s));
+            .map(tuple -> new Values(tuple.get(0), GeneralScheme.generateValues((String)tuple.get(1))))
+            .forEach(tuple -> {
+                final String expect = (String)tuple.get(0);
+                final Values values = (Values)tuple.get(1);
+                if("".equals(expect)) {
+                    assert values.isEmpty() : "非法输入未忽略";
+                } else {
+                    final String actual = (String)values.get(0);
+                    assert expect.equals(actual) : "提取的VID与预期不符";
+                    System.out.println(actual);
+                }
+            });
     }
 }
