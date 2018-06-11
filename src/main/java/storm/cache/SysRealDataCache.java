@@ -153,7 +153,7 @@ public class SysRealDataCache {
 		return chargeCarCache;
 	}
 	
-	public static void addCaChe(Map<String, String> dat,long now){
+	public static void updateCache(Map<String, String> dat, long now){
 		addChargeCar(dat);
 		addCarCache(dat);
 		addLivelyCar(dat, now, timeouttime);

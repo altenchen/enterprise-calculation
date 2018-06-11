@@ -44,10 +44,10 @@ import storm.dto.IsSendNoticeCache;
 
 
 
-public class CarRulehandler implements InfoNotice{
+public class CarRuleHandler implements InfoNotice{
 
-	private Map<String, Integer> vidnogps;
-	private Map<String, Integer> vidnormgps;
+	private Map<String, Integer> vidNoGps;
+	private Map<String, Integer> vidNormalGps;
 	
 	private Map<String, Integer> vidnocan;
 	private Map<String, Integer> vidnormcan;
@@ -206,8 +206,8 @@ public class CarRulehandler implements InfoNotice{
 	}
 	
 	{
-		vidnogps = new HashMap<String, Integer>();
-		vidnormgps = new HashMap<String, Integer>();
+		vidNoGps = new HashMap<String, Integer>();
+		vidNormalGps = new HashMap<String, Integer>();
 		vidnocan = new HashMap<String, Integer>();
 		vidnormcan = new HashMap<String, Integer>();
 		vidIgnite = new HashMap<String, Integer>();
@@ -243,19 +243,12 @@ public class CarRulehandler implements InfoNotice{
 		ParamsRedisUtil.rebulid();
 		init();
 	}
-	
-	@Override
-	public Map<String, Object> genotice(Map<String, String> dat) {
-		
-		return null;
-	}
 
 	/**
 	 * 生成通知
 	 * @param data
 	 * @return
 	 */
-	@Override
     @NotNull
 	public List<Map<String, Object>> generateNotices(@NotNull Map<String, String> data) {
         // 为下面的方法做准备，生成相应的容器。
@@ -276,63 +269,71 @@ public class CarRulehandler implements InfoNotice{
 		
 		lastTime.put(vid, System.currentTimeMillis());
 		
-		List<Map<String, Object>> socjudges = null;
-		Map<String, Object> canjudge = null;
-		Map<String, Object> ignite = null;
-		Map<String, Object> gpsjudge = null;
-		Map<String, Object> abnormaljudge = null;
-		Map<String, Object> flyjudge = null;
-		Map<String, Object> onoff = null;
-		Map<String, Object> mileHopjudge = null;
+		List<Map<String, Object>> socJudges = null;
+		Map<String, Object> canJudge = null;
+		Map<String, Object> igniteJudge = null;
+		Map<String, Object> gpsJudge = null;
+		Map<String, Object> abnormalJudge = null;
+		Map<String, Object> flyJudge = null;
+		Map<String, Object> onOffJudge = null;
+		Map<String, Object> mileHopJudge = null;
 		//3、如果规则启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
 		if (1 == socRule){
 			//lowsoc(data)返回一个map，里面有vid和通知消息（treeMap）
-			socjudges = lowsoc(data);
+            // SOC 过低
+			socJudges = lowSoc(data);
+            if (! ObjectUtils.isNullOrEmpty(socJudges)) {
+                list.addAll(socJudges);
+            }
 		}
 		if (1 == enableCanRule){
-			canjudge = nocan(data);
+		    // 无CAN车辆
+			canJudge = noCan(data);
+            if (! ObjectUtils.isNullOrEmpty(canJudge)) {
+                list.add(canJudge);
+            }
 		}
 		if (1 == igniteRule){
-			ignite = igniteShut(data);
+		    // 点火熄火
+			igniteJudge = igniteOrShut(data);
+            if (! ObjectUtils.isNullOrEmpty(igniteJudge)) {
+                list.add(igniteJudge);
+            }
 		}
 		if (1 == gpsRule){
-			gpsjudge = nogps(data);
+		    // 为定位车辆
+			gpsJudge = noGps(data);
 		}
 		if (1 == abnormalRule){
-			abnormaljudge = abnormalCar(data);
+		    // 异常用车
+			abnormalJudge = abnormalCar(data);
 		}
 		if (1 == flyRule){
-			flyjudge = flySe(data);
+		    // ????
+			flyJudge = flySe(data);
 		}
 		if (1 == onoffRule){
-			onoff = onOffline(data);
+		    // ???
+			onOffJudge = onOffline(data);
 		}
 		if (1 == mileHopRule){
-			mileHopjudge = mileHopHandle(data);
+		    // 里程跳变处理
+			mileHopJudge = mileHopHandle(data);
 		}
-		if (! ObjectUtils.isNullOrEmpty(socjudges)) {
-			list.addAll(socjudges);
+		if (! ObjectUtils.isNullOrEmpty(gpsJudge)) {
+			list.add(gpsJudge);
 		}
-		if (! ObjectUtils.isNullOrEmpty(canjudge)) {
-			list.add(canjudge);
+		if (! ObjectUtils.isNullOrEmpty(abnormalJudge)) {
+			list.add(abnormalJudge);
 		}
-		if (! ObjectUtils.isNullOrEmpty(ignite)) {
-			list.add(ignite);
+		if (! ObjectUtils.isNullOrEmpty(flyJudge)) {
+			list.add(flyJudge);
 		}
-		if (! ObjectUtils.isNullOrEmpty(gpsjudge)) {
-			list.add(gpsjudge);
+		if (! ObjectUtils.isNullOrEmpty(onOffJudge)) {
+			list.add(onOffJudge);
 		}
-		if (! ObjectUtils.isNullOrEmpty(abnormaljudge)) {
-			list.add(abnormaljudge);
-		}
-		if (! ObjectUtils.isNullOrEmpty(flyjudge)) {
-			list.add(flyjudge);
-		}
-		if (! ObjectUtils.isNullOrEmpty(onoff)) {
-			list.add(onoff);
-		}
-		if (! ObjectUtils.isNullOrEmpty(mileHopjudge)) {
-			list.add(mileHopjudge);
+		if (! ObjectUtils.isNullOrEmpty(mileHopJudge)) {
+			list.add(mileHopJudge);
 		}
 
 		return list;
@@ -342,7 +343,7 @@ public class CarRulehandler implements InfoNotice{
 	/**
 	 * soc 过低
 	 */
-	private List<Map<String, Object>> lowsoc(Map<String, String> dat){
+	private List<Map<String, Object>> lowSoc(Map<String, String> dat){
 		if (ObjectUtils.isNullOrEmpty(dat)) {
 			return null;
 		}
@@ -540,7 +541,7 @@ public class CarRulehandler implements InfoNotice{
 	 * 无can车辆_于心沼
 	 */
 	@Nullable
-    private Map<String, Object> nocan(Map<String, String> data){
+    private Map<String, Object> noCan(Map<String, String> data){
 		try {
             String vid = data.get(DataKey.VEHICLE_ID);
             String time = data.get(DataKey.TIME);
@@ -797,7 +798,7 @@ public class CarRulehandler implements InfoNotice{
 	 * @param dat
 	 * @return
 	 */
-	private Map<String, Object> igniteShut(Map<String, String> dat){
+	private Map<String, Object> igniteOrShut(Map<String, String> dat){
 		if (ObjectUtils.isNullOrEmpty(dat)) {
 			return null;
 		}
@@ -941,6 +942,12 @@ public class CarRulehandler implements InfoNotice{
 		}
 		return null;
 	}
+
+    /**
+     * ???
+     * @param dat
+     * @return
+     */
 	private Map<String, Object> flySe(Map<String, String> dat){
 		if (ObjectUtils.isNullOrEmpty(dat)) {
 			return null;
@@ -1122,7 +1129,7 @@ public class CarRulehandler implements InfoNotice{
 	/**
 	 * 未定位车辆_于心沼
 	 */
-	Map<String, Object> nogps(Map<String, String> dat){
+	Map<String, Object> noGps(Map<String, String> dat){
 		if (ObjectUtils.isNullOrEmpty(dat)) {
 			return null;
 		}
@@ -1157,11 +1164,11 @@ public class CarRulehandler implements InfoNotice{
 				
 				int cnts = 0;
 				//vidnogps缓存无gps车辆的vid和报文帧数
-				if (vidnogps.containsKey(vid)) {
-					cnts = vidnogps.get(vid);
+				if (vidNoGps.containsKey(vid)) {
+					cnts = vidNoGps.get(vid);
 				}
 				cnts++;
-				vidnogps.put(vid, cnts);
+				vidNoGps.put(vid, cnts);
 				if (cnts >=nogpsJudgeNum) {
 					//vidgpsNotice缓存通知，第一次发通知
 					Map<String, Object> notice = vidgpsNotice.get(vid);
@@ -1198,26 +1205,26 @@ public class CarRulehandler implements InfoNotice{
 					}
 				}
 			}else {
-				if (vidnogps.containsKey(vid)){//车的GPS是有效的，并且vidnogps中包含这辆车，才有可能发送结束通知报文
+				if (vidNoGps.containsKey(vid)){//车的GPS是有效的，并且vidnogps中包含这辆车，才有可能发送结束通知报文
 					int cnts = 0;
-					if (vidnormgps.containsKey(vid)) {
-						cnts = vidnormgps.get(vid);
+					if (vidNormalGps.containsKey(vid)) {
+						cnts = vidNormalGps.get(vid);
 					}
 					cnts++;
-					vidnormgps.put(vid, cnts);
+					vidNormalGps.put(vid, cnts);
 					//有效gps报文超过hasgpsJudgeNum  || 有效gps报文在（3贞以上，10贞以下）同时车辆登出
 					if (cnts >=hasgpsJudgeNum || (cnts > 3 && null!=dat.get(SUBMIT_LOGIN.LOGOUT_TIME)) ) {
 						
-						vidnormgps.remove(vid);
+						vidNormalGps.remove(vid);
 						//如果未定位开始通知没有发送，则不会发送结束通知，只会把各个缓存清空
 						if(!vidIsSendNoticeCache.get(vid).gpsIsSend){
-							vidnogps.remove(vid);
+							vidNoGps.remove(vid);
 							vidgpsNotice.remove(vid);
 							return null;
 						}
 						
 						Map<String, Object> notice = vidgpsNotice.get(vid);
-						vidnogps.remove(vid);
+						vidNoGps.remove(vid);
 						vidgpsNotice.remove(vid);
 						vidIsSendNoticeCache.get(vid).gpsIsSend = false;
 						if (null != notice) {
@@ -1335,8 +1342,12 @@ public class CarRulehandler implements InfoNotice{
 		}
 		return false;
 	}
-	
-	@Override
+
+	/**
+	 * 检查所有车辆是否离线，离线则发送离线通知
+	 * @param now
+	 * @return
+	 */
 	public List<Map<String, Object>> offlineMethod(long now){
 		if (null == lastTime || lastTime.size() == 0) {
 			return null;
@@ -1460,8 +1471,8 @@ public class CarRulehandler implements InfoNotice{
 			vidnormsoc.remove(vid);
 			vidnocan.remove(vid);
 			vidnormcan.remove(vid);
-			vidnogps.remove(vid);
-			vidnormgps.remove(vid);
+			vidNoGps.remove(vid);
+			vidNormalGps.remove(vid);
 			
 		}
 		if (notices.size()>0) {

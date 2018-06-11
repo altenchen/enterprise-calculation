@@ -23,53 +23,35 @@ import storm.util.UUIDUtils;
  */
 public final class CarOnOffHandler implements OnOffInfoNotice {
 
-	private Map<String, Map<String, Object>> vididleNotice;
-	private Map<String, Map<String, Object>> onOffMileNotice;
-	private Map<String, TimeMileage> vidLastTimeMile;
-	private Map<String, Integer> vidLastSpeed;
-	private Map<String, Integer> vidLastMileage;
-	private Map<String, Integer> vidLastSoc;
-	private Recorder recorder;
-	static int db =6;
-	static String idleRedisKeys;
-	static TimeFormatService timeformat;
-	static {
-		timeformat = new TimeFormatService();
-		idleRedisKeys = "vehCache.qy.idle";
-	}
-	{
-		vididleNotice = new HashMap<String, Map<String, Object>>();
-		onOffMileNotice = new HashMap<String, Map<String, Object>>();
-		vidLastTimeMile = new HashMap<String, TimeMileage>();
+	private final Map<String, Map<String, Object>> vidIdleNotice = new HashMap<>();
+	private final Map<String, Map<String, Object>> onOffMileNotice = new HashMap<>();
+	private final Map<String, TimeMileage> vidLastTimeMile = new HashMap<>();
+	private final Map<String, Integer> vidLastSpeed = new HashMap<>();
+	private final Map<String, Integer> vidLastMileage = new HashMap<>();
+	private final Map<String, Integer> vidLastSoc = new HashMap<>();
+	private final Recorder recorder = new RedisRecorder();
+	private static final int REDIS_DB_INDEX =6;
+	private static final String IDLE_REDIS_KEYS = "vehCache.qy.idle";
+	private static TimeFormatService timeFormatService = new TimeFormatService();
 
-		vidLastSpeed = new HashMap<String, Integer>();
-		vidLastMileage = new HashMap<String, Integer>();
-		vidLastSoc = new HashMap<String, Integer>();
-
-		recorder = new RedisRecorder();
+    {
 		restartInit(true);
 	}
 
-    @NotNull
 	@Override
-	public Map<String, Object> genotice(@NotNull Map<String, String> dat) {
-
-		return new TreeMap<>();
-	}
-
-	@NotNull
-	@Override
-	public List<Map<String, Object>> generateNotices(@NotNull Map<String, String> dat) {
-
-		return new ArrayList<>();
-	}
-
-	@Override
-	public Map<String, Object> genotice(@NotNull Map<String, String> dat, long now, long timeout) {
+	public Map<String, Object> generateNotices(@NotNull Map<String, String> dat, long now, long timeout) {
 		Map<String, Object> notice = onoffMile(dat, now, timeout);
 		return notice;
 	}
 
+    /**
+     * 生成通知
+     * @param type
+     * @param status
+     * @param now
+     * @param timeout
+     * @return
+     */
 	@Override
 	public List<Map<String, Object>> fulldoseNotice(String type, ScanRange status, long now, long timeout) {//status:0全量数据，status:1活跃数据，status:2其他定义
 		if ("TIMEOUT".equals(type)) {
@@ -158,7 +140,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 	 * @return
 	 */
 	@Override
-	public void onoffCheck(String type, int status, long now, long timeout) {
+	public void onOffCheck(String type, int status, long now, long timeout) {
 		if ("TIMEOUT".equals(type)) {
 			Map<String,Map<String,String>> cluster = null;
 			//LinkedBlockingQueue是一个单向链表实现的阻塞队列，先进先出的顺序。支持多线程并发操作。无界队列。
@@ -285,11 +267,11 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 			e.printStackTrace();
 		}
 		String lastUtc = dat.get(SysDefine.ONLINEUTC);
-		String noticetime = timeformat.toDateString(new Date(now));
+		String noticetime = timeFormatService.toDateString(new Date(now));
 		//车辆 是否达到 闲置或者停机 超时的标准
 		boolean isout = istimeout(time, lastUtc, now, timeout);
 		if (isout) {//是闲置车辆
-			Map<String, Object> notice = vididleNotice.get(vid);
+			Map<String, Object> notice = vidIdleNotice.get(vid);
 			if (null == notice) {
 				notice =  new TreeMap<String, Object>();
 				notice.put("msgType", "IDLE_VEH");
@@ -304,18 +286,18 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				notice.put("status", 2);
 			}
 			notice.put("noticetime", noticetime);
-			vididleNotice.put(vid, notice);
+			vidIdleNotice.put(vid, notice);
 			/**
 			 * 添加删除标记从 cache 移除
 			 */
 			markDel.add(vid);
 			if (1 == (int)notice.get("status")) {
-				recorder.save(db, idleRedisKeys,vid, notice);
+				recorder.save(REDIS_DB_INDEX, IDLE_REDIS_KEYS,vid, notice);
 				return notice;
 			}
 		} else {//不是闲置车辆
 			markAlive.add(vid);
-			if (vididleNotice.containsKey(vid)) {
+			if (vidIdleNotice.containsKey(vid)) {
 				int lastSoc = -1;
 				int lastSpeed = -1;
 				int lastMileage = -1;
@@ -328,10 +310,10 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				if (vidLastMileage.containsKey(vid)) {
 					lastMileage = vidLastMileage.get(vid);
 				}
-				Map<String, Object> notice = vididleNotice.get(vid);
-				vididleNotice.remove(vid);
+				Map<String, Object> notice = vidIdleNotice.get(vid);
+				vidIdleNotice.remove(vid);
 				//删除redis中的闲置车辆数据
-				recorder.del(db, idleRedisKeys, vid);
+				recorder.del(REDIS_DB_INDEX, IDLE_REDIS_KEYS, vid);
 				//发送结束报文
 				if (null != notice) {
 					notice.put("status", 3);
@@ -416,7 +398,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 		String lastUtc = dat.get(SysDefine.ONLINEUTC);
-		String noticetime = timeformat.toDateString(new Date(now));
+		String noticetime = timeFormatService.toDateString(new Date(now));
 		double lastmileage = -1;
 		if (dat.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
 			String mileage = NumberUtils.stringNumber(dat.get(DataKey._2202_TOTAL_MILEAGE));
@@ -472,7 +454,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		}
 		try {
 			long last = Long.parseLong(NumberUtils.stringNumber(lastUtc));
-			long tertime = timeformat.stringTimeLong(time);
+			long tertime = timeFormatService.stringTimeLong(time);
 			long maxtime = Math.max(last, tertime);
 			if (now - maxtime > timeout) {
 				return true;
@@ -534,26 +516,9 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		return false;
 	}
 
-	@Override
-	public List<Map<String, Object>> offlineMethod(long now) {
-
-		return null;
-	}
 	void restartInit(boolean isRestart){
 		if (isRestart) {
-			recorder.rebootInit(db, idleRedisKeys, vididleNotice);
+			recorder.rebootInit(REDIS_DB_INDEX, IDLE_REDIS_KEYS, vidIdleNotice);
 		}
 	}
-}
-class TimeMileage{
-	long sertime;
-	String tertime;
-	double mileage;
-	public TimeMileage(long sertime, String tertime, double mileage) {
-		super();
-		this.sertime = sertime;
-		this.tertime = tertime;
-		this.mileage = mileage;
-	}
-
 }

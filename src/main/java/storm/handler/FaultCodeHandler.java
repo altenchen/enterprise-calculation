@@ -18,6 +18,10 @@ import storm.util.ObjectUtils;
 import storm.util.UUIDUtils;
 import storm.util.dbconn.Conn;
 
+/**
+ * 故障码处理
+ * @author wza
+ */
 public class FaultCodeHandler {
 
 	static TimeFormatService timeformat;
@@ -66,7 +70,7 @@ public class FaultCodeHandler {
     	return rules;
     }
      
-    public List<Map<String, Object>> handle(long now){
+    public List<Map<String, Object>> generateNotice(long now){
     	if (vidRuleMsgs.size() == 0) {
 			return null;
 		}
@@ -109,7 +113,7 @@ public class FaultCodeHandler {
 		}
 		return null;
     }
-	public List<Map<String, Object>> handle(Map<String, String>dat){
+	public List<Map<String, Object>> generateNotice(Map<String, String>dat){
 		if (ObjectUtils.isNullOrEmpty(dat)) {
 			return null;
 		}
