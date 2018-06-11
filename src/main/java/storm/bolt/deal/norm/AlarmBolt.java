@@ -54,7 +54,10 @@ public class AlarmBolt extends BaseRichBolt {
     // 连续多少条报警才发送通知
     private static int alarmNum = 10;
     private static int printLevel;
-    
+
+    /**
+     * 告警消息kafka输出topic
+      */
     private static String vehAlarmTopic;
     private static String vehAlarmStoreTopic;
     private static ThreadLocal<SimpleDateFormat> formatlocal = new ThreadLocal<SimpleDateFormat>();
@@ -84,7 +87,7 @@ public class AlarmBolt extends BaseRichBolt {
         new DecimalFormat("##0.000000");
 
         printLevel = Integer.valueOf(stormConf.get("print.log").toString());
-        vehAlarmTopic = stormConf.get("kafka.topic.alarm").toString();
+        vehAlarmTopic = stormConf.get(SysDefine.KAFKA_TOPIC_ALARM).toString();
         vehAlarmStoreTopic = stormConf.get("kafka.topic.alarmstore").toString();
         recorder =  new WarnningRecorder();
         try {
@@ -486,7 +489,7 @@ public class AlarmBolt extends BaseRichBolt {
                 sendMsg.put("LEFT1", left1);
                 String alarmhbase = JSON.toJSONString(sendMsg);
                 //kafka存储
-                sendAlarmKafka(SysDefine.VEH_ALARM,vehAlarmTopic,vid, alarmEnd);
+                sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic,vid, alarmEnd);
                 //hbase存储
                 sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehAlarmStoreTopic, vid, alarmhbase);
                 

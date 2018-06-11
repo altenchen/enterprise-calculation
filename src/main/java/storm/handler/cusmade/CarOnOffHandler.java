@@ -219,7 +219,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 			if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 
 				String speed = dat.get(DataKey._2201_SPEED);
-				String soc = dat.get(DataKey._2615_SOC);
+				String soc = dat.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
 				String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
 				//下面三个if类似，都是校验一下，然后将vid和最后一帧的数据存入
 				if (null !=speed && !"".equals(speed)) {

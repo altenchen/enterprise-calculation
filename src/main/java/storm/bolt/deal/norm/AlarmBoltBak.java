@@ -71,7 +71,7 @@ public class AlarmBoltBak extends BaseRichBolt {
         new DecimalFormat("##0.000000");
 
         printLevel = Integer.valueOf(stormConf.get("print.log").toString());
-        vehAlarmTopic = stormConf.get("kafka.topic.alarm").toString();
+        vehAlarmTopic = stormConf.get(SysDefine.KAFKA_TOPIC_ALARM).toString();
         vehAlarmStoreTopic = stormConf.get("kafka.topic.alarmstore").toString();
         try {
 			Object alarmObject = stormConf.get("alarm.continue.counts");
