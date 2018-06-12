@@ -900,8 +900,9 @@ public class CarRulehandler implements InfoNotice{
 					notice.put("noticetime", noticetime);
 					vidIgniteShutNotice.put(vid, notice);
 					
-					if(1 == (int)notice.get("status"))
+					if(1 == (int)notice.get("status")) {
 						return notice;
+					}
 				}
 			} else if("2".equals(carStatus)) {//是否熄火
 				if (vidIgnite.containsKey(vid)){

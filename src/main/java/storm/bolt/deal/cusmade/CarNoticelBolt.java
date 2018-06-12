@@ -237,13 +237,15 @@ public final class CarNoticelBolt extends BaseRichBolt {
     }
     
     boolean isNullOrEmpty(Map map){
-		if(map == null || map.size()==0)
+		if(map == null || map.size()==0) {
 			return true;
+		}
 		return false;
 	}
     boolean isNullOrEmpty(String string){
-		if(null == string || "".equals(string))
+		if(null == string || "".equals(string)) {
 			return true;
+		}
 		return "".equals(string.trim());
 	}
     

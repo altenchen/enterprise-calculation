@@ -509,6 +509,7 @@ public class AlarmBolt extends BaseRichBolt {
         try {
             if(null != warn){
                 String left1 = warn.left1DataItem; //左1数据项ID
+                //偏移系数，
                 CoefOffset coefOffset = CoefOffsetGetter.getCoefOffset(left1);
                 String left1Value = dataMap.get(left1);
               //上传的实时数据包含左1字段 才进行预警判定
