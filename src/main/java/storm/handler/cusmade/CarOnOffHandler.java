@@ -165,8 +165,9 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 
 					if (0 == status){
 						SysRealDataCache.removeLastQueue(vid);
-					}else if (1 == status)
+					}else if (1 == status) {
 						SysRealDataCache.removeAliveQueue(vid);
+					}
 					allCars.add(vid);
 
 					Map<String,String> dat = cluster.get(vid);

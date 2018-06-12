@@ -3,6 +3,10 @@ package storm.dto;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * @author wza
+ * 故障处理
+ */
 public class FaultRuleCode {
 
 	public String ruleId;

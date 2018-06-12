@@ -4,6 +4,10 @@ import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * @author wza
+ * 预警规则获取
+ */
 public class EarlyWarn implements Serializable {
 
 	/**

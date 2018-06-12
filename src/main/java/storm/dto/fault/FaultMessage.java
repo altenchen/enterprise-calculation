@@ -1,5 +1,9 @@
 package storm.dto.fault;
 
+/**
+ * @author wza
+ * 故障规则处理
+ */
 public class FaultMessage extends MessageContent {
 
 	/**

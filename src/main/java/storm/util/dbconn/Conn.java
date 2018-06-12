@@ -26,7 +26,11 @@ import storm.handler.fence.input.StopAlarmRule;
 import storm.util.ConfigUtils;
 import storm.util.ObjectUtils;
 
-public class Conn {
+/**
+ * @author wza
+ * 数据库操作工具类
+ */
+public final class Conn {
 
 	static String fence_sql="SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,fe.VALID_TIME FROM SYS_FENCE_ELECTRONIC fe WHERE fe.FENCE_STATE=1";
 	static String fence_rule_only_sql="SELECT tl.FENCE_ID,tl.ALARM_TYPE_CODE,tl.HEIGHEST_SPEED,tl.MINIMUM_SPEED,tl.STOP_CAR_TIME FROM SYS_FENCE_ALARM_TYPE_LK tl WHERE tl.STATE=1";

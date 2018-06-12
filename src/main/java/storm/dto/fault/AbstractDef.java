@@ -2,6 +2,10 @@ package storm.dto.fault;
 
 import java.io.Serializable;
 
+/**
+ * @author waz
+ * 故障规则处理
+ */
 public abstract class AbstractDef implements Serializable {
 
 	/**

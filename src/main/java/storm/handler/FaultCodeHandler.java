@@ -19,7 +19,7 @@ import storm.util.UUIDUtils;
 import storm.util.dbconn.Conn;
 
 /**
- * 故障码处理
+ * 故障处理
  * @author wza
  */
 public class FaultCodeHandler {

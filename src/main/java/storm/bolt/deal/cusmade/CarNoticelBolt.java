@@ -55,10 +55,25 @@ public final class CarNoticelBolt extends BaseRichBolt {
      * 离线判定, 多长时间算是离线, 默认10分钟
      */
     private static long offlineTimeMillisecond = 600000;
+	/**
+	 * 车辆规则处理
+	 */
     private CarRuleHandler carRuleHandler;
+	/**
+	 * 车辆上下线及相关处理
+	 */
     private OnOffInfoNotice carOnOffhandler;
+	/**
+	 * 故障码处理
+	 */
     private FaultCodeHandler faultCodeHandler;
+	/**
+	 *
+	 */
     public static ScheduledExecutorService service;
+	/**
+	 * prepare时值为2则进行一次全量数据扫描并修改值为1,
+	 */
     private static int ispreCp=0;
 
     @Override
@@ -168,7 +183,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
         		
         	}
         	// 每5分钟执行一次
-        	Executors
+			Executors
                 .newScheduledThreadPool(1)
                 .scheduleAtFixedRate(
                     new TimeOutClass(),

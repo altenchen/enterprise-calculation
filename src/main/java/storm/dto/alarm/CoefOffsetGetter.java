@@ -7,6 +7,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import storm.system.DataKey;
 import storm.util.dbconn.Conn;
 
+/**
+ * @author wza
+ * 偏移处理
+ */
 public class CoefOffsetGetter {
 
 	private static ConcurrentHashMap<String, CoefOffset> itemCoefOffsets;

@@ -1,5 +1,9 @@
 package storm.dto;
 
+/**
+ * @author wza
+ * 故障码处理
+ */
 public class FaultCode {
 
 	public String id;

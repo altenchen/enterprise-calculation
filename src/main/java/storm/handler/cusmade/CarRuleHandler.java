@@ -42,10 +42,9 @@ import storm.dto.IsSendNoticeCache;
  * </p>
  * @author 76304
  *
+ * 车辆规则处理
+ *
  */
-
-
-
 public class CarRuleHandler implements InfoNotice{
 
 	private Map<String, Integer> vidNoGps;

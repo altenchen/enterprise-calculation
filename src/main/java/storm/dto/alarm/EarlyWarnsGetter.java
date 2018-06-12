@@ -14,6 +14,10 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import storm.util.dbconn.Conn;
 
+/**
+ * @author wza
+ * 预警规则获取
+ */
 public class EarlyWarnsGetter {
 	final static String ALL = "ALL";
 	private static ConcurrentHashMap<String, EarlyWarn> earlyWarns;

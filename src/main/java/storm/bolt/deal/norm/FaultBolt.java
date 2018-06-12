@@ -16,11 +16,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+/**
+ *
+ */
 @SuppressWarnings("all")
 public class FaultBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1700001L;
+
 	private OutputCollector collector;
+
+    /**
+     * 故障规则检查服务, 来自MySQL数据库的故障规则
+     */
 	private ExamineService service;
 	private static String faultTopic;
 	private long lastExeTime;
@@ -37,8 +45,9 @@ public class FaultBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
     	long now = System.currentTimeMillis();
+    	// 超过指定间隔, 则重新初始化检查规则
         if (now - lastExeTime >= flushtime){
-        	lastExeTime=now;
+        	lastExeTime = now;
         	service.reflushRules();
         }
     	if(tuple.getSourceStreamId().equals(SysDefine.FAULT_GROUP)){

@@ -7,6 +7,10 @@ import java.util.Map;
 
 import storm.dto.TimePeriod;
 
+/**
+ * @author wza
+ * 故障规则处理
+ */
 public class FaultRule implements Serializable {
 
 	/**
