@@ -18,6 +18,7 @@ import storm.kafka.scheme.PacketScheme;
 import storm.kafka.scheme.RegistScheme;
 import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
+import storm.system.StormConfigKey;
 import storm.util.ConfigUtils;
 import storm.kafka.scheme.GeneralScheme;
 import storm.kafka.KafkaConfig;
@@ -95,7 +96,7 @@ public class TopologiesByConf {
         stormConf.put("kafka.customer.hosts", properties.getProperty("kafka.broker.hosts"));
         stormConf.put("kafka.platform.veh.reg", properties.get("kafka.platform.veh.reg"));
         stormConf.put("kafka.topic.action", properties.get("kafka.topic.action"));
-        stormConf.put("kafka.topic.alarm", properties.getProperty("kafka.topic.alarm"));
+        stormConf.put(SysDefine.KAFKA_TOPIC_ALARM, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM));
         stormConf.put("kafka.topic.alarmstore", properties.getProperty("kafka.topic.alarmstore"));
         stormConf.put("kafka.topic.customfault", properties.get("kafka.topic.customfault"));
         stormConf.put("kafka.topic.es.status", properties.get("kafka.topic.es.status"));
@@ -124,7 +125,7 @@ public class TopologiesByConf {
         stormConf.put("redis.timeInterval", properties.getProperty("redis.timeInterval"));
         stormConf.put("redis.timeOut", properties.getProperty("redis.timeOut"));
         stormConf.put("redis.offline.checktime", properties.get("redis.offline.checktime"));
-        stormConf.put("redis.offline.time", properties.get("redis.offline.time"));
+        stormConf.put("redis.offline.time", properties.get(StormConfigKey.REDIS_OFFLINE_SECOND));
         //endregion
 
         //region storm
@@ -132,6 +133,10 @@ public class TopologiesByConf {
         stormConf.put("storm.worker.bolt.no", properties.get("storm.worker.bolt.no"));
         stormConf.put("storm.worker.no", properties.get("storm.worker.no"));
         //endregion
+
+        // region jili
+        stormConf.put(SysDefine.IS_JILI, properties.getProperty(SysDefine.IS_JILI));
+        // endregion
 
         return stormConf;
     }

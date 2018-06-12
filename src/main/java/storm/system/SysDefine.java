@@ -207,4 +207,14 @@ public final class SysDefine {
 	/** 接收传送过来的同步es streamId分组 **/
 	public static final String CUS_NOTICE_BOLT_ID = "cusnoticeboltid";
 	public static final String CUS_NOTICE = "cusnotice";
+
+    /**
+     * 告警消息kafka输出topic
+     */
+	public static final String KAFKA_TOPIC_ALARM = "kafka.topic.alarm";
+
+    /**
+     * 是否吉利
+     */
+	public static final String IS_JILI = "vendor.jili";
 }

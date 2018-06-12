@@ -23,6 +23,7 @@ import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
+import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
@@ -409,7 +410,7 @@ public class EsRealCalHandler{
 				String oncetime = pties.getProperty("es.send.time");
 				if(null != oncetime)
 					oncesend = Long.valueOf(oncetime)*1000;
-				String offli=pties.getProperty("redis.offline.time");
+				String offli=pties.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
 				if(null != offli)
 					onlinetime=1000*Long.valueOf(offli);
 				String stopli=pties.getProperty("redis.offline.stoptime");

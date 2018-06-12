@@ -18,14 +18,23 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 
-
+/**
+ * 分两个阻塞队列发送的原因是?
+ *
+ */
 public class KafkaSendBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 17100009L;
 	private OutputCollector collector;
     private static int batchNo=600;
     private long lastExeTime;
+    /**
+     *
+     */
     private BlockingQueue<KeyedMessage<byte[], byte[]>> keyedMessageQueue;
+    /**
+     *
+     */
     private BlockingQueue<KeyedMessage<byte[], byte[]>> saveMessageQueue;
     
     @Override

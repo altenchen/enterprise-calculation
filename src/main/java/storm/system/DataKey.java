@@ -6,8 +6,10 @@ package storm.system;
  * @description: Storm流中数据字典的键
  *
  * 数字下标的采用 _索引数字_易读命名 的格式
+ * 最小有效值: MIN_索引数字_易读命名
+ * 最大有效值: MAX_索引数字_易读命名
  */
-@SuppressWarnings("unused")
+@SuppressWarnings({"AlibabaAvoidStartWithDollarAndUnderLineNaming", "unused"})
 public final class DataKey {
 
     /**
@@ -81,9 +83,34 @@ public final class DataKey {
     public static final String _2201_SPEED = "2201";
 
     /**
-     * 当前总里程, 定时任务关键字
+     * 车速最小有效值
+     * #国标
+     */
+    public static final short MIN_2201_SPEED = 0;
+
+    /**
+     * 车速最大有效值
+     * #国标
+     */
+    public static final short MAX_2201_SPEED = 2200;
+
+    /**
+     * 累计里程, 总里程
+     * #国标
      */
     public static final String _2202_TOTAL_MILEAGE = "2202";
+
+    /**
+     * 累计里程最小有效值
+     * #国标
+     */
+    public static final int MIN_2202_TOTAL_MILEAGE = 0;
+
+    /**
+     * 累计里程最大有效值
+     * #国标
+     */
+    public static final int MAX_2202_TOTAL_MILEAGE = 9999999;
 
     /**
      * GEARS 档位
@@ -246,9 +273,29 @@ public final class DataKey {
     public static final String _2502_LONGITUDE = "2502";
 
     /**
+     * 经度最小有效值
+     */
+    public static final int MIN_2502_LONGITUDE = 0;
+
+    /**
+     * 经度最大有效值
+     */
+    public static final int MAX_2502_LONGITUDE = 0x7FFFFFFF;
+
+    /**
      * 纬度
      */
     public static final String _2503_LATITUDE = "2503";
+
+    /**
+     * 纬度最小有效值
+     */
+    public static final int MIN_2503_LATITUDE = 0;
+
+    /**
+     * 纬度最大有效值
+     */
+    public static final int MAX_2503_LATITUDE = 0x7FFFFFFF;
 
     /**
      * 速度
@@ -323,17 +370,49 @@ public final class DataKey {
     /**
      * 总电压
      */
-    public static final String _2613_TOTAL_VOLT = "2613";
+    public static final String _2613_TOTAL_VOLTAGE = "2613";
+
+    /**
+     * 总电压最小有效值
+     */
+    public static final short MIN_2613_TOTAL_VOLTAGE = 0;
+
+    /**
+     * 总电压最大有效值
+     */
+    public static final short MAX_2613_TOTAL_VOLTAGE = 10000;
 
     /**
      * 总电流
      */
-    public static final String _2614_TOTAL_ELE = "2614";
+    public static final String _2614_TOTAL_ELECTRICITY = "2614";
+
+    /**
+     * 总电流最小有效值
+     */
+    public static final short MIN_2614_TOTAL_ELECTRICITY = 0;
+
+    /**
+     * 总电流最大有效值
+     */
+    public static final short MAX_2614_TOTAL_ELECTRICITY = 20000;
 
     /**
      * SOC 电池剩余电量百分比
+     * State of Charge, 荷电状态
+     * #地标, 步进0.4%
      */
-    public static final String _2615_SOC = "2615";
+    public static final String _2615_STATE_OF_CHARGE_BEI_JIN = "2615";
+
+    /**
+     *
+     */
+    public static final short MIN_2615_STATE_OF_CHARGE_BEI_JIN = 0;
+
+    /**
+     *
+     */
+    public static final short MAX_2615_STATE_OF_CHARGE_BEI_JIN = 250;
 
     /**
      * 剩余能量
@@ -441,12 +520,21 @@ public final class DataKey {
     public static final String _7103_SINGLE_TEMP_ORGI = "7103";
 
     /**
-     * SOC2
+     * SOC 电池剩余电量百分比
+     * State of Charge, 荷电状态
+     * #国标, 步进1%
      */
-    public static final String _7615 = "7615";
+    public static final String _7615_STATE_OF_CHARGE = "7615";
+    public static final byte MIN_7615_STATE_OF_CHARGE = 0;
+    public static final byte MAX_7615_STATE_OF_CHARGE = 100;
 
     /**
      * SERVER_TIME服务器接收到报文的时间
      */
     public static final String _9999_SERVER_RECEIVE_TIME = "9999";
+
+    /**
+     * can 列表
+     */
+    public static final String _4410023_CAN_LIST ="4410023";
 }

@@ -24,6 +24,7 @@ import com.google.common.cache.CacheBuilder;
 import storm.cache.util.RedisOrganizationUtil;
 import storm.dao.DataToRedis;
 import storm.system.DataKey;
+import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
@@ -116,7 +117,7 @@ public class MailCalHandler {
 		resetUserCache();
 	}
 	private static void setTime(){
-		String offli=ConfigUtils.sysDefine.getProperty("redis.offline.time");
+		String offli=ConfigUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
 		if(null != offli)
 			time=1000*Long.valueOf(offli);
 		String stopli=ConfigUtils.sysDefine.getProperty("redis.offline.stoptime");

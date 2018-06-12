@@ -1,5 +1,9 @@
 package storm.dto.fault;
 
+/**
+ * @author wza
+ * 故障规则处理
+ */
 public class RiskDef extends AbstractDef {
 
 	public String id;

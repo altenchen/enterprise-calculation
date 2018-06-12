@@ -220,8 +220,9 @@ public class FilterBolt extends BaseRichBolt {
             stateKV.put(SysDefine.ONLINEUTC, now + ""); // 增加utc字段，插入系统时间
             try {
             	if (CommandType.SUBMIT_REALTIME.equals(type)
-            			|| CommandType.SUBMIT_HISTORY.equals(type))
-            		processValid(stateKV);
+            			|| CommandType.SUBMIT_HISTORY.equals(type)) {
+                    processValid(stateKV);
+                }
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}

@@ -2,20 +2,26 @@ package storm.dto.fence;
 
 import java.io.Serializable;
 
-public class Circle implements Serializable {
-
-	/**
-	 * 圆类
-	 */
+/**
+ * @author xzp
+ * 电子围栏处理: 圆形
+ */
+public final class Circle implements Serializable {
 	private static final long serialVersionUID = 1655500007L;
 
-	public Coordinate center;//圆心
-	public double radius=0;//半径
+    /**
+     * 圆心
+     */
+	public final Coordinate center;
+
+    /**
+     * 半径
+     */
+	public final double radius;
+
 	public Circle(Coordinate center, double radius) {
-		super();
 		this.center = center;
 		this.radius = radius;
 	}
-	
 }
                                                   

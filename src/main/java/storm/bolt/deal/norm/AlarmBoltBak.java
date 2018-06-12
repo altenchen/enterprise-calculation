@@ -27,6 +27,7 @@ import com.sun.jersey.core.util.Base64;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
+import storm.system.StormConfigKey;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.dto.alarm.CoefOffset;
@@ -70,7 +71,7 @@ public class AlarmBoltBak extends BaseRichBolt {
         new DecimalFormat("##0.000000");
 
         printLevel = Integer.valueOf(stormConf.get("print.log").toString());
-        vehAlarmTopic = stormConf.get("kafka.topic.alarm").toString();
+        vehAlarmTopic = stormConf.get(SysDefine.KAFKA_TOPIC_ALARM).toString();
         vehAlarmStoreTopic = stormConf.get("kafka.topic.alarmstore").toString();
         try {
 			Object alarmObject = stormConf.get("alarm.continue.counts");
@@ -82,7 +83,7 @@ public class AlarmBoltBak extends BaseRichBolt {
 				oncesend = Long.valueOf(oncetime.toString());
 			flushtime=Long.parseLong(stormConf.get("db.cache.flushtime").toString());
 			
-			Object offli=stormConf.get("redis.offline.time");
+			Object offli=stormConf.get(StormConfigKey.REDIS_OFFLINE_SECOND);
 			if(null != offli)
 				onlinetime=1000*Long.valueOf(offli.toString());
 		} catch (Exception e) {

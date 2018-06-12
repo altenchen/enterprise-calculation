@@ -2,17 +2,24 @@ package storm.dto.fence;
 
 import java.io.Serializable;
 
-public class Coordinate implements Serializable {
-
-	/**
-	 * 
-	 */
+/**
+ * @author xzp
+ * 电子围栏处理: 坐标
+ */
+public final class Coordinate implements Serializable {
 	private static final long serialVersionUID = 1655500001L;
 
-	public double x = -999;//经度
-	public double y = -999;//维度
+    /**
+     * 经度
+     */
+	public final double x;
+
+    /**
+     * 纬度
+     */
+	public final double y;
+
 	public Coordinate(double x, double y) {
-		super();
 		this.x = x;
 		this.y = y;
 	}

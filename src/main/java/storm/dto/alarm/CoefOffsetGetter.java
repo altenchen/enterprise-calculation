@@ -4,8 +4,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import storm.system.DataKey;
 import storm.util.dbconn.Conn;
 
+/**
+ * @author wza
+ * 偏移处理
+ */
 public class CoefOffsetGetter {
 
 	private static ConcurrentHashMap<String, CoefOffset> itemCoefOffsets;
@@ -69,9 +74,9 @@ public class CoefOffsetGetter {
 		itemCoefOffsets.put("2306", offset);
 		gbItems.add("2306");
 		
-		offset = new CoefOffset("2614", 0, 10, 10000);
-		itemCoefOffsets.put("2614", offset);
-		gbItems.add("2614");
+		offset = new CoefOffset(DataKey._2614_TOTAL_ELECTRICITY, 0, 10, 10000);
+		itemCoefOffsets.put(DataKey._2614_TOTAL_ELECTRICITY, offset);
+		gbItems.add(DataKey._2614_TOTAL_ELECTRICITY);
 		
 		offset = new CoefOffset("2114", 0, 1, 40);
 		itemCoefOffsets.put("2114", offset);

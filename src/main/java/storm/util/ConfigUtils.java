@@ -2,6 +2,7 @@ package storm.util;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.util.Properties;
 
@@ -20,10 +21,10 @@ public final class ConfigUtils implements Serializable{
 		InputStream in = null;
 		try {
 			in = ConfigUtils.class.getClassLoader().getResourceAsStream("sysDefine.properties");
-			sysDefine.load(in);
+			sysDefine.load(new InputStreamReader(in, "UTF-8"));
 			
 			in = ConfigUtils.class.getClassLoader().getResourceAsStream("parms.properties");
-			sysParams.load(in);
+			sysParams.load(new InputStreamReader(in, "UTF-8"));
 			
 //			in = ConfigUtils.class.getClassLoader().getResourceAsStream("car_type_function_define.properties");
 //			carTypeMapping.load(in);

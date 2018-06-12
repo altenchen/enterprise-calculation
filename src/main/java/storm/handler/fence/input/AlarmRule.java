@@ -1,5 +1,9 @@
 package storm.handler.fence.input;
 
+/**
+ * @author wza
+ * 方法类, 输入
+ */
 public interface AlarmRule extends Rule {
 
 	public static final String LT="lt";

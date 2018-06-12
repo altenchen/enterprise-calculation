@@ -3,6 +3,10 @@ package storm.dto.fault;
 import java.io.Serializable;
 import java.util.UUID;
 
+/**
+ * @author wza
+ * 故障规则处理
+ */
 public class MessageContent implements Serializable {
 
 	/**

@@ -1,5 +1,9 @@
 package storm.dto.alarm;
 
+/**
+ * @author wza
+ * 偏移处理
+ */
 public class CoefOffset {
 
 	public String item;//数据项

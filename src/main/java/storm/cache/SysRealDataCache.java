@@ -29,7 +29,7 @@ import storm.util.ObjectUtils;
 import storm.util.ParamsRedisUtil;
 
 /**
- * system 
+ * 系统实时数据缓存
  * @author 76304
  *
  */
@@ -37,36 +37,61 @@ public class SysRealDataCache {
 
 	private static Logger logger = LoggerFactory.getLogger(SysRealDataCache.class);
 	public static final String unknow="UNKNOW";
+	/**
+	 * 缓存666天, 最多1500万条
+	 */
 	private static Cache<String,Map<String,String>> carlastrecord = CacheBuilder.newBuilder()
 			.expireAfterAccess(666,TimeUnit.DAYS)
 			.maximumSize(15000000)
 			.build();
+	/**
+	 * 缓存60分钟, 最多1500万条
+	 */
 	private static Cache<String, String[]>carInfoCache = CacheBuilder.newBuilder()
 			.expireAfterAccess(60,TimeUnit.MINUTES)
 			.maximumSize(15000000)
 			.build();
+	/**
+	 * 缓存30天, 最多1000万条
+	 */
 	public static Cache<String,Map<String,String>> livelyCarCache = CacheBuilder.newBuilder()
 			.expireAfterAccess(30,TimeUnit.DAYS)
 			.maximumSize(10000000)
 			.build();
 	private static Map<String,FillChargeCar> chargeCarCache;
-	private static DataToRedis redis;
+	private static DataToRedis redis = new DataToRedis();
 	public static final String [] unknowArray =new String[]{"UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW"};
 	private static long lasttime;
 	private static long flushtime = 2100000;//2100秒 35分钟刷新一下
 	private static List<String> chargeTypes;
 	static TimeFormatService timeformat;
 	static long timeouttime = 86400000L;
-	static int buffsize = 5000000;
-	public static LinkedBlockingQueue<String> alives = new LinkedBlockingQueue<String>(buffsize);
-	static Set<String> aliveSet = new HashSet<String>(buffsize/5);
-	
-	public static LinkedBlockingQueue<String> lasts = new LinkedBlockingQueue<String>(buffsize);
-	static Set<String> lastSet = new HashSet<String>(buffsize/5);
+
+    /**
+     * 缓冲窗口大小
+     */
+	private static final int buffsize = 5000000;
+	/**
+	 *
+	 */
+	public static LinkedBlockingQueue<String> alives = new LinkedBlockingQueue<>(buffsize);
+    /**
+     *
+     */
+	static Set<String> aliveSet = new HashSet<>(buffsize/5);
+
+    /**
+     *
+     */
+	public static LinkedBlockingQueue<String> lasts = new LinkedBlockingQueue<>(buffsize);
+    /**
+     *
+     */
+	static Set<String> lastSet = new HashSet<>(buffsize/5);
+
 	static {
 		try {
-			redis=new DataToRedis();
-			carInfoCache = RedisClusterLoaderUseCtfo.getCarinfoCache();
+            carInfoCache = RedisClusterLoaderUseCtfo.getCarinfoCache();
 			carlastrecord = RedisClusterLoaderUseCtfo.getDataCache();
 			long now = System.currentTimeMillis();
 			lasttime = now;
@@ -153,7 +178,7 @@ public class SysRealDataCache {
 		return chargeCarCache;
 	}
 	
-	public static void addCaChe(Map<String, String> dat,long now){
+	public static void updateCache(Map<String, String> dat, long now){
 		addChargeCar(dat);
 		addCarCache(dat);
 		addLivelyCar(dat, now, timeouttime);

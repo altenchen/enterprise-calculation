@@ -49,13 +49,15 @@ public class RedisClusterLoaderUseCtfo {
 				String value = entry.getValue();
 				
 				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) 
+						|| ObjectUtils.isNullOrEmpty(value)) {
 					continue;
+				}
 				
 				String []strings=value.split(",",-1);
 				
-				if(strings.length != 15)
+				if(strings.length != 15) {
 					continue;
+				}
 				carInfoCache.put(key, strings);
 			}
 		}catch (Exception e) {
@@ -91,8 +93,9 @@ public class RedisClusterLoaderUseCtfo {
 						break;
 					}
 				}
-            	if (allComplete) 
-            		exe=false;
+            	if (allComplete) {
+					exe=false;
+				}
             }
             keyLoadComp = true;
             ctfoCacheKeys=null;
@@ -121,8 +124,9 @@ public class RedisClusterLoaderUseCtfo {
 		@Override
 		public void run() {
 
-			if(null!=keys && keys.size()>0)
+			if(null!=keys && keys.size()>0) {
 				loadBykeys(keys);
+			}
 			complete = true;
 		}
 		
@@ -133,14 +137,17 @@ public class RedisClusterLoaderUseCtfo {
 		void loadBykeys(List<String> keys){
 			try {
 				for(String key :keys){
-					if (ObjectUtils.isNullOrEmpty(key)) 
+					if (ObjectUtils.isNullOrEmpty(key)) {
 						continue;
+					}
 					key=key.split("-",3)[2];
-					if (ObjectUtils.isNullOrEmpty(key)) 
+					if (ObjectUtils.isNullOrEmpty(key)) {
 						continue;
+					}
 					Map<String, String> map=CTFOUtils.getDefaultCTFOCacheTable().queryHash(key);
-					if(ObjectUtils.isNullOrEmpty(map))
+					if(ObjectUtils.isNullOrEmpty(map)) {
 						continue;
+					}
 					Map<String, String> newmap =  new TreeMap<String, String>();
 					//不缓存无用的数据项，减小缓存大小
 					for (Map.Entry<String, String> entry : map.entrySet()) {
@@ -180,8 +187,9 @@ public class RedisClusterLoaderUseCtfo {
 	 */
 	public synchronized static Cache<String,Map<String,String>> getDataCache(){
 		try {
-			if (!redisclusterIsload) 
+			if (!redisclusterIsload) {
 				initDatByCluster();
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -190,8 +198,9 @@ public class RedisClusterLoaderUseCtfo {
 	
 	public synchronized static Cache<String, String[]> getCarinfoCache(){
 		try {
-			if (!carinfoIsload) 
+			if (!carinfoIsload) {
 				initCarinfoCache();
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

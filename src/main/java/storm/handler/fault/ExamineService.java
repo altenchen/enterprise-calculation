@@ -16,27 +16,38 @@ import storm.system.DataKey;
 import storm.util.dbconn.Conn;
 
 /**
- * 检查服务
+ * 故障规则处理
  */
 public class ExamineService {
 
-	Map<String, Map<String,AlarmMessage>>vidAlarmMsgs;//<vid,<alarmRruleid,msg>>
-	Map<String, Map<String,FaultMessage>>vidFaultMsgs;//<vid,<faultRuleid,msg>>
-	Collection<FaultRule> faultRules;
-	Conn conn;
+    /**
+     * <vid,<alarmRruleid,msg>>
+     */
+	private Map<String, Map<String,AlarmMessage>>vidAlarmMsgs = new HashMap<>();
+    /**
+     * <vid,<faultRuleid,msg>>
+     */
+	private Map<String, Map<String,FaultMessage>>vidFaultMsgs = new HashMap<>();
+    /**
+     * 故障规则
+     */
+	private Collection<FaultRule> faultRules;
+	private Conn conn = new Conn();
+
 	{
-		vidAlarmMsgs = new HashMap<String, Map<String,AlarmMessage>>();
-		vidFaultMsgs = new HashMap<String, Map<String,FaultMessage>>();
-		conn = new Conn();
-		initRules();
+        initRules();
 	}
+
 	private void initRules(){
 		/**
 		 * 初始化故障规则
 		 */
 		faultRules = conn.getFaultAndDepends();
 	}
-	
+
+	/**
+	 * 初始化故障规则
+	 */
 	public void reflushRules(){
 		initRules();
 	}
@@ -46,25 +57,30 @@ public class ExamineService {
 	 * @param alarmMsg
 	 * @return
 	 */
-	private List<String> getFaultSend(Map<String, String>alarmMsg){
-		if (null == faultRules) 
-			return null;
-		List<String>sendMsg = null;
+	private List<String> getFaultSend(Map<String, String> alarmMsg){
+	    // 检查规则尚未初始化, 跳过
+		if (null == faultRules) {
+            return null;
+        }
+
+		List<String>sendMsg = new LinkedList<>();
 		String vid = alarmMsg.get(DataKey.VEHICLE_ID);
-		long utctime = Long.valueOf(alarmMsg.get("UTC_TIME"));
+		long utcTime = Long.parseLong(alarmMsg.get("UTC_TIME"));
 		Map<String,FaultMessage> faultRuleResult = vidFaultMsgs.get(vid);
-		if (null == faultRuleResult) 
-			faultRuleResult = new TreeMap<String,FaultMessage>();
-		sendMsg = new LinkedList<String>();
+		if (null == faultRuleResult) {
+            faultRuleResult = new TreeMap<>();
+        }
 		for (FaultRule faultRule : faultRules) {
-			if (null == faultRule || null == faultRule.id) 
-				continue;
+		    // 无效的规则, 略过
+			if (null == faultRule || null == faultRule.id) {
+                continue;
+            }
 			
 			FaultMessage message = faultRuleResult.get(faultRule.id);
 			boolean success = faultRule.triggerSuccess(vidAlarmMsgs.get(vid));
 			if (success) {
 				if (null == message) {
-					message = new FaultMessage(utctime, faultRule.id);
+					message = new FaultMessage(utcTime, faultRule.id);
 					message.triggerCounter = 1;
 					message.status = 1;
 				} else {
@@ -74,7 +90,7 @@ public class ExamineService {
 				if(null == message.vid)
 					message.vid = vid;
 					
-				message.time = utctime;
+				message.time = utcTime;
 				message.sustainTime = message.time-message.startTime;
 				int level = faultRule.getLevel(message.triggerCounter, message.sustainTime);
 				message.risk=level;
@@ -82,7 +98,7 @@ public class ExamineService {
 			}else {
 				if(null != message){
 					
-					message.endTime = utctime;
+					message.endTime = utcTime;
 					message.status=3;
 					faultRuleResult.remove(faultRule.id);
 				}

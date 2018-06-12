@@ -30,6 +30,7 @@ import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
+import storm.system.StormConfigKey;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.dto.alarm.CoefOffset;
@@ -40,6 +41,10 @@ import storm.dto.alarm.WarnRecord;
 import storm.dto.alarm.WarnningRecorder;
 import storm.system.SysDefine;
 
+/**
+ * @author wza
+ * 预警处理
+ */
 @SuppressWarnings("Duplicates")
 public class AlarmBolt extends BaseRichBolt {
     /**
@@ -53,10 +58,13 @@ public class AlarmBolt extends BaseRichBolt {
     // 连续多少条报警才发送通知
     private static int alarmNum = 10;
     private static int printLevel;
-    
+
+    /**
+     * 告警消息kafka输出topic
+      */
     private static String vehAlarmTopic;
     private static String vehAlarmStoreTopic;
-    private static ThreadLocal<SimpleDateFormat> formatlocal = new ThreadLocal<SimpleDateFormat>();
+    private static ThreadLocal<SimpleDateFormat> formatlocal = new ThreadLocal<>();
     public static final String DATA_FORMAT = "yyyyMMddHHmmss";
     private Map<String, String> alarmMap;
     private Map<String, String> vehDataMap;
@@ -69,11 +77,27 @@ public class AlarmBolt extends BaseRichBolt {
     private static long oncesend = 60;//每隔多少时间推送ES一次,默认一分钟，60毫秒。如果负数或者0代表实时推送;
     private static long onlinetime = 180 * 1000 ;//离线超时时间
     private WarnningRecorder recorder;
-    int buffsize = 5000000;
-    LinkedBlockingQueue<String> alives = new LinkedBlockingQueue<String>(buffsize);
-    Set<String> aliveSet = new HashSet<String>(buffsize/5);
-    LinkedBlockingQueue<String> needListenAlarms = new LinkedBlockingQueue<String>(buffsize);
-    Set<String> needListenAlarmSet = new HashSet<String>(buffsize/5);
+    /**
+     *
+     */
+    private int buffsize = 5000000;
+    /**
+     *
+     */
+    private LinkedBlockingQueue<String> alives = new LinkedBlockingQueue<>(buffsize);
+    /**
+     *
+     */
+    private Set<String> aliveSet = new HashSet<>(buffsize/5);
+    /**
+     *
+     */
+    private LinkedBlockingQueue<String> needListenAlarms = new LinkedBlockingQueue<String>(buffsize);
+    /**
+     *
+     */
+    private Set<String> needListenAlarmSet = new HashSet<String>(buffsize/5);
+
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
@@ -83,7 +107,7 @@ public class AlarmBolt extends BaseRichBolt {
         new DecimalFormat("##0.000000");
 
         printLevel = Integer.valueOf(stormConf.get("print.log").toString());
-        vehAlarmTopic = stormConf.get("kafka.topic.alarm").toString();
+        vehAlarmTopic = stormConf.get(SysDefine.KAFKA_TOPIC_ALARM).toString();
         vehAlarmStoreTopic = stormConf.get("kafka.topic.alarmstore").toString();
         recorder =  new WarnningRecorder();
         try {
@@ -92,13 +116,15 @@ public class AlarmBolt extends BaseRichBolt {
                 alarmNum = Integer.parseInt(NumberUtils.stringNumber(alarmObject.toString()));
             }
             Object oncetime = stormConf.get("es.send.time");
-            if(null != oncetime)
+            if(null != oncetime) {
                 oncesend = Long.valueOf(oncetime.toString());
+            }
             flushtime=Long.parseLong(stormConf.get("db.cache.flushtime").toString());
             
-            Object offli=stormConf.get("redis.offline.time");
-            if(null != offli)
+            Object offli=stormConf.get(StormConfigKey.REDIS_OFFLINE_SECOND);
+            if(null != offli) {
                 onlinetime=1000*Long.valueOf(offli.toString());
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -301,13 +327,15 @@ public class AlarmBolt extends BaseRichBolt {
      * @param dataMap
      */
     private void warnning(Map<String, String> dataMap ,String type) {
-        if(ObjectUtils.isNullOrEmpty(dataMap))
+        if(ObjectUtils.isNullOrEmpty(dataMap)) {
             return;
+        }
         String vid = dataMap.get(DataKey.VEHICLE_ID);
         String vType = dataMap.get("VTYPE");
         if (ObjectUtils.isNullOrEmpty(vid)
-                || ObjectUtils.isNullOrEmpty(vType) ) 
+                || ObjectUtils.isNullOrEmpty(vType) ) {
             return;
+        }
         
         /**
          *<p>
@@ -326,15 +354,17 @@ public class AlarmBolt extends BaseRichBolt {
         }
         
         List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vType);
-        if (ObjectUtils.isNullOrEmpty(warns)) 
+        if (ObjectUtils.isNullOrEmpty(warns)) {
             return;
+        }
 
         try {
             int len = warns.size();
             for (int i = 0; i < len; i++) {
                 EarlyWarn warn = warns.get(i);
-                if (null == warn) 
+                if (null == warn) {
                     continue;
+                }
                 
                 int ret = 0;
                 if (null == warn.dependId) {
@@ -364,7 +394,9 @@ public class AlarmBolt extends BaseRichBolt {
     }
     
     private void statisticsWarn(int ret,String vid,EarlyWarn warn,Map<String,String> dataMap){
-        if(null == warn)return;
+        if(null == warn) {
+            return;
+        }
         WarnRecord record = recorder.getWarnRecord(vid, warn.id);
         if (1 == ret) {
             if (null == record) {
@@ -396,13 +428,15 @@ public class AlarmBolt extends BaseRichBolt {
      * @param dataMap
      */
     private void processAlarm(Map<String, String> dataMap ,String type) {
-        if(ObjectUtils.isNullOrEmpty(dataMap))
+        if(ObjectUtils.isNullOrEmpty(dataMap)) {
             return;
+        }
         String vid = dataMap.get(DataKey.VEHICLE_ID);
         String vType = dataMap.get("VTYPE");
         if (ObjectUtils.isNullOrEmpty(vid)
-                || ObjectUtils.isNullOrEmpty(vType) ) 
+                || ObjectUtils.isNullOrEmpty(vType) ) {
             return;
+        }
         
         
         if(CommandType.SUBMIT_LINKSTATUS.equals(type)
@@ -416,14 +450,16 @@ public class AlarmBolt extends BaseRichBolt {
         }
 
         List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vType);
-        if (ObjectUtils.isNullOrEmpty(warns)) 
+        if (ObjectUtils.isNullOrEmpty(warns)) {
             return;
+        }
         try {
             int len = warns.size();
             for (int i = 0; i < len; i++) {
                 EarlyWarn warn = warns.get(i);
-                if (null == warn) 
+                if (null == warn) {
                     continue;
+                }
                 
                 int ret = 0;
                 if (null == warn.dependId) {
@@ -464,8 +500,9 @@ public class AlarmBolt extends BaseRichBolt {
                 //上条报警，本条不报警，说明是结束报警，发送结束报警报文
                 String alarmId = alarmMap.get(vid+"#"+filterId);
                 EarlyWarn warn = EarlyWarnsGetter.getEarlyByDependId(filterId);
-                if (null ==warn) 
+                if (null ==warn) {
                     continue;
+                }
                 
                 String alarmName = warn.name;
                 int alarmLevel = warn.levels;
@@ -485,7 +522,7 @@ public class AlarmBolt extends BaseRichBolt {
                 sendMsg.put("LEFT1", left1);
                 String alarmhbase = JSON.toJSONString(sendMsg);
                 //kafka存储
-                sendAlarmKafka(SysDefine.VEH_ALARM,vehAlarmTopic,vid, alarmEnd);
+                sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic,vid, alarmEnd);
                 //hbase存储
                 sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehAlarmStoreTopic, vid, alarmhbase);
                 
@@ -513,18 +550,21 @@ public class AlarmBolt extends BaseRichBolt {
                 CoefOffset coefOffset = CoefOffsetGetter.getCoefOffset(left1);
                 String left1Value = dataMap.get(left1);
               //上传的实时数据包含左1字段 才进行预警判定
-                if (ObjectUtils.isNullOrEmpty(left1Value)) 
+                if (ObjectUtils.isNullOrEmpty(left1Value)) {
                     return ret;
+                }
                 boolean stringIsNum = NumberUtils.stringIsNumber(left1Value);
                 
                 if (null != coefOffset 
                         && 0 == coefOffset.type
                         && ! stringIsNum
-                        ) 
+                        ) {
                     return ret;
+                }
                 if (null == coefOffset 
-                        && ! stringIsNum)
+                        && ! stringIsNum) {
                     return ret;
+                }
                 
                 int leftExp = Integer.valueOf(NumberUtils.stringNumber(warn.leftExpression));
                 String left2 = warn.left2DataItem; //左2数据项ID
@@ -560,7 +600,9 @@ public class AlarmBolt extends BaseRichBolt {
                                             double value = Double.parseDouble(NumberUtils.stringNumber(arr2[j]));
                                             value= (value - coefOffset.offset)/coefOffset.coef;
                                             ret = diffMarkValid(value,midExp,right1,right2); //判断是否软报警条件(true/false)
-                                            if(ret==1) return ret;
+                                            if(ret==1) {
+                                                return ret;
+                                            }
                                         }
                                     }
                                 }
@@ -572,28 +614,34 @@ public class AlarmBolt extends BaseRichBolt {
                 } else {
                     
                     String left2Value = dataMap.get(left2);
-                    if (ObjectUtils.isNullOrEmpty(left2Value)) 
+                    if (ObjectUtils.isNullOrEmpty(left2Value)) {
                         return ret;
+                    }
                     
                     if(!left1.equals(left2)){ //L2_ID不为空， L1_ID  EXPR_LEFT  L2_ID
-                        if (null != coefOffset && 1 == coefOffset.type) 
+                        if (null != coefOffset && 1 == coefOffset.type) {
                             return ret;
+                        }
                         
                         CoefOffset left2coefOffset = CoefOffsetGetter.getCoefOffset(left2);
-                        if (null != left2coefOffset && 1 == left2coefOffset.type) 
+                        if (null != left2coefOffset && 1 == left2coefOffset.type) {
                             return ret;
+                        }
                         
                         if (! NumberUtils.stringIsNumber(left1Value)
-                                || ! NumberUtils.stringIsNumber(left2Value)) 
+                                || ! NumberUtils.stringIsNumber(left2Value)) {
                             return ret;
+                        }
                         
                         double left1_value = Double.valueOf(NumberUtils.stringNumber(left1Value));
-                        if (null != coefOffset) 
+                        if (null != coefOffset) {
                             left1_value = (left1_value - coefOffset.offset)/coefOffset.coef;
+                        }
                         
                         double left2_value = Double.valueOf(NumberUtils.stringNumber(left2Value));
-                        if (null != left2coefOffset) 
+                        if (null != left2coefOffset) {
                             left2_value = (left2_value - left2coefOffset.offset)/left2coefOffset.coef;
+                        }
                         
                         double left_value = diffMarkValid2(leftExp,left1_value,left2_value);
                         
@@ -605,8 +653,9 @@ public class AlarmBolt extends BaseRichBolt {
                         String lastData = "";
 //                        lastData = CTFOUtils.getDefaultCTFOCacheTable().queryHash(vid, left1);
                         Map<String, String>last=lastCache.get(vid);
-                        if(null !=last)
+                        if(null !=last) {
                             lastData = last.get(left1);
+                        }
                         if(!ObjectUtils.isNullOrEmpty(lastData) ){ //上传的实时数据包含左1字段
                             
                             if ((left2Value.contains("|") && !lastData.contains("|"))
@@ -659,7 +708,9 @@ public class AlarmBolt extends BaseRichBolt {
                                                         }
                                                         double left_value = diffMarkValid2(leftExp,left1_value,left2_value);
                                                         ret = diffMarkValid(left_value,midExp,right1,right2); //判断是否软报警条件(true/false)
-                                                        if(ret==1) return ret;
+                                                        if(ret==1) {
+                                                            return ret;
+                                                        }
                                                     }
                                                     
                                                 }
@@ -693,7 +744,9 @@ public class AlarmBolt extends BaseRichBolt {
     }
 
     private void sendAlarmMessage(int ret,String vid,EarlyWarn warn,Map<String,String> dataMap){
-        if(null == warn)return;
+        if(null == warn) {
+            return;
+        }
         String filterId = warn.id;
         String alarmName = warn.name;
         int alarmLevel = warn.levels;
@@ -986,8 +1039,9 @@ public class AlarmBolt extends BaseRichBolt {
                 ret = left1 * left2;
                 break;
             case 4:
-                if (0 == left2) 
+                if (0 == left2) {
                     break;
+                }
                 
                 ret = left1 / left2;
                 break;

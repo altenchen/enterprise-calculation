@@ -1,5 +1,9 @@
 package storm.handler.fence.input;
 
+/**
+ * @author wza
+ * 方法类, 输入
+ */
 public interface Rule extends java.io.Serializable{
 
 	enum RuleType{
@@ -12,10 +16,11 @@ public interface Rule extends java.io.Serializable{
 		}
 
 		public RuleType setResultType(Class<?> resultType) {
-			if (VOID == this) 
-				this.resultType=null;
-			else
-				this.resultType = resultType;
+			if (VOID == this) {
+                this.resultType=null;
+            } else {
+                this.resultType = resultType;
+            }
 			return this;
 		}
 		

@@ -5,6 +5,10 @@ import java.util.List;
 
 import storm.dto.TimePeriod;
 
+/**
+ * @author wza
+ * 故障规则处理
+ */
 public class FaultAlarmRule implements Serializable {
 
 	/**

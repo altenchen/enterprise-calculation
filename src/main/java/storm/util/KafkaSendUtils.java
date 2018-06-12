@@ -8,6 +8,9 @@ import java.util.concurrent.TimeUnit;
 import kafka.javaapi.producer.Producer;
 import kafka.producer.ProducerConfig;
 
+/**
+ * kafka发送工具集
+ */
 public class KafkaSendUtils {
 	private static BlockingQueue<Producer<byte[], byte[]>> queue;
 	private static ThreadLocal<Producer<byte[], byte[]>> localThread;

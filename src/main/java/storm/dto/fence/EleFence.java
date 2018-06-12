@@ -13,6 +13,10 @@ import storm.dto.TimePeriod;
 import storm.handler.fence.input.Rule;
 import storm.util.ObjectUtils;
 
+/**
+ * @author wza
+ * 电子围栏处理
+ */
 public class EleFence implements Serializable {
 
 	/**
@@ -29,7 +33,7 @@ public class EleFence implements Serializable {
 	public String operType;//操作类型
 	public String[] timeQuantum;//{starttime1|endtime1,starttime1|endtime1,...}
 	public List<Segment> segments;//线段列簇
-	public List<PolygonCal> polygons;//多边形簇
+	public final List<PolygonCal> polygons = new LinkedList<>();//多边形簇
 	public List<Circle> circles;//圆形簇
 	public List<Rule>rules;//规则
 	public Map<String, Object> judge;//判定结果
@@ -56,8 +60,9 @@ public class EleFence implements Serializable {
 				}
 				timeQuantum = new String[strings.length];
 				for (int i = 0; i < strings.length; i++) {
-					if (null == strings[i] || "".equals(strings[i].trim())) 
-						continue;
+					if (null == strings[i] || "".equals(strings[i].trim())) {
+                        continue;
+                    }
 					String string = strings[i];
 					string = string.replace("-", "")
 							.replace(":", "")
@@ -77,14 +82,16 @@ public class EleFence implements Serializable {
 						double y = 1000000*Double.valueOf(lanlons[1]);
 						Coordinate center = new Coordinate(x, y);
 						Circle circle = new Circle(center, radius);
-						if(null == circles)
-							circles = new LinkedList<Circle>();
+						if(null == circles) {
+                            circles = new LinkedList<Circle>();
+                        }
 						circles.add(circle);
 					}
 					if("4".equals(type.trim())){
 						double width = Double.valueOf(pits[0]);
-						if(null == segments)
-							segments = new LinkedList<Segment>();
+						if(null == segments) {
+                            segments = new LinkedList<Segment>();
+                        }
 						for (int i = 1; i < pits.length-1; i++) {
 							String [] lanlons = pits[i].split(",");
 							double x = 1000000*Double.valueOf(lanlons[0]);
@@ -103,8 +110,6 @@ public class EleFence implements Serializable {
 				}
 				
 				if ("1".equals(type.trim()) || "3".equals(type.trim())) {
-					if (null ==polygons) 
-						polygons=new LinkedList<PolygonCal>();
 					
 					PolygonCal polygon = new PolygonCal();
 					
@@ -134,8 +139,9 @@ public class EleFence implements Serializable {
 					for (String str : bigseqs) {
 						if (str.indexOf("-")>0) {
 							String [] sted = str.split("-");
-							if(2 == sted.length)
-								bseqs.add(new Long[]{Long.valueOf(sted[0]),Long.valueOf(sted[1])});
+							if(2 == sted.length) {
+                                bseqs.add(new Long[]{Long.valueOf(sted[0]),Long.valueOf(sted[1])});
+                            }
 							
 						} else {
 							bsingle.add(Long.valueOf(str));
@@ -144,15 +150,17 @@ public class EleFence implements Serializable {
 					String timesmallseq = periodTimes[2];
 					List <Long[]> smallSeq = new LinkedList<Long[]>();
 					String[]smalls=null;
-					if (timesmallseq.indexOf(",")>0) 
-						smalls = timesmallseq.split(",");
-					else
-						smalls = new String[]{timesmallseq};
+					if (timesmallseq.indexOf(",")>0) {
+                        smalls = timesmallseq.split(",");
+                    } else {
+                        smalls = new String[]{timesmallseq};
+                    }
 					
 					for (String str : smalls) {
 						String [] sted = str.split("-");
-						if(2 == sted.length)
-							smallSeq.add(new Long[]{Long.valueOf(sted[0]),Long.valueOf(sted[1])});
+						if(2 == sted.length) {
+                            smallSeq.add(new Long[]{Long.valueOf(sted[0]),Long.valueOf(sted[1])});
+                        }
 						
 					}
 					period = new TimePeriod(type, bsingle, bseqs, smallSeq);
@@ -166,23 +174,26 @@ public class EleFence implements Serializable {
 	public boolean coordisIn(Coordinate coord){
 		if(null != circles && circles.size()>0){
 			for (Circle circle : circles) {
-				if(isPointInCircle(circle, coord))
-					return true;
+				if(isPointInCircle(circle, coord)) {
+                    return true;
+                }
 				
 			}
 		}
 		if(null != segments && segments.size()>0){
 			for (Segment segment : segments) {
-				if (isPointInSegment(segment, coord)) 
-					return true;
+				if (isPointInSegment(segment, coord)) {
+                    return true;
+                }
 				
 			}
 		}
 		
 		if(null != polygons && polygons.size()>0){
 			for (PolygonCal polygon : polygons) {
-				if (isPointInPolygon(polygon.coords,coord)) 
-					return true;
+				if (isPointInPolygon(polygon.coords,coord)) {
+                    return true;
+                }
 				
 			}
 		}
@@ -190,8 +201,9 @@ public class EleFence implements Serializable {
 	}
 	
 	private boolean isPointInCircle(Circle circle,Coordinate coord){
-    	if (null == circle || 0 == circle.radius || null == coord || -999 == coord.x || -999 == coord.y) 
-			return false;
+    	if (null == circle || 0 == circle.radius || null == coord || -999 == coord.x || -999 == coord.y) {
+            return false;
+        }
     	return ( Math.pow(coord.x-circle.center.x,2)+Math.pow(coord.y-circle.center.y,2) )<=Math.pow(circle.radius,2);
     }
 	
@@ -199,20 +211,24 @@ public class EleFence implements Serializable {
     	if (null == segment || null == segment.st || null == segment.ed 
     			|| -999 == segment.st.x || -999 == segment.st.y 
     			|| -999 == segment.ed.x || -999 == segment.ed.y
-    			|| null == coord || -999 == coord.x || -999 == coord.y) 
-			return false;
-    	if(segment.st.x==segment.ed.x && segment.st.y==segment.ed.y)
-    		return false;
+    			|| null == coord || -999 == coord.x || -999 == coord.y) {
+            return false;
+        }
+    	if(segment.st.x==segment.ed.x && segment.st.y==segment.ed.y) {
+            return false;
+        }
     	
     	Circle circle=new Circle(segment.st, segment.width);
     	boolean in = isPointInCircle(circle,coord);
-    	if (in) 
-    		return in;
+    	if (in) {
+            return in;
+        }
     	
     	circle=new Circle(segment.ed, segment.width);
     	in = isPointInCircle(circle,coord);
-    	if (in) 
-    		return in;
+    	if (in) {
+            return in;
+        }
     	double xmin = Math.min(segment.st.x, segment.ed.x);
     	double ymin = Math.min(segment.st.y, segment.ed.y);
     	
@@ -220,11 +236,13 @@ public class EleFence implements Serializable {
     	double ymax = Math.max(segment.st.y, segment.ed.y);
     	
     	if(coord.x < xmin-segment.width || coord.x > xmax+segment.width
-    			|| coord.y < ymin-segment.width || coord.y > ymax+segment.width)
-    		return false;
+    			|| coord.y < ymin-segment.width || coord.y > ymax+segment.width) {
+            return false;
+        }
     	
-    	if(segment.st.x==segment.ed.x)
-    		return Math.abs(coord.x-segment.st.x)<= segment.width;
+    	if(segment.st.x==segment.ed.x) {
+            return Math.abs(coord.x-segment.st.x)<= segment.width;
+        }
     	double k=(segment.ed.y-segment.st.y)/(segment.ed.x-segment.st.x);
     	double c=(segment.ed.x*segment.st.y-segment.st.x*segment.ed.y)/(segment.ed.x-segment.st.x);
     	double distance=Math.abs(k*coord.x-coord.y+c)/Math.sqrt(k*k+1);
@@ -266,15 +284,17 @@ public class EleFence implements Serializable {
 	
 	public boolean nowIntimes(){
 		boolean nowin = nowIntimeQuantum();
-		if (nowin) 
-			return nowin;
+		if (nowin) {
+            return nowin;
+        }
 		
 		return dateIntimes(new Date());
 	}
 	
 	public boolean dateIntimes(Date date){
-		if(null == period || null == period.type)
-			return false;
+		if(null == period || null == period.type) {
+            return false;
+        }
 		return period.dateIntimes(date);
 //		if (null == period.inSeqSmalltimes) 
 //			return false;
@@ -382,11 +402,13 @@ public class EleFence implements Serializable {
 	
 	public boolean stringTimeIntimes(String yyyyMMddHHmmss){
 		boolean intime = intimeQuantum(yyyyMMddHHmmss);
-		if (intime) 
-			return intime;
+		if (intime) {
+            return intime;
+        }
 		
-		if(null == period || null == period.type)
-			return false;
+		if(null == period || null == period.type) {
+            return false;
+        }
 		return period.stringTimeIntimes(yyyyMMddHHmmss);
 //		if (null == period.inSeqSmalltimes) 
 //			return false;
@@ -490,10 +512,12 @@ public class EleFence implements Serializable {
 	}
 	
 	public boolean longtimeIntimes(long utc){
-		if(null == period || null == period.type)
-			return false;
-		if (null == period.inSeqSmalltimes) 
-			return false;
+		if(null == period || null == period.type) {
+            return false;
+        }
+		if (null == period.inSeqSmalltimes) {
+            return false;
+        }
 		return dateIntimes(new Date(utc));
 	}
 	boolean isNumber(String str) {
@@ -503,8 +527,9 @@ public class EleFence implements Serializable {
         return false;
     }
 	public void addRule(Rule r){
-		if(null == rules)
-			rules = new LinkedList<Rule>();
+		if(null == rules) {
+            rules = new LinkedList<Rule>();
+        }
 		rules.add(r);
 	}
 	
@@ -529,8 +554,9 @@ public class EleFence implements Serializable {
 	private boolean intimeQuantum(String yyyyMMddHHmmss){
 		if (null == yyyyMMddHHmmss
 				||null == timeQuantum
-				|| 0 == timeQuantum.length) 
-			return false;
+				|| 0 == timeQuantum.length) {
+            return false;
+        }
 		long msgTime=Long.valueOf(yyyyMMddHHmmss);
 		for (String string : timeQuantum) {
 			if (null !=string) {
@@ -552,8 +578,9 @@ public class EleFence implements Serializable {
 	private boolean intimeQuantum(long utc){
 		if (0 == utc
 				||null == timeQuantum
-				|| 0 == timeQuantum.length) 
-			return false;
+				|| 0 == timeQuantum.length) {
+            return false;
+        }
 		
 		try {
 			for (String string : timeQuantum) {
