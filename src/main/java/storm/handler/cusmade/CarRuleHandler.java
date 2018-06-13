@@ -14,10 +14,7 @@ import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.service.TimeFormatService;
-import storm.system.DataKey;
-import storm.system.ProtocolItem;
-import storm.system.StormConfigKey;
-import storm.system.SysDefine;
+import storm.system.*;
 import storm.util.*;
 
 import java.util.*;
@@ -621,8 +618,9 @@ public class CarRuleHandler implements InfoNotice {
             String carStatus = data.get(DataKey._3201_CAR_STATUS);
             // 车辆SOC
             String soc = data.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
-
-            String macList = data.get(DataKey._2308_DRIVING_ELE_MAC_LIST);
+			String mileage = data.get(DataKey._2202_TOTAL_MILEAGE);
+			
+			String macList = data.get(DataKey._2308_DRIVING_ELE_MAC_LIST);
 
             // 电池单体电压最高值
             String hignVolt = data.get(DataKey._2603_SINGLE_VOLT_HIGN_VAL);
@@ -690,7 +688,7 @@ public class CarRuleHandler implements InfoNotice {
             boolean hasCan;
             if (isJili) {
                 // region 吉利报表定制算法
-                hasCan = judgeJiliCan(data);
+                hasCan = judgeJiliNoCan(data);
                 // endregion
             } else {
                 hasCan = (
@@ -723,81 +721,87 @@ public class CarRuleHandler implements InfoNotice {
                 vidnocan.put(vid, cnts);
                 if (cnts >= nocanJudgeNum) {
                     Map<String, Object> notice = vidcanNotice.get(vid);
-                    if (null == notice) {
-                        notice = new TreeMap<String, Object>();
-                        notice.put("msgType", "NO_CAN_VEH");
-                        notice.put("vid", vid);
-                        notice.put("msgId", UUIDUtils.getUUID());
-                        notice.put("stime", time);
-                        notice.put("count", cnts);
-                        notice.put("status", 1);
-                        notice.put("location", location);
-                    } else {
-                        notice.put("count", cnts);
+					byte status;
+					if (null == notice) {
+					    // 首次达到无CAN判定条件, 初始化通知并缓存起来.
+						notice = new TreeMap<>();
+						notice.put("msgType", AlarmMessageType.NO_CAN_VEH);
+						notice.put("vid", vid);
+						notice.put("msgId", UUIDUtils.getUUID());
+						notice.put("stime", time);
+						notice.put("count", cnts);
+						notice.put("status", 1);
+						notice.put("location", location);
+                        notice.put("smileage", mileage);
+					}else{
+					    // 后续无CAN数据
+						notice.put("count", cnts);
 //						notice.put("status", 2);
 //						notice.put("location", location);
                     }
                     notice.put("noticetime", noticetime);
                     vidcanNotice.put(vid, notice);
 
-                    Long nowTime = date.getTime();
-                    Long firstNocanTime = timeformat.stringTimeLong(notice.get("stime").toString());
-                    //status，1开始，2持续，3结束
-                    if (1 == (int) notice.get("status") && nowTime - firstNocanTime > nocanIntervalTime) {
-                        IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
+					Long nowTime = date.getTime();
+					Long firstNocanTime = timeformat.stringTimeLong(notice.get("stime").toString());
+					//status，1开始，2持续，3结束
+                    //
+					if(1 == (int)notice.get("status") && nowTime - firstNocanTime > nocanIntervalTime){
+						IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
+
                         if (null == judgeIsSendNotice) {
                             judgeIsSendNotice = new IsSendNoticeCache();
                             vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
                         }
                         judgeIsSendNotice.canIsSend = true;
                         return notice;
-
-                    }
-                }
-                // endregion
-            } else {
-                // region 有CAN处理
-                if (vidnocan.containsKey(vid)) {
-                    int cnts = 0;
-                    //正常发送can报文的车辆vid
-                    if (vidnormcan.containsKey(vid)) {
-                        cnts = vidnormcan.get(vid);
-                    }
-                    cnts++;
-                    vidnormcan.put(vid, cnts);
-
-                    if (cnts >= hascanJudgeNum || (cnts >= 3 && null != data.get(SUBMIT_LOGIN.LOGOUT_TIME))) {
-
-                        vidnormcan.remove(vid);
-
-                        //如果无can状态开始通知没有发送，则不会发送结束通知，只会把各个缓存清空
-                        if (!vidIsSendNoticeCache.get(vid).canIsSend) {
-                            vidnocan.remove(vid);
-                            vidcanNotice.remove(vid);
-                            return null;
-                        }
-
-                        Map<String, Object> notice = vidcanNotice.get(vid);
-                        vidnocan.remove(vid);
-                        vidcanNotice.remove(vid);
-                        vidIsSendNoticeCache.get(vid).canIsSend = false;
-                        if (null != notice) {
-                            notice.put("status", 3);
-                            notice.put("location", location);
-                            notice.put("etime", time);
-                            notice.put("noticetime", noticetime);
-                            return notice;
-                        }
-                    }
-
-                }
-                // endregion
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
+						
+					}
+				}
+				// endregion
+			} else {
+			    // region 有CAN处理
+				if (vidnocan.containsKey(vid)){
+					int cnts = 0;
+					//正常发送can报文的车辆vid
+					if (vidnormcan.containsKey(vid)) {
+						cnts = vidnormcan.get(vid);
+					}
+					cnts++;
+					vidnormcan.put(vid, cnts);
+					
+					if (cnts >=hascanJudgeNum || (cnts >= 3 && null!=data.get(SUBMIT_LOGIN.LOGOUT_TIME))) {
+						
+						vidnormcan.remove(vid);
+						
+						//如果无can状态开始通知没有发送，则不会发送结束通知，只会把各个缓存清空
+						if(!vidIsSendNoticeCache.get(vid).canIsSend){
+							vidnocan.remove(vid);
+							vidcanNotice.remove(vid);
+							return null;
+						}
+						
+						Map<String, Object> notice = vidcanNotice.get(vid);
+						vidnocan.remove(vid);
+						vidcanNotice.remove(vid);
+						vidIsSendNoticeCache.get(vid).canIsSend = false;
+						if (null != notice) {
+							notice.put("status", 3);
+							notice.put("location", location);
+							notice.put("etime", time);
+							notice.put("noticetime", noticetime);
+							return notice;
+						}
+					}
+				
+				}
+				// endregion
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 
     // TODO XZP: Redis取值覆盖
     // region 吉利判定参数
@@ -820,7 +824,7 @@ public class CarRuleHandler implements InfoNotice {
      * @param data
      * @return
      */
-    private boolean judgeJiliCan(Map<String, String> data) {
+	private boolean judgeJiliNoCan(Map<String, String> data) {
 
         // 如果不是吉利业务, 直接返回false
         if (!isJili) {
@@ -1608,7 +1612,7 @@ public class CarRuleHandler implements InfoNotice {
         return null;
     }
 
-+    public List<Map<String, Object>> offlineMethod2(long now) {
+    public List<Map<String, Object>> offlineMethod2(long now) {
         if (null == lastTime || lastTime.size() == 0) {
             return null;
         }

@@ -134,14 +134,11 @@ public class ObjectUtils {
      * @param map 集合
      * @return 是否为自动唤醒报文
      */
-    @Contract("null -> true")
-    public static boolean JudgeAutoWake(Map map){
-        if(null == map.get(DataKey._2613_TOTAL_VOLTAGE)
-                || "".equals(map.get(DataKey._2613_TOTAL_VOLTAGE))
-                && null == map.get(DataKey._2614_TOTAL_ELECTRICITY)
-                || "".equals(map.get(DataKey._2613_TOTAL_VOLTAGE))) {
-            return true;
-        }
+    public static boolean judgeAutoWake(@NotNull Map map){
+        String totalVoltage = (String)map.get(DataKey._2613_TOTAL_VOLTAGE);
+        String totalElectricity = (String)map.get(DataKey._2614_TOTAL_ELECTRICITY);
+        return isNullOrWhiteSpace(totalVoltage)
+                && isNullOrWhiteSpace(totalElectricity);
     }
 
 }

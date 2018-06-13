@@ -1,6 +1,5 @@
 package storm.handler.cusmade;
 
-import java.awt.dnd.DropTarget;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -18,8 +17,6 @@ import storm.system.SysDefine;
 import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.util.UUIDUtils;
-
-import javax.xml.crypto.Data;
 
 /**
  * 车辆上下线及相关处理
@@ -216,7 +213,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 		//过滤掉自动唤醒的数据，判断依据：总电压、总电流同时为空则为自动唤醒数据
-        if (ObjectUtils.JudgeAutoWake(dat)) {
+        if (ObjectUtils.judgeAutoWake(dat)) {
             return null;
         }
 
