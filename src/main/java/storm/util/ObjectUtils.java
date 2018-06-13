@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jgroups.annotations.Unsupported;
+import storm.system.DataKey;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
@@ -126,4 +127,21 @@ public class ObjectUtils {
 
 		return string;
 	}
+
+
+    /**
+     * 判断报文是否为自动唤醒报文,判断依据：总电压、总电流同时为空则为自动唤醒数据
+     * @param map 集合
+     * @return 是否为自动唤醒报文
+     */
+    @Contract("null -> true")
+    public static boolean JudgeAutoWake(Map map){
+        if(null == map.get(DataKey._2613_TOTAL_VOLTAGE)
+                || "".equals(map.get(DataKey._2613_TOTAL_VOLTAGE))
+                && null == map.get(DataKey._2614_TOTAL_ELECTRICITY)
+                || "".equals(map.get(DataKey._2613_TOTAL_VOLTAGE))) {
+            return true;
+        }
+    }
+
 }

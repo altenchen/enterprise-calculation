@@ -248,7 +248,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-            //返回车辆通知
+            //返回车辆通知,(重要)
             //先检查规则是否启用，启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
             List<Map<String, Object>> msgs = carRuleHandler.generateNotices(data);
             for(Map<String, Object> map: msgs) {

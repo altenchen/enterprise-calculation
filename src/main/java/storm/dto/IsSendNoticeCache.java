@@ -3,11 +3,5 @@ package storm.dto;
 public class IsSendNoticeCache {
 	public boolean gpsIsSend;
 	public boolean canIsSend;
-
-	public IsSendNoticeCache(boolean gpsIsSend, boolean canIsSend) {
-		super();
-		this.gpsIsSend = gpsIsSend;
-		this.canIsSend = canIsSend;
-	}
-
+	public boolean socIsSend;
 }

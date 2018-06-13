@@ -216,9 +216,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 		//过滤掉自动唤醒的数据，判断依据：总电压、总电流同时为空则为自动唤醒数据
-		String totalVoltage = dat.get(DataKey._2613_TOTAL_VOLTAGE);
-		String totalElectricity = dat.get(DataKey._2614_TOTAL_ELECTRICITY);
-        if (null == totalVoltage || null == totalElectricity) {
+        if (ObjectUtils.JudgeAutoWake(dat)) {
             return null;
         }
 
