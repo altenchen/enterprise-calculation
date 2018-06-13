@@ -732,8 +732,8 @@ public class RedisTotalCacheInitUtil {
             			Set<String> keyDistricts=parentDistrictByVin(district);
             			if(null!=keyDistricts && 0<keyDistricts.size()){
             				for (String dis : keyDistricts) {
-            					String keyDist="CARINFO.DISTRICTS."+dis;
-                    			execu(now,map,keyDist,districtTotalInfo);
+            					String keyDist="CARINFO.DISTRICTS." + dis;
+                    			execu(now,map,keyDist, districtTotalInfo);
                     			
                     			String keyDistType="CARINFO.DISTRICTS."+dis+"."+carType;
                     			execu(now,map,keyDistType,districtTotalTypeInfo);

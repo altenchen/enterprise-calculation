@@ -12,7 +12,6 @@ import com.sun.jersey.core.util.Base64;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import scala.Int;
 import storm.cache.SysRealDataCache;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
@@ -22,10 +21,7 @@ import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.service.TimeFormatService;
-import storm.system.DataKey;
-import storm.system.ProtocolItem;
-import storm.system.StormConfigKey;
-import storm.system.SysDefine;
+import storm.system.*;
 import storm.util.ConfigUtils;
 import storm.util.GpsUtil;
 import storm.util.NumberUtils;
@@ -578,6 +574,7 @@ public class CarRuleHandler implements InfoNotice{
 			String carStatus = data.get(DataKey._3201_CAR_STATUS);
 			// 车辆SOC
 			String soc = data.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
+			String mileage = data.get(DataKey._2202_TOTAL_MILEAGE);
 			
 			String macList = data.get(DataKey._2308_DRIVING_ELE_MAC_LIST);
 
@@ -647,7 +644,7 @@ public class CarRuleHandler implements InfoNotice{
             boolean hasCan;
             if(isJili) {
                 // region 吉利报表定制算法
-                hasCan = judgeJiliCan(data);
+                hasCan = judgeJiliNoCan(data);
                 // endregion
             } else {
                 hasCan = (
@@ -680,36 +677,40 @@ public class CarRuleHandler implements InfoNotice{
 				vidnocan.put(vid, cnts);
 				if (cnts >= nocanJudgeNum) {
 					Map<String, Object> notice = vidcanNotice.get(vid);
+					byte status;
 					if (null == notice) {
-						notice =  new TreeMap<String, Object>();
-						notice.put("msgType", "NO_CAN_VEH");
+					    // 首次达到无CAN判定条件, 初始化通知并缓存起来.
+						notice = new TreeMap<>();
+						notice.put("msgType", AlarmMessageType.NO_CAN_VEH);
 						notice.put("vid", vid);
 						notice.put("msgId", UUIDUtils.getUUID());
 						notice.put("stime", time);
 						notice.put("count", cnts);
 						notice.put("status", 1);
 						notice.put("location", location);
+                        notice.put("smileage", mileage);
 					}else{
+					    // 后续无CAN数据
 						notice.put("count", cnts);
 //						notice.put("status", 2);
 //						notice.put("location", location);
 					}
 					notice.put("noticetime", noticetime);
 					vidcanNotice.put(vid, notice);
-					
+
 					Long nowTime = date.getTime();
 					Long firstNocanTime = timeformat.stringTimeLong(notice.get("stime").toString());
 					//status，1开始，2持续，3结束
-					if( 1 == (int)notice.get("status") && nowTime-firstNocanTime > nocanIntervalTime){
+                    //
+					if(1 == (int)notice.get("status") && nowTime - firstNocanTime > nocanIntervalTime){
 						IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
-						if (null == judgeIsSendNotice) {
-							judgeIsSendNotice = new IsSendNoticeCache(false, true);
-							vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
-							return notice;
-						}else if (!judgeIsSendNotice.canIsSend) {
-							judgeIsSendNotice.canIsSend = true;
-							return notice;
-						}
+
+                        if (null == judgeIsSendNotice) {
+                            judgeIsSendNotice = new IsSendNoticeCache();
+                            vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
+                        }
+                        judgeIsSendNotice.canIsSend = true;
+                        return notice;
 						
 					}
 				}
@@ -778,7 +779,7 @@ public class CarRuleHandler implements InfoNotice{
      * @param data
      * @return
      */
-	private boolean judgeJiliCan(Map<String, String> data) {
+	private boolean judgeJiliNoCan(Map<String, String> data) {
 
 	    // 如果不是吉利业务, 直接返回false
 	    if(!isJili) {

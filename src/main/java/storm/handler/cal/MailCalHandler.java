@@ -77,13 +77,15 @@ public class MailCalHandler {
 				String value = entry.getValue();
 				
 				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) 
+						|| ObjectUtils.isNullOrEmpty(value)) {
 					continue;
+				}
 
 				String []strings=value.split(",",-1);
 				
-				if(strings.length != 15)
+				if(strings.length != 15) {
 					continue;
+				}
 				carInfoArray.put(key, strings);
 			}catch (Exception e) {
 					
@@ -93,8 +95,9 @@ public class MailCalHandler {
 		tasks();
 	}
 	private static void resetAllCache(){
-		if (null != carInfoArray) 
+		if (null != carInfoArray) {
 			carInfoArray.cleanUp();
+		}
 		Map<String, String> map = redis.hgetallMapByKeyAndDb("XNY.CARINFO", 0);
 		for (Map.Entry<String, String> entry : map.entrySet()) {
 			try {
@@ -102,13 +105,15 @@ public class MailCalHandler {
 				String value = entry.getValue();
 				
 				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) 
+						|| ObjectUtils.isNullOrEmpty(value)) {
 					continue;
+				}
 
 				String []strings=value.split(",",-1);
 				
-				if(strings.length != 15)
+				if(strings.length != 15) {
 					continue;
+				}
 				carInfoArray.put(key, strings);
 			}catch (Exception e) {
 				e.printStackTrace();
@@ -118,11 +123,13 @@ public class MailCalHandler {
 	}
 	private static void setTime(){
 		String offli=ConfigUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-		if(null != offli)
+		if(null != offli) {
 			time=1000*Long.valueOf(offli);
+		}
 		String stopli=ConfigUtils.sysDefine.getProperty("redis.offline.stoptime");
-		if(null != stopli)
+		if(null != stopli) {
 			stoptime=1000*Long.valueOf(stopli);
+		}
 	}
 	private static void tasks(){
 		long clustertime = 180L;
@@ -130,10 +137,12 @@ public class MailCalHandler {
 		try {
 			String cltt = ConfigUtils.sysDefine.getProperty("redis.totalInterval");
 			String stt = ConfigUtils.sysDefine.getProperty("redis.monitor.time");
-			if (null != cltt) 
+			if (null != cltt) {
 				clustertime=Long.parseLong(cltt);
-			if (null != stt) 
+			}
+			if (null != stt) {
 				stattime=Long.parseLong(stt);
+			}
 			
 		} catch (Exception e) {
 			
@@ -166,8 +175,9 @@ public class MailCalHandler {
 						break;
 					}
 				}
-            	if (allComplete) 
-            		exe=false;
+            	if (allComplete) {
+					exe=false;
+				}
             }
             keyLoadComp = true;
             ctfoCacheKeys=null;
@@ -220,8 +230,9 @@ public class MailCalHandler {
 		@Override
 		public void run() {
 
-			if(null!=keys && keys.size()>0)
+			if(null!=keys && keys.size()>0) {
 				loadBykeys(keys);
+			}
 			complete = true;
 		}
 		
@@ -232,14 +243,17 @@ public class MailCalHandler {
 		void loadBykeys(List<String> keys){
 			try {
 				for(String key :keys){
-					if (ObjectUtils.isNullOrEmpty(key)) 
+					if (ObjectUtils.isNullOrEmpty(key)) {
 						continue;
+					}
 					key=key.split("-",3)[2];
-					if (ObjectUtils.isNullOrEmpty(key)) 
+					if (ObjectUtils.isNullOrEmpty(key)) {
 						continue;
+					}
 					Map<String, String> map=CTFOUtils.getDefaultCTFOCacheTable().queryHash(key);
-					if(ObjectUtils.isNullOrEmpty(map))
+					if(ObjectUtils.isNullOrEmpty(map)) {
 						continue;
+					}
 					carlastrecord.put(key, map);
 				}
 			} catch (Exception e) {
@@ -278,8 +292,9 @@ public class MailCalHandler {
 
 				for (String str : sets) {
 					bool="1".equals(redis.getString(10, str));
-					if (bool) 
+					if (bool) {
 						break;
+					}
 				}
 				if (bool) {
 					for (String str : sets) {
@@ -306,8 +321,9 @@ public class MailCalHandler {
 				@Override
 				public Set<String> call() throws Exception {
 					Map<String, Set<String>> map=RedisOrganizationUtil.getCarUser(change);
-					if(null==map)
+					if(null==map) {
 						return null;
+					}
 					Set<String> set=map.get(vin);
 					return set;
 				}
@@ -378,8 +394,9 @@ public class MailCalHandler {
 			
 			stime = 1506790800000L;//2017/10/01/01:00:00的long值时间
 			String threads=ConfigUtils.sysDefine.getProperty("stat.thread.no");
-			if(null != threads)
+			if(null != threads) {
 				poolsz=Integer.valueOf(threads);
+			}
 		}
 		void setComplete(boolean complete) {
 			this.complete = complete;
@@ -401,8 +418,9 @@ public class MailCalHandler {
             	if (!isclear) {
 					
             		setComplete(false);
-        			if(null!=carlastrecord.asMap() && carlastrecord.asMap().size()>0)
-        				executeByMaps(carlastrecord.asMap().values());
+        			if(null!=carlastrecord.asMap() && carlastrecord.asMap().size()>0) {
+						executeByMaps(carlastrecord.asMap().values());
+					}
             		if (complete) {
             			saveToRedis(db);
             			setComplete(false);
@@ -461,16 +479,18 @@ public class MailCalHandler {
 		
 		private void saveMap(Map<String, Map<String, String>> map,int db){
 			try {
-				if(null!=map)
+				if(null!=map) {
 					for(Map.Entry<String, Map<String,String>> entry:map.entrySet()){
 						String key = entry.getKey();
 						Map<String,String> value = entry.getValue();
-						if (ObjectUtils.isNullOrEmpty(key) 
-								|| ObjectUtils.isNullOrEmpty(value) ) 
+						if (ObjectUtils.isNullOrEmpty(key)
+								|| ObjectUtils.isNullOrEmpty(value) ) {
 							continue;
+						}
 
 						redis.saveMap(value, db, key);
 					}
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -478,20 +498,23 @@ public class MailCalHandler {
 
 		void executeByMaps(Collection<Map<String, String>> maps){
 			try {
-				if (null == maps || maps.size()<1) 
+				if (null == maps || maps.size()<1) {
 					return;
+				}
 				clearMap();
 				threadPools = Executors.newFixedThreadPool(poolsz);
 				for(Map<String, String> map :maps){
-					if (ObjectUtils.isNullOrEmpty(map)) 
+					if (ObjectUtils.isNullOrEmpty(map)) {
 						continue;
+					}
 					threadPools.execute(new UnitDatCal(map));
 				}
 				try {
 					threadPools.shutdown();
 					while(true){
-						if (threadPools.isTerminated())
+						if (threadPools.isTerminated()) {
 							break;
+						}
 						TimeUnit.MILLISECONDS.sleep(500);
 					}
 					threadPools=null;
@@ -515,8 +538,9 @@ public class MailCalHandler {
 
 			@Override
 			public void run() {
-				if (null != dat) 
+				if (null != dat) {
 					statistic(dat);
+				}
 					
 			}
 			void statistic(Map<String, String> map){
@@ -549,10 +573,10 @@ public class MailCalHandler {
 									Set<String> keyDistricts=parentDistrictByVin(district);
 									if(null!=keyDistricts && 0<keyDistricts.size()){
 										for (String dis : keyDistricts) {
-											String keyDist="CARINFO.DISTRICTS."+dis;
+											String keyDist="CARINFO.DISTRICTS." + dis;
 											execu(map,keyDist,districtTotalInfo);
 											
-											String keyDistType="CARINFO.DISTRICTS."+dis+"."+carType;
+											String keyDistType="CARINFO.DISTRICTS." + dis + "." + carType;
 											execu(map,keyDistType,districtTotalTypeInfo);
 										}
 									}
@@ -576,49 +600,55 @@ public class MailCalHandler {
 									execu(map,plantOnlyCarType,plantOnlyCarTypeMap);
 									
 									Set<String>users=carUserByVin(vin);
-									if(null!=users)
+									if(null!=users) {
 										for (String user : users) {
-											if (ObjectUtils.isNullOrEmpty(user)) 
+											if (ObjectUtils.isNullOrEmpty(user)) {
 												continue;
+											}
 											Map<String, Map<String,String>>userDistAndTypeMap=userCacheDistAndTypeMap.get(user);
-											if (null==userDistAndTypeMap) 
-												userDistAndTypeMap=new HashMap<String,Map<String, String>>();
-											
+											if (null==userDistAndTypeMap) {
+												userDistAndTypeMap = new HashMap<String, Map<String, String>>();
+											}
+
 											Map<String, Map<String,String>>userOnlyDistMap=userCacheOnlyDistMap.get(user);
-											if (null==userOnlyDistMap) 
-												userOnlyDistMap=new HashMap<String,Map<String, String>>();
-											
+											if (null==userOnlyDistMap) {
+												userOnlyDistMap = new HashMap<String, Map<String, String>>();
+											}
+
 											Map<String, Map<String,String>>userOnlyCarTypeMap=userCacheOnlyCarTypeMap.get(user);
-											if (null==userOnlyCarTypeMap) 
-												userOnlyCarTypeMap=new HashMap<String,Map<String, String>>();
-											
+											if (null==userOnlyCarTypeMap) {
+												userOnlyCarTypeMap = new HashMap<String, Map<String, String>>();
+											}
+
 											String userDistAndType="USERCAR."+user+"."+district+"."+carType;
 											execu(map,userDistAndType,userDistAndTypeMap);
-											
+
 											String userOnlyDist="USERCAR."+user+".DIST."+district;
 											execu(map,userOnlyDist,userOnlyDistMap);
-											
+
 											String userOnlyCarType="USERCAR."+user+".CARTYPE."+carType;
 											execu(map,userOnlyCarType,userOnlyCarTypeMap);
-											
+
 											userCacheDistAndTypeMap.put(user, userDistAndTypeMap);
 											userCacheOnlyDistMap.put(user, userOnlyDistMap);
 											userCacheOnlyCarTypeMap.put(user, userOnlyCarTypeMap);
-											
+
 											if(null!=keyDistricts && 0<keyDistricts.size()){
-												
+
 												Map<String, Map<String,String>>userDistrictsAndTypeMap=userTotalDistAndTypeMap.get(user);
-												if (null==userDistrictsAndTypeMap) 
-													userDistrictsAndTypeMap=new HashMap<String,Map<String, String>>();
-												
+												if (null==userDistrictsAndTypeMap) {
+													userDistrictsAndTypeMap = new HashMap<String, Map<String, String>>();
+												}
+
 												Map<String, Map<String,String>>userOnlyDistrictsMap=userTotalOnlyDistMap.get(user);
-												if (null==userOnlyDistrictsMap) 
-													userOnlyDistrictsMap=new HashMap<String,Map<String, String>>();
-												
+												if (null==userOnlyDistrictsMap) {
+													userOnlyDistrictsMap = new HashMap<String, Map<String, String>>();
+												}
+
 												for (String dis : keyDistricts) {
 													String keyDist="USERCAR.DISTRICTS."+user+"."+dis;
 													execu(map,keyDist,userDistrictsAndTypeMap);
-													
+
 													String keyDistType="USERCAR.DISTRICTS."+user+"."+dis+"."+carType;
 													execu(map,keyDistType,userOnlyDistrictsMap);
 												}
@@ -626,6 +656,7 @@ public class MailCalHandler {
 												userTotalOnlyDistMap.put(user, userOnlyDistrictsMap);
 											}
 										}
+									}
 								}
 							}
 						}
@@ -637,11 +668,12 @@ public class MailCalHandler {
 			
 		}
 		
-		synchronized void execu(Map<String, String> map,String keyty,Map<String, Map<String,String>>infoMap){
+		synchronized void execu(Map<String, String> map, String keyty, Map<String, Map<String,String>> infoMap){
         	try {
-				Map<String, String>disMap=infoMap.get(keyty);
-				if(null==disMap)
+				Map<String, String> disMap = infoMap.get(keyty);
+				if(null==disMap) {
 					disMap=new TreeMap<String, String>();
+				}
 				long mileage=null==disMap.get(SysDefine.MILEAGE_TOTAL)?0:Long.valueOf(disMap.get(SysDefine.MILEAGE_TOTAL));
 				long online=null==disMap.get(SysDefine.ONLINE_COUNT)?0:Long.valueOf(disMap.get(SysDefine.ONLINE_COUNT));
 				long fault=null==disMap.get(SysDefine.FAULT_COUNT)?0:Long.valueOf(disMap.get(SysDefine.FAULT_COUNT));
@@ -655,17 +687,20 @@ public class MailCalHandler {
 				if (System.currentTimeMillis()-lastTime<time){
 					online++;
 					boolean isstop=isStop(map);
-					if (isstop) 
+					if (isstop) {
 						stoponline++;
-					else
+					} else {
 						runningonline++;
+					}
 				}
-				if("1".equals(map.get(SysDefine.ISALARM)) && null != map.get(SysDefine.ALARMUTC))
+				if("1".equals(map.get(SysDefine.ISALARM)) && null != map.get(SysDefine.ALARMUTC)) {
 					fault++;
+				}
 				if("1".equals(map.get("2301")) 
 						|| "2".equals(map.get("2301"))
-						|| "4".equals(map.get("2301")))
+						|| "4".equals(map.get("2301"))) {
 					charge++;
+				}
 				cartotal++;
 				disMap.put(SysDefine.MILEAGE_TOTAL,""+mileage);
 				disMap.put(SysDefine.ONLINE_COUNT,""+online);
@@ -714,8 +749,9 @@ public class MailCalHandler {
 							if ( ( ObjectUtils.isNullOrEmpty(lon) 
 										|| ObjectUtils.isNullOrEmpty(lan) )
 									&& ( ObjectUtils.isNullOrEmpty(slon)
-											|| ObjectUtils.isNullOrEmpty(slan) ) ) 
+											|| ObjectUtils.isNullOrEmpty(slan) ) ) {
 								return true;
+							}
 							if (   ! ObjectUtils.isNullOrEmpty(lon) 
 								&& ! ObjectUtils.isNullOrEmpty(lan) 
 								&& ! ObjectUtils.isNullOrEmpty(slon)
@@ -725,8 +761,9 @@ public class MailCalHandler {
 								long lati = Long.valueOf(lan);
 								long slati = Long.valueOf(slan);
 								if (Math.abs(longi-slongi)<=2
-										&& Math.abs(lati-slati)<=2) 
+										&& Math.abs(lati-slati)<=2) {
 									return true;
+								}
 							}
 								
 						}
@@ -775,8 +812,9 @@ public class MailCalHandler {
         }
         void clearCollection(Collection<Map<String, Map<String, String>>> collection){
         	for (Map<String, Map<String, String>> map : collection) {
-				if(null!=map)
+				if(null!=map) {
 					map.clear();
+				}
 			}
         }
     }
@@ -799,8 +837,9 @@ public class MailCalHandler {
 			stauserTotalDistAndTypeMap = new ConcurrentHashMap<String,Map<String, Map<String, String>>>();
 			stauserTotalOnlyDistMap = new ConcurrentHashMap<String,Map<String, Map<String, String>>>();
 			String threads=ConfigUtils.sysDefine.getProperty("stat.thread.no");
-			if(null != threads)
+			if(null != threads) {
 				poolsz=Integer.valueOf(threads);
+			}
 			threadPools = Executors.newFixedThreadPool(poolsz);
 		}
 
@@ -836,10 +875,12 @@ public class MailCalHandler {
 		}
 		
 		void statistic(Map<String, String[]> map){
-			if (isclearSta) 
+			if (isclearSta) {
 				return;
-			if (null == map || map.size() ==0) 
+			}
+			if (null == map || map.size() ==0) {
 				return;
+			}
 
 			System.out.println("---map size:"+map.size());
 			clearStaMap();
@@ -850,11 +891,13 @@ public class MailCalHandler {
 					String[] strings = entry.getValue();
 					
 					if (ObjectUtils.isNullOrEmpty(key)
-							|| ObjectUtils.isNullOrEmpty(strings)) 
+							|| ObjectUtils.isNullOrEmpty(strings)) {
 						continue;
+					}
 
-					if(strings.length != 15)
+					if(strings.length != 15) {
 						continue;
+					}
 
 					threadPools.execute(new UserDistrictExecutor(key,strings));
 					
@@ -865,8 +908,9 @@ public class MailCalHandler {
 			try {
 				threadPools.shutdown();
 				while(true){
-					if (threadPools.isTerminated())
+					if (threadPools.isTerminated()) {
 						break;
+					}
 					TimeUnit.MILLISECONDS.sleep(500);
 				}
 				threadPools=null;
@@ -893,8 +937,9 @@ public class MailCalHandler {
 			}
 			
 			void executeCal(String key,String[]strings){
-				if (null == key || null == strings) 
+				if (null == key || null == strings) {
 					return;
+				}
 				try {
 					String district=strings[9];
 					String carType=strings[10];
@@ -922,25 +967,28 @@ public class MailCalHandler {
 						}
 						
 						Set<String>users=carUserByVin(key);
-						if(null!=users)
+						if(null!=users) {
 							for (String user : users) {
-								if (ObjectUtils.isNullOrEmpty(user)) 
+								if (ObjectUtils.isNullOrEmpty(user)) {
 									continue;
-								
+								}
+
 								if(null!=districts && 0<districts.size()){
-									
+
 									Map<String, Map<String,String>>userDistrictsAndTypeMap=stauserTotalDistAndTypeMap.get(user);
-									if (null==userDistrictsAndTypeMap) 
-										userDistrictsAndTypeMap=new HashMap<String,Map<String, String>>();
-									
+									if (null==userDistrictsAndTypeMap) {
+										userDistrictsAndTypeMap = new HashMap<String, Map<String, String>>();
+									}
+
 									Map<String, Map<String,String>>userOnlyDistrictsMap=stauserTotalOnlyDistMap.get(user);
-									if (null==userOnlyDistrictsMap) 
-										userOnlyDistrictsMap=new HashMap<String,Map<String, String>>();
-									
+									if (null==userOnlyDistrictsMap) {
+										userOnlyDistrictsMap = new HashMap<String, Map<String, String>>();
+									}
+
 									for (String dis : districts) {
 										String keyDist="STATISTIC.USER.DISTRICTS."+user+"."+dis;
 										exeCalculate(keyDist,userDistrictsAndTypeMap,ismonitor);
-										
+
 										String keyDistType="STATISTIC.USER.DISTRICTS."+user+"."+dis+"."+carType;
 										exeCalculate(keyDistType,userOnlyDistrictsMap,ismonitor);
 									}
@@ -948,6 +996,7 @@ public class MailCalHandler {
 									stauserTotalOnlyDistMap.put(user, userOnlyDistrictsMap);
 								}
 							}
+						}
 					} 
 					
 				} catch (Exception e) {
@@ -959,14 +1008,16 @@ public class MailCalHandler {
 		synchronized void exeCalculate(String key,Map<String, Map<String,String>>infoMap,boolean ismonitor){
 	    	try {
 				Map<String, String>disMap=infoMap.get(key);
-				if(null==disMap)
+				if(null==disMap) {
 					disMap=new TreeMap<String, String>();
+				}
 				long monitorcount=null==disMap.get(SysDefine.MONITOR_CAR_TOTAL)?0:Long.valueOf(disMap.get(SysDefine.MONITOR_CAR_TOTAL));
 				long cartotal=null==disMap.get(SysDefine.CAR_TOTAL)?0:Long.valueOf(disMap.get(SysDefine.CAR_TOTAL));
 
 				cartotal++;
-				if (ismonitor) 
+				if (ismonitor) {
 					monitorcount++;
+				}
 
 				disMap.put(SysDefine.MONITOR_CAR_TOTAL,""+monitorcount);
 				disMap.put(SysDefine.CAR_TOTAL,""+cartotal);
@@ -988,16 +1039,18 @@ public class MailCalHandler {
 		
 		private void saveMap(Map<String, Map<String, String>> map,int db){
 			try {
-				if(null!=map)
+				if(null!=map) {
 					for(Map.Entry<String, Map<String,String>> entry:map.entrySet()){
 						String key = entry.getKey();
 						Map<String,String> value = entry.getValue();
-						if (ObjectUtils.isNullOrEmpty(key) 
-								|| ObjectUtils.isNullOrEmpty(value) ) 
+						if (ObjectUtils.isNullOrEmpty(key)
+								|| ObjectUtils.isNullOrEmpty(value) ) {
 							continue;
+						}
 
 						redis.saveMap(value, db, key);
 					}
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -1024,8 +1077,9 @@ public class MailCalHandler {
 		
         void clearCollection(Collection<Map<String, Map<String, String>>> collection){
         	for (Map<String, Map<String, String>> map : collection) {
-				if(null!=map)
+				if(null!=map) {
 					map.clear();
+				}
 			}
         }
         
