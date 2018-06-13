@@ -1,5 +1,6 @@
 package storm.handler.cusmade;
 
+import java.awt.dnd.DropTarget;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -18,6 +19,8 @@ import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 import storm.util.UUIDUtils;
 
+import javax.xml.crypto.Data;
+
 /**
  * 车辆上下线及相关处理
  */
@@ -35,6 +38,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 	private static TimeFormatService timeFormatService = new TimeFormatService();
 
     {
+        //重要：从redis数据库中读取系统重启前的车辆状态。不写的话，当系统重启时，会导致车辆的状态丢失
+        //例如，就算车辆上线了，因为收不到闲置结束通知，闲置车辆可能也会一直在数据库中。
 		restartInit(true);
 	}
 
@@ -204,12 +209,19 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 	}
 
 	/**
-	 * 闲置或者停机车辆。（重要）
+	 * 判断是否为闲置或者停机车辆。（重要）
 	 */
 	private Map<String, Object> inidle(Map<String, String> dat,long now,long timeout,List<String> markDel,List<String> markAlive){
 		if (null == dat || dat.size() ==0) {
 			return null;
 		}
+		//过滤掉自动唤醒的数据，判断依据：总电压、总电流同时为空则为自动唤醒数据
+		String totalVoltage = dat.get(DataKey._2613_TOTAL_VOLTAGE);
+		String totalElectricity = dat.get(DataKey._2614_TOTAL_ELECTRICITY);
+        if (null == totalVoltage || null == totalElectricity) {
+            return null;
+        }
+
 		String vid = dat.get(DataKey.VEHICLE_ID);
 		String time = dat.get(DataKey.TIME);
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
@@ -226,7 +238,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				String speed = dat.get(DataKey._2201_SPEED);
 				String soc = dat.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
 				String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
-				//下面三个if类似，都是校验一下，然后将vid和最后一帧的数据存入
+				//下面三个if类似，都是校验一下，增强健壮性然后将vid和最后一帧的数据存入
 				if (null !=speed && !"".equals(speed)) {
 					speed = NumberUtils.stringNumber(speed);
 					int posidx = speed.indexOf(".");
@@ -286,9 +298,12 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				notice.put("msgId", UUIDUtils.getUUID());
 				notice.put("stime", time);
 				notice.put("soc", numSoc);
-				notice.put("mileage", numMileage);
+                //吉利要求，新增
+				notice.put("smileage", numMileage);
 				notice.put("speed", numSpeed);
 				notice.put("status", 1);
+                //吉利要求，新增
+                notice.put("confirmLazyMilliseconds", timeout);
 			}else{
 				notice.put("status", 2);
 			}
@@ -328,6 +343,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 					notice.put("noticetime", noticetime);
 					notice.put("soc", lastSoc);
 					notice.put("mileage", lastMileage);
+					//吉利要求，新增
+                    notice.put("emileage", lastMileage);
 					notice.put("speed", lastSpeed);
 					return notice;
 				}
@@ -527,7 +544,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 	}
 
 	void restartInit(boolean isRestart){
-		if (isRestart) {
+            if (isRestart) {
 			recorder.rebootInit(REDIS_DB_INDEX, IDLE_REDIS_KEYS, vidIdleNotice);
 		}
 	}
