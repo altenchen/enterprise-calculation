@@ -2,8 +2,10 @@ package storm.util;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 import storm.dao.DataToRedis;
+import storm.system.SysDefine;
 
 /**
  * @author wza
@@ -84,6 +86,67 @@ public class ParamsRedisUtil {
 		PARAMS.put(MILE_HOP_NUM, 2);
 		PARAMS.put(GPS_JUDGE_SECOND, 10800);
 		PARAMS.put(CAN_JUDGE_SECOND, 10800);
+
+		PARAMS.put(SysDefine.RULE_OVERRIDE, "default");
+		PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT, 3);
+		PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND, 0);
+		PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT, 3);
+		PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, 0);
+        final Properties properties = ConfigUtils.sysDefine;
+        if(properties != null) {
+            // region 规则覆盖
+            {
+                final String ruleOverride = properties.getProperty(SysDefine.RULE_OVERRIDE);
+                if (!ObjectUtils.isNullOrWhiteSpace(ruleOverride)) {
+                    PARAMS.put(SysDefine.RULE_OVERRIDE, ruleOverride);
+                }
+            }
+            // endregion
+            // region 触发CAN故障需要的连续帧数
+            {
+                final String alarmCanFaultTriggerContinueCount = properties.getProperty(
+                    SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT);
+                if (!ObjectUtils.isNullOrWhiteSpace(alarmCanFaultTriggerContinueCount)) {
+                    PARAMS.put(
+                        SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT,
+                        alarmCanFaultTriggerContinueCount);
+                }
+            }
+            // endregion
+            // region 触发CAN故障需要的持续时长
+            {
+                final String alarmCanFaultTriggerTimeoutMillisecond = properties.getProperty(
+                    SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND);
+                if (!ObjectUtils.isNullOrWhiteSpace(alarmCanFaultTriggerTimeoutMillisecond)) {
+                    PARAMS.put(
+                        SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND,
+                        alarmCanFaultTriggerTimeoutMillisecond);
+                }
+            }
+            // endregion
+            // region 触发CAN正常需要的连续帧数
+            {
+                final String alarmCanNormalTriggerContinueCount = properties.getProperty(
+                    SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT);
+                if (!ObjectUtils.isNullOrWhiteSpace(alarmCanNormalTriggerContinueCount)) {
+                    PARAMS.put(
+                        SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT,
+                        alarmCanNormalTriggerContinueCount);
+                }
+            }
+            // endregion
+            //region 触发CAN正常需要的持续时长
+            {
+                final String alarmCanNormalTriggerTimeoutMillisecond = properties.getProperty(
+                    SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND);
+                if (!ObjectUtils.isNullOrWhiteSpace(alarmCanNormalTriggerTimeoutMillisecond)) {
+                    PARAMS.put(
+                        SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND,
+                        alarmCanNormalTriggerTimeoutMillisecond);
+                }
+            }
+            // endregion
+        }
 	}
 	
 	private static void initParams() {
@@ -131,8 +194,4 @@ public class ParamsRedisUtil {
 	public static void rebulid(){
 		initParams();
 	}
-	
-	public static String getGT_INIDLE_TIME_OUT_SECOND() {
-	    return (String)PARAMS.get(GT_INIDLE_TIME_OUT_SECOND);
-    }
 }

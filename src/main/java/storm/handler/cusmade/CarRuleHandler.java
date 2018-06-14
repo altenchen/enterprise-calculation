@@ -1,9 +1,7 @@
 package storm.handler.cusmade;
 
 import com.alibaba.fastjson.JSON;
-import com.sun.jersey.core.util.Base64;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import storm.cache.SysRealDataCache;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
@@ -35,8 +33,14 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Integer> vidNoGps;
     private Map<String, Integer> vidNormalGps;
 
-    private Map<String, Integer> vidnocan;
-    private Map<String, Integer> vidnormcan;
+    /**
+     * 无CAN计数器
+     */
+    private final Map<String, Integer> vidNoCanCount = new HashMap<>();
+    /**
+     * CAN正常计数器
+     */
+    private final Map<String, Integer> vidNormalCanCount = new HashMap<>();
 
     private Map<String, Integer> vidIgnite;
     private Map<String, Integer> vidShut;
@@ -44,7 +48,13 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Double> lastSoc;
     private Map<String, Double> lastMile;
 
+    /**
+     * SOC 过低计数器
+     */
     private Map<String, Integer> vidlowsoc;
+    /**
+     * SOC 正常计数器
+     */
     private Map<String, Integer> vidnormsoc;
 
     private Map<String, Integer> vidSpeedGtZero;
@@ -96,11 +106,7 @@ public class CarRuleHandler implements InfoNotice {
     static int onoffRule = 0;//1代表规则启用
     static int mileHopRule = 0;//1代表规则启用
 
-
-    /**
-     * 是不是吉利报表业务
-     */
-    private static boolean isJili = false;
+    private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
 
     //以下参数可以通过读取配置文件进行重置
     static {
@@ -161,12 +167,6 @@ public class CarRuleHandler implements InfoNotice {
                 mileHopRule = Integer.parseInt(value);
                 value = null;
             }
-
-            value = ConfigUtils.sysDefine.getProperty(SysDefine.IS_JILI);
-            if (!ObjectUtils.isNullOrEmpty(value)) {
-                isJili = Boolean.parseBoolean(value);
-                value = null;
-            }
         }
         init();
     }
@@ -210,14 +210,75 @@ public class CarRuleHandler implements InfoNotice {
         if (null != lowsocIntervalMillisecond) {
             lowsocIntervalMillisecond = ((int) lowsocIntervalMillisecond) * 1000L;
         }
+        {
+            final String ruleOverride = ParamsRedisUtil.PARAMS.getOrDefault(
+                SysDefine.RULE_OVERRIDE,
+                SysDefine.RULE_OVERRIDE_VALUE_DEFAULT).toString();
+            if(!ObjectUtils.isNullOrWhiteSpace(ruleOverride)) {
+                if(SysDefine.RULE_OVERRIDE_VALUE_DEFAULT.equals(ruleOverride)) {
+                    if(!(CarNoCanJudge.getCarNoCanDecide() instanceof CarNoCanDecideDefault)) {
+                        CarNoCanJudge.setCarNoCanDecide(new CarNoCanDecideDefault());
+                    }
+                } else if(SysDefine.RULE_OVERRIDE_VALUE_JILI.equals(ruleOverride)) {
+                    if(!(CarNoCanJudge.getCarNoCanDecide() instanceof CarNoCanDecideJili)) {
+                        CarNoCanJudge.setCarNoCanDecide(new CarNoCanDecideJili());
+                    }
+                }
+            }
+        }
+        {
+            try {
+                final String alarmCanFaultTriggerContinueCountString = ParamsRedisUtil.PARAMS.get(
+                    SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT).toString();
+                final int alarmCanFaultTriggerContinueCount = Integer.parseInt(alarmCanFaultTriggerContinueCountString);
+                if(alarmCanFaultTriggerContinueCount > 0) {
+                    CarNoCanJudge.faultTriggerContinueCount = alarmCanFaultTriggerContinueCount;
+                }
+            } catch (Exception ignored) {
 
+            }
+        }
+        {
+            try {
+                final String alarmCanFaultTriggerTimeoutMillisecondString = ParamsRedisUtil.PARAMS.get(
+                    SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND).toString();
+                final long alarmCanFaultTriggerTimeoutMillisecond = Long.parseLong(alarmCanFaultTriggerTimeoutMillisecondString);
+                if(alarmCanFaultTriggerTimeoutMillisecond > 0) {
+                    CarNoCanJudge.faultTriggerTimeoutMillisecond = alarmCanFaultTriggerTimeoutMillisecond;
+                }
+            } catch (Exception ignored) {
+
+            }
+        }
+        {
+            try {
+                final String alarmCanNormalTriggerContinueCountString = ParamsRedisUtil.PARAMS.get(
+                    SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT).toString();
+                final int alarmCanNormalTriggerContinueCount = Integer.parseInt(alarmCanNormalTriggerContinueCountString);
+                if(alarmCanNormalTriggerContinueCount > 0) {
+                    CarNoCanJudge.normalTriggerContinueCount = alarmCanNormalTriggerContinueCount;
+                }
+            } catch (Exception ignored) {
+
+            }
+        }
+        {
+            try {
+                final String alarmCanNormalTriggerTimeoutMillisecondString = ParamsRedisUtil.PARAMS.get(
+                    SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND).toString();
+                final long alarmCanNormalTriggerTimeoutMillisecond = Long.parseLong(alarmCanNormalTriggerTimeoutMillisecondString);
+                if(alarmCanNormalTriggerTimeoutMillisecond > 0) {
+                    CarNoCanJudge.faultTriggerTimeoutMillisecond = alarmCanNormalTriggerTimeoutMillisecond;
+                }
+            } catch (Exception ignored) {
+
+            }
+        }
     }
 
     {
         vidNoGps = new HashMap<String, Integer>();
         vidNormalGps = new HashMap<String, Integer>();
-        vidnocan = new HashMap<String, Integer>();
-        vidnormcan = new HashMap<String, Integer>();
         vidIgnite = new HashMap<String, Integer>();
         vidShut = new HashMap<String, Integer>();
         igniteShutMaxSpeed = new HashMap<String, Double>();
@@ -299,7 +360,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         if (1 == enableCanRule) {
             // 无CAN车辆
-            canJudge = judgeNoCan(data);
+            canJudge = carNoCanJudge.processFrame(data);
             if (!ObjectUtils.isNullOrEmpty(canJudge)) {
                 list.add(canJudge);
             }
@@ -467,7 +528,7 @@ public class CarRuleHandler implements InfoNotice {
 
                         // SOC正常达到10次则触发, 清空正常soc计数缓存、低电量soc计数、低电量通知缓存，发送结束通知
                         if (cnts >= 10) {
-                            vidnormcan.remove(vid);
+                            vidnormsoc.remove(vid);
                             if(!vidIsSendNoticeCache.get(vid).socIsSend){
                                 //此时是，虽然lowsoc条数阈值达到了，但是时间阈值没达到就满足正常soc了。
                                 vidlowsocStartNotice.remove(vid);
@@ -600,361 +661,6 @@ public class CarRuleHandler implements InfoNotice {
             return carSortMap;
         }
         return null;
-    }
-
-    /**
-     * 无can车辆_于心沼
-     */
-    @Nullable
-    private Map<String, Object> judgeNoCan(Map<String, String> data) {
-        try {
-            String vid = data.get(DataKey.VEHICLE_ID);
-            String time = data.get(DataKey.TIME);
-            if (ObjectUtils.isNullOrEmpty(vid)
-                    || ObjectUtils.isNullOrEmpty(time)) {
-                return null;
-            }
-
-            // CAN列表, 定制协议
-            String canList = data.get(DataKey._4410023_CAN_LIST);
-            // 纬度
-            String latit = data.get(DataKey._2503_LATITUDE);
-            // 经度
-            String longi = data.get(DataKey._2502_LONGITUDE);
-            String location = longi + "," + latit;
-
-            //noticetime为当前时间
-            Date date = new Date();
-            String noticetime = timeformat.toDateString(date);
-
-            // 车辆状态
-            String carStatus = data.get(DataKey._3201_CAR_STATUS);
-            // 车辆SOC
-            String soc = data.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
-			String mileage = data.get(DataKey._2202_TOTAL_MILEAGE);
-			
-			String macList = data.get(DataKey._2308_DRIVING_ELE_MAC_LIST);
-
-            // 电池单体电压最高值
-            String hignVolt = data.get(DataKey._2603_SINGLE_VOLT_HIGN_VAL);
-            // 电池单体最低温度值
-            String lowTemp = data.get(DataKey._2612_SINGLE_LOWTEMP_VAL);
-
-            boolean hasMacCan = false;
-            // region 判断是否有电机CAN
-            if (!ObjectUtils.isNullOrEmpty(macList)) {
-
-                String[] drivingMotors = macList.split("\\|");
-                if (drivingMotors != null && drivingMotors.length > 0) {
-
-                    for (String drivingMotor : drivingMotors) {
-                        String value = null;
-                        try {
-                            value = new String(Base64.decode(drivingMotor), "GBK");
-                            String[] params = value.split(",");
-                            Map<String, String> motor = new TreeMap<String, String>();
-
-                            for (String param : params) {
-                                String[] p = param.split(":", 2);
-                                if (p != null && p.length == 2) {
-                                    motor.put(p[0], p[1]);
-                                }
-                            }
-
-                            if (motor.size() > 0) {
-                                String drivingEleMacStatus = motor.get(DataKey._2310_DRIVING_ELE_MAC_STATUS);//"2310";//driving 驱动电机状态
-                                String drivingEleMacTempCtol = motor.get(DataKey._2302_DRIVING_ELE_MAC_TEMPCTOL);//"2302";//driving 驱动电机温度控制器
-                                String drivingEleMacRev = motor.get(DataKey._2303_DRIVING_ELE_MAC_REV);//"2303";//driving 驱动电机转速
-                                String drivingEleMacTorque = motor.get(DataKey._2311_DRIVING_ELE_MAC_TORQUE);//"2311";//driving 驱动电机转矩
-                                String drivingEleMacTemp = motor.get(DataKey._2304_DRIVING_ELE_MAC_TEMP);//"2304";//driving 驱动电机温度
-                                String drivingEleMacVolt = motor.get(DataKey._2305_DRIVING_ELE_MAC_VOLT);//"2305";//driving 驱动电机输入电压
-                                String drivingEleMacEle = motor.get(DataKey._2306_DRIVING_ELE_MAC_ELE);//"2306";//driving 驱动电机母线电流
-                                //只要有其中之一的数据就说明有电机can状态
-                                boolean nullAll = ObjectUtils.isNullOrEmpty(drivingEleMacTemp)
-                                        && ObjectUtils.isNullOrEmpty(drivingEleMacVolt)
-                                        && ObjectUtils.isNullOrEmpty(drivingEleMacStatus)
-                                        && ObjectUtils.isNullOrEmpty(drivingEleMacTempCtol)
-                                        && ObjectUtils.isNullOrEmpty(drivingEleMacRev)
-                                        && ObjectUtils.isNullOrEmpty(drivingEleMacTorque)
-                                        && ObjectUtils.isNullOrEmpty(drivingEleMacEle);
-
-                                if (!nullAll) {
-                                    hasMacCan = true;
-                                    break;
-                                }
-                            }
-                        } catch (Exception ec) {
-                            ec.printStackTrace();
-                        }
-                    }
-                }
-            }
-            // endregion
-
-            /**
-             * 之前只是根据canList的有无判断是否有can状态，此次做了如下改进。
-             *
-             * 判断规则（车辆状态&soc）|（电机电压&电机温度）|（最高单体电压|最低温度）
-             * 其中macList中包含了电机电压和电机温度
-             * canList，因为某些厂家的报文中可能没有这个信息，所以不能把它作为判定条件只能辅助判定。
-             */
-            boolean hasCan;
-            if (isJili) {
-                // region 吉利报表定制算法
-                hasCan = judgeJiliNoCan(data);
-                // endregion
-            } else {
-                hasCan = (
-                        // 是否有车状态
-                        !ObjectUtils.isNullOrEmpty(carStatus)
-                                // 是否有SOC
-                                && !ObjectUtils.isNullOrEmpty(soc)
-                )
-                        // 是否有电机数据
-                        || (hasMacCan)
-                        //
-                        || (
-                        // 是否有单体电压最高值
-                        !ObjectUtils.isNullOrEmpty(hignVolt)
-                                // 是否有单体最低温度值
-                                && !ObjectUtils.isNullOrEmpty(lowTemp))
-                        // 是否有CAN列表
-                        || !ObjectUtils.isNullOrEmpty(canList);
-            }
-
-            if (!hasCan) {
-                // region 无CAN处理
-                //cnts为报文计数
-                int cnts = 0;
-                //已有此vid，将存储的cnts赋给cnts
-                if (vidnocan.containsKey(vid)) {
-                    cnts = vidnocan.get(vid);
-                }
-                cnts++;
-                vidnocan.put(vid, cnts);
-                if (cnts >= nocanJudgeNum) {
-                    Map<String, Object> notice = vidcanNotice.get(vid);
-					byte status;
-					if (null == notice) {
-					    // 首次达到无CAN判定条件, 初始化通知并缓存起来.
-						notice = new TreeMap<>();
-						notice.put("msgType", AlarmMessageType.NO_CAN_VEH);
-						notice.put("vid", vid);
-						notice.put("msgId", UUIDUtils.getUUID());
-						notice.put("stime", time);
-						notice.put("count", cnts);
-						notice.put("status", 1);
-						notice.put("location", location);
-                        notice.put("smileage", mileage);
-					}else{
-					    // 后续无CAN数据
-						notice.put("count", cnts);
-//						notice.put("status", 2);
-//						notice.put("location", location);
-                    }
-                    notice.put("noticetime", noticetime);
-                    vidcanNotice.put(vid, notice);
-
-					Long nowTime = date.getTime();
-					Long firstNocanTime = timeformat.stringTimeLong(notice.get("stime").toString());
-					//status，1开始，2持续，3结束
-                    //
-					if(1 == (int)notice.get("status") && nowTime - firstNocanTime > nocanIntervalTime){
-						IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
-
-                        if (null == judgeIsSendNotice) {
-                            judgeIsSendNotice = new IsSendNoticeCache();
-                            vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
-                        }
-                        judgeIsSendNotice.canIsSend = true;
-                        return notice;
-						
-					}
-				}
-				// endregion
-			} else {
-			    // region 有CAN处理
-				if (vidnocan.containsKey(vid)){
-					int cnts = 0;
-					//正常发送can报文的车辆vid
-					if (vidnormcan.containsKey(vid)) {
-						cnts = vidnormcan.get(vid);
-					}
-					cnts++;
-					vidnormcan.put(vid, cnts);
-					
-					if (cnts >=hascanJudgeNum || (cnts >= 3 && null!=data.get(SUBMIT_LOGIN.LOGOUT_TIME))) {
-						
-						vidnormcan.remove(vid);
-						
-						//如果无can状态开始通知没有发送，则不会发送结束通知，只会把各个缓存清空
-						if(!vidIsSendNoticeCache.get(vid).canIsSend){
-							vidnocan.remove(vid);
-							vidcanNotice.remove(vid);
-							return null;
-						}
-						
-						Map<String, Object> notice = vidcanNotice.get(vid);
-						vidnocan.remove(vid);
-						vidcanNotice.remove(vid);
-						vidIsSendNoticeCache.get(vid).canIsSend = false;
-						if (null != notice) {
-							notice.put("status", 3);
-							notice.put("location", location);
-							notice.put("etime", time);
-							notice.put("noticetime", noticetime);
-							return notice;
-						}
-					}
-				
-				}
-				// endregion
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
-    // TODO XZP: Redis取值覆盖
-    // region 吉利判定参数
-    private static final short MIN_2201_SPEED_JILI = 0;
-    private static final short MAX_2201_SPEED_JILI = 200 * 10;
-    private static final short MIN_2613_TOTAL_VOLTAGE_JILI = 0;
-    private static final short MAX_2613_TOTAL_VOLTAGE_JILI = 1000 * 10;
-    private static final byte MIN_7615_STATE_OF_CHARGE_JILI = 0;
-    private static final byte MAX_7615_STATE_OF_CHARGE_JILI = 100;
-    private static final byte EQUALS_2501_ORIENTATION_JILI = 0;
-    private static final int MIN_2502_LONGITUDE_JILI = 73;
-    private static final int MAX_2502_LONGITUDE_JILI = 135;
-    private static final int MIN_2503_LATITUDE_JILI = 4;
-    private static final int MAX_2503_LATITUDE_JILI = 53;
-    // endregion
-
-    /**
-     * 吉利报表是否有CAN判定
-     *
-     * @param data
-     * @return
-     */
-	private boolean judgeJiliNoCan(Map<String, String> data) {
-
-        // 如果不是吉利业务, 直接返回false
-        if (!isJili) {
-            return false;
-        }
-
-        // region 车速 ∈ [0, 200)
-        {
-            final String speedString = data.get(DataKey._2201_SPEED);
-            if (!ObjectUtils.isNullOrWhiteSpace(speedString)) {
-                try {
-                    final short speed = Short.parseShort(speedString);
-                    if (speed >= MIN_2201_SPEED_JILI && speed < MAX_2201_SPEED_JILI) {
-                        return true;
-                    }
-                } catch (NumberFormatException ignored) {
-                    // nextJudge
-                }
-            }
-        }
-        // endregion
-
-        // TODO XZP: [待确认] 上线开始里程, 上线结束里程
-        // region 累计里程 ∈ [上线开始里程, 上线结束里程]
-        {
-            final String totalMileageString = data.get(DataKey._2202_TOTAL_MILEAGE);
-            if (!ObjectUtils.isNullOrWhiteSpace(totalMileageString)) {
-                try {
-                    final int totalMileage = Integer.parseUnsignedInt(totalMileageString);
-                    if (totalMileage >= DataKey.MIN_2202_TOTAL_MILEAGE && totalMileage <= DataKey.MAX_2202_TOTAL_MILEAGE) {
-                        return true;
-                    }
-                } catch (NumberFormatException ignored) {
-                    // nextJudge
-                }
-            }
-        }
-        // endregion
-
-        // region 总电压 ∈ (0, 1000]
-        {
-            final String totalVoltageString = data.get(DataKey._2613_TOTAL_VOLTAGE);
-            if (!ObjectUtils.isNullOrWhiteSpace(totalVoltageString)) {
-                try {
-                    final short totalVoltage = Short.parseShort(totalVoltageString);
-                    if (totalVoltage > MIN_2613_TOTAL_VOLTAGE_JILI && totalVoltage <= MAX_2613_TOTAL_VOLTAGE_JILI) {
-                        return true;
-                    }
-                } catch (NumberFormatException ignored) {
-                    // nextJudge
-                }
-            }
-        }
-        // endregion
-
-        // TODO XZP: [有时间设计算法, 没时间就用国标范围]一段时间内总电流均值, 目前算法未定.
-        // region 总电流 ∈ [总电流均值 - 100, 总电流均值 + 100]
-        {
-            final String totalElectricityString = data.get(DataKey._2614_TOTAL_ELECTRICITY);
-            if (!ObjectUtils.isNullOrWhiteSpace(totalElectricityString)) {
-                try {
-                    final short totalElectricity = Short.parseShort(totalElectricityString);
-                    if (totalElectricity >= DataKey.MIN_2614_TOTAL_ELECTRICITY
-                            && totalElectricity <= DataKey.MAX_2614_TOTAL_ELECTRICITY) {
-                        return true;
-                    }
-                } catch (NumberFormatException ignored) {
-                    // nextJudge
-                }
-            }
-        }
-        // endregion
-
-        // region SOC ∈ (0, 100]
-        {
-            final String stateOfChargeString = data.get(DataKey._7615_STATE_OF_CHARGE);
-            if (!ObjectUtils.isNullOrWhiteSpace(stateOfChargeString)) {
-                try {
-                    final byte stateOfCharge = Byte.parseByte(stateOfChargeString);
-                    if (stateOfCharge >= MIN_7615_STATE_OF_CHARGE_JILI
-                            && stateOfCharge <= MAX_7615_STATE_OF_CHARGE_JILI) {
-                        return true;
-                    }
-                } catch (NumberFormatException ignored) {
-                    // nextJudge
-                }
-            }
-        }
-        // endregion
-
-        // region 定位状态 ∈ [0], 经度 ∈ (73, 135), 纬度 ∈ (4, 53)
-        {
-            final String orientationString = data.get(DataKey._2501_ORIENTATION);
-            final String longitudeString = data.get(DataKey._2502_LONGITUDE);
-            final String latitudeString = data.get(DataKey._2503_LATITUDE);
-            if (!ObjectUtils.isNullOrWhiteSpace(orientationString)
-                    && !ObjectUtils.isNullOrWhiteSpace(longitudeString)
-                    && !ObjectUtils.isNullOrWhiteSpace(latitudeString)) {
-                try {
-                    final int orientation = Integer.parseUnsignedInt(orientationString);
-                    final int longitude = Integer.parseUnsignedInt(longitudeString);
-                    final int latitude = Integer.parseUnsignedInt(latitudeString);
-                    if (orientation == EQUALS_2501_ORIENTATION_JILI
-                            && longitude >= MIN_2502_LONGITUDE_JILI
-                            && longitude <= MAX_2502_LONGITUDE_JILI
-                            && latitude >= MIN_2503_LATITUDE_JILI
-                            && latitude <= MAX_2503_LATITUDE_JILI) {
-                        return true;
-                    }
-                } catch (NumberFormatException ignored) {
-                    // nextJudge
-                }
-            }
-        }
-        // endregion
-
-        return false;
     }
 
     /**
@@ -1714,8 +1420,8 @@ public class CarRuleHandler implements InfoNotice {
             vidSpeedZero.remove(vid);
             vidlowsoc.remove(vid);
             vidnormsoc.remove(vid);
-            vidnocan.remove(vid);
-            vidnormcan.remove(vid);
+            vidNoCanCount.remove(vid);
+            vidNormalCanCount.remove(vid);
             vidNoGps.remove(vid);
             vidNormalGps.remove(vid);
 

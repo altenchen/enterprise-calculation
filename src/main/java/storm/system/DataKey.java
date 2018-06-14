@@ -99,6 +99,8 @@ public final class DataKey {
      * #国标
      */
     public static final String _2202_TOTAL_MILEAGE = "2202";
+    public static final String CACHE_2202_TOTAL_MILEAGE_MIN = "min(2202)";
+    public static final String CACHE_2202_TOTAL_MILEAGE_MAX = "max(2202)";
 
     /**
      * 累计里程最小有效值

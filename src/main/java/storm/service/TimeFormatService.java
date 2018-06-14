@@ -11,7 +11,7 @@ import java.util.Date;
  * 精确到毫秒
  */
 public final class TimeFormatService {
-    private static ThreadLocal<SimpleDateFormat> formatlocal = new ThreadLocal<SimpleDateFormat>();
+    private static ThreadLocal<SimpleDateFormat> formatlocal = new ThreadLocal<>();
 
     private static final long oneDayTotalMillisecond = 1000 * 60 * 60 * 24;
 

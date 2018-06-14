@@ -214,7 +214,34 @@ public final class SysDefine {
 	public static final String KAFKA_TOPIC_ALARM = "kafka.topic.alarm";
 
     /**
-     * 是否吉利
+     * 触发CAN故障需要的连续帧数
      */
-	public static final String IS_JILI = "vendor.jili";
+	public static final String NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT = "notice.can.fault.trigger.continue.count";
+    /**
+     * 触发CAN故障需要的持续时长
+     */
+	public static final String NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND = "notice.can.fault.trigger.timeout.millisecond";
+    /**
+     * 触发CAN正常需要的连续帧数
+     */
+	public static final String NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT = "notice.can.normal.trigger.continue.count";
+    /**
+     * 触发CAN正常需要的持续时长
+     */
+	public static final String NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND = "notice.can.normal.trigger.timeout.millisecond";
+
+    /**
+     * 规则覆盖, 默认为default
+     */
+    public static final String RULE_OVERRIDE = "rule.override";
+
+    /**
+     * 默认规则
+     */
+    public static final String RULE_OVERRIDE_VALUE_DEFAULT = "default";
+
+    /**
+     * 吉利规则
+     */
+    public static final String RULE_OVERRIDE_VALUE_JILI = "jili";
 }
