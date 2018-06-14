@@ -53,6 +53,7 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Integer> vidFlySt;
     private Map<String, Integer> vidFlyEd;
 
+    private Map<String, Map<String, Object>> vidlowsocStartNotice;
     private Map<String, Map<String, Object>> vidsocNotice;
     private Map<String, Map<String, Object>> vidcanNotice;
     private Map<String, Map<String, Object>> vidIgniteShutNotice;
@@ -218,6 +219,8 @@ public class CarRuleHandler implements InfoNotice {
         lastSoc = new HashMap<String, Double>();
         vidlowsoc = new HashMap<String, Integer>();
         vidnormsoc = new HashMap<String, Integer>();
+        //soc临时缓存
+        vidlowsocStartNotice = new HashMap<String, Map<String, Object>>();
         vidsocNotice = new HashMap<String, Map<String, Object>>();
         vidcanNotice = new HashMap<String, Map<String, Object>>();
         vidIgniteShutNotice = new HashMap<String, Map<String, Object>>();
@@ -370,15 +373,17 @@ public class CarRuleHandler implements InfoNotice {
                 //想判断是一个车辆是否为低电量，不能根据一个报文就下结论，而是要连续多个报文都是报低电量才行。
                 //其他的判断也都是类似的。
                 if (socNum < socAlarm) {
+                    vidnormsoc.remove(vid);
                     int cnts = 0;
                     if (vidlowsoc.containsKey(vid)) {
                         cnts = vidlowsoc.get(vid);
                     }
                     cnts++;
                     vidlowsoc.put(vid, cnts);
+
                     if (cnts >= 10) {
-                        //当计数器大于10以后，就去检查一下低电量列表中有没有这辆车，没有的话，就构造一条信息，放到这个列表中。
-                        Map<String, Object> notice = vidsocNotice.get(vid);
+                        //当计数器大于10以后，就去检查一下低电量开始列表中有没有这辆车，没有的话，就构造一条信息，放到这个列表中。
+                        Map<String, Object> notice = vidlowsocStartNotice.get(vid);
                         if (null == notice) {
                             notice = new TreeMap<String, Object>();
                             notice.put("msgType", "SOC_ALARM");
@@ -394,10 +399,35 @@ public class CarRuleHandler implements InfoNotice {
                             notice.put("noticetime", noticetime);
                         } else {
                             //如果有了，则重新插入以下信息，覆盖之前的。
-                            notice.put("status", 2);
+//                            notice.put("status", 2);
                             notice.put("count", cnts);
                             notice.put("location", location);
                             notice.put("noticetime", noticetime);
+                        }
+                        vidlowsocStartNotice.put(vid, notice);
+
+                        //条数阈值满足后，还要进行下面的时间阈值判断
+                        Long nowTime = date.getTime();
+                        try {
+                            Long firstLowSocTime = timeformat.stringTimeLong(notice.get("stime").toString());
+                            //status，1开始，2持续，3结束
+                             //|| 2 == (int) notice.get("status")
+                            if (1 == (int) notice.get("status") && nowTime - firstLowSocTime > lowsocIntervalMillisecond) {
+                                IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
+                                if (null == judgeIsSendNotice) {
+                                    judgeIsSendNotice = new IsSendNoticeCache();
+                                    vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
+                                }
+                                judgeIsSendNotice.socIsSend = true;
+                                noticeMsgs.add(vidlowsocStartNotice.get(vid));
+                            }else{
+                                return null;
+                            }
+                            //把soc过低开始通知存储到redis中
+                            recorder.save(db, socRedisKeys,vid,vidlowsocStartNotice.get(vid));
+
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
 
                         vidsocNotice.put(vid, notice);
@@ -414,73 +444,47 @@ public class CarRuleHandler implements InfoNotice {
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-
-                        //条数阈值满足后，还要进行下面的时间阈值判断
-                        Long nowTime = date.getTime();
-                        try {
-                            Long firstLowSocTime = timeformat.stringTimeLong(notice.get("stime").toString());
-                            //status，1开始，2持续，3结束
-                            if ((1 == (int) notice.get("status") || 2 == (int) notice.get("status"))
-                                    && nowTime - firstLowSocTime > lowsocIntervalMillisecond) {
-                                IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
-                                if (null == judgeIsSendNotice) {
-                                    judgeIsSendNotice = new IsSendNoticeCache();
-                                    vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
-                                }
-                                judgeIsSendNotice.socIsSend = true;
-                                noticeMsgs.add(notice);
-                            }
-
-                            if (1 == (int)notice.get("status")) {
-                                recorder.save(db, socRedisKeys,vid,notice);
-                            }
-
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
                     }
-
                     return noticeMsgs;
-                }
-            } else {
-                double socNum = Double.parseDouble(NumberUtils.stringNumber(soc));
-                if (vidlowsoc.containsKey(vid)) {
-                    int cnts = 0;
-                    if (vidnormsoc.containsKey(vid)) {
-                        cnts = vidnormsoc.get(vid);
-                    }
-                    cnts++;
-                    vidnormsoc.put(vid, cnts);
-
-                    // SOC正常达到10次则触发
-                    if (cnts >= 10) {
-                        vidnormcan.remove(vid);
-                        if(!vidIsSendNoticeCache.get(vid).socIsSend){
-                            //此时是，虽然条数阈值达到了，但是时间阈值没达到就满足正常soc了。
-                            vidlowsoc.remove(vid);
-                            vidsocNotice.remove(vid);
-                            return null;
-                        }
-
-                        Map<String, Object> notice = vidsocNotice.get(vid);
+                } else {
+                    if (vidlowsoc.containsKey(vid)) {
+                        //因为lowsoc正常了，所以要清除lowsoc的计数
                         vidlowsoc.remove(vid);
-                        vidsocNotice.remove(vid);
-                        vidIsSendNoticeCache.get(vid).canIsSend = false;
-
-                        //删除redis中的soc过低缓存
-                        recorder.del(db, socRedisKeys, vid);
-
-                        if (null != notice) {
-                            notice.put("status", 3);
-                            notice.put("location", location);
-                            notice.put("etime", time);
-                            notice.put("esoc", socNum);
-                            notice.put("noticetime", noticetime);
-                            noticeMsgs.add(notice);
-                            return noticeMsgs;
+                        int cnts = 0;
+                        if (vidnormsoc.containsKey(vid)) {
+                            cnts = vidnormsoc.get(vid);
                         }
-                    }
+                        cnts++;
+                        vidnormsoc.put(vid, cnts);
 
+                        // SOC正常达到10次则触发, 清空正常soc计数缓存、低电量soc计数、低电量通知缓存，发送结束通知
+                        if (cnts >= 10) {
+                            vidnormcan.remove(vid);
+                            if(!vidIsSendNoticeCache.get(vid).socIsSend){
+                                //此时是，虽然条数阈值达到了，但是时间阈值没达到就满足正常soc了。
+                                vidlowsocStartNotice.remove(vid);
+                                return null;
+                            }
+
+                            Map<String, Object> notice = vidlowsocStartNotice.get(vid);
+                            vidlowsocStartNotice.remove(vid);
+                            vidIsSendNoticeCache.get(vid).canIsSend = false;
+
+                            if (null != notice) {
+                                //删除redis中的soc过低缓存
+                                recorder.del(db, socRedisKeys, vid);
+
+                                notice.put("status", 3);
+                                notice.put("location", location);
+                                notice.put("etime", time);
+                                notice.put("esoc", socNum);
+                                notice.put("noticetime", noticetime);
+                                noticeMsgs.add(notice);
+                                return noticeMsgs;
+                            }
+                        }
+
+                    }
                 }
             }
 
@@ -557,6 +561,7 @@ public class CarRuleHandler implements InfoNotice {
      * @param longitude  经度
      * @param latitude   纬度
      * @param fillvidgps 缓存的补电车 vid [经度，纬度]
+     * @return 距离， 补电车
      */
     private Map<Double, FillChargeCar> findNearFill(double longitude, double latitude, Map<String, FillChargeCar> fillvidgps) {
         //
