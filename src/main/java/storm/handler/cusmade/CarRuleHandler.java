@@ -53,6 +53,7 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Integer> vidFlySt;
     private Map<String, Integer> vidFlyEd;
 
+    //当报文条数阈值临时用来缓存soc过低开始报文的，如果时间阈值也达到了，将这里面的缓存放到vidsocNotice
     private Map<String, Map<String, Object>> vidlowsocStartNotice;
     private Map<String, Map<String, Object>> vidsocNotice;
     private Map<String, Map<String, Object>> vidcanNotice;
@@ -83,7 +84,7 @@ public class CarRuleHandler implements InfoNotice {
     static int mileHop = 20;//2公里 ，单位是0.1km
     static Long nogpsIntervalTime = (long) 10800000;//10800秒,1天
     static Long nocanIntervalTime = (long) 10800000;//10800秒，1天
-    static Long lowsocIntervalMillisecond = (long) 60000;
+    static Long lowsocIntervalMillisecond = (long) 60000;//1分钟
 
     static int db = 6;
     static int socRule = 0;//1代表规则启用
@@ -101,6 +102,7 @@ public class CarRuleHandler implements InfoNotice {
      */
     private static boolean isJili = false;
 
+    //以下参数可以通过读取配置文件进行重置
     static {
         timeformat = new TimeFormatService();
         topn = 20;
@@ -169,7 +171,7 @@ public class CarRuleHandler implements InfoNotice {
         init();
     }
 
-    //以下参数可以定时进行重新加载
+    //以下参数可以通过读取redis定时进行重新加载
     static void init() {
         Object socVal = ParamsRedisUtil.PARAMS.get("lt.alarm.soc");
         if (null != socVal) {
@@ -203,6 +205,10 @@ public class CarRuleHandler implements InfoNotice {
         Object nocanJudgeTime = ParamsRedisUtil.PARAMS.get("can.judge.time");
         if (null != nocanJudgeTime) {
             nocanIntervalTime = ((int) nocanJudgeTime) * 1000L;
+        }
+        Object lowsocIntervalMillisecond = ParamsRedisUtil.PARAMS.get("soc.judge.time");
+        if (null != lowsocIntervalMillisecond) {
+            lowsocIntervalMillisecond = ((int) lowsocIntervalMillisecond) * 1000L;
         }
 
     }
@@ -373,7 +379,9 @@ public class CarRuleHandler implements InfoNotice {
                 //想判断是一个车辆是否为低电量，不能根据一个报文就下结论，而是要连续多个报文都是报低电量才行。
                 //其他的判断也都是类似的。
                 if (socNum < socAlarm) {
+                    //为无can报文则清空正常can计数器
                     vidnormsoc.remove(vid);
+                    //无can计数器加1
                     int cnts = 0;
                     if (vidlowsoc.containsKey(vid)) {
                         cnts = vidlowsoc.get(vid);
@@ -406,7 +414,7 @@ public class CarRuleHandler implements InfoNotice {
                         }
                         vidlowsocStartNotice.put(vid, notice);
 
-                        //条数阈值满足后，还要进行下面的时间阈值判断
+                        //条数阈值满足后，还要进行下面的时间阈值判断，满足后才把它放入vidsocNotice（这里面为已经发送的soc通知）缓存中
                         Long nowTime = date.getTime();
                         try {
                             Long firstLowSocTime = timeformat.stringTimeLong(notice.get("stime").toString());
@@ -461,7 +469,7 @@ public class CarRuleHandler implements InfoNotice {
                         if (cnts >= 10) {
                             vidnormcan.remove(vid);
                             if(!vidIsSendNoticeCache.get(vid).socIsSend){
-                                //此时是，虽然条数阈值达到了，但是时间阈值没达到就满足正常soc了。
+                                //此时是，虽然lowsoc条数阈值达到了，但是时间阈值没达到就满足正常soc了。
                                 vidlowsocStartNotice.remove(vid);
                                 return null;
                             }

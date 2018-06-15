@@ -298,7 +298,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				notice.put("speed", numSpeed);
 				notice.put("status", 1);
                 //吉利要求，新增
-                notice.put("confirmLazyMilliseconds", timeout);
+                notice.put("offlineMillisecondsThreshold", timeout);
 			}else{
 				notice.put("status", 2);
 			}
