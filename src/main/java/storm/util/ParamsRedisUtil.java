@@ -101,6 +101,7 @@ public class ParamsRedisUtil {
 		PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND, 0);
 		PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT, 3);
 		PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, 0);
+		PARAMS.put(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND, 1000 * 60 * 10);
 
         final Properties properties = ConfigUtils.sysDefine;
         if(properties != null) {
@@ -153,6 +154,17 @@ public class ParamsRedisUtil {
                     PARAMS.put(
                         SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND,
                         alarmCanNormalTriggerTimeoutMillisecond);
+                }
+            }
+            // endregion
+            //region 时间数值异常范围
+            {
+                final String noticeTimeRangeAbsMillisecond = properties.getProperty(
+                    SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND);
+                if (!ObjectUtils.isNullOrWhiteSpace(noticeTimeRangeAbsMillisecond)) {
+                    PARAMS.put(
+                        SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND,
+                        noticeTimeRangeAbsMillisecond);
                 }
             }
             // endregion

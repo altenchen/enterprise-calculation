@@ -105,12 +105,14 @@ public class CarRuleHandler implements InfoNotice {
     static int flyRule = 0;//1代表规则启用
     static int onoffRule = 0;//1代表规则启用
     static int mileHopRule = 0;//1代表规则启用
+    static int enableTimeRule = 0;//1代表规则启用
 
     private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
+    private final TimeOutOfRangeNotice timeOutOfRangeNotice = new TimeOutOfRangeNotice();
 
     //以下参数可以通过读取配置文件进行重置
     static {
-        timeformat = new TimeFormatService();
+        timeformat = TimeFormatService.getInstance();
         topn = 20;
         onOffRedisKeys = "vehCache.qy.onoff.notice";
         socRedisKeys = "vehCache.qy.soc.notice";
@@ -165,6 +167,12 @@ public class CarRuleHandler implements InfoNotice {
             value = ConfigUtils.sysDefine.getProperty("sys.milehop.rule");
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 mileHopRule = Integer.parseInt(value);
+                value = null;
+            }
+
+            value = ConfigUtils.sysDefine.getProperty(SysDefine.SYS_TIME_RULE);
+            if (!ObjectUtils.isNullOrEmpty(value)) {
+                enableTimeRule = Integer.parseInt(value);
                 value = null;
             }
         }
@@ -269,6 +277,18 @@ public class CarRuleHandler implements InfoNotice {
                 final long alarmCanNormalTriggerTimeoutMillisecond = Long.parseLong(alarmCanNormalTriggerTimeoutMillisecondString);
                 if(alarmCanNormalTriggerTimeoutMillisecond > 0) {
                     CarNoCanJudge.faultTriggerTimeoutMillisecond = alarmCanNormalTriggerTimeoutMillisecond;
+                }
+            } catch (Exception ignored) {
+
+            }
+        }
+        {
+            try {
+                final String noticeTimeRangeAbsMillisecondString = ParamsRedisUtil.PARAMS.get(
+                    SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND).toString();
+                final long noticeTimeRangeAbsMillisecond = Long.parseLong(noticeTimeRangeAbsMillisecondString);
+                if(noticeTimeRangeAbsMillisecond > 0) {
+                    TimeOutOfRangeNotice.timeRangeMillisecond = noticeTimeRangeAbsMillisecond;
                 }
             } catch (Exception ignored) {
 
@@ -391,6 +411,12 @@ public class CarRuleHandler implements InfoNotice {
         if (1 == mileHopRule) {
             // 里程跳变处理
             mileHopJudge = mileHopHandle(data);
+        }
+        if(1 == enableTimeRule) {
+            final Map<String, Object> timeRangeJudge = timeOutOfRangeNotice.process(data);
+            if (!ObjectUtils.isNullOrEmpty(timeRangeJudge)) {
+                list.add(timeRangeJudge);
+            }
         }
         if (!ObjectUtils.isNullOrEmpty(gpsJudge)) {
             list.add(gpsJudge);

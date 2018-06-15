@@ -32,7 +32,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 	private final Recorder recorder = new RedisRecorder();
 	private static final int REDIS_DB_INDEX =6;
 	private static final String IDLE_REDIS_KEYS = "vehCache.qy.idle";
-	private static TimeFormatService timeFormatService = new TimeFormatService();
+	private static TimeFormatService timeFormatService = TimeFormatService.getInstance();
 
     {
         //重要：从redis数据库中读取系统重启前的车辆状态。不写的话，当系统重启时，会导致车辆的状态丢失

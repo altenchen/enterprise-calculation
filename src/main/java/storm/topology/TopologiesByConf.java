@@ -141,6 +141,10 @@ public class TopologiesByConf {
         stormConf.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, properties.getProperty(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND));
         // endregion
 
+        // region notice.time
+        stormConf.put(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND, properties.getProperty(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND));
+        // endregion
+
         // region jili
         stormConf.put(SysDefine.RULE_OVERRIDE, properties.getProperty(SysDefine.RULE_OVERRIDE));
         // endregion

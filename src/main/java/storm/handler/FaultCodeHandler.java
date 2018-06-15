@@ -29,7 +29,7 @@ public class FaultCodeHandler {
 	static long dbflushtime = 360000;//360秒
 	static long offlinetime = 600000;//600秒
 	static {
-		timeformat = new TimeFormatService();
+		timeformat = TimeFormatService.getInstance();
 		if (null != ConfigUtils.sysDefine) {
 			String dbflush = ConfigUtils.sysDefine.getProperty("db.cache.flushtime");
 			if (!ObjectUtils.isNullOrEmpty(dbflush)) {

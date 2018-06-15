@@ -36,7 +36,7 @@ public final class CarNoCanJudge {
     /**
      * 时间格式化服务
      */
-    private static final TimeFormatService TIME_FORMAT_SERVICE = new TimeFormatService();
+    private static final TimeFormatService TIME_FORMAT_SERVICE = TimeFormatService.getInstance();
 
     /**
      * CAN故障首帧计数值

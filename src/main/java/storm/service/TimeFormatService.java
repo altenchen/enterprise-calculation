@@ -1,5 +1,6 @@
 package storm.service;
 
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.text.ParseException;
@@ -11,12 +12,24 @@ import java.util.Date;
  * 精确到毫秒
  */
 public final class TimeFormatService {
-    private static ThreadLocal<SimpleDateFormat> formatlocal = new ThreadLocal<>();
 
-    private static final long oneDayTotalMillisecond = 1000 * 60 * 60 * 24;
+    private static TimeFormatService ourInstance = new TimeFormatService();
+
+    @Contract(pure = true)
+    public static TimeFormatService getInstance() {
+        return ourInstance;
+    }
+
+    private TimeFormatService() {
+    }
+
+
+    private ThreadLocal<SimpleDateFormat> formatlocal = new ThreadLocal<>();
+
+    private final long oneDayTotalMillisecond = 1000 * 60 * 60 * 24;
 
     //2017-11-10 00:00:00
-    private static long stand = 1510243200000L;
+    private long stand = 1510243200000L;
 
     @NotNull
     public String toDateString(@NotNull Date date){
@@ -33,7 +46,7 @@ public final class TimeFormatService {
     }
 
     @NotNull
-    private static SimpleDateFormat getDateFormat(@NotNull ThreadLocal<SimpleDateFormat> formatlocal) {
+    private SimpleDateFormat getDateFormat(@NotNull ThreadLocal<SimpleDateFormat> formatlocal) {
         SimpleDateFormat format = formatlocal.get();
         if (null == format) {
             format = new SimpleDateFormat("yyyyMMddHHmmss");
@@ -42,7 +55,7 @@ public final class TimeFormatService {
         return format;
     }
     
-    public static boolean nowNearNextZeroTime(){
+    public boolean nowNearNextZeroTime(){
         return nowNearNextZeroTime(System.currentTimeMillis());
     }
     
@@ -51,7 +64,8 @@ public final class TimeFormatService {
      * @param now
      * @return
      */
-    public static boolean newDayNearZeroTime(long now){
+    @Contract(pure = true)
+    public boolean newDayNearZeroTime(long now){
 //        long space = now - stand;
 //        int days = (int)(space/86400000);
 //        if (now-(stand+86400000L*(days)) < 150000) {// 150秒钟;300000 5分钟
@@ -66,7 +80,8 @@ public final class TimeFormatService {
      * @param now
      * @return
      */
-    public static boolean nowNearNextZeroTime(long now){
+    @Contract(pure = true)
+    public boolean nowNearNextZeroTime(long now){
 //        long space = now - stand;
 //        int days = (int)(space/86400000);
 //        if ((stand+86400000L*(days+1)-now) < 150000) {// 150秒钟;300000 5分钟
@@ -83,7 +98,8 @@ public final class TimeFormatService {
      * @param nearMillis 距离0点相差的时间段
      * @return
      */
-    public static boolean nowNearNextZeroTime(long now,long nearMillis){
+    @Contract(pure = true)
+    public boolean nowNearNextZeroTime(long now, long nearMillis){
         long space = now - stand;
         int days = (int)(space/86400000);
         if ((stand+86400000L*(days+1)-now) < nearMillis) {//nearMillis相差时间
@@ -93,7 +109,7 @@ public final class TimeFormatService {
     }
     
     public static void main(String[] args) {
-        TimeFormatService service = new TimeFormatService();
+        TimeFormatService service = TimeFormatService.getInstance();
         try {
             long time=service.stringTimeLong("20171111000319");
             System.out.println(time);
@@ -104,7 +120,7 @@ public final class TimeFormatService {
             serTime = serTime.substring(0,serTime.length()-6);
             System.out.println(serTime);
 
-            System.out.println(TimeFormatService.newDayNearZeroTime(new Date(time).getTime()));
+            System.out.println(service.newDayNearZeroTime(new Date(time).getTime()));
         }
         catch (ParseException ex) {
             ex.printStackTrace();
