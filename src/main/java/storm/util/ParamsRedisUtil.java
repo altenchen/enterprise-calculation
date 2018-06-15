@@ -3,7 +3,10 @@ package storm.util;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.dao.DataToRedis;
 import storm.system.SysDefine;
 
@@ -12,6 +15,8 @@ import storm.system.SysDefine;
  * 从Redis读取配置
  */
 public class ParamsRedisUtil {
+
+    private static Logger logger = LoggerFactory.getLogger(ParamsRedisUtil.class);
 
     /**
      * 参数缓存
@@ -69,8 +74,12 @@ public class ParamsRedisUtil {
     private static final String CAL_QY_CONF = "cal.qy.conf";
     private static final DataToRedis redis = new DataToRedis();
 	static {
-		resetToDefault();
-        initParams();
+	    try {
+            resetToDefault();
+            initParams();
+        } catch (Exception ex) {
+	        ex.printStackTrace();
+        }
 	}
 
     /**
@@ -92,6 +101,7 @@ public class ParamsRedisUtil {
 		PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND, 0);
 		PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT, 3);
 		PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, 0);
+
         final Properties properties = ConfigUtils.sysDefine;
         if(properties != null) {
             // region 规则覆盖
@@ -153,40 +163,44 @@ public class ParamsRedisUtil {
 		try {
 			Map<String, String> paramCache = redis.getMap(DB_INDEX, CAL_QY_CONF);
 			if (null != paramCache && paramCache.size() > 0) {
-				for (Map.Entry<String, String> entry : paramCache.entrySet()) {
-					String key = entry.getKey();
-					String value = entry.getValue();
-                    if (ObjectUtils.isNullOrWhiteSpace(key)
-                        || ObjectUtils.isNullOrWhiteSpace(value)) {
-                    } else {
-
-                        if (NumberUtils.stringIsNumber(value)) {
-                            // 缓存数字配置
-                            Object val;
-                            value = NumberUtils.stringNumber(value);
-                            if (value.contains(".")) {
-
-                                val = Double.parseDouble(value);
-                            } else if (value.length() < 9) {
-
-                                val = Integer.parseInt(value);
-                            } else {
-
-                                val = Long.parseLong(value);
-                            }
-                            PARAMS.put(key, val);
-
-                        } else {
-                            // 缓存非数字配置
-                            PARAMS.put(key, value);
-                        }
-                    }
-                }
+                initParams(paramCache);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
+
+	private static void initParams(Map<String, String> paramCache) {
+        for (Map.Entry<String, String> entry : paramCache.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            if (ObjectUtils.isNullOrWhiteSpace(key)
+                || ObjectUtils.isNullOrWhiteSpace(value)) {
+            } else {
+
+                if (NumberUtils.stringIsNumber(value)) {
+                    // 缓存数字配置
+                    Object val;
+                    value = NumberUtils.stringNumber(value);
+                    if (value.contains(".")) {
+
+                        val = Double.parseDouble(value);
+                    } else if (value.length() < 9) {
+
+                        val = Integer.parseInt(value);
+                    } else {
+
+                        val = Long.parseLong(value);
+                    }
+                    PARAMS.put(key, val);
+
+                } else {
+                    // 缓存非数字配置
+                    PARAMS.put(key, value);
+                }
+            }
+        }
+    }
 
     /**
      * 重新从Redis读取数据构建参数
@@ -194,4 +208,16 @@ public class ParamsRedisUtil {
 	public static void rebulid(){
 		initParams();
 	}
+
+	public static void main(String[] args) {
+        Map<String, String> paramCache = new TreeMap<>();
+        paramCache.put("lt.alarm.soc", "10");
+        paramCache.put("gt.inidle.timeOut.time", "120");
+        paramCache.put("gps.novalue.continue.no", "10");
+        paramCache.put("can.novalue.continue.no", "10");
+        paramCache.put("mile.hop.num", "2");
+        paramCache.put("gps.judge.time", "10800");
+        paramCache.put("can.judge.time", "10800");
+        initParams(paramCache);
+    }
 }
