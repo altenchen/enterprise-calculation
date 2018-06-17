@@ -181,45 +181,46 @@ public class CarRuleHandler implements InfoNotice {
 
     //以下参数可以通过读取redis定时进行重新加载
     static void init() {
-        Object socVal = ParamsRedisUtil.PARAMS.get("lt.alarm.soc");
+        final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
+        Object socVal = paramsRedisUtil.PARAMS.get("lt.alarm.soc");
         if (null != socVal) {
             socAlarm = (int) socVal;
         }
-        Object nocanJugyObj = ParamsRedisUtil.PARAMS.get("can.novalue.continue.no");
+        Object nocanJugyObj = paramsRedisUtil.PARAMS.get("can.novalue.continue.no");
         if (null != nocanJugyObj) {
             nocanJudgeNum = (int) nocanJugyObj;
         }
-        Object hascanJugyObj = ParamsRedisUtil.PARAMS.get("can.novalue.continue.no");
+        Object hascanJugyObj = paramsRedisUtil.PARAMS.get("can.novalue.continue.no");
         if (null != hascanJugyObj) {
             hascanJudgeNum = (int) hascanJugyObj;
         }
 
-        Object nogpsNum = ParamsRedisUtil.PARAMS.get("gps.novalue.continue.no");
+        Object nogpsNum = paramsRedisUtil.PARAMS.get("gps.novalue.continue.no");
         if (null != nogpsNum) {
             nogpsJudgeNum = (int) nogpsNum;
         }
-        Object hasgpsNum = ParamsRedisUtil.PARAMS.get("gps.novalue.continue.no");
+        Object hasgpsNum = paramsRedisUtil.PARAMS.get("gps.novalue.continue.no");
         if (null != hasgpsNum) {
             hasgpsJudgeNum = (int) hasgpsNum;
         }
-        Object hopnum = ParamsRedisUtil.PARAMS.get("mile.hop.num");
+        Object hopnum = paramsRedisUtil.PARAMS.get("mile.hop.num");
         if (null != hopnum) {
             mileHop = ((int) hopnum) * 10;
         }
-        Object nogpsJudgeTime = ParamsRedisUtil.PARAMS.get("gps.judge.time");
+        Object nogpsJudgeTime = paramsRedisUtil.PARAMS.get("gps.judge.time");
         if (null != nogpsJudgeTime) {
             nogpsIntervalTime = ((int) nogpsJudgeTime) * 1000L;
         }
-        Object nocanJudgeTime = ParamsRedisUtil.PARAMS.get("can.judge.time");
+        Object nocanJudgeTime = paramsRedisUtil.PARAMS.get("can.judge.time");
         if (null != nocanJudgeTime) {
             nocanIntervalTime = ((int) nocanJudgeTime) * 1000L;
         }
-        Object lowsocIntervalMillisecond = ParamsRedisUtil.PARAMS.get("soc.judge.time");
+        Object lowsocIntervalMillisecond = paramsRedisUtil.PARAMS.get("soc.judge.time");
         if (null != lowsocIntervalMillisecond) {
             lowsocIntervalMillisecond = ((int) lowsocIntervalMillisecond) * 1000L;
         }
         {
-            final String ruleOverride = ParamsRedisUtil.PARAMS.getOrDefault(
+            final String ruleOverride = paramsRedisUtil.PARAMS.getOrDefault(
                 SysDefine.RULE_OVERRIDE,
                 SysDefine.RULE_OVERRIDE_VALUE_DEFAULT).toString();
             if(!ObjectUtils.isNullOrWhiteSpace(ruleOverride)) {
@@ -236,7 +237,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         {
             try {
-                final String alarmCanFaultTriggerContinueCountString = ParamsRedisUtil.PARAMS.get(
+                final String alarmCanFaultTriggerContinueCountString = paramsRedisUtil.PARAMS.get(
                     SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT).toString();
                 final int alarmCanFaultTriggerContinueCount = Integer.parseInt(alarmCanFaultTriggerContinueCountString);
                 if(alarmCanFaultTriggerContinueCount > 0) {
@@ -248,7 +249,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         {
             try {
-                final String alarmCanFaultTriggerTimeoutMillisecondString = ParamsRedisUtil.PARAMS.get(
+                final String alarmCanFaultTriggerTimeoutMillisecondString = paramsRedisUtil.PARAMS.get(
                     SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND).toString();
                 final long alarmCanFaultTriggerTimeoutMillisecond = Long.parseLong(alarmCanFaultTriggerTimeoutMillisecondString);
                 if(alarmCanFaultTriggerTimeoutMillisecond > 0) {
@@ -260,7 +261,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         {
             try {
-                final String alarmCanNormalTriggerContinueCountString = ParamsRedisUtil.PARAMS.get(
+                final String alarmCanNormalTriggerContinueCountString = paramsRedisUtil.PARAMS.get(
                     SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT).toString();
                 final int alarmCanNormalTriggerContinueCount = Integer.parseInt(alarmCanNormalTriggerContinueCountString);
                 if(alarmCanNormalTriggerContinueCount > 0) {
@@ -272,7 +273,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         {
             try {
-                final String alarmCanNormalTriggerTimeoutMillisecondString = ParamsRedisUtil.PARAMS.get(
+                final String alarmCanNormalTriggerTimeoutMillisecondString = paramsRedisUtil.PARAMS.get(
                     SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND).toString();
                 final long alarmCanNormalTriggerTimeoutMillisecond = Long.parseLong(alarmCanNormalTriggerTimeoutMillisecondString);
                 if(alarmCanNormalTriggerTimeoutMillisecond > 0) {
@@ -284,7 +285,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         {
             try {
-                final String noticeTimeRangeAbsMillisecondString = ParamsRedisUtil.PARAMS.get(
+                final String noticeTimeRangeAbsMillisecondString = paramsRedisUtil.PARAMS.get(
                     SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND).toString();
                 final long noticeTimeRangeAbsMillisecond = Long.parseLong(noticeTimeRangeAbsMillisecondString);
                 if(noticeTimeRangeAbsMillisecond > 0) {
@@ -331,7 +332,7 @@ public class CarRuleHandler implements InfoNotice {
     }
 
     public static void rebulid() {
-        ParamsRedisUtil.rebulid();
+        ParamsRedisUtil.getInstance().rebulid();
         init();
     }
 

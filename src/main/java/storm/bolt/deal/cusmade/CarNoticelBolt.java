@@ -86,9 +86,10 @@ public final class CarNoticelBolt extends BaseRichBolt {
         lastOfflineCheckTimeMillisecond = now;
 
         try {
-        	ParamsRedisUtil.rebulid();
+			final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
+			paramsRedisUtil.rebulid();
             // 从Redis读取超时时间
-			Object outbyconf = ParamsRedisUtil.PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
+			Object outbyconf = paramsRedisUtil.PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
 			if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
 				idleTimeoutMillsecond =1000*(int)outbyconf;
 			}
@@ -160,7 +161,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 							 */
 							CarRuleHandler.rebulid();
                             //从配置文件中读出超时时间
-							Object outbyconf = ParamsRedisUtil.PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
+							Object outbyconf = ParamsRedisUtil.getInstance().PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
 							if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
 								idleTimeoutMillsecond =1000*(int)outbyconf;
 							}

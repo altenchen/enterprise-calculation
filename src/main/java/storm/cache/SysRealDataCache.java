@@ -98,7 +98,7 @@ public class SysRealDataCache {
 			chargeCarCache = new ConcurrentHashMap<String,FillChargeCar>();
 			timeformat = TimeFormatService.getInstance();
 			
-	        Object outbyconf = ParamsRedisUtil.PARAMS.get("gt.inidle.timeOut.time");
+	        Object outbyconf = ParamsRedisUtil.getInstance().PARAMS.get("gt.inidle.timeOut.time");
 			if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
 				timeouttime=1000*(int)outbyconf;
 			}

@@ -1,15 +1,6 @@
 package storm.kafka.scheme;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.google.common.collect.ImmutableList;
-import org.apache.avro.generic.GenericData;
 import org.apache.storm.spout.Scheme;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
@@ -17,9 +8,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import storm.system.DataKey;
 import storm.util.ObjectUtils;
+
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 实时信息方案

@@ -22,9 +22,15 @@ public final class ConfigUtils implements Serializable{
 		try {
 			in = ConfigUtils.class.getClassLoader().getResourceAsStream("sysDefine.properties");
 			sysDefine.load(new InputStreamReader(in, "UTF-8"));
-			
+
 			in = ConfigUtils.class.getClassLoader().getResourceAsStream("parms.properties");
 			sysParams.load(new InputStreamReader(in, "UTF-8"));
+
+//			in = ConfigUtils.class.getClassLoader().getResourceAsStream("sysDefine.properties");
+//			sysDefine.load(in);
+//
+//			in = ConfigUtils.class.getClassLoader().getResourceAsStream("parms.properties");
+//			sysParams.load(in);
 			
 //			in = ConfigUtils.class.getClassLoader().getResourceAsStream("car_type_function_define.properties");
 //			carTypeMapping.load(in);

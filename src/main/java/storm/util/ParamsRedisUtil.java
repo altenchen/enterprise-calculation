@@ -1,27 +1,32 @@
 package storm.util;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.TreeMap;
-
+import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.dao.DataToRedis;
 import storm.system.SysDefine;
 
+import java.util.Map;
+import java.util.Properties;
+import java.util.TreeMap;
+
 /**
  * @author wza
  * 从Redis读取配置
  */
-public class ParamsRedisUtil {
+public final class ParamsRedisUtil {
+
+    private static ParamsRedisUtil ourInstance = new ParamsRedisUtil();
+
+    @Contract(pure = true)
+    public static ParamsRedisUtil getInstance() {
+        return ourInstance;
+    }
+
+    private ParamsRedisUtil() {
+    }
 
     private static Logger logger = LoggerFactory.getLogger(ParamsRedisUtil.class);
-
-    /**
-     * 参数缓存
-     */
-	public static final Map<String, Object> PARAMS = new HashMap<>();
 
     /**
      * SOC百分值
@@ -72,20 +77,22 @@ public class ParamsRedisUtil {
      * 配置来自库中哪个键的Hash
      */
     private static final String CAL_QY_CONF = "cal.qy.conf";
-    private static final DataToRedis redis = new DataToRedis();
-	static {
-	    try {
-            resetToDefault();
-            initParams();
-        } catch (Exception ex) {
-	        ex.printStackTrace();
-        }
+
+    /**
+     * 参数缓存
+     */
+	public final Map<String, Object> PARAMS = new TreeMap<>();
+
+    private final DataToRedis redis = new DataToRedis();
+	{
+        resetToDefault();
+        initParams();
 	}
 
     /**
      * 设置默认值
      */
-	private static void resetToDefault() {
+	private void resetToDefault() {
 		PARAMS.put(LT_ALARM_SOC_PERCENT, 10);
 		PARAMS.put(GT_INIDLE_TIME_OUT_SECOND, 60 * 60 * 24);
 		PARAMS.put(GPS_NOVALUE_CONTINUE_NO, 5);
@@ -171,18 +178,14 @@ public class ParamsRedisUtil {
         }
 	}
 	
-	private static void initParams() {
-		try {
-			Map<String, String> paramCache = redis.getMap(DB_INDEX, CAL_QY_CONF);
-			if (null != paramCache && paramCache.size() > 0) {
-                initParams(paramCache);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+	private void initParams() {
+        Map<String, String> paramCache = redis.getMap(DB_INDEX, CAL_QY_CONF);
+        if (null != paramCache && paramCache.size() > 0) {
+            initParams(paramCache);
+        }
 	}
 
-	private static void initParams(Map<String, String> paramCache) {
+	private void initParams(Map<String, String> paramCache) {
         for (Map.Entry<String, String> entry : paramCache.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
@@ -217,12 +220,12 @@ public class ParamsRedisUtil {
     /**
      * 重新从Redis读取数据构建参数
      */
-	public static void rebulid(){
+	public void rebulid(){
 		initParams();
 	}
 
 	public static void main(String[] args) {
-        Map<String, String> paramCache = new TreeMap<>();
+        final Map<String, String> paramCache = new TreeMap<>();
         paramCache.put("lt.alarm.soc", "10");
         paramCache.put("gt.inidle.timeOut.time", "120");
         paramCache.put("gps.novalue.continue.no", "10");
@@ -230,6 +233,8 @@ public class ParamsRedisUtil {
         paramCache.put("mile.hop.num", "2");
         paramCache.put("gps.judge.time", "10800");
         paramCache.put("can.judge.time", "10800");
-        initParams(paramCache);
+
+        final ParamsRedisUtil instance = ParamsRedisUtil.getInstance();
+        instance.initParams(paramCache);
     }
 }
