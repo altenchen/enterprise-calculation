@@ -4,7 +4,7 @@
 
     <groupId>cn.bitnei</groupId>
     <artifactId>qy.cal</artifactId>
-    <version>0.3.0-alpha</version>
+    <version>0.4.0-alpha</version>
     <packaging>jar</packaging>
 
     <name>qy.cal</name>
