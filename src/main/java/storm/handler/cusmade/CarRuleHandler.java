@@ -484,6 +484,31 @@ public class CarRuleHandler implements InfoNotice {
                     cnts++;
                     vidlowsoc.put(vid, cnts);
 
+                    if(cnts >= 1 && cnts < 10){
+                        Map<String, Object> notice = vidsocNotice.get(vid);
+                        if (null == notice) {
+                            notice = new TreeMap<String, Object>();
+                            notice.put("msgType", "SOC_ALARM");
+                            notice.put("msgId", UUIDUtils.getUUID());
+                            notice.put("vid", vid);
+                            notice.put("stime", time);
+                            notice.put("ssoc", socNum);
+                            notice.put("lowSocThreshold", socAlarm);
+                            notice.put("confirmLazyMillisecond", lowsocIntervalMillisecond);
+                            notice.put("status", 1);
+                            notice.put("count", cnts);
+                            notice.put("location", location);
+                            notice.put("noticetime", noticetime);
+                        } else {
+                            //如果有了，则重新插入以下信息，覆盖之前的。
+                            notice.put("count", cnts);
+                            notice.put("location", location);
+                            notice.put("noticetime", noticetime);
+                        }
+                        vidsocNotice.put(vid, notice);
+                        return null;
+                    }
+
                     if (cnts >= 10) {
                         //当计数器大于10以后，就去检查一下低电量开始列表中有没有这辆车，没有的话，就构造一条信息，放到这个列表中。
                         Map<String, Object> notice = vidsocNotice.get(vid);
@@ -523,6 +548,8 @@ public class CarRuleHandler implements InfoNotice {
                                 }else if(true == judgeIsSendNotice.socIsSend){
                                     return null;
                                 }
+                                judgeIsSendNotice.socIsSend = true;
+                                vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
                                 noticeMsgs.add(vidsocNotice.get(vid));
                             }else{
                                 return null;
@@ -552,6 +579,8 @@ public class CarRuleHandler implements InfoNotice {
                     return noticeMsgs;
                 } else {
                     if (vidlowsoc.containsKey(vid)) {
+                        //将lowsoc计数置0
+                        vidlowsoc.put(vid, 0);
                         int cnts = 0;
                         if (vidnormsoc.containsKey(vid)) {
                             cnts = vidnormsoc.get(vid);
@@ -561,7 +590,7 @@ public class CarRuleHandler implements InfoNotice {
 
                         // SOC正常达到10次则触发, 清空正常soc计数缓存、低电量soc计数、低电量通知缓存，发送结束通知
                         if (cnts >= 10) {
-                            vidnormsoc.remove(vid);
+
                             vidlowsoc.remove(vid);
                             if(!vidIsSendNoticeCache.get(vid).socIsSend){
                                 //此时是，虽然lowsoc条数阈值达到了，但是时间阈值没达到就满足正常soc了。
