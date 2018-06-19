@@ -256,4 +256,17 @@ public final class SysDefine {
      * 吉利规则
      */
     public static final String RULE_OVERRIDE_VALUE_JILI = "jili";
+
+    /**
+     * soc时间阈值
+     */
+    public static final String SOC_JUDGE_TIME = "soc.judge.time";
+    /**
+     * soc帧数判断
+     */
+    public static final String SOC_JUDGE_NO = "soc.judge.on";
+    /**
+     * soc过低阈值
+     */
+    public static final String LT_ALARM_SOC = "lt.alarm.soc";
 }

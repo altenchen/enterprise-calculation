@@ -96,6 +96,7 @@ public class CarRuleHandler implements InfoNotice {
     static int hasgpsJudgeNum = 10;//10次
     static int nocanJudgeNum = 5;//5次
     static int hascanJudgeNum = 10;//10次
+    static int lowsocJudgeNum = 10;//10次
     static int mileHop = 20;//2公里 ，单位是0.1km
     static Long nogpsIntervalTime = (long) 10800000;//10800秒,1天
     static Long nocanIntervalTime = (long) 10800000;//10800秒，1天
@@ -175,6 +176,24 @@ public class CarRuleHandler implements InfoNotice {
                 value = null;
             }
 
+            value = ConfigUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_TIME);
+            if (!ObjectUtils.isNullOrEmpty(value)) {
+                lowsocIntervalMillisecond = Long.parseLong(value);
+                value = null;
+            }
+
+            value = ConfigUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_NO);
+            if (!ObjectUtils.isNullOrEmpty(value)) {
+                lowsocJudgeNum = Integer.parseInt(value);
+                value = null;
+            }
+
+            value = ConfigUtils.sysDefine.getProperty(SysDefine.LT_ALARM_SOC);
+            if (!ObjectUtils.isNullOrEmpty(value)) {
+                socAlarm = Integer.parseInt(value);
+                value = null;
+            }
+
             value = ConfigUtils.sysDefine.getProperty(SysDefine.SYS_TIME_RULE);
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 enableTimeRule = Integer.parseInt(value);
@@ -191,6 +210,16 @@ public class CarRuleHandler implements InfoNotice {
         if (null != socVal) {
             socAlarm = (int) socVal;
         }
+        Object lowsocNum = paramsRedisUtil.PARAMS.get("soc.judge.no");
+        if (null != lowsocNum) {
+            lowsocJudgeNum = (int) lowsocNum;
+        }
+        Object socJudgeTime = paramsRedisUtil.PARAMS.get("soc.judge.time");
+        if (null != socJudgeTime) {
+            lowsocIntervalMillisecond = ((Long) socJudgeTime);
+        }
+
+
         Object nocanJugyObj = paramsRedisUtil.PARAMS.get("can.novalue.continue.no");
         if (null != nocanJugyObj) {
             nocanJudgeNum = (int) nocanJugyObj;
@@ -199,6 +228,7 @@ public class CarRuleHandler implements InfoNotice {
         if (null != hascanJugyObj) {
             hascanJudgeNum = (int) hascanJugyObj;
         }
+
 
         Object nogpsNum = paramsRedisUtil.PARAMS.get("gps.novalue.continue.no");
         if (null != nogpsNum) {
@@ -220,10 +250,7 @@ public class CarRuleHandler implements InfoNotice {
         if (null != nocanJudgeTime) {
             nocanIntervalTime = ((int) nocanJudgeTime) * 1000L;
         }
-        Object socJudgeTime = paramsRedisUtil.PARAMS.get("soc.judge.time");
-        if (null != socJudgeTime) {
-            lowsocIntervalMillisecond = ((int) socJudgeTime) * 1000L;
-        }
+
         {
             final String ruleOverride = paramsRedisUtil.PARAMS.getOrDefault(
                 SysDefine.RULE_OVERRIDE,
@@ -484,7 +511,7 @@ public class CarRuleHandler implements InfoNotice {
                     cnts++;
                     vidlowsoc.put(vid, cnts);
 
-                    if(cnts >= 1 && cnts < 10){
+                    if(cnts >= 1 && cnts < lowsocJudgeNum){
                         Map<String, Object> notice = vidsocNotice.get(vid);
                         if (null == notice) {
                             notice = new TreeMap<String, Object>();
@@ -509,7 +536,7 @@ public class CarRuleHandler implements InfoNotice {
                         return null;
                     }
 
-                    if (cnts >= 10) {
+                    if (cnts >= lowsocJudgeNum) {
                         //当计数器大于10以后，就去检查一下低电量开始列表中有没有这辆车，没有的话，就构造一条信息，放到这个列表中。
                         Map<String, Object> notice = vidsocNotice.get(vid);
                         if (null == notice) {
@@ -589,7 +616,7 @@ public class CarRuleHandler implements InfoNotice {
                         vidnormsoc.put(vid, cnts);
 
                         // SOC正常达到10次则触发, 清空正常soc计数缓存、低电量soc计数、低电量通知缓存，发送结束通知
-                        if (cnts >= 10) {
+                        if (cnts >= lowsocJudgeNum) {
 
                             vidlowsoc.remove(vid);
                             if(!vidIsSendNoticeCache.get(vid).socIsSend){
