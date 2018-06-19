@@ -220,9 +220,9 @@ public class CarRuleHandler implements InfoNotice {
         if (null != nocanJudgeTime) {
             nocanIntervalTime = ((int) nocanJudgeTime) * 1000L;
         }
-        Object lowsocIntervalMillisecond = paramsRedisUtil.PARAMS.get("soc.judge.time");
-        if (null != lowsocIntervalMillisecond) {
-            lowsocIntervalMillisecond = ((int) lowsocIntervalMillisecond) * 1000L;
+        Object socJudgeTime = paramsRedisUtil.PARAMS.get("soc.judge.time");
+        if (null != socJudgeTime) {
+            lowsocIntervalMillisecond = ((int) socJudgeTime) * 1000L;
         }
         {
             final String ruleOverride = paramsRedisUtil.PARAMS.getOrDefault(
