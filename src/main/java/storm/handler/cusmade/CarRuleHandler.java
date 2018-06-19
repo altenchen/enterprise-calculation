@@ -2,6 +2,8 @@ package storm.handler.cusmade;
 
 import com.alibaba.fastjson.JSON;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
@@ -29,6 +31,9 @@ import java.util.*;
  * 车辆规则处理
  */
 public class CarRuleHandler implements InfoNotice {
+
+    private static final Logger logger = LoggerFactory.getLogger(CarRuleHandler.class);
+    private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
     private Map<String, Integer> vidNoGps;
     private Map<String, Integer> vidNormalGps;
@@ -175,13 +180,13 @@ public class CarRuleHandler implements InfoNotice {
                 enableTimeRule = Integer.parseInt(value);
                 value = null;
             }
+            logger.warn("时间异常通知规则" + (enableTimeRule == 1 ? "启用" : "停用"));
         }
         init();
     }
 
     //以下参数可以通过读取redis定时进行重新加载
     static void init() {
-        final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
         Object socVal = paramsRedisUtil.PARAMS.get("lt.alarm.soc");
         if (null != socVal) {
             socAlarm = (int) socVal;
@@ -240,8 +245,8 @@ public class CarRuleHandler implements InfoNotice {
                 final String alarmCanFaultTriggerContinueCountString = paramsRedisUtil.PARAMS.get(
                     SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT).toString();
                 final int alarmCanFaultTriggerContinueCount = Integer.parseInt(alarmCanFaultTriggerContinueCountString);
-                if(alarmCanFaultTriggerContinueCount > 0) {
-                    CarNoCanJudge.faultTriggerContinueCount = alarmCanFaultTriggerContinueCount;
+                if(alarmCanFaultTriggerContinueCount >= 0) {
+                    CarNoCanJudge.setFaultTriggerContinueCount(alarmCanFaultTriggerContinueCount);
                 }
             } catch (Exception ignored) {
 
@@ -252,8 +257,8 @@ public class CarRuleHandler implements InfoNotice {
                 final String alarmCanFaultTriggerTimeoutMillisecondString = paramsRedisUtil.PARAMS.get(
                     SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND).toString();
                 final long alarmCanFaultTriggerTimeoutMillisecond = Long.parseLong(alarmCanFaultTriggerTimeoutMillisecondString);
-                if(alarmCanFaultTriggerTimeoutMillisecond > 0) {
-                    CarNoCanJudge.faultTriggerTimeoutMillisecond = alarmCanFaultTriggerTimeoutMillisecond;
+                if(alarmCanFaultTriggerTimeoutMillisecond >= 0) {
+                    CarNoCanJudge.setFaultTriggerTimeoutMillisecond(alarmCanFaultTriggerTimeoutMillisecond);
                 }
             } catch (Exception ignored) {
 
@@ -264,8 +269,8 @@ public class CarRuleHandler implements InfoNotice {
                 final String alarmCanNormalTriggerContinueCountString = paramsRedisUtil.PARAMS.get(
                     SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT).toString();
                 final int alarmCanNormalTriggerContinueCount = Integer.parseInt(alarmCanNormalTriggerContinueCountString);
-                if(alarmCanNormalTriggerContinueCount > 0) {
-                    CarNoCanJudge.normalTriggerContinueCount = alarmCanNormalTriggerContinueCount;
+                if(alarmCanNormalTriggerContinueCount >= 0) {
+                    CarNoCanJudge.setNormalTriggerContinueCount(alarmCanNormalTriggerContinueCount);
                 }
             } catch (Exception ignored) {
 
@@ -276,8 +281,8 @@ public class CarRuleHandler implements InfoNotice {
                 final String alarmCanNormalTriggerTimeoutMillisecondString = paramsRedisUtil.PARAMS.get(
                     SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND).toString();
                 final long alarmCanNormalTriggerTimeoutMillisecond = Long.parseLong(alarmCanNormalTriggerTimeoutMillisecondString);
-                if(alarmCanNormalTriggerTimeoutMillisecond > 0) {
-                    CarNoCanJudge.faultTriggerTimeoutMillisecond = alarmCanNormalTriggerTimeoutMillisecond;
+                if(alarmCanNormalTriggerTimeoutMillisecond >= 0) {
+                    CarNoCanJudge.setNormalTriggerTimeoutMillisecond(alarmCanNormalTriggerTimeoutMillisecond);
                 }
             } catch (Exception ignored) {
 
@@ -288,8 +293,8 @@ public class CarRuleHandler implements InfoNotice {
                 final String noticeTimeRangeAbsMillisecondString = paramsRedisUtil.PARAMS.get(
                     SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND).toString();
                 final long noticeTimeRangeAbsMillisecond = Long.parseLong(noticeTimeRangeAbsMillisecondString);
-                if(noticeTimeRangeAbsMillisecond > 0) {
-                    TimeOutOfRangeNotice.timeRangeMillisecond = noticeTimeRangeAbsMillisecond;
+                if(noticeTimeRangeAbsMillisecond >= 0) {
+                    TimeOutOfRangeNotice.setTimeRangeMillisecond(noticeTimeRangeAbsMillisecond);
                 }
             } catch (Exception ignored) {
 
@@ -332,7 +337,7 @@ public class CarRuleHandler implements InfoNotice {
     }
 
     public static void rebulid() {
-        ParamsRedisUtil.getInstance().rebulid();
+        paramsRedisUtil.rebulid();
         init();
     }
 
@@ -362,6 +367,10 @@ public class CarRuleHandler implements InfoNotice {
 
         lastTime.put(vid, System.currentTimeMillis());
 
+        if(paramsRedisUtil.isTraceVehicleId(vid)) {
+            logger.trace("VID[" + vid + "]进入车辆规则处理");
+        }
+
         List<Map<String, Object>> socJudges = null;
         Map<String, Object> canJudge = null;
         Map<String, Object> igniteJudge = null;
@@ -383,6 +392,7 @@ public class CarRuleHandler implements InfoNotice {
             // 无CAN车辆
             canJudge = carNoCanJudge.processFrame(data);
             if (!ObjectUtils.isNullOrEmpty(canJudge)) {
+                logger.warn("收到无CAN告警通知:" + canJudge.get("status"));
                 list.add(canJudge);
             }
         }

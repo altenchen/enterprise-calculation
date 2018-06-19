@@ -40,7 +40,8 @@ public class TopologiesByConf {
 
         Config stormConf = buildStormConf(properties);
         StormTopology stormTopology = createTopology(properties);
-        StormSubmitter.submitTopology("qyallStorm", stormConf, stormTopology);
+        final String topologyName = properties.getProperty(SysDefine.TOPOLOGY_NAME, "qyallStorm");
+        StormSubmitter.submitTopology(topologyName, stormConf, stormTopology);
 
 //        new Thread(new Runnable() {
 //            @Override

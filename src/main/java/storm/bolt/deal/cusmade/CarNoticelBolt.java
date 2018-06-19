@@ -10,6 +10,8 @@ import org.apache.storm.tuple.Values;
 
 import com.alibaba.fastjson.JSON;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
 import storm.handler.FaultCodeHandler;
 import storm.handler.cusmade.*;
@@ -31,6 +33,9 @@ import java.util.concurrent.TimeUnit;
 public final class CarNoticelBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1700001L;
+
+	private static final Logger logger = LoggerFactory.getLogger(CarNoticelBolt.class);
+	private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
 	private OutputCollector collector;
 
@@ -203,6 +208,13 @@ public final class CarNoticelBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
     	long now = System.currentTimeMillis();
+
+        {
+            String vid = tuple.getString(0);
+            if (paramsRedisUtil.isTraceVehicleId(vid)) {
+                logger.warn("VID[" + vid + "]进入车辆通知处理");
+            }
+        }
 
         // region 离线判断: 如果时间差大于离线检查时间，则进行离线检查, 如果车辆离线，则发送此车辆的所有故障码结束通知
         if (now - lastOfflineCheckTimeMillisecond >= offlineCheckSpanMillisecond) {

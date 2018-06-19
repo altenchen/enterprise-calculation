@@ -11,6 +11,8 @@ import org.apache.storm.tuple.Values;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.protocol.*;
 import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
@@ -32,6 +34,8 @@ import java.util.TreeMap;
  */
 public class FilterBolt extends BaseRichBolt {
 	private static final long serialVersionUID = 1700001L;
+	private static final Logger logger = LoggerFactory.getLogger(FilterBolt.class);
+	private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 	private OutputCollector collector;
 	private CUS_NOTICE_GROUP _cus_notice_group;
 //    public static long redisUpdateTime = 0L;
@@ -118,7 +122,7 @@ public class FilterBolt extends BaseRichBolt {
             // 拆分逗号分隔的参数组
             parm = StringUtils.split(usecontent, SysDefine.COMMA);
 
-            Map<String, String> stateKV = new TreeMap<String, String>(); // 状态键值
+            Map<String, String> stateKV = new TreeMap<>(); // 状态键值
             for (int i = 0; i < parm.length; i++) {
                 tempKV = StringUtils.split(parm[i], SysDefine.COLON, 2);
                 if (tempKV.length == 2) {
@@ -237,6 +241,9 @@ public class FilterBolt extends BaseRichBolt {
             }
 
             String vid = stateKV.get(DataKey.VEHICLE_ID);
+            if(paramsRedisUtil.isTraceVehicleId(vid)) {
+                logger.warn("VID[" + vid + "]数据预处理完成");
+            }
             try {
             	if (CommandType.SUBMIT_LINKSTATUS.equals(type)
             			|| CommandType.SUBMIT_LOGIN.equals(type)

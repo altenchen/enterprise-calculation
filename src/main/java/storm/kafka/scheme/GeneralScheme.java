@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.system.DataKey;
 import storm.util.ObjectUtils;
+import storm.util.ParamsRedisUtil;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -25,13 +26,21 @@ public final class GeneralScheme implements Scheme {
 
 	private static final long serialVersionUID = 18700005L;
 	private static Logger logger = LoggerFactory.getLogger(GeneralScheme.class);
+	private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
     @SuppressWarnings("Duplicates")
 	@Override
 	public List<Object> deserialize(ByteBuffer buffer) {
 	    try {
             String message = ObjectUtils.deserialize(buffer);
-            return generateValues(message);
+            final Values values = generateValues(message);
+            if(!values.isEmpty()) {
+                final String vid = (String) values.get(0);
+                if(paramsRedisUtil.isTraceVehicleId(vid)) {
+                    logger.warn("收到VID[" + vid + "]的实时数据.");
+                }
+            }
+            return values;
         }
         catch (Exception exception) {
             exception.printStackTrace();

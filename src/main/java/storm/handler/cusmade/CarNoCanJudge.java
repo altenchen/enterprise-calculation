@@ -12,6 +12,7 @@ import storm.system.AlarmMessageType;
 import storm.system.DataKey;
 import storm.util.DataUtils;
 import storm.util.ObjectUtils;
+import storm.util.ParamsRedisUtil;
 import storm.util.UUIDUtils;
 
 import java.text.ParseException;
@@ -24,19 +25,17 @@ import java.util.*;
  */
 public final class CarNoCanJudge {
 
-    private static int REDIS_DB_INDEX = 6;
-    private static String REDIS_TABLE_NAME = "vehCache.qy.notice.can";
-    private static String STATUS_KEY = "status";
-
-    private static Logger logger = LoggerFactory.getLogger(CarNoCanJudge.class);
-
-    private static final DataToRedis redis;
-    private static final Recorder recorder;
+    private static final Logger logger = LoggerFactory.getLogger(CarNoCanJudge.class);
+    private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
     /**
      * 时间格式化服务
      */
     private static final TimeFormatService TIME_FORMAT_SERVICE = TimeFormatService.getInstance();
+
+    private static final int REDIS_DB_INDEX = 6;
+    private static final String REDIS_TABLE_NAME = "vehCache.qy.notice.can";
+    private static final String STATUS_KEY = "status";
 
     /**
      * CAN故障首帧计数值
@@ -51,41 +50,38 @@ public final class CarNoCanJudge {
     /**
      * 触发CAN故障需要的连续帧数
      */
-    public static int faultTriggerContinueCount = 3;
+    private static int faultTriggerContinueCount = 3;
 
     /**
      * 触发CAN故障需要的持续时长
      */
-    public static long faultTriggerTimeoutMillisecond = 0;
+    private static long faultTriggerTimeoutMillisecond = 0;
 
     /**
      * 触发CAN正常需要的连续帧数
      */
-    public static int normalTriggerContinueCount = 3;
+    private static int normalTriggerContinueCount = 3;
 
     /**
      * 触发CAN正常需要的持续时长
      */
-    public static long normalTriggerTimeoutMillisecond = 0;
+    private static long normalTriggerTimeoutMillisecond = 0;
 
     /**
      * 判断车辆无CAN的方案
      */
     private static ICarNoCanDecide carNoCanDecide = new CarNoCanDecideDefault();
 
-
-    static {
-        redis = new DataToRedis();
-        recorder = new RedisRecorder(redis);
-    }
+    private final DataToRedis redis = new DataToRedis();
+    private final Recorder recorder = new RedisRecorder(redis);
 
     /**
      * 无CAN车辆字典
      */
-    private final Map<String, CarNoCanItem> carNoCanMap;
+    private final Map<String, CarNoCanItem> carNoCanMap = new TreeMap<>();
 
+    // 实例初始化代码块
     {
-        carNoCanMap = new TreeMap<>();
 
         final Map<String, Map<String, Object>> restoreFromRedis = new TreeMap<>();
         recorder.rebootInit(REDIS_DB_INDEX, REDIS_TABLE_NAME, restoreFromRedis);
@@ -103,13 +99,78 @@ public final class CarNoCanJudge {
                 }
             }
             catch (Exception ignore) {
-
+                ignore.printStackTrace();
             }
         }
     }
+
     /**
-     * @param data
-     * @return
+     * 获取触发CAN故障需要的连续帧数
+     */
+    @Contract(pure = true)
+    public static int getFaultTriggerContinueCount() {
+        return faultTriggerContinueCount;
+    }
+
+    /**
+     * 设置触发CAN故障需要的连续帧数
+     */
+    public static void setFaultTriggerContinueCount(int faultTriggerContinueCount) {
+        CarNoCanJudge.faultTriggerContinueCount = faultTriggerContinueCount;
+        logger.info("触发CAN故障需要的连续帧数被设置为:" + faultTriggerContinueCount);
+    }
+
+    /**
+     * 获取触发CAN故障需要的持续时长
+     */
+    @Contract(pure = true)
+    public static long getFaultTriggerTimeoutMillisecond() {
+        return faultTriggerTimeoutMillisecond;
+    }
+
+    /**
+     * 设置触发CAN故障需要的持续时长
+     */
+    public static void setFaultTriggerTimeoutMillisecond(long faultTriggerTimeoutMillisecond) {
+        CarNoCanJudge.faultTriggerTimeoutMillisecond = faultTriggerTimeoutMillisecond;
+        logger.info("触发CAN故障需要的持续时长被设置为:" + faultTriggerTimeoutMillisecond);
+    }
+
+    /**
+     * 获取触发CAN正常需要的连续帧数
+     */
+    @Contract(pure = true)
+    public static int getNormalTriggerContinueCount() {
+        return normalTriggerContinueCount;
+    }
+
+    /**
+     * 设置触发CAN正常需要的连续帧数
+     */
+    public static void setNormalTriggerContinueCount(int normalTriggerContinueCount) {
+        CarNoCanJudge.normalTriggerContinueCount = normalTriggerContinueCount;
+        logger.info("触发CAN正常需要的连续帧数被设置为:" + normalTriggerContinueCount);
+    }
+
+    /**
+     * 获取触发CAN正常需要的持续时长
+     */
+    @Contract(pure = true)
+    public static long getNormalTriggerTimeoutMillisecond() {
+        return normalTriggerTimeoutMillisecond;
+    }
+
+    /**
+     * 设置触发CAN正常需要的持续时长
+     */
+    public static void setNormalTriggerTimeoutMillisecond(long normalTriggerTimeoutMillisecond) {
+        CarNoCanJudge.normalTriggerTimeoutMillisecond = normalTriggerTimeoutMillisecond;
+        logger.info("触发CAN正常需要的持续时长被设置为:" + normalTriggerTimeoutMillisecond);
+    }
+
+    /**
+     * @param data 车辆数据
+     * @return 如果产生无CAN通知, 则填充通知, 否则为空集合.
      */
     @NotNull
     public Map<String, Object> processFrame(@NotNull Map<String, String> data) {
@@ -117,8 +178,10 @@ public final class CarNoCanJudge {
 
         final String vid = data.get(DataKey.VEHICLE_ID);
         final String timeString = data.get(DataKey.TIME);
-        if(!ObjectUtils.isNullOrWhiteSpace(vid)
-            && !ObjectUtils.isNullOrWhiteSpace(timeString)) {
+        final boolean traceVehicleId = paramsRedisUtil.isTraceVehicleId(vid);
+
+        if(ObjectUtils.isNullOrWhiteSpace(vid)
+            || ObjectUtils.isNullOrWhiteSpace(timeString)) {
             return result;
         }
         final long time;
@@ -128,11 +191,6 @@ public final class CarNoCanJudge {
             e.printStackTrace();
             return result;
         }
-
-
-        // 判断是否有CAN
-        final ICarNoCanDecide carNoCanDecide = getCarNoCanDecide();
-        final boolean hasCan = carNoCanDecide.hasCan(data);
 
         // 总里程
         final String totalMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
@@ -144,12 +202,17 @@ public final class CarNoCanJudge {
         final String location = DataUtils.buildLocation(longitude, latitude);
 
 
+        // 判断是否有CAN
+        final ICarNoCanDecide carNoCanDecide = getCarNoCanDecide();
+        boolean hasCan = carNoCanDecide.hasCan(data);
+
         if(!hasCan) {
             final CarNoCanItem carNoCanItem;
             if(carNoCanMap.containsKey(vid)) {
                 carNoCanItem = carNoCanMap.get(vid);
             } else {
                 carNoCanItem = new CarNoCanItem(vid);
+                carNoCanMap.put(vid, carNoCanItem);
             }
             continueFaultIncrement(result, carNoCanItem, time, totalMileage, location);
         } else if(carNoCanMap.containsKey(vid)) {
@@ -170,6 +233,7 @@ public final class CarNoCanJudge {
         @NotNull final String totalMileage,
         @NotNull final String location
     ) {
+        final boolean traceVehicleId = paramsRedisUtil.isTraceVehicleId(item.vid);
 
         if(item.continueCount > FIRST_FAULT_FRAME) {
             item.continueCount = FIRST_FAULT_FRAME;
@@ -179,17 +243,15 @@ public final class CarNoCanJudge {
             item.firstFrameEnterFault(time, totalMileage, location);
         }
 
-        if(item.continueCount > -faultTriggerContinueCount) {
+        if(item.continueCount > -getFaultTriggerContinueCount()) {
             --item.continueCount;
             return;
         }
 
-        if(item.getAlarmStatus() == AlarmStatus.Init) {
-            if(time - item.getFirstFrameTime() > faultTriggerTimeoutMillisecond) {
+        if(time - item.getFirstFrameTime() > getFaultTriggerTimeoutMillisecond()) {
+            if(item.getAlarmStatus() == AlarmStatus.Init) {
                 item.setAlarmStatus(AlarmStatus.Start);
 
-                Date now = new Date();
-                String noticetime = TIME_FORMAT_SERVICE.toDateString(now);
                 final Map<String, Object> notice = item.generateNotice();
                 noticeResult.put(item.vid, notice);
                 recorder.save(REDIS_DB_INDEX, REDIS_TABLE_NAME, item.vid, notice);
@@ -207,6 +269,7 @@ public final class CarNoCanJudge {
         @NotNull final String totalMileage,
         @NotNull final String location
     ) {
+        final boolean traceVehicleId = paramsRedisUtil.isTraceVehicleId(item.vid);
 
         if(item.continueCount < FIRST_NORMAL_FRAME) {
             item.continueCount = FIRST_NORMAL_FRAME;
@@ -216,22 +279,22 @@ public final class CarNoCanJudge {
             item.firstFrameExitFault(time, totalMileage, location);
         }
 
-        if(item.continueCount < normalTriggerContinueCount) {
+        if(item.continueCount < getNormalTriggerContinueCount()) {
             ++item.continueCount;
             return;
         }
 
-        if(item.getAlarmStatus() == AlarmStatus.Start
-            || item.getAlarmStatus() == AlarmStatus.Continue) {
-            if(time - item.getFirstFrameTime() > normalTriggerTimeoutMillisecond) {
+        if(time - item.getFirstFrameTime() > getNormalTriggerTimeoutMillisecond()) {
+            if(item.getAlarmStatus() == AlarmStatus.Start
+                || item.getAlarmStatus() == AlarmStatus.Continue) {
                 item.setAlarmStatus(AlarmStatus.End);
 
-                Date now = new Date();
-                String noticetime = TIME_FORMAT_SERVICE.toDateString(now);
                 final Map<String, Object> notice = item.generateNotice();
                 noticeResult.put(item.vid, notice);
                 recorder.del(REDIS_DB_INDEX, REDIS_TABLE_NAME, item.vid);
             }
+
+            carNoCanMap.remove(item.vid);
         }
     }
 
@@ -254,7 +317,7 @@ public final class CarNoCanJudge {
     /**
      * 无CAN车辆被审计项
      */
-    private final class CarNoCanItem {
+    private static final class CarNoCanItem {
 
         /**
          * 连续CAN计数, 0无效, 正数为正常计数, 负数为故障计数
@@ -325,7 +388,8 @@ public final class CarNoCanJudge {
             final String location
         ) {
             firstFrameTime = time;
-            properties.put("stime", time);
+            final String stime = TIME_FORMAT_SERVICE.toDateString(new Date(time));
+            properties.put("stime", stime);
             properties.put("smileage", totalMileage);
             properties.put("slocation", location);
         }
@@ -342,7 +406,8 @@ public final class CarNoCanJudge {
             final String location
         ) {
             firstFrameTime = time;
-            properties.put("etime", time);
+            final String etime = TIME_FORMAT_SERVICE.toDateString(new Date(time));
+            properties.put("etime", etime);
             properties.put("emileage", totalMileage);
             properties.put("elocation", location);
         }

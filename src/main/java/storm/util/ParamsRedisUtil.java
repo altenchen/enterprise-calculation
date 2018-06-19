@@ -16,17 +16,12 @@ import java.util.TreeMap;
  */
 public final class ParamsRedisUtil {
 
-    private static ParamsRedisUtil ourInstance = new ParamsRedisUtil();
+    // region 静态区
 
-    @Contract(pure = true)
-    public static ParamsRedisUtil getInstance() {
-        return ourInstance;
-    }
-
-    private ParamsRedisUtil() {
-    }
-
-    private static Logger logger = LoggerFactory.getLogger(ParamsRedisUtil.class);
+    /**
+     * 日志组件
+     */
+    private static final Logger logger = LoggerFactory.getLogger(ParamsRedisUtil.class);
 
     /**
      * SOC百分值
@@ -79,15 +74,40 @@ public final class ParamsRedisUtil {
     private static final String CAL_QY_CONF = "cal.qy.conf";
 
     /**
+     * 追踪的车辆ID
+     */
+    private static final String TRACE_VEHICLE_ID = "trace.vehicle.id";
+
+    static {
+
+    }
+
+    /**
+     * 单例对象
+     */
+    private static final ParamsRedisUtil ourInstance = new ParamsRedisUtil();
+
+    @Contract(pure = true)
+    public static ParamsRedisUtil getInstance() {
+        return ourInstance;
+    }
+    // endregion 静态区
+
+    /**
      * 参数缓存
      */
 	public final Map<String, Object> PARAMS = new TreeMap<>();
 
     private final DataToRedis redis = new DataToRedis();
+
+    // 实例初始化块
 	{
         resetToDefault();
         initParams();
 	}
+
+    private ParamsRedisUtil() {
+    }
 
     /**
      * 设置默认值
@@ -109,6 +129,7 @@ public final class ParamsRedisUtil {
 		PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT, 3);
 		PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, 0);
 		PARAMS.put(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND, 1000 * 60 * 10);
+		PARAMS.put(TRACE_VEHICLE_ID, "test\\d+");
 
         final Properties properties = ConfigUtils.sysDefine;
         if(properties != null) {
@@ -183,7 +204,26 @@ public final class ParamsRedisUtil {
         if (null != paramCache && paramCache.size() > 0) {
             initParams(paramCache);
         }
+        if(PARAMS.containsKey(TRACE_VEHICLE_ID)) {
+            final String traceVehicleId = (String) PARAMS.get(TRACE_VEHICLE_ID);
+            if (!ObjectUtils.isNullOrWhiteSpace(traceVehicleId)) {
+                final String message = "[" + TRACE_VEHICLE_ID + "]初始化为[" + traceVehicleId + "]";
+                logger.info(message);
+            }
+        }
 	}
+
+	public boolean isTraceVehicleId(String vehicleId) {
+	    if(ObjectUtils.isNullOrWhiteSpace(vehicleId)) {
+	        return false;
+        }
+
+        final String traceVehicleId = (String)PARAMS.get(TRACE_VEHICLE_ID);
+        if(!ObjectUtils.isNullOrWhiteSpace(traceVehicleId)) {
+            return vehicleId.matches(traceVehicleId);
+        }
+        return false;
+    }
 
 	private void initParams(Map<String, String> paramCache) {
         for (Map.Entry<String, String> entry : paramCache.entrySet()) {

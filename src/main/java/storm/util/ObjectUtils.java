@@ -141,4 +141,10 @@ public class ObjectUtils {
                 && isNullOrWhiteSpace(totalElectricity);
     }
 
+    public static void main(String[] args) {
+        final boolean vid = isNullOrWhiteSpace("test0012");
+        assert vid : "isNullOrWhiteSpace判断错误";
+        final boolean time = isNullOrWhiteSpace("20180618184157");
+        assert time : "isNullOrWhiteSpace判断错误";
+    }
 }

@@ -1,11 +1,13 @@
 package storm.handler.cusmade;
 
-import org.apache.storm.tuple.Tuple;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.util.DataUtils;
 import storm.util.ObjectUtils;
+import storm.util.ParamsRedisUtil;
 import storm.util.UUIDUtils;
 
 import java.text.ParseException;
@@ -19,7 +21,19 @@ import java.util.TreeMap;
  */
 public final class TimeOutOfRangeNotice {
 
-    public static long timeRangeMillisecond = 1000 * 60 * 10;
+    private static final Logger logger = LoggerFactory.getLogger(TimeOutOfRangeNotice.class);
+    private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
+
+    private static long timeRangeMillisecond = 1000 * 60 * 10;
+
+    public static long getTimeRangeMillisecond() {
+        return timeRangeMillisecond;
+    }
+
+    public static void setTimeRangeMillisecond(long timeRangeMillisecond) {
+        TimeOutOfRangeNotice.timeRangeMillisecond = timeRangeMillisecond;
+        logger.info("时间数值异常范围被设定为[" + timeRangeMillisecond + "]毫秒");
+    }
 
     /**
      * @param data 车辆数据
@@ -30,14 +44,18 @@ public final class TimeOutOfRangeNotice {
         final Map<String, Object> result = new TreeMap<>();
 
         final String vid = data.get(DataKey.VEHICLE_ID);
-        if(!ObjectUtils.isNullOrWhiteSpace(vid)) {
+        if(ObjectUtils.isNullOrWhiteSpace(vid)) {
             return result;
+        }
+
+        if(paramsRedisUtil.isTraceVehicleId(vid)) {
+            logger.warn("VID[" + vid + "]进入时间有效范围通知判定");
         }
 
         final String terminalTimeString = data.get(DataKey._2000_COLLECT_TIME);
 
         // 时间有效性异常
-        if(!ObjectUtils.isNullOrWhiteSpace(terminalTimeString)) {
+        if(ObjectUtils.isNullOrWhiteSpace(terminalTimeString)) {
             final Map<String, Object> notice = generateNotice(data, 1);
             result.put(vid, notice);
             return result;
@@ -57,7 +75,7 @@ public final class TimeOutOfRangeNotice {
         }
 
         // 数值异常
-        if(Math.abs(platformTime - terminalTime) > timeRangeMillisecond) {
+        if(Math.abs(platformTime - terminalTime) > getTimeRangeMillisecond()) {
             final Map<String, Object> notice = generateNotice(data, 2);
             result.put(vid, notice);
             return result;
