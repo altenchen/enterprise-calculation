@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 public class SynEsculBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1700001L;
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	private OutputCollector collector;
 	private static String statusEsTopic;
 	private long lastExeTime;
@@ -45,7 +46,7 @@ public class SynEsculBolt extends BaseRichBolt {
         long now = System.currentTimeMillis();
         lastExeTime = now;
         rebootTime = now;
-        String nocheckObj = ConfigUtils.sysDefine.getProperty("sys.reboot.nocheck");
+        String nocheckObj = configUtils.sysDefine.getProperty("sys.reboot.nocheck");
         if (! ObjectUtils.isNullOrEmpty(nocheckObj)) {
         	againNoproTime=Long.parseLong(nocheckObj)*1000;
 		}
@@ -123,8 +124,9 @@ public class SynEsculBolt extends BaseRichBolt {
     	if(SysDefine.SYNES_GROUP.equals(tuple.getSourceStreamId())){
     		String vid = tuple.getString(0);
             Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
-            if (null == data.get(DataKey.VEHICLE_ID))
-				data.put(DataKey.VEHICLE_ID, vid);
+            if (null == data.get(DataKey.VEHICLE_ID)) {
+                data.put(DataKey.VEHICLE_ID, vid);
+            }
 
             Map<String, Object> esMap = handler.getSendEsMsgAndSetAliveLast(data,now);
             if (null != esMap && esMap.size()>0) {
@@ -174,13 +176,15 @@ public class SynEsculBolt extends BaseRichBolt {
     }
     
     boolean isNullOrEmpty(Map map){
-		if(map == null || map.size()==0)
-			return true;
+		if(map == null || map.size()==0) {
+            return true;
+        }
 		return false;
 	}
     boolean isNullOrEmpty(String string){
-		if(null == string || "".equals(string))
-			return true;
+		if(null == string || "".equals(string)) {
+            return true;
+        }
 		return "".equals(string.trim());
 	}
     

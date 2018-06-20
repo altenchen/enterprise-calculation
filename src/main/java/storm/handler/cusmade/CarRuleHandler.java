@@ -33,6 +33,7 @@ import java.util.*;
 public class CarRuleHandler implements InfoNotice {
 
     private static final Logger logger = LoggerFactory.getLogger(CarRuleHandler.class);
+    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
     private Map<String, Integer> vidNoGps;
@@ -123,80 +124,80 @@ public class CarRuleHandler implements InfoNotice {
         topn = 20;
         onOffRedisKeys = "vehCache.qy.onoff.notice";
         socRedisKeys = "vehCache.qy.soc.notice";
-        if (null != ConfigUtils.sysDefine) {
+        if (null != configUtils.sysDefine) {
             logger.warn("运行静态代码块，判断配置文件是否存在");
-            String off = ConfigUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
+            String off = configUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
             if (!ObjectUtils.isNullOrEmpty(off)) {
                 offlinetime = Long.parseLong(off) * 1000;
             }
 
-            String value = ConfigUtils.sysDefine.getProperty("sys.soc.rule");
+            String value = configUtils.sysDefine.getProperty("sys.soc.rule");
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 socRule = Integer.parseInt(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty("sys.can.rule");
+            value = configUtils.sysDefine.getProperty("sys.can.rule");
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 enableCanRule = Integer.parseInt(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty("sys.ignite.rule");
+            value = configUtils.sysDefine.getProperty("sys.ignite.rule");
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 igniteRule = Integer.parseInt(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty("sys.gps.rule");
+            value = configUtils.sysDefine.getProperty("sys.gps.rule");
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 gpsRule = Integer.parseInt(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty("sys.abnormal.rule");
+            value = configUtils.sysDefine.getProperty("sys.abnormal.rule");
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 abnormalRule = Integer.parseInt(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty("sys.fly.rule");
+            value = configUtils.sysDefine.getProperty("sys.fly.rule");
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 flyRule = Integer.parseInt(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty("sys.onoff.rule");
+            value = configUtils.sysDefine.getProperty("sys.onoff.rule");
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 onoffRule = Integer.parseInt(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty("sys.milehop.rule");
+            value = configUtils.sysDefine.getProperty("sys.milehop.rule");
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 mileHopRule = Integer.parseInt(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_TIME);
+            value = configUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_TIME);
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 lowsocIntervalMillisecond = Long.parseLong(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_NO);
+            value = configUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_NO);
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 lowsocJudgeNum = Integer.parseInt(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty(SysDefine.LT_ALARM_SOC);
+            value = configUtils.sysDefine.getProperty(SysDefine.LT_ALARM_SOC);
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 socAlarm = Integer.parseInt(value);
                 value = null;
             }
 
-            value = ConfigUtils.sysDefine.getProperty(SysDefine.SYS_TIME_RULE);
+            value = configUtils.sysDefine.getProperty(SysDefine.SYS_TIME_RULE);
             if (!ObjectUtils.isNullOrEmpty(value)) {
                 enableTimeRule = Integer.parseInt(value);
                 value = null;

@@ -23,6 +23,7 @@ import storm.util.ObjectUtils;
 import storm.system.SysDefine;
 
 public class SystemCache {
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	public static Cache<String, Map<String,String>> newDefaultCache(){
 		return CacheBuilder.newBuilder()
 				.expireAfterAccess(10,TimeUnit.MINUTES)
@@ -45,8 +46,8 @@ public class SystemCache {
 	}
 	private static void tasks(){
 		ScheduledExecutorService service ;
-//		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new ListenThread(), 0, Long.parseLong(ConfigUtils.sysDefine.getProperty("redis.listenInterval")), TimeUnit.SECONDS);
-		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new RebulidThread(), 0, Long.parseLong(ConfigUtils.sysDefine.getProperty("redis.timeInterval")), TimeUnit.SECONDS);
+//		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new ListenThread(), 0, Long.parseLong(ConfigUtils.getInstance().sysDefine.getProperty("redis.listenInterval")), TimeUnit.SECONDS);
+		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new RebulidThread(), 0, Long.parseLong(ConfigUtils.getInstance().sysDefine.getProperty("redis.timeInterval")), TimeUnit.SECONDS);
 	}
 	private static void initRules(DataToRedis r){
 		filterRules=r.getFilterMap();
@@ -54,10 +55,12 @@ public class SystemCache {
 		defaultAlarmRules=r.smembers(4, "XNY.ALARM_ALL");
 	}
 	private static void destoryRules(){
-		if(null != filterRules)
+		if(null != filterRules) {
 			filterRules.clear();
-		if(null != alarmRules)
+		}
+		if(null != alarmRules) {
 			alarmRules.clear();
+		}
 		if (null != defaultAlarmRules) {
 			defaultAlarmRules.clear();
 		}
@@ -67,24 +70,28 @@ public class SystemCache {
 	}
 	private static void rebuild(DataToRedis r){
 		destoryRules();
-		if(null == r)
+		if(null == r) {
 			r=new DataToRedis();
+		}
 		initRules(r);
 	}
 	public static Map<String, String> filterRule(){
-		if(null == filterRules)
+		if(null == filterRules) {
 			initRules(redis);
+		}
 		return filterRules;
 	}
 	
 	public static Map<String, Set<String>> alarmRule(){
-		if(null == alarmRules)
+		if(null == alarmRules) {
 			initRules(redis);
+		}
 		return alarmRules;
 	}
 	public static Set<String> defaultAlarmRule(){
-		if(null == defaultAlarmRules)
+		if(null == defaultAlarmRules) {
 			initRules(redis);
+		}
 		return defaultAlarmRules;
 	}
 	/** 当日最大里程值 */
@@ -99,20 +106,27 @@ public class SystemCache {
     public static final Map<String, String> VID2_ALARM_INFO = new ConcurrentHashMap<String, String>();//预警判断信息缓存(vid-filterid-----报警次数_连续报警持续时间_最近一次报警时刻)
     
 	private static void protectMachine(){
-		if(MAX_MILE_MAP.size()>2000000)
+		if(MAX_MILE_MAP.size()>2000000) {
 			MAX_MILE_MAP.clear();
-		if(MIN_MILE_MAP.size()>2000000)
+		}
+		if(MIN_MILE_MAP.size()>2000000) {
 			MIN_MILE_MAP.clear();
-		if(CHARGE_MAP.size()>2000000)
+		}
+		if(CHARGE_MAP.size()>2000000) {
 			CHARGE_MAP.clear();
-		if(ALARM_MAP.size()>2000000)
+		}
+		if(ALARM_MAP.size()>2000000) {
 			ALARM_MAP.clear();
-		if(VEH_DATA_MAP.size()>2000000)
+		}
+		if(VEH_DATA_MAP.size()>2000000) {
 			VEH_DATA_MAP.clear();
-		if(VID2_ALARM.size()>2000000)
+		}
+		if(VID2_ALARM.size()>2000000) {
 			VID2_ALARM.clear();
-		if(VID2_ALARM_END.size()>2000000)
+		}
+		if(VID2_ALARM_END.size()>2000000) {
 			VID2_ALARM_END.clear();
+		}
 	}
 	static class RebulidThread implements Runnable{
 
@@ -219,8 +233,9 @@ public class SystemCache {
             } catch (Exception e) {
                 System.out.println("--------redis实时数据ONLINE遍历异常！" + e);
             }
-            if (ObjectUtils.isNullOrEmpty(list)) 
+            if (ObjectUtils.isNullOrEmpty(list)) {
 				return null;
+			}
             return list;
         }
 

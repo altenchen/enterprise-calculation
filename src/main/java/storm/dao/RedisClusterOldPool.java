@@ -15,6 +15,7 @@ import storm.util.ConfigUtils;
 
 public class RedisClusterOldPool {
 	private static Logger logg = LoggerFactory.getLogger(RedisClusterOldPool.class);
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     /** 连接池  */
 	private JedisPool jedisPool = null;
 	private Properties conf;
@@ -34,7 +35,7 @@ public class RedisClusterOldPool {
 	}
 	private void init(Properties clusconf){
 		try {
-			Properties sysconf = ConfigUtils.sysDefine;
+			Properties sysconf = configUtils.sysDefine;
 			conf = new Properties();
 			conf.setProperty("redis.host", clusconf.getProperty("redis.host"));
 			conf.setProperty("redis.port", clusconf.getProperty("redis.port"));
@@ -104,8 +105,9 @@ public class RedisClusterOldPool {
 	}
 	
 	public final JedisPool getJedisPool(){
-		if(jedisPool == null)
-			initRedisConn(ConfigUtils.sysDefine);
+		if(jedisPool == null) {
+			initRedisConn(configUtils.sysDefine);
+		}
 		return jedisPool;
 	}
 	public final Jedis getJedis(){

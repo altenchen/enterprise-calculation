@@ -31,6 +31,7 @@ import storm.util.ObjectUtils;
  * 数据库操作工具类
  */
 public final class Conn {
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 
 	static String fence_sql="SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,fe.VALID_TIME FROM SYS_FENCE_ELECTRONIC fe WHERE fe.FENCE_STATE=1";
 	static String fence_rule_only_sql="SELECT tl.FENCE_ID,tl.ALARM_TYPE_CODE,tl.HEIGHEST_SPEED,tl.MINIMUM_SPEED,tl.STOP_CAR_TIME FROM SYS_FENCE_ALARM_TYPE_LK tl WHERE tl.STATE=1";
@@ -51,7 +52,7 @@ public final class Conn {
 	private Connection conn;
 	
 	static {
-		Properties sysParams = ConfigUtils.sysParams;
+		Properties sysParams = configUtils.sysParams;
 		if (null != sysParams) {
 			if (sysParams.containsKey("fence.sql")) {
 				fence_sql = sysParams.getProperty("fence.sql");
@@ -94,7 +95,7 @@ public final class Conn {
 	}
 	public Connection getConn(){
 		try {
-			Properties p = ConfigUtils.sysDefine;
+			Properties p = configUtils.sysDefine;
 			String driver = p.getProperty("jdbc.driver");
 			String url = p.getProperty("jdbc.url");
 			String username = p.getProperty("jdbc.username");
@@ -140,8 +141,9 @@ public final class Conn {
 			}
 			for (String[] alarmlks :  faultLkAlarm) {
 				if (isNullOrEmpty(alarmlks[0]) 
-						|| isNullOrEmpty(alarmlks[1])) 
+						|| isNullOrEmpty(alarmlks[1])) {
 					continue;
+				}
 				FaultRule faultRule = faultMaps.get(alarmlks[0]);
 				if(null != faultRule){
 					
@@ -227,10 +229,12 @@ public final class Conn {
 			if (ObjectUtils.isNullOrEmpty(fault_rule_sql)) {
 				return null;
 			}
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
+			}
 			faults = new HashMap<String, FaultRule>();
 			s = conn.createStatement();
 			rs = s.executeQuery(fault_rule_sql);
@@ -260,10 +264,12 @@ public final class Conn {
 			if (ObjectUtils.isNullOrEmpty(fault_alarm_lk_sql)) {
 				return null;
 			}
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
+			}
 			rules = new LinkedList<String[]>();
 			s = conn.createStatement();
 			rs = s.executeQuery(fault_alarm_lk_sql);
@@ -288,10 +294,12 @@ public final class Conn {
 			if (ObjectUtils.isNullOrEmpty(alarm_code_sql)) {
 				return null;
 			}
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
+			}
 			rules = new LinkedList<Object[]>();
 			s = conn.createStatement();
 			rs = s.executeQuery(alarm_code_sql);
@@ -317,10 +325,12 @@ public final class Conn {
 			if (ObjectUtils.isNullOrEmpty(fault_alarm_rule_sql)) {
 				return null;
 			}
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
+			}
 			rules = new HashMap<String,FaultAlarmRule>();
 			s = conn.createStatement();
 			rs = s.executeQuery(fault_alarm_rule_sql);
@@ -363,10 +373,12 @@ public final class Conn {
 			if (ObjectUtils.isNullOrEmpty(falut_rank_sql)) {
 				return null;
 			}
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
+			}
 			rules = new LinkedList<String[]>();
 			s = conn.createStatement();
 			rs = s.executeQuery(falut_rank_sql);
@@ -394,10 +406,12 @@ public final class Conn {
 			if (ObjectUtils.isNullOrEmpty(early_warning_sql)) {
 				return null;
 			}
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
+			}
 			rules = new LinkedList<Object[]>();
 			s = conn.createStatement();
 			rs = s.executeQuery(early_warning_sql);
@@ -427,10 +441,12 @@ public final class Conn {
 			if (ObjectUtils.isNullOrEmpty(item_coef_offset_sql)) {
 				return null;
 			}
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
+			}
 			rules = new LinkedList<Object[]>();
 			s = conn.createStatement();
 			rs = s.executeQuery(item_coef_offset_sql);
@@ -456,8 +472,9 @@ public final class Conn {
 	public Map<String, List<EleFence>> vidFences(){
 		
 		List<String[]> vidFenceMap = getVidFenceMap();
-		if(null == vidFenceMap || vidFenceMap.size() == 0)
+		if(null == vidFenceMap || vidFenceMap.size() == 0) {
 			return null;
+		}
 		Map<String, List<EleFence>> vidfences = new HashMap<String, List<EleFence>>();
 		try {
 			Map<String, EleFence> fenceMap= fencesWithId();
@@ -476,10 +493,12 @@ public final class Conn {
 						
 						List<EleFence> fences = vidfences.get(vid);
 						EleFence fence = fenceMap.get(fenceId);
-						if(null == fences)
+						if(null == fences) {
 							fences = new LinkedList<EleFence>();
-						if(null != fence && ! fences.contains(fence))
+						}
+						if(null != fence && ! fences.contains(fence)) {
 							fences.add(fence);
+						}
 						vidfences.put(vid, fences);
 					}
 				}
@@ -550,10 +569,12 @@ public final class Conn {
 			if (ObjectUtils.isNullOrEmpty(fence_sql)) {
 				return null;
 			}
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
+			}
 			fences = new LinkedList<EleFence>();
 			s = conn.createStatement();
 			rs = s.executeQuery(fence_sql);
@@ -587,10 +608,12 @@ public final class Conn {
 			if (ObjectUtils.isNullOrEmpty(fence_vid_sql)) {
 				return null;
 			}
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
+			}
 			rules = new LinkedList<String[]>();
 			s = conn.createStatement();
 			rs = s.executeQuery(fence_vid_sql);
@@ -616,10 +639,12 @@ public final class Conn {
 			if (ObjectUtils.isNullOrEmpty(fence_rule_only_sql)) {
 				return null;
 			}
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
+			}
 			rules = new LinkedList<Map<String, String>>();
 			s = conn.createStatement();
 			rs = s.executeQuery(fence_rule_only_sql);
@@ -642,8 +667,9 @@ public final class Conn {
 	}
 	
 	private Map<String,List<Rule>> groupRulesById(List<Map<String, String>> rules){
-		if (null == rules) 
+		if (null == rules) {
 			return null;
+		}
 		
 		try {
 			Map<String,List<Rule>> maps= new HashMap<String,List<Rule>>();
@@ -652,8 +678,9 @@ public final class Conn {
 					String fenceId = map.get("fenceId");
 					String alarmTypeCode = map.get("alarmTypeCode");
 					List<Rule> list = maps.get(fenceId);
-					if (null == list) 
+					if (null == list) {
 						list = new LinkedList<Rule>();
+					}
 					if("0001".equals(alarmTypeCode)){
 						SpeedAlarmRule rule = new SpeedAlarmRule();
 						rule.setCode(alarmTypeCode);
@@ -676,24 +703,27 @@ public final class Conn {
 						StopAlarmRule rule = new StopAlarmRule();
 						rule.stopType = AlarmRule.IN;
 						int stopTime = toInt(map.get("stopTime"));
-						if (stopTime>0) 
+						if (stopTime>0) {
 							rule.stopTime = stopTime*60;
+						}
 						rule.setCode(alarmTypeCode);
 						list.add(rule);
 					} else if("0010".equals(alarmTypeCode)){
 						StopAlarmRule rule = new StopAlarmRule();
 						rule.stopType = AlarmRule.OUT;
 						int stopTime = toInt(map.get("stopTime"));
-						if (stopTime>0) 
+						if (stopTime>0) {
 							rule.stopTime = stopTime*60;
+						}
 						rule.setCode(alarmTypeCode);
 						list.add(rule);
 					} else if("0009,0010".equals(alarmTypeCode)){
 						StopAlarmRule rule = new StopAlarmRule();
 						rule.stopType = AlarmRule.INOUT;
 						int stopTime = toInt(map.get("stopTime"));
-						if (stopTime>0) 
+						if (stopTime>0) {
 							rule.stopTime = stopTime*60;
+						}
 						rule.setCode(alarmTypeCode);
 						list.add(rule);
 					}
@@ -709,8 +739,9 @@ public final class Conn {
 	private int toInt(String str){
 		String numst = stringDoubleNumber(str);
 		int poidx = numst.indexOf(".");
-		if(0 < poidx)
+		if(0 < poidx) {
 			numst = numst.substring(0, poidx);
+		}
 		return Integer.valueOf(numst);
 	}
 	private double todouble(String str){
@@ -724,16 +755,18 @@ public final class Conn {
         return "-1";
     }
 	private Map<String,List<Map<String,String>>> groupById(List<Map<String, String>> rules){
-		if (null == rules) 
+		if (null == rules) {
 			return null;
+		}
 		
 		Map<String,List<Map<String,String>>> maps= new HashMap<String,List<Map<String, String>>>();
 		for (Map<String, String> map : rules) {
 			if (null != map && map.size()>0) {
 				String fenceId = map.get("fenceId");
 				List<Map<String,String>> list = maps.get(fenceId);
-				if (null == list) 
+				if (null == list) {
 					list = new LinkedList<Map<String,String>>();
+				}
 				list.add(map);
 				maps.put(fenceId, list);
 			}
@@ -747,20 +780,24 @@ public final class Conn {
 		Statement s = null;
 		ResultSet rs = null;
 		try {
-			if (null == conn || conn.isClosed()) 
+			if (null == conn || conn.isClosed()) {
 				conn = getConn();
-			if (null == conn)
+			}
+			if (null == conn) {
 				return null;
-			if (null == filedName || filedName.length<1) 
+			}
+			if (null == filedName || filedName.length<1) {
 				return list;
+			}
 			list = new LinkedList<Map<String, Object>>();
 			s = conn.createStatement();
 			rs = s.executeQuery(sql);
 			while(rs.next()){
 				Map<String,Object> map = new TreeMap<String,Object>();
 				for (int i = 0; i < filedName.length; i++) {
-					if (null != filedName[i] && !"".equals(filedName[i].trim())) 
+					if (null != filedName[i] && !"".equals(filedName[i].trim())) {
 						map.put(filedName[i], rs.getObject(i+1));
+					}
 				}
 				list.add(map);
 			}
@@ -774,8 +811,9 @@ public final class Conn {
 	}
 	
 	boolean isNullOrEmpty(String string){
-		if(null == string || "".equals(string))
+		if(null == string || "".equals(string)) {
 			return true;
+		}
 		return "".equals(string.trim());
 	}
 	

@@ -36,6 +36,7 @@ import storm.util.ParamsRedisUtil;
 public class SysRealDataCache {
 
 	private static Logger logger = LoggerFactory.getLogger(SysRealDataCache.class);
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	public static final String unknow="UNKNOW";
 	/**
 	 * 缓存666天, 最多1500万条
@@ -102,9 +103,9 @@ public class SysRealDataCache {
 			if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
 				timeouttime=1000*(int)outbyconf;
 			}
-			if (null != ConfigUtils.sysParams) {
+			if (null != configUtils.sysParams) {
 				
-				String typeparams = ConfigUtils.sysParams.getProperty("charge.car.type.id");
+				String typeparams = configUtils.sysParams.getProperty("charge.car.type.id");
 				if (!ObjectUtils.isNullOrEmpty(typeparams)) {
 					int colidx = typeparams.indexOf(",");
 					String []strings = null;
@@ -194,8 +195,9 @@ public class SysRealDataCache {
 		String vid = dat.get(DataKey.VEHICLE_ID);
 		String vin = dat.get(DataKey.VEHICLE_NUMBER);
 		String[] strings = carInfoByVin(vin);
-		if(null ==strings || strings.length != 15)
+		if(null ==strings || strings.length != 15) {
 			return ;
+		}
 		String cartypeId = strings[10];
 		if (null == cartypeId || unknow.equals(cartypeId)) {
 			return;
@@ -261,16 +263,18 @@ public class SysRealDataCache {
 	 * @return
 	 */
 	private static boolean addLivelyCar(Map<String, String> dat,long now,long timeout){
-		if(null == dat)
+		if(null == dat) {
 			return false;
+		}
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time))
+					|| ObjectUtils.isNullOrEmpty(time)) {
 				return false;
+			}
 			
 			String utc = dat.get(SysDefine.ONLINEUTC);
 			long utctime = Long.valueOf(NumberUtils.stringNumber(utc));
@@ -325,24 +329,28 @@ public class SysRealDataCache {
 	 * @return
 	 */
 	boolean istimeout(Map<String, String> dat,long now,long timeout){
-		if(null == dat)
+		if(null == dat) {
 			return false;
+		}
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time))
+					|| ObjectUtils.isNullOrEmpty(time)) {
 				return false;
+			}
 			if (dat.containsKey(SysDefine.ONLINEUTC)) {
 				long lastTime=Long.valueOf(dat.get(SysDefine.ONLINEUTC));
-				if (now-lastTime <= timeout)
+				if (now-lastTime <= timeout) {
 					return true;
+				}
 			} else {
 				long lastTime = timeformat.stringTimeLong(time);
-				if (now-lastTime<= timeout)
+				if (now-lastTime<= timeout) {
 					return true;
+				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -350,8 +358,9 @@ public class SysRealDataCache {
 		return false;
 	}
 	private static void resetCarCache(){
-		if (null != carInfoCache) 
+		if (null != carInfoCache) {
 			carInfoCache.cleanUp();
+		}
 		Map<String, String> map = redis.hgetallMapByKeyAndDb("XNY.CARINFO", 0);
 		for (Map.Entry<String, String> entry : map.entrySet()) {
 			try {
@@ -359,13 +368,15 @@ public class SysRealDataCache {
 				String value = entry.getValue();
 				
 				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) 
+						|| ObjectUtils.isNullOrEmpty(value)) {
 					continue;
+				}
 
 				String []strings=value.split(",",-1);
 				
-				if(strings.length != 15)
+				if(strings.length != 15) {
 					continue;
+				}
 				carInfoCache.put(key, strings);
 			}catch (Exception e) {
 				e.printStackTrace();

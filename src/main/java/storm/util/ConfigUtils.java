@@ -1,5 +1,10 @@
 package storm.util;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -8,46 +13,42 @@ import java.util.Properties;
 
 /**
  * 配置工具
+ * @author xzp
  */
-public final class ConfigUtils implements Serializable{
-	/**
-	 * 
-	 */
+public final class ConfigUtils implements Serializable {
 	private static final long serialVersionUID = 1920000001L;
-	public static final Properties sysDefine = new Properties();
-	public static final Properties sysParams = new Properties();
-	public static final Properties carTypeMapping = new Properties();
-	static{
-		InputStream in = null;
-		try {
-			in = ConfigUtils.class.getClassLoader().getResourceAsStream("sysDefine.properties");
-			sysDefine.load(new InputStreamReader(in, "UTF-8"));
 
-			in = ConfigUtils.class.getClassLoader().getResourceAsStream("parms.properties");
-			sysParams.load(new InputStreamReader(in, "UTF-8"));
+	private static final Logger logger = LoggerFactory.getLogger(ConfigUtils.class);
 
-//			in = ConfigUtils.class.getClassLoader().getResourceAsStream("sysDefine.properties");
-//			sysDefine.load(in);
-//
-//			in = ConfigUtils.class.getClassLoader().getResourceAsStream("parms.properties");
-//			sysParams.load(in);
-			
-//			in = ConfigUtils.class.getClassLoader().getResourceAsStream("car_type_function_define.properties");
-//			carTypeMapping.load(in);
-			
-			in.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	private static final ConfigUtils INSTANCE = new ConfigUtils();
+
+	@Contract(pure = true)
+    public static final ConfigUtils getInstance() {
+	    return INSTANCE;
 	}
-	public static Properties getSysDefine (){
-		return sysDefine;
+
+	public final Properties sysDefine = new Properties();
+
+	public final Properties sysParams = new Properties();
+
+	{
+        loadFromResource("sysDefine.properties", sysDefine);
+        loadFromResource("parms.properties", sysParams);
 	}
-	public static Properties getParams (){
-		return sysParams;
-	}
-	public static Properties getCarTypeMapping (){
-		return carTypeMapping;
-	}
-	public static void init(){}
+
+    private void loadFromResource(@NotNull String resourceName, @NotNull Properties properties) {
+        InputStream in = ConfigUtils.class.getClassLoader().getResourceAsStream(resourceName);
+        try {
+            properties.load(new InputStreamReader(in, "UTF-8"));
+            logger.info("从资源文件[" + resourceName + "]初始化配置成功");
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                in.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }

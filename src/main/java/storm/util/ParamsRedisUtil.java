@@ -23,6 +23,8 @@ public final class ParamsRedisUtil {
      */
     private static final Logger logger = LoggerFactory.getLogger(ParamsRedisUtil.class);
 
+    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
+
     /**
      * SOC百分值
      */
@@ -131,7 +133,7 @@ public final class ParamsRedisUtil {
 		PARAMS.put(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND, 1000 * 60 * 10);
 		PARAMS.put(TRACE_VEHICLE_ID, "test\\d+");
 
-        final Properties properties = ConfigUtils.sysDefine;
+        final Properties properties = configUtils.sysDefine;
         if(properties != null) {
             // region 规则覆盖
             {

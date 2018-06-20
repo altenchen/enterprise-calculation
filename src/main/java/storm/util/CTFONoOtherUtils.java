@@ -9,12 +9,13 @@ import com.ctfo.datacenter.cache.handle.CTFODBManager;
 import com.ctfo.datacenter.cache.handle.DataCenter;
 
 public class CTFONoOtherUtils {
+    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	private static CTFODBManager ctfoDBManager;
     private static CTFOCacheDB ctfoCacheDB ;
     private static CTFOCacheTable ctfoCacheTable;
     
     static{
-    	initCTFO(ConfigUtils.sysDefine);
+    	initCTFO(configUtils.sysDefine);
     }
     private static void initCTFO(Properties conf){
     	 try{
@@ -48,8 +49,9 @@ public class CTFONoOtherUtils {
         }
     }
     public static final CTFOCacheTable getDefaultCTFOCacheTable(){
-    	if (null == ctfoCacheTable) 
-    		reconnectionDefaultRedis(ConfigUtils.sysDefine);
+    	if (null == ctfoCacheTable) {
+            reconnectionDefaultRedis(configUtils.sysDefine);
+        }
     	return ctfoCacheTable;
     }
     

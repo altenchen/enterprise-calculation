@@ -38,6 +38,7 @@ import storm.util.ObjectUtils;
  */
 public class MailCalHandler {
 	private static Logger logger = LoggerFactory.getLogger(MailCalHandler.class);
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	public static final String unknow="UNKNOW";
 	public static final String unknowAndunknow="UNKNOW,UNKNOW";
 	public static final String unknowString="UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW";
@@ -122,11 +123,11 @@ public class MailCalHandler {
 		resetUserCache();
 	}
 	private static void setTime(){
-		String offli=ConfigUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
+		String offli= configUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
 		if(null != offli) {
 			time=1000*Long.valueOf(offli);
 		}
-		String stopli=ConfigUtils.sysDefine.getProperty("redis.offline.stoptime");
+		String stopli= configUtils.sysDefine.getProperty("redis.offline.stoptime");
 		if(null != stopli) {
 			stoptime=1000*Long.valueOf(stopli);
 		}
@@ -135,8 +136,8 @@ public class MailCalHandler {
 		long clustertime = 180L;
 		long stattime = 600L;
 		try {
-			String cltt = ConfigUtils.sysDefine.getProperty("redis.totalInterval");
-			String stt = ConfigUtils.sysDefine.getProperty("redis.monitor.time");
+			String cltt = configUtils.sysDefine.getProperty("redis.totalInterval");
+			String stt = configUtils.sysDefine.getProperty("redis.monitor.time");
 			if (null != cltt) {
 				clustertime=Long.parseLong(cltt);
 			}
@@ -393,7 +394,7 @@ public class MailCalHandler {
 			setComplete(false);
 			
 			stime = 1506790800000L;//2017/10/01/01:00:00的long值时间
-			String threads=ConfigUtils.sysDefine.getProperty("stat.thread.no");
+			String threads= configUtils.sysDefine.getProperty("stat.thread.no");
 			if(null != threads) {
 				poolsz=Integer.valueOf(threads);
 			}
@@ -836,7 +837,7 @@ public class MailCalHandler {
 			staplantOnlyCarTypeMap = new ConcurrentHashMap<String, Map<String, String>>();
 			stauserTotalDistAndTypeMap = new ConcurrentHashMap<String,Map<String, Map<String, String>>>();
 			stauserTotalOnlyDistMap = new ConcurrentHashMap<String,Map<String, Map<String, String>>>();
-			String threads=ConfigUtils.sysDefine.getProperty("stat.thread.no");
+			String threads= configUtils.sysDefine.getProperty("stat.thread.no");
 			if(null != threads) {
 				poolsz=Integer.valueOf(threads);
 			}

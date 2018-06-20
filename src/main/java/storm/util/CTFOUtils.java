@@ -18,11 +18,9 @@ import com.ctfo.datacenter.cache.handle.CTFODBManager;
 import com.ctfo.datacenter.cache.handle.DataCenter;
 
 public class CTFOUtils implements Serializable{
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 193000000001L;
 	private static Logger logger = LoggerFactory.getLogger(CTFOUtils.class);
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	private static CTFODBManager ctfoDBManager;
     private static CTFOCacheDB ctfoCacheDB ;
     private static CTFOCacheTable ctfoCacheTable;
@@ -32,7 +30,7 @@ public class CTFOUtils implements Serializable{
     
     static {
     	try {
-			initCTFO(ConfigUtils.sysDefine);
+			initCTFO(configUtils.sysDefine);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -81,9 +79,9 @@ public class CTFOUtils implements Serializable{
         while(true){
             try {
             	retry++;
-            	if(null != ctfoCacheDB)
-            		ctfoCacheTable = ctfoCacheDB.getTable(conf.getProperty("ctfo.cacheTable"));
-            	else {
+            	if(null != ctfoCacheDB) {
+					ctfoCacheTable = ctfoCacheDB.getTable(conf.getProperty("ctfo.cacheTable"));
+				} else {
             		try {
         		 		String addr = conf.getProperty("ctfo.cacheHost") + ":" + conf.getProperty("ctfo.cachePort");
         		 		ctfoDBManager = DataCenter.newCTFOInstance("cache", addr);
@@ -98,8 +96,9 @@ public class CTFOUtils implements Serializable{
         	    		System.out.println("------ CTFOUtils relink success...");
         	    		logger.info("重连 CTFO 成功...");
     				}
-        	    	if(null != ctfoCacheDB)
-                		ctfoCacheTable = ctfoCacheDB.getTable(conf.getProperty("ctfo.cacheTable"));
+        	    	if(null != ctfoCacheDB) {
+						ctfoCacheTable = ctfoCacheDB.getTable(conf.getProperty("ctfo.cacheTable"));
+					}
         	    	
 				}
                 if(ctfoCacheTable != null){
@@ -131,8 +130,9 @@ public class CTFOUtils implements Serializable{
     }
     public static final CTFOCacheTable getDefaultCTFOCacheTable(){
     	try {
-			if (null == ctfoCacheTable) 
-				reconnectionDefaultRedis(ConfigUtils.sysDefine);
+			if (null == ctfoCacheTable) {
+				reconnectionDefaultRedis(configUtils.sysDefine);
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -144,7 +144,7 @@ public class CTFOUtils implements Serializable{
 			Calendar calendar =Calendar.getInstance();
 			calendar.setTime(new Date());
 			int year = calendar.get(Calendar.YEAR);
-			String table=ConfigUtils.sysDefine.getProperty("ctfo.supplyTable");
+			String table= configUtils.sysDefine.getProperty("ctfo.supplyTable");
 			for(int y=year;y>year-3;y--){
 				initDBTable(ctfoDBManager,y+"",table);
 			}
@@ -212,7 +212,7 @@ public class CTFOUtils implements Serializable{
 		try {
 			cacheTable = tableMap.get(name);
 			if (null == cacheTable) {
-				reconnection(ConfigUtils.sysDefine,name);
+				reconnection(configUtils.sysDefine,name);
 				cacheTable =tableMap.get(name);
 			}
 		} catch (Exception e) {

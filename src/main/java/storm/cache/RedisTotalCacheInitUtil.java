@@ -33,6 +33,7 @@ import storm.util.ObjectUtils;
 
 public class RedisTotalCacheInitUtil {
 	private static Logger logger = LoggerFactory.getLogger(RedisTotalCacheInitUtil.class);
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	public static final String unknow="UNKNOW";
 	public static final String unknowAndunknow="UNKNOW,UNKNOW";
 	public static final String unknowString="UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW";
@@ -70,13 +71,15 @@ public class RedisTotalCacheInitUtil {
 				String value = entry.getValue();
 				
 				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) 
+						|| ObjectUtils.isNullOrEmpty(value)) {
 					continue;
+				}
 
 				String []strings=value.split(",",-1);
 				
-				if(strings.length != 15)
+				if(strings.length != 15) {
 					continue;
+				}
 				carInfoArray.put(key, strings);
 			}catch (Exception e) {
 					
@@ -85,25 +88,29 @@ public class RedisTotalCacheInitUtil {
 		tasks();
 	}
 	private static void resetAllCache(){
-		if (null != carInfoCache) 
+		if (null != carInfoCache) {
 			carInfoCache.cleanUp();
+		}
 		Map<String, String> map = redis.hgetallMapByKeyAndDb("XNY.CARINFO", 0);
 		carInfoCache.putAll(map);
-		if (null != carInfoArray) 
+		if (null != carInfoArray) {
 			carInfoArray.clear();
+		}
 		for (Map.Entry<String, String> entry : map.entrySet()) {
 			try {
 				String key = entry.getKey();
 				String value = entry.getValue();
 				
 				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) 
+						|| ObjectUtils.isNullOrEmpty(value)) {
 					continue;
+				}
 
 				String []strings=value.split(",",-1);
 				
-				if(strings.length != 15)
+				if(strings.length != 15) {
 					continue;
+				}
 				carInfoArray.put(key, strings);
 			}catch (Exception e) {
 					
@@ -112,29 +119,33 @@ public class RedisTotalCacheInitUtil {
 		resetUserCache();
 	}
 	private static void setTime(){
-		String offli=ConfigUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-		if(null != offli)
+		String offli= configUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
+		if(null != offli) {
 			time=1000*Long.valueOf(offli);
-		String stopli=ConfigUtils.sysDefine.getProperty("redis.offline.stoptime");
-		if(null != stopli)
+		}
+		String stopli= configUtils.sysDefine.getProperty("redis.offline.stoptime");
+		if(null != stopli) {
 			stoptime=1000*Long.valueOf(stopli);
+		}
 	}
 	private static void tasks(){
 		long clustertime = 180L;
 		long stattime = 600L;
 		try {
-			String cltt = ConfigUtils.sysDefine.getProperty("redis.totalInterval");
-			String stt = ConfigUtils.sysDefine.getProperty("redis.monitor.time");
-			if (null != cltt) 
+			String cltt = configUtils.sysDefine.getProperty("redis.totalInterval");
+			String stt = configUtils.sysDefine.getProperty("redis.monitor.time");
+			if (null != cltt) {
 				clustertime=Long.valueOf(cltt);
-			if (null != stt) 
+			}
+			if (null != stt) {
 				stattime=Long.valueOf(stt);
+			}
 			
 		} catch (Exception e) {
 			
 		}
 		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new TimerThread(), 0, clustertime, TimeUnit.SECONDS);
-//		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new CacheThread(), 30, 2*Long.parseLong(ConfigUtils.sysDefine.getProperty("redis.totalInterval")), TimeUnit.SECONDS);
+//		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new CacheThread(), 30, 2*Long.parseLong(ConfigUtils.getInstance().sysDefine.getProperty("redis.totalInterval")), TimeUnit.SECONDS);
 		Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new StatCarinfoThread(), 0, stattime, TimeUnit.SECONDS);
 	}
 
@@ -159,16 +170,18 @@ public class RedisTotalCacheInitUtil {
 						while (i < 3) {
 							i++;
 							string=redis.hgetBykeyAndFiled("XNY.CARINFO", vin, 0);
-							if(!ObjectUtils.isNullOrEmpty(string))
+							if(!ObjectUtils.isNullOrEmpty(string)) {
 								return string;
+							}
 							TimeUnit.MILLISECONDS.sleep(3);
 						}
 					} catch (Exception e) {
 						e.printStackTrace();
 						TimeUnit.MILLISECONDS.sleep(3);
 						string=redis.hgetBykeyAndFiled("XNY.CARINFO", vin, 0);
-						if(!ObjectUtils.isNullOrEmpty(string))
+						if(!ObjectUtils.isNullOrEmpty(string)) {
 							return string;
+						}
 					}
 					return unknowString;
 				}
@@ -193,8 +206,9 @@ public class RedisTotalCacheInitUtil {
 
 				for (String str : sets) {
 					bool="1".equals(redis.getString(10, str));
-					if (bool) 
+					if (bool) {
 						break;
+					}
 				}
 				if (bool) {
 					for (String str : sets) {
@@ -220,8 +234,9 @@ public class RedisTotalCacheInitUtil {
 				@Override
 				public Set<String> call() throws Exception {
 					Map<String, Set<String>> map=RedisOrganizationUtil.getCarUser(change);
-					if(null==map)
+					if(null==map) {
 						return null;
+					}
 					Set<String> set=map.get(vin);
 					return set;
 				}
@@ -403,8 +418,9 @@ public class RedisTotalCacheInitUtil {
 		}
 		
 		private void addKeys(Set<String> set,Map<String, Map<String,String>> map){
-			if (null != map && map.size() > 0) 
+			if (null != map && map.size() > 0) {
 				set.addAll(map.keySet());
+			}
 		}
 		
 		private void addKeys(Set<String> set,Collection<Map<String, Map<String,String>>> maps){
@@ -418,17 +434,21 @@ public class RedisTotalCacheInitUtil {
 		private Set<String> dbexsistKeys(int db){
 			Set<String>exsistkeys = new HashSet<String>();
 			Set<String>keys=redis.getKeysSet(db, "CARINFO.*");
-			if(null != keys && keys.size()>0)
+			if(null != keys && keys.size()>0) {
 				exsistkeys.addAll(keys);
+			}
 			keys=redis.getKeysSet(db, "ORGCAR.*");
-			if(null != keys && keys.size()>0)
+			if(null != keys && keys.size()>0) {
 				exsistkeys.addAll(keys);
+			}
 			keys=redis.getKeysSet(db, "PLANTCAR.*");
-			if(null != keys && keys.size()>0)
+			if(null != keys && keys.size()>0) {
 				exsistkeys.addAll(keys);
+			}
 			keys=redis.getKeysSet(db, "USERCAR.*");
-			if(null != keys && keys.size()>0)
+			if(null != keys && keys.size()>0) {
 				exsistkeys.addAll(keys);
+			}
 			return exsistkeys;
 		}
 		private void saveCollection(Collection<Map<String, Map<String, String>>> collection,int db){
@@ -443,16 +463,18 @@ public class RedisTotalCacheInitUtil {
 		
 		private void saveMap(Map<String, Map<String, String>> map,int db){
 			try {
-				if(null!=map)
+				if(null!=map) {
 					for(Map.Entry<String, Map<String,String>> entry:map.entrySet()){
 						String key = entry.getKey();
 						Map<String,String> value = entry.getValue();
-						if (ObjectUtils.isNullOrEmpty(key) 
-								|| ObjectUtils.isNullOrEmpty(value) ) 
+						if (ObjectUtils.isNullOrEmpty(key)
+								|| ObjectUtils.isNullOrEmpty(value) ) {
 							continue;
+						}
 
 						redis.saveMap(value, db, key);
 					}
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -481,8 +503,9 @@ public class RedisTotalCacheInitUtil {
     						break;
     					}
     				}
-                	if (allComplete) 
-                		exe=false;
+                	if (allComplete) {
+						exe=false;
+					}
                 }
                 clearMap();
                 for (OneKeysExecutor executor : executors) {
@@ -515,17 +538,20 @@ public class RedisTotalCacheInitUtil {
         }
 
         private synchronized void statisticsUser(Map<String, Map<String, Map<String,String>>>from,Map<String, Map<String, Map<String,String>>>total){
-        	if (ObjectUtils.isNullOrEmpty(from)) 
+        	if (ObjectUtils.isNullOrEmpty(from)) {
 				return;
+			}
         	for (Map.Entry<String, Map<String, Map<String,String>>> entry : from.entrySet()){
         		try {
 					String user=entry.getKey();
 					Map<String, Map<String,String>> fromMap=entry.getValue();
-					if(ObjectUtils.isNullOrEmpty(user) || ObjectUtils.isNullOrEmpty(fromMap))
+					if(ObjectUtils.isNullOrEmpty(user) || ObjectUtils.isNullOrEmpty(fromMap)) {
 						continue;
+					}
 					Map<String, Map<String, String>>totalMap=total.get(user);
-					if (null==totalMap) 
+					if (null==totalMap) {
 						totalMap=new HashMap<String,Map<String, String>>();
+					}
 					statistics(fromMap, totalMap);
 					total.put(user, totalMap);
 				} catch (Exception e) {
@@ -536,19 +562,22 @@ public class RedisTotalCacheInitUtil {
 
         private synchronized void statistics(Map<String, Map<String, String>>fromMap,Map<String, Map<String, String>>totalMap){
 
-        	if (ObjectUtils.isNullOrEmpty(fromMap)) 
+        	if (ObjectUtils.isNullOrEmpty(fromMap)) {
 				return;
+			}
 			
         	for (Map.Entry<String, Map<String, String>> entry : fromMap.entrySet()) {
 				try {
 					String key=entry.getKey();
 					Map<String, String> data=entry.getValue();
-					if(ObjectUtils.isNullOrEmpty(key) || ObjectUtils.isNullOrEmpty(data))
+					if(ObjectUtils.isNullOrEmpty(key) || ObjectUtils.isNullOrEmpty(data)) {
 						continue;
+					}
 
 					Map<String, String>dataMap=totalMap.get(key);
-					if(null==dataMap)
+					if(null==dataMap) {
 						dataMap=new TreeMap<String, String>();
+					}
 					double totalmileage=null==dataMap.get(SysDefine.MILEAGE_TOTAL)?0:Double.valueOf(dataMap.get(SysDefine.MILEAGE_TOTAL));
 					long totalonline=null==dataMap.get(SysDefine.ONLINE_COUNT)?0:Long.valueOf(dataMap.get(SysDefine.ONLINE_COUNT));
 					long totalcaractive=null==dataMap.get(SysDefine.CAR_ACTIVE_COUNT)?0:Long.valueOf(dataMap.get(SysDefine.CAR_ACTIVE_COUNT));
@@ -628,8 +657,9 @@ public class RedisTotalCacheInitUtil {
         }
         void clearCollection(Collection<Map<String, Map<String, String>>> collection){
         	for (Map<String, Map<String, String>> map : collection) {
-				if(null!=map)
+				if(null!=map) {
 					map.clear();
+				}
 			}
         }
         
@@ -685,25 +715,30 @@ public class RedisTotalCacheInitUtil {
 		@Override
 		public void run() {
 
-			if(null!=keys && keys.size()>0)
+			if(null!=keys && keys.size()>0) {
 				executeBykeys(keys);
+			}
 			setComplete(true);
 		}
 
 		void executeBykeys(List<String> keys){
 			try {
 				for(String key :keys){
-					if (ObjectUtils.isNullOrEmpty(key)) 
+					if (ObjectUtils.isNullOrEmpty(key)) {
 						continue;
+					}
 					key=key.split("-",3)[2];
-					if (ObjectUtils.isNullOrEmpty(key)) 
+					if (ObjectUtils.isNullOrEmpty(key)) {
 						continue;
+					}
 					Map<String, String> map=CTFOUtils.getDefaultCTFOCacheTable().queryHash(key);
-					if(ObjectUtils.isNullOrEmpty(map))
+					if(ObjectUtils.isNullOrEmpty(map)) {
 						continue;
+					}
 					String vin=map.get("VIN");
-					if(vinMap.containsKey(vin))
+					if(vinMap.containsKey(vin)) {
 						continue;
+					}
 					vinMap.put(vin, true);
 					if (!ObjectUtils.isNullOrEmpty(vin)) {
         				String []strings=carInfoArray.get(vin);
@@ -761,55 +796,62 @@ public class RedisTotalCacheInitUtil {
 //            			String userInfo=userInfoByVin(vin);
 //            			String[]users=userInfo.split(",");
             			Set<String>users=carUserByVin(vin);
-            			if(null!=users)
-            			for (String user : users) {
-            				if (ObjectUtils.isNullOrEmpty(user)) 
-								continue;
-            				Map<String, Map<String,String>>userDistAndTypeMap=userCacheDistAndTypeMap.get(user);
-            				if (null==userDistAndTypeMap) 
-								userDistAndTypeMap=new HashMap<String,Map<String, String>>();
-							
-            				Map<String, Map<String,String>>userOnlyDistMap=userCacheOnlyDistMap.get(user);
-            				if (null==userOnlyDistMap) 
-            					userOnlyDistMap=new HashMap<String,Map<String, String>>();
-            				
-            				Map<String, Map<String,String>>userOnlyCarTypeMap=userCacheOnlyCarTypeMap.get(user);
-            				if (null==userOnlyCarTypeMap) 
-            					userOnlyCarTypeMap=new HashMap<String,Map<String, String>>();
-            				
-            				String userDistAndType="USERCAR."+user+"."+district+"."+carType;
-                			execu(now,map,userDistAndType,userDistAndTypeMap);
-                			
-                			String userOnlyDist="USERCAR."+user+".DIST."+district;
-                			execu(now,map,userOnlyDist,userOnlyDistMap);
-                			
-                			String userOnlyCarType="USERCAR."+user+".CARTYPE."+carType;
-                			execu(now,map,userOnlyCarType,userOnlyCarTypeMap);
+            			if(null!=users) {
+							for (String user : users) {
+								if (ObjectUtils.isNullOrEmpty(user)) {
+									continue;
+								}
+								Map<String, Map<String,String>>userDistAndTypeMap=userCacheDistAndTypeMap.get(user);
+								if (null==userDistAndTypeMap) {
+									userDistAndTypeMap = new HashMap<String, Map<String, String>>();
+								}
 
-            				userCacheDistAndTypeMap.put(user, userDistAndTypeMap);
-            				userCacheOnlyDistMap.put(user, userOnlyDistMap);
-            				userCacheOnlyCarTypeMap.put(user, userOnlyCarTypeMap);
-            				
-            				if(null!=keyDistricts && 0<keyDistricts.size()){
-            					
-            					Map<String, Map<String,String>>userDistrictsAndTypeMap=userTotalDistAndTypeMap.get(user);
-                				if (null==userDistrictsAndTypeMap) 
-                					userDistrictsAndTypeMap=new HashMap<String,Map<String, String>>();
-    							
-                				Map<String, Map<String,String>>userOnlyDistrictsMap=userTotalOnlyDistMap.get(user);
-                				if (null==userOnlyDistrictsMap) 
-                					userOnlyDistrictsMap=new HashMap<String,Map<String, String>>();
-                				
-                				for (String dis : keyDistricts) {
-                					String keyDist="USERCAR.DISTRICTS."+user+"."+dis;
-                        			execu(now,map,keyDist,userDistrictsAndTypeMap);
-                        			
-                        			String keyDistType="USERCAR.DISTRICTS."+user+"."+dis+"."+carType;
-                        			execu(now,map,keyDistType,userOnlyDistrictsMap);
-    							}
-                				userTotalDistAndTypeMap.put(user, userDistrictsAndTypeMap);
-                				userTotalOnlyDistMap.put(user, userOnlyDistrictsMap);
-                			}
+								Map<String, Map<String,String>>userOnlyDistMap=userCacheOnlyDistMap.get(user);
+								if (null==userOnlyDistMap) {
+									userOnlyDistMap = new HashMap<String, Map<String, String>>();
+								}
+
+								Map<String, Map<String,String>>userOnlyCarTypeMap=userCacheOnlyCarTypeMap.get(user);
+								if (null==userOnlyCarTypeMap) {
+									userOnlyCarTypeMap = new HashMap<String, Map<String, String>>();
+								}
+
+								String userDistAndType="USERCAR."+user+"."+district+"."+carType;
+								execu(now,map,userDistAndType,userDistAndTypeMap);
+
+								String userOnlyDist="USERCAR."+user+".DIST."+district;
+								execu(now,map,userOnlyDist,userOnlyDistMap);
+
+								String userOnlyCarType="USERCAR."+user+".CARTYPE."+carType;
+								execu(now,map,userOnlyCarType,userOnlyCarTypeMap);
+
+								userCacheDistAndTypeMap.put(user, userDistAndTypeMap);
+								userCacheOnlyDistMap.put(user, userOnlyDistMap);
+								userCacheOnlyCarTypeMap.put(user, userOnlyCarTypeMap);
+
+								if(null!=keyDistricts && 0<keyDistricts.size()){
+
+									Map<String, Map<String,String>>userDistrictsAndTypeMap=userTotalDistAndTypeMap.get(user);
+									if (null==userDistrictsAndTypeMap) {
+										userDistrictsAndTypeMap = new HashMap<String, Map<String, String>>();
+									}
+
+									Map<String, Map<String,String>>userOnlyDistrictsMap=userTotalOnlyDistMap.get(user);
+									if (null==userOnlyDistrictsMap) {
+										userOnlyDistrictsMap = new HashMap<String, Map<String, String>>();
+									}
+
+									for (String dis : keyDistricts) {
+										String keyDist="USERCAR.DISTRICTS."+user+"."+dis;
+										execu(now,map,keyDist,userDistrictsAndTypeMap);
+
+										String keyDistType="USERCAR.DISTRICTS."+user+"."+dis+"."+carType;
+										execu(now,map,keyDistType,userOnlyDistrictsMap);
+									}
+									userTotalDistAndTypeMap.put(user, userDistrictsAndTypeMap);
+									userTotalOnlyDistMap.put(user, userOnlyDistrictsMap);
+								}
+							}
 						}
 					}
 				}
@@ -821,8 +863,9 @@ public class RedisTotalCacheInitUtil {
 		synchronized void execu(long now,Map<String, String> map,String keyty,Map<String, Map<String,String>>infoMap){
         	try {
 				Map<String, String>disMap=infoMap.get(keyty);
-				if(null==disMap)
+				if(null==disMap) {
 					disMap=new TreeMap<String, String>();
+				}
 				double mileage=null==disMap.get(SysDefine.MILEAGE_TOTAL)?0:Double.valueOf(disMap.get(SysDefine.MILEAGE_TOTAL));
 				long online=null==disMap.get(SysDefine.ONLINE_COUNT)?0:Long.valueOf(disMap.get(SysDefine.ONLINE_COUNT));
 				long caractive=null==disMap.get(SysDefine.CAR_ACTIVE_COUNT)?0:Long.valueOf(disMap.get(SysDefine.CAR_ACTIVE_COUNT));
@@ -838,20 +881,23 @@ public class RedisTotalCacheInitUtil {
 				if (now-lastTime<time){
 					online++;
 					boolean isstop=isStop(map);
-					if (isstop) 
+					if (isstop) {
 						stoponline++;
-					else
+					} else {
 						runningonline++;
+					}
 				}
 				if (istoday) {
 					caractive++;
 				}
-				if("1".equals(map.get(SysDefine.ISALARM)) && null != map.get(SysDefine.ALARMUTC))
+				if("1".equals(map.get(SysDefine.ISALARM)) && null != map.get(SysDefine.ALARMUTC)) {
 					fault++;
+				}
 				if("1".equals(map.get("2301")) 
 						|| "2".equals(map.get("2301"))
-						|| "4".equals(map.get("2301")))
+						|| "4".equals(map.get("2301"))) {
 					charge++;
+				}
 				cartotal++;
 				disMap.put(SysDefine.MILEAGE_TOTAL,""+mileage);
 				disMap.put(SysDefine.ONLINE_COUNT,""+online);
@@ -908,8 +954,9 @@ public class RedisTotalCacheInitUtil {
 							if ( ( ObjectUtils.isNullOrEmpty(lon) 
 										|| ObjectUtils.isNullOrEmpty(lan) )
 									&& ( ObjectUtils.isNullOrEmpty(slon)
-											|| ObjectUtils.isNullOrEmpty(slan) ) ) 
+											|| ObjectUtils.isNullOrEmpty(slan) ) ) {
 								return true;
+							}
 							if (   ! ObjectUtils.isNullOrEmpty(lon) 
 								&& ! ObjectUtils.isNullOrEmpty(lan) 
 								&& ! ObjectUtils.isNullOrEmpty(slon)
@@ -919,8 +966,9 @@ public class RedisTotalCacheInitUtil {
 								long lati = Long.valueOf(lan);
 								long slati = Long.valueOf(slan);
 								if (Math.abs(longi-slongi)<=2
-										&& Math.abs(lati-slati)<=2) 
+										&& Math.abs(lati-slati)<=2) {
 									return true;
+								}
 							}
 								
 						}
@@ -958,9 +1006,10 @@ public class RedisTotalCacheInitUtil {
 			staplantOnlyCarTypeMap = new ConcurrentHashMap<String, Map<String, String>>();
 			stauserTotalDistAndTypeMap = new ConcurrentHashMap<String,Map<String, Map<String, String>>>();
 			stauserTotalOnlyDistMap = new ConcurrentHashMap<String,Map<String, Map<String, String>>>();
-			String threads=ConfigUtils.sysDefine.getProperty("stat.thread.no");
-			if(null != threads)
+			String threads= configUtils.sysDefine.getProperty("stat.thread.no");
+			if(null != threads) {
 				poolsz=Integer.valueOf(threads);
+			}
 			threadPools = Executors.newFixedThreadPool(poolsz);
 		}
 
@@ -1004,10 +1053,12 @@ public class RedisTotalCacheInitUtil {
 		}
 		
 		void statistic(Map<String, String[]> map) throws Exception{
-			if (isclearSta) 
+			if (isclearSta) {
 				return;
-			if (null == map || map.size() ==0) 
+			}
+			if (null == map || map.size() ==0) {
 				return;
+			}
 
 			System.out.println("---map size:"+map.size());
 			clearStaMap();
@@ -1018,11 +1069,13 @@ public class RedisTotalCacheInitUtil {
 					String[] strings = entry.getValue();
 					
 					if (ObjectUtils.isNullOrEmpty(key)
-							|| ObjectUtils.isNullOrEmpty(strings)) 
+							|| ObjectUtils.isNullOrEmpty(strings)) {
 						continue;
+					}
 
-					if(strings.length != 15)
+					if(strings.length != 15) {
 						continue;
+					}
 
 					threadPools.execute(new UserDistrictExecutor(key,strings));
 					//String org=strings[3];
@@ -1087,8 +1140,9 @@ public class RedisTotalCacheInitUtil {
 			try {
 				threadPools.shutdown();
 				while(true){
-					if (threadPools.isTerminated())
+					if (threadPools.isTerminated()) {
 						break;
+					}
 					TimeUnit.MILLISECONDS.sleep(500);
 				}
 				threadPools=null;
@@ -1116,8 +1170,9 @@ public class RedisTotalCacheInitUtil {
 			}
 			
 			void executeCal(String key,String[]strings){
-				if (null == key || null == strings) 
+				if (null == key || null == strings) {
 					return;
+				}
 				try {
 					String district=strings[9];
 					String carType=strings[10];
@@ -1145,25 +1200,28 @@ public class RedisTotalCacheInitUtil {
 						}
 						
 						Set<String>users=carUserByVin(key);
-						if(null!=users)
+						if(null!=users) {
 							for (String user : users) {
-								if (ObjectUtils.isNullOrEmpty(user)) 
+								if (ObjectUtils.isNullOrEmpty(user)) {
 									continue;
-								
+								}
+
 								if(null!=districts && 0<districts.size()){
-									
+
 									Map<String, Map<String,String>>userDistrictsAndTypeMap=stauserTotalDistAndTypeMap.get(user);
-									if (null==userDistrictsAndTypeMap) 
-										userDistrictsAndTypeMap=new HashMap<String,Map<String, String>>();
-									
+									if (null==userDistrictsAndTypeMap) {
+										userDistrictsAndTypeMap = new HashMap<String, Map<String, String>>();
+									}
+
 									Map<String, Map<String,String>>userOnlyDistrictsMap=stauserTotalOnlyDistMap.get(user);
-									if (null==userOnlyDistrictsMap) 
-										userOnlyDistrictsMap=new HashMap<String,Map<String, String>>();
-									
+									if (null==userOnlyDistrictsMap) {
+										userOnlyDistrictsMap = new HashMap<String, Map<String, String>>();
+									}
+
 									for (String dis : districts) {
 										String keyDist="STATISTIC.USER.DISTRICTS."+user+"."+dis;
 										exeCalculate(keyDist,userDistrictsAndTypeMap,ismonitor);
-										
+
 										String keyDistType="STATISTIC.USER.DISTRICTS."+user+"."+dis+"."+carType;
 										exeCalculate(keyDistType,userOnlyDistrictsMap,ismonitor);
 									}
@@ -1171,6 +1229,7 @@ public class RedisTotalCacheInitUtil {
 									stauserTotalOnlyDistMap.put(user, userOnlyDistrictsMap);
 								}
 							}
+						}
 					} 
 					
 				} catch (Exception e) {
@@ -1183,14 +1242,16 @@ public class RedisTotalCacheInitUtil {
 		synchronized void exeCalculate(String key,Map<String, Map<String,String>>infoMap,boolean ismonitor){
 	    	try {
 				Map<String, String>disMap=infoMap.get(key);
-				if(null==disMap)
+				if(null==disMap) {
 					disMap=new TreeMap<String, String>();
+				}
 				long monitorcount=null==disMap.get(SysDefine.MONITOR_CAR_TOTAL)?0:Long.valueOf(disMap.get(SysDefine.MONITOR_CAR_TOTAL));
 				long cartotal=null==disMap.get(SysDefine.CAR_TOTAL)?0:Long.valueOf(disMap.get(SysDefine.CAR_TOTAL));
 
 				cartotal++;
-				if (ismonitor) 
+				if (ismonitor) {
 					monitorcount++;
+				}
 
 				disMap.put(SysDefine.MONITOR_CAR_TOTAL,""+monitorcount);
 				disMap.put(SysDefine.CAR_TOTAL,""+cartotal);
@@ -1241,8 +1302,9 @@ public class RedisTotalCacheInitUtil {
 		}
 		
 		private void addKeys(Set<String> set,Map<String, Map<String,String>> map){
-			if (null != map && map.size() > 0) 
+			if (null != map && map.size() > 0) {
 				set.addAll(map.keySet());
+			}
 		}
 		
 		private void addKeys(Set<String> set,Collection<Map<String, Map<String,String>>> maps){
@@ -1259,16 +1321,18 @@ public class RedisTotalCacheInitUtil {
 		}
 		private void saveMap(Map<String, Map<String, String>> map,int db){
 			try {
-				if(null!=map)
+				if(null!=map) {
 					for(Map.Entry<String, Map<String,String>> entry:map.entrySet()){
 						String key = entry.getKey();
 						Map<String,String> value = entry.getValue();
-						if (ObjectUtils.isNullOrEmpty(key) 
-								|| ObjectUtils.isNullOrEmpty(value) ) 
+						if (ObjectUtils.isNullOrEmpty(key)
+								|| ObjectUtils.isNullOrEmpty(value) ) {
 							continue;
+						}
 
 						redis.saveMap(value, db, key);
 					}
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -1295,8 +1359,9 @@ public class RedisTotalCacheInitUtil {
 		
         void clearCollection(Collection<Map<String, Map<String, String>>> collection){
         	for (Map<String, Map<String, String>> map : collection) {
-				if(null!=map)
+				if(null!=map) {
 					map.clear();
+				}
 			}
         }
         

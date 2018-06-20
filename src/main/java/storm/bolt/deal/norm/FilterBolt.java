@@ -35,6 +35,7 @@ import java.util.TreeMap;
 public class FilterBolt extends BaseRichBolt {
 	private static final long serialVersionUID = 1700001L;
 	private static final Logger logger = LoggerFactory.getLogger(FilterBolt.class);
+    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 	private OutputCollector collector;
 	private CUS_NOTICE_GROUP _cus_notice_group;
@@ -75,7 +76,7 @@ public class FilterBolt extends BaseRichBolt {
         chargeMap = new HashMap<String, Integer>();
 
         rebootTime = System.currentTimeMillis();
-        String nocheckObj = ConfigUtils.sysDefine.getProperty("sys.reboot.nocheck");
+        String nocheckObj = configUtils.sysDefine.getProperty("sys.reboot.nocheck");
         if (! ObjectUtils.isNullOrEmpty(nocheckObj)) {
         	againNoproTime=Long.parseLong(nocheckObj)*1000;
 		}
@@ -281,11 +282,13 @@ public class FilterBolt extends BaseRichBolt {
 
     //synchronized
     private void sendMessages(String streamId, String topic, String vid, Object data, boolean isHistory) {
-    	if(isHistory)
-    		collector.emit(streamId, new Values(vid, data));
-    	else
+    	if(isHistory) {
+            collector.emit(streamId, new Values(vid, data));
+        } else
     	    // SysDefine.HISTORY send to KafkaBlot
-    		collector.emit(streamId, new Values(topic, vid, data));
+        {
+            collector.emit(streamId, new Values(topic, vid, data));
+        }
     }
 
     @Override
@@ -305,8 +308,9 @@ public class FilterBolt extends BaseRichBolt {
 
     @Nullable
     private Map<String, String> processValid(@NotNull Map<String, String> dataMap) {
-        if(ObjectUtils.isNullOrEmpty(dataMap))
-        	return null;
+        if(ObjectUtils.isNullOrEmpty(dataMap)) {
+            return null;
+        }
         
     	String vid = dataMap.get(DataKey.VEHICLE_ID);
 
@@ -355,8 +359,9 @@ public class FilterBolt extends BaseRichBolt {
                 if (dataMap.containsKey(DataKey._2301_CHARGE_STATUS)
                     && !ObjectUtils.isNullOrEmpty(dataMap.get(DataKey._2301_CHARGE_STATUS))) {
                     String status = dataMap.get(DataKey._2301_CHARGE_STATUS);
-                    if (chargeMap.get(vid) == null) 
-                    	chargeMap.put(vid, 0);
+                    if (chargeMap.get(vid) == null) {
+                        chargeMap.put(vid, 0);
+                    }
                     
                     int cacheNum = chargeMap.get(vid);
                     if (charging.equals(status) &&

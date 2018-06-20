@@ -14,13 +14,14 @@ import java.util.Properties;
 public final class RedisPoolUtils {
 
 	private static Logger logger = LoggerFactory.getLogger(RedisPoolUtils.class);
+	private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
     /** 连接池  */
 	private static JedisPool jedisPool = null;
 
     static {
 		try {
-			Properties conf = ConfigUtils.sysDefine;
+			Properties conf = CONFIG_UTILS.sysDefine;
 			initRedisConnect(conf);
 			logger.info("初始化 redis 线程池");
 		} catch (Exception e) {
@@ -86,7 +87,7 @@ public final class RedisPoolUtils {
 	
 	public static final JedisPool getJedisPool(){
 		if(jedisPool == null)
-			initRedisConnect(ConfigUtils.sysDefine);
+			initRedisConnect(CONFIG_UTILS.sysDefine);
 		return jedisPool;
 	}
 

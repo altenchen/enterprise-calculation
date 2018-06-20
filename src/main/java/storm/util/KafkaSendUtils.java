@@ -12,6 +12,7 @@ import kafka.producer.ProducerConfig;
  * kafka发送工具集
  */
 public class KafkaSendUtils {
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	private static BlockingQueue<Producer<byte[], byte[]>> queue;
 	private static ThreadLocal<Producer<byte[], byte[]>> localThread;
 	private static ProducerConfig config;
@@ -30,7 +31,7 @@ public class KafkaSendUtils {
 	}
 	private static void init(){
 		Properties properties = new Properties();
-        properties.put("metadata.broker.list", ConfigUtils.sysDefine.getProperty("kafka.broker.hosts"));
+        properties.put("metadata.broker.list", configUtils.sysDefine.getProperty("kafka.broker.hosts"));
         properties.put("request.required.acks", "0");
         properties.put("producer.type", "async");
         properties.put("serializer.class", "kafka.serializer.DefaultEncoder");
@@ -39,12 +40,14 @@ public class KafkaSendUtils {
         config = new ProducerConfig(properties);
         localThread=new ThreadLocal<Producer<byte[], byte[]>>();
         
-        String pool=ConfigUtils.sysDefine.getProperty("producer.poolNo");
-        String again=ConfigUtils.sysDefine.getProperty("producer.againNo");
-        if(!ObjectUtils.isNullOrEmpty(pool))
-        	poolNo=Integer.valueOf(pool);
-        if(!ObjectUtils.isNullOrEmpty(again))
-        	againNo=Integer.valueOf(again);
+        String pool= configUtils.sysDefine.getProperty("producer.poolNo");
+        String again= configUtils.sysDefine.getProperty("producer.againNo");
+        if(!ObjectUtils.isNullOrEmpty(pool)) {
+			poolNo=Integer.valueOf(pool);
+		}
+        if(!ObjectUtils.isNullOrEmpty(again)) {
+			againNo=Integer.valueOf(again);
+		}
         	
 	}
 	/**
@@ -52,8 +55,9 @@ public class KafkaSendUtils {
 	 * @return
 	 */
 	public static Producer<byte[], byte[]> getPoolProducer(){
-		if(null!=localThread.get())
+		if(null!=localThread.get()) {
 			return localThread.get();
+		}
 		if (queue.size()<=againNo) {
 			for (int i = 0; i < poolNo-againNo; i++) {
 	        	queue.offer(new Producer<byte[], byte[]>(config));
@@ -82,8 +86,9 @@ public class KafkaSendUtils {
 	 * @return
 	 */
 	public static Producer<byte[], byte[]> getDefaultProducer(){
-		if(null==localThread.get())
+		if(null==localThread.get()) {
 			localThread.set(new Producer<byte[], byte[]>(config));
+		}
 		return localThread.get();
 	}
 	

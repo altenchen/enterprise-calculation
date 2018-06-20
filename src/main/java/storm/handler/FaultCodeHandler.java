@@ -23,6 +23,7 @@ import storm.util.dbconn.Conn;
  * @author wza
  */
 public class FaultCodeHandler {
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 
 	static TimeFormatService timeformat;
 	long lastflushtime;
@@ -30,12 +31,12 @@ public class FaultCodeHandler {
 	static long offlinetime = 600000;//600秒
 	static {
 		timeformat = TimeFormatService.getInstance();
-		if (null != ConfigUtils.sysDefine) {
-			String dbflush = ConfigUtils.sysDefine.getProperty("db.cache.flushtime");
+		if (null != configUtils.sysDefine) {
+			String dbflush = configUtils.sysDefine.getProperty("db.cache.flushtime");
 			if (!ObjectUtils.isNullOrEmpty(dbflush)) {
 				dbflushtime = Long.parseLong(dbflush)*1000;
 			}
-			String off = ConfigUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
+			String off = configUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
 			if (!ObjectUtils.isNullOrEmpty(off)) {
 				offlinetime = Long.parseLong(off)*1000;
 			}
@@ -240,8 +241,9 @@ public class FaultCodeHandler {
 					msg.put("noticetime", noticetime);
 					msg.put("location", location);
 					//添加同通知消息
-					if(1 == (int)msg.get("status"))
+					if(1 == (int)msg.get("status")) {
 						notices.add(msg);
+					}
 					//添加缓存
 					ruleMsgs.put(rule.ruleId, msg);
 					vidRuleMsgs.put(vid, ruleMsgs);

@@ -32,9 +32,11 @@ import org.apache.storm.tuple.Fields;
 
 public class TopologiesByConf {
 
+    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
+
 	public static void main(String[] args) throws Exception{
 
-        Properties properties = ConfigUtils.sysDefine;
+        Properties properties = configUtils.sysDefine;
 
         fillKafkaConf(properties);
 

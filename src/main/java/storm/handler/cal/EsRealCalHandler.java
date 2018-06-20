@@ -30,6 +30,7 @@ import storm.util.NumberUtils;
 import storm.util.ObjectUtils;
 
 public class EsRealCalHandler{
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 
 //	private static ThreadLocal<Calendar> callocal = new ThreadLocal<Calendar>();
 	private static ThreadLocal<SimpleDateFormat> inFormatlocal = new ThreadLocal<SimpleDateFormat>();
@@ -65,8 +66,9 @@ public class EsRealCalHandler{
 	}
 
 	public boolean isNowSend(){
-		if (oncesend <=0) 
-			return true;
+		if (oncesend <=0) {
+            return true;
+        }
 		
 		long now = System.currentTimeMillis();
 		if (now - lastsendtime > oncesend
@@ -86,13 +88,15 @@ public class EsRealCalHandler{
 	 */
 	public List<Map<String, Object>> redisCarinfoSendMsgs(){
 		try {
-			if (carinfoSend) 
-				return null;
+			if (carinfoSend) {
+                return null;
+            }
 			
 			carinfoSend = true;
 			Cache<String,String[]> carinfoCache = RedisClusterLoaderUseCtfo.getCarinfoCache();
-			if (carinfoCache.size() > 1) 
-				return getCarMonitorEsMsgs(carinfoCache.asMap());
+			if (carinfoCache.size() > 1) {
+                return getCarMonitorEsMsgs(carinfoCache.asMap());
+            }
 			
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -105,19 +109,22 @@ public class EsRealCalHandler{
 	 * @return
 	 */
 	public List<Map<String, Object>> redisClusterSendMsgs(){
-		if (clusterSend) 
-			return null;
+		if (clusterSend) {
+            return null;
+        }
 		
 		try {
 			clusterSend = true;
 			List<Map<String, Object>> msgs = null;
 			Cache<String,Map<String,String>> redisMsgs = RedisClusterLoaderUseCtfo.getDataCache();
-			if (redisMsgs.size()<1) 
-				return null;
+			if (redisMsgs.size()<1) {
+                return null;
+            }
 			LinkedBlockingQueue<String> carVids = RedisClusterLoaderUseCtfo.carVids;
 			Map<String,Map<String,String>> redismaps = redisMsgs.asMap();
-			if (redismaps.size()<1) 
-				return null;
+			if (redismaps.size()<1) {
+                return null;
+            }
 			long now = System.currentTimeMillis();
 			msgs = new LinkedList<Map<String, Object>>();
 			String vid = carVids.poll();
@@ -125,8 +132,9 @@ public class EsRealCalHandler{
 				Map<String, String> map = redismaps.get(vid);
 				if (map != null) {
 					Map<String, Object> msg = getSendEsMsgAndSetAliveLast(map,now);
-					if (null != msg && msg.size()>0) 
-						msgs.add(msg);
+					if (null != msg && msg.size()>0) {
+                        msgs.add(msg);
+                    }
 				}
 				vid = carVids.poll();
 			}
@@ -157,10 +165,11 @@ public class EsRealCalHandler{
 				if (null != dat) {
 					
 					boolean online = isOnline(dat,now);
-					if (!online) 
-						offlineKeys.add(key);
-					else
-						needListens.add(key);
+					if (!online) {
+                        offlineKeys.add(key);
+                    } else {
+                        needListens.add(key);
+                    }
 				}
 				key = alives.poll();
 			}
@@ -213,8 +222,9 @@ public class EsRealCalHandler{
 	 * @return
 	 */
 	private List<Map<String, Object>> getCarMonitorEsMsgs(Map<String, String[]> map){
-		if (null == map || map.size() ==0) 
-			return null;
+		if (null == map || map.size() ==0) {
+            return null;
+        }
 		try {
 			List<Map<String, Object>> msgs = new LinkedList<Map<String, Object>>();
 			for (Map.Entry<String, String[]> entry : map.entrySet()) {
@@ -222,28 +232,33 @@ public class EsRealCalHandler{
 				String[] strings = entry.getValue();
 				
 				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(strings)) 
-					continue;
+						|| ObjectUtils.isNullOrEmpty(strings)) {
+                    continue;
+                }
 				
-				if(strings.length != 15)
-					continue;
+				if(strings.length != 15) {
+                    continue;
+                }
 				String vid=strings[0];
 				String monitor=strings[14];
 				if (ObjectUtils.isNullOrEmpty(vid)
-						|| ObjectUtils.isNullOrEmpty(monitor)) 
-					continue;
+						|| ObjectUtils.isNullOrEmpty(monitor)) {
+                    continue;
+                }
 					
 				boolean ismonitor="1".equals(monitor);
 				Map<String, Object> esmap = new TreeMap<String, Object>();
 				esmap.put(EsField.vid, vid);
-				if (ismonitor) 
-					esmap.put(EsField.monitor, 1);
-				else
-					esmap.put(EsField.monitor, 0);
+				if (ismonitor) {
+                    esmap.put(EsField.monitor, 1);
+                } else {
+                    esmap.put(EsField.monitor, 0);
+                }
 				msgs.add(esmap);
 			}
-			if (msgs.size() > 0) 
-				return msgs;
+			if (msgs.size() > 0) {
+                return msgs;
+            }
 				
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -259,8 +274,9 @@ public class EsRealCalHandler{
 	 * @return
 	 */
 	private Map<String, Object> getSendEsMsg(Map<String, String> dat,long now){
-		if(null == dat)
-			return null;
+		if(null == dat) {
+            return null;
+        }
 		
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
@@ -330,7 +346,6 @@ public class EsRealCalHandler{
 	 * @param dat 报文内部协议解析后的数据
 	 * @param time 报文终端时间
 	 * @param now 现在的UTC时间
-	 * @param kmNeedDiv km是否 需要除以10
 	 */
 	private void esDat(Map<String, Object> esmap,Map<String, String> dat,String time,long now){
 		String tenthKm = dat.get(DataKey._2202_TOTAL_MILEAGE);
@@ -349,10 +364,12 @@ public class EsRealCalHandler{
 			
 			if(longit<=180 && latitu<=90){
 				
-				if ('1' == oris[2])
-					latitu = -latitu;
-				if ('1' == oris[1])
-					longit = -longit;
+				if ('1' == oris[2]) {
+                    latitu = -latitu;
+                }
+				if ('1' == oris[1]) {
+                    longit = -longit;
+                }
 				String location = latitu+","+longit;
 				esmap.put(EsField.location, location);
 				esmap.put(EsField.gpsValueValid, 0);
@@ -368,10 +385,11 @@ public class EsRealCalHandler{
 			if (now-lastTime< onlinetime){
 				esmap.put(EsField.carStatus, 1);
 				boolean isstop=isStop(dat);
-				if (isstop) 
-					esmap.put(EsField.onlineStatus, 3);
-				else
-					esmap.put(EsField.onlineStatus, 2);
+				if (isstop) {
+                    esmap.put(EsField.onlineStatus, 3);
+                } else {
+                    esmap.put(EsField.onlineStatus, 2);
+                }
 			}else {
 				esmap.put(EsField.carStatus, 0);
 			}
@@ -405,17 +423,20 @@ public class EsRealCalHandler{
 	}
 	private static void setTime(){
 		try {
-			Properties pties = ConfigUtils.sysDefine;
+			Properties pties = configUtils.sysDefine;
 			if (null != pties) {
 				String oncetime = pties.getProperty("es.send.time");
-				if(null != oncetime)
-					oncesend = Long.valueOf(oncetime)*1000;
+				if(null != oncetime) {
+                    oncesend = Long.valueOf(oncetime)*1000;
+                }
 				String offli=pties.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-				if(null != offli)
-					onlinetime=1000*Long.valueOf(offli);
+				if(null != offli) {
+                    onlinetime=1000*Long.valueOf(offli);
+                }
 				String stopli=pties.getProperty("redis.offline.stoptime");
-				if(null != stopli)
-					stoptime=1000*Long.valueOf(stopli);
+				if(null != stopli) {
+                    stoptime=1000*Long.valueOf(stopli);
+                }
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -428,30 +449,34 @@ public class EsRealCalHandler{
 	 * @return
 	 */
 	private boolean setLast(Map<String, String> dat,long now){
-		if(null == dat)
-			return false;
+		if(null == dat) {
+            return false;
+        }
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time))
-				return false;
+					|| ObjectUtils.isNullOrEmpty(time)) {
+                return false;
+            }
 			long lastTime=0L;
 			if (dat.containsKey(SysDefine.ONLINEUTC)) {
 				lastTime=Long.valueOf(dat.get(SysDefine.ONLINEUTC));
 			} else {
 				Date date = inDate(time);
-				if (null != date) 
-					lastTime = date.getTime();
+				if (null != date) {
+                    lastTime = date.getTime();
+                }
 			}
 			if (lastTime > 0 && lastTime < now +30000){//最后一条报文时间小于当前系统时间 + 30秒的误差
 				boolean islast = true;
 				if(carlasttimes.containsKey(vid)){
 					long prev = carlasttimes.get(vid);
-					if (lastTime < prev) 
-						islast = false;
+					if (lastTime < prev) {
+                        islast = false;
+                    }
 				}
 				if (islast) {
 					carlasttimes.put(vid, lastTime);
@@ -471,16 +496,18 @@ public class EsRealCalHandler{
 	 * @return
 	 */
 	private boolean setAliveCars(Map<String, String> dat,long now){
-		if(null == dat)
-			return false;
+		if(null == dat) {
+            return false;
+        }
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time))
-				return false;
+					|| ObjectUtils.isNullOrEmpty(time)) {
+                return false;
+            }
 			
 			long lastTime=0L;
 			if (dat.containsKey(SysDefine.ONLINEUTC)) {
@@ -535,16 +562,18 @@ public class EsRealCalHandler{
 	 * @return
 	 */
 	private boolean isOnline(Map<String, String> dat,long now){
-		if(null == dat)
-			return false;
+		if(null == dat) {
+            return false;
+        }
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time))
-				return false;
+					|| ObjectUtils.isNullOrEmpty(time)) {
+                return false;
+            }
 			if (CommandType.SUBMIT_LOGIN.equals(msgType)
 					&& dat.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)) {//离线
 				
@@ -560,8 +589,9 @@ public class EsRealCalHandler{
 							long outtime = Long.parseLong(logouttime);
 							long intime = Long.parseLong(logintime);
 							
-							if (outtime > intime) 
-								return true;
+							if (outtime > intime) {
+                                return true;
+                            }
 						}
 					}
 				}
@@ -580,8 +610,9 @@ public class EsRealCalHandler{
 					lastTime = date.getTime();
 				}
 			}
-			if (now-lastTime <= onlinetime)
-				return true;
+			if (now-lastTime <= onlinetime) {
+                return true;
+            }
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -622,8 +653,9 @@ public class EsRealCalHandler{
 						if ( ( ObjectUtils.isNullOrEmpty(lon) 
 									|| ObjectUtils.isNullOrEmpty(lan) )
 								&& ( ObjectUtils.isNullOrEmpty(slon)
-										|| ObjectUtils.isNullOrEmpty(slan) ) ) 
-							return true;
+										|| ObjectUtils.isNullOrEmpty(slan) ) ) {
+                            return true;
+                        }
 						if (   ! ObjectUtils.isNullOrEmpty(lon) 
 							&& ! ObjectUtils.isNullOrEmpty(lan) 
 							&& ! ObjectUtils.isNullOrEmpty(slon)
@@ -633,8 +665,9 @@ public class EsRealCalHandler{
 							long lati = Long.valueOf(lan);
 							long slati = Long.valueOf(slan);
 							if (Math.abs(longi-slongi)<=2
-									&& Math.abs(lati-slati)<=2) 
-								return true;
+									&& Math.abs(lati-slati)<=2) {
+                                return true;
+                            }
 						}
 							
 					}
@@ -652,25 +685,28 @@ public class EsRealCalHandler{
 			return null;
 		}
 		String binaryString = toBinary(vl);
-		if(4 < binaryString.length())
-			binaryString = binaryString.substring(binaryString.length()-4);
+		if(4 < binaryString.length()) {
+            binaryString = binaryString.substring(binaryString.length()-4);
+        }
 		return binaryString.toCharArray();//{'1','0','0','0'}
 	}
 	
 	private String toBinary(String vl){//String 类型的值v>=0,v<=8
-		if(null == vl)
-			return "0001";
+		if(null == vl) {
+            return "0001";
+        }
 		try {
 			int v = Integer.valueOf(vl);
 			String string = Integer.toBinaryString(v);
-			if (1 == string.length()) 
-				return "000"+string;
-			else if (2 == string.length()) 
-				return "00"+string;
-			else if (3 == string.length()) 
-				return "0"+string;
-			else if (4 == string.length()) 
-				return string;
+			if (1 == string.length()) {
+                return "000"+string;
+            } else if (2 == string.length()) {
+                return "00"+string;
+            } else if (3 == string.length()) {
+                return "0"+string;
+            } else if (4 == string.length()) {
+                return string;
+            }
 			return string;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -694,15 +730,17 @@ public class EsRealCalHandler{
 	}
 	
 	private String toEsDateString(Date date){
-		if(null == date)
-			return null;
+		if(null == date) {
+            return null;
+        }
 		SimpleDateFormat format = getOutDateFormat();
 		return format.format(date);
 	}
 	
 	private String toEsDateString(String utc){//long 时间
-		if(null == utc || "".equals(utc.trim()))
-			return null;
+		if(null == utc || "".equals(utc.trim())) {
+            return null;
+        }
 		try {
 			long time = Long.valueOf(utc);
 			String estime = toEsDateString(new Date(time));
@@ -714,8 +752,9 @@ public class EsRealCalHandler{
 	}
 	
 	private Date inDate(String time){//yyyyMMddHHmmss
-		if (null == time || "".equals(time.trim())) 
-			return null;
+		if (null == time || "".equals(time.trim())) {
+            return null;
+        }
 		
 		SimpleDateFormat format = getInDateFormat();
 		try {
