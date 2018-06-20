@@ -118,11 +118,13 @@ public class CarRuleHandler implements InfoNotice {
 
     //以下参数可以通过读取配置文件进行重置
     static {
+        logger.warn("运行静态代码块，读取配置文件中值");
         timeformat = TimeFormatService.getInstance();
         topn = 20;
         onOffRedisKeys = "vehCache.qy.onoff.notice";
         socRedisKeys = "vehCache.qy.soc.notice";
         if (null != ConfigUtils.sysDefine) {
+            logger.warn("运行静态代码块，判断配置文件是否存在");
             String off = ConfigUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
             if (!ObjectUtils.isNullOrEmpty(off)) {
                 offlinetime = Long.parseLong(off) * 1000;
@@ -216,7 +218,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         Object socJudgeTime = paramsRedisUtil.PARAMS.get("soc.judge.time");
         if (null != socJudgeTime) {
-            lowsocIntervalMillisecond = ((Long) socJudgeTime);
+            lowsocIntervalMillisecond = ((int) socJudgeTime)*1L;
         }
 
 
