@@ -8,22 +8,21 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.util.Properties;
 
 /**
  * 配置工具
  * @author xzp
  */
-public final class ConfigUtils implements Serializable {
-	private static final long serialVersionUID = 1920000001L;
+public final class ConfigUtils {
 
 	private static final Logger logger = LoggerFactory.getLogger(ConfigUtils.class);
 
-	private static final ConfigUtils INSTANCE = new ConfigUtils();
+    private static final ConfigUtils INSTANCE = new ConfigUtils();
 
 	@Contract(pure = true)
-    public static final ConfigUtils getInstance() {
+    public static ConfigUtils getInstance() {
 	    return INSTANCE;
 	}
 
@@ -32,23 +31,45 @@ public final class ConfigUtils implements Serializable {
 	public final Properties sysParams = new Properties();
 
 	{
-        loadFromResource("sysDefine.properties", sysDefine);
-        loadFromResource("parms.properties", sysParams);
-	}
 
-    private void loadFromResource(@NotNull String resourceName, @NotNull Properties properties) {
-        InputStream in = ConfigUtils.class.getClassLoader().getResourceAsStream(resourceName);
+	    if(INSTANCE != null) {
+	        throw new IllegalStateException();
+        }
+
         try {
-            properties.load(new InputStreamReader(in, "UTF-8"));
-            logger.info("从资源文件[" + resourceName + "]初始化配置成功");
+            loadFromResource("sysDefine.properties", sysDefine);
+            loadFromResource("parms.properties", sysParams);
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                in.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+            if(logger.isWarnEnabled()) {
+                logger.error("[" + ConfigUtils.class.getName() + "]初始化失败.");
             }
         }
+	}
+
+    private void loadFromResource(@NotNull String resourceName, @NotNull Properties properties)
+        throws IOException {
+
+        InputStream stream = ConfigUtils.class.getClassLoader().getResourceAsStream(resourceName);
+
+        if(null == stream) {
+            if (logger.isInfoEnabled()) {
+                logger.info("从资源文件初始化配置失败[" + resourceName + "]");
+            }
+            return;
+        }
+
+        if (logger.isInfoEnabled()) {
+            logger.info("从资源文件初始化配置开始[" + resourceName + "]");
+        }
+
+        final InputStreamReader reader = new InputStreamReader(stream, "UTF-8");
+        properties.load(reader);
+
+        if (logger.isInfoEnabled()) {
+            logger.info("从资源文件初始化配置完毕[" + resourceName + "]");
+        }
+
+        stream.close();
     }
 }
