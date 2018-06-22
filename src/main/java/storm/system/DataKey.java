@@ -539,4 +539,14 @@ public final class DataKey {
      * can 列表
      */
     public static final String _4410023_CAN_LIST ="4410023";
+
+    /**
+     * 吉利——锁车功能状态(锁车功能是否开启)
+     */
+    public static final String _4710061_LOCK_FUNCTION_STATUS ="4710061";
+
+    /**
+     * 吉利——锁车状态（车是否是锁止状态）
+     */
+    public static final String _4710062_CAR_LOCK_STATUS ="4710062";
 }

@@ -83,6 +83,8 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Map<String, Object>> vidOnOffNotice;
 
     private Map<String, Map<String, Object>> vidLastDat;//vid和最后一帧数据的缓存
+    private Map<String, Map<String,Object>> vidLockStatus;
+
     private Map<String, Long> lastTime;
     private Map<String, IsSendNoticeCache> vidIsSendNoticeCache;
 
@@ -116,10 +118,13 @@ public class CarRuleHandler implements InfoNotice {
     static int onoffRule = 0;//1代表规则启用
     static int mileHopRule = 0;//1代表规则启用
     static int enableTimeRule = 0;//1代表规则启用
+    static int carLockStatueChangeJudgeRule = 0;//1代表规则启用
 
     private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
-    private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
     private final TimeOutOfRangeNotice timeOutOfRangeNotice = new TimeOutOfRangeNotice();
+
+    private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
+    private CarLockStatusChangeJudge carLockStatusChange;
 
     //以下参数可以通过读取配置文件进行重置
     static {
@@ -135,7 +140,13 @@ public class CarRuleHandler implements InfoNotice {
                 offlinetime = Long.parseLong(off) * 1000;
             }
 
-            String value = configUtils.sysDefine.getProperty("sys.soc.rule");
+            String value = configUtils.sysDefine.getProperty("sys.carlockstatus.rule");
+            if (!StringUtils.isEmpty(value)) {
+                carLockStatueChangeJudgeRule = Integer.parseInt(value);
+                value = null;
+            }
+
+            value = configUtils.sysDefine.getProperty("sys.soc.rule");
             if (!StringUtils.isEmpty(value)) {
                 socRule = Integer.parseInt(value);
                 value = null;
@@ -364,10 +375,13 @@ public class CarRuleHandler implements InfoNotice {
         vidLastDat = new HashMap<String, Map<String, Object>>();
         lastTime = new HashMap<String, Long>();
         vidIsSendNoticeCache = new HashMap<String, IsSendNoticeCache>();
+        vidLockStatus = new HashMap<String, Map<String, Object>>();
 
         redis = new DataToRedis();
         recorder = new RedisRecorder(redis);
         restartInit(true);
+        carLockStatusChange = new CarLockStatusChangeJudge();
+
     }
 
     public static void rebulid() {
@@ -413,12 +427,13 @@ public class CarRuleHandler implements InfoNotice {
         Map<String, Object> flyJudge = null;
         Map<String, Object> onOffJudge = null;
         Map<String, Object> mileHopJudge = null;
+        Map<String, Object> lockStatueChange = null;
         //3、如果规则启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
 
-        if (1 == carLockStatueChangeRule) {
-            lockStatueChangeJudges = carLockStatueChangeRule(data);
-            if (!ObjectUtils.isNullOrEmpty(lockStatueChangeJudges)) {
-                list.addAll(lockStatueChangeJudges);
+        if (1 == carLockStatueChangeJudgeRule) {
+            lockStatueChange = carLockStatusChangeJudge.carLockStatueChangeJudge(data,vidLockStatus);
+            if (!MapUtils.isEmpty(lockStatueChange)) {
+                list.add(lockStatueChange);
             }
         }
 
