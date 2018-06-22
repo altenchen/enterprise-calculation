@@ -98,4 +98,9 @@ public final class CommandType {
      * 15.命令标识不可识别数据
      */
     public static final String SUBMIT_UNKNOW = "UNKNOW";
+
+    /**
+     * 16.终端锁车报文
+     */
+    public  static final String SUBMIT_TERMLOCK = "TERMLOCK";
 }

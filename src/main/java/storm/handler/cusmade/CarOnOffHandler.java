@@ -494,7 +494,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 	 * @param dat
 	 * @return 是否离线
 	 */
-	private boolean isOffline(Map<String, String> dat){
+	//此处改为public了，不知是否有影响？？—于心沼
+	public boolean isOffline(Map<String, String> dat){
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
 		if (CommandType.SUBMIT_LOGIN.equals(msgType)) {
 			//1、先根据自带的TYPE字段进行判断。平台注册通知类型 0:从未上过线，1:车机终端上线 ，2:车机离线，3:平台上线，4:平台下线

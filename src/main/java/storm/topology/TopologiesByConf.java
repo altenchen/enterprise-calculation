@@ -206,16 +206,30 @@ public class TopologiesByConf {
 
         // KafkaSpout: 平台注册报文
         final KafkaConfig kafkaRegConfig = buildKafkaConfig(
-            SysDefine.PLAT_REG_TOPIC,
-            SysDefine.PLAT_REG_GROUPID,
-            new RegistScheme());
+                SysDefine.PLAT_REG_TOPIC,
+                SysDefine.PLAT_REG_GROUPID,
+                new RegistScheme());
         kafkaRegConfig.setOutputStreamId(SysDefine.REG_STREAM_ID);
         builder
-            // kafka平台注册报文消息
-            .setSpout(
-                SysDefine.REG_SPOUT_ID,
-                new KafkaSpout(kafkaRegConfig.getSpoutConfig()),
-                realSpoutNo);
+                // kafka平台注册报文消息
+                .setSpout(
+                        SysDefine.REG_SPOUT_ID,
+                        new KafkaSpout(kafkaRegConfig.getSpoutConfig()),
+                        realSpoutNo);
+
+        // KafkaSpout: 终端锁车报文
+        final KafkaConfig kafkaLockCarConfig = buildKafkaConfig(
+                SysDefine.DS_CTRLREQ,
+                SysDefine.DS_CTRLREQ_GROUPID,
+                new RegistScheme());
+        kafkaRegConfig.setOutputStreamId(SysDefine.REG_STREAM_ID);
+        builder
+                // kafka平台注册报文消息
+                .setSpout(
+                        SysDefine.REG_SPOUT_ID,
+                        new KafkaSpout(kafkaRegConfig.getSpoutConfig()),
+                        realSpoutNo);
+
     }
 
     /**

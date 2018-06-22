@@ -43,6 +43,12 @@ public final class SysDefine {
 	public static String PLAT_REG_GROUPID;
     //
     public static final String HISTORY = "history";
+
+    //终端锁车组名
+    public static String DS_CTRLREQ_GROUPID;
+    //终端锁车topic
+    public static final String DS_CTRLREQ = "ds_ctrlreq";
+
     
     //车辆实时所有数据
     public static final String SYNC_REALINFO_STORE = "vehrealinfostore";

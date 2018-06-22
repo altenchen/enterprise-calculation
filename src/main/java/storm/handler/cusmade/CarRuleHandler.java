@@ -118,6 +118,7 @@ public class CarRuleHandler implements InfoNotice {
     static int enableTimeRule = 0;//1代表规则启用
 
     private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
+    private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
     private final TimeOutOfRangeNotice timeOutOfRangeNotice = new TimeOutOfRangeNotice();
 
     //以下参数可以通过读取配置文件进行重置
@@ -413,6 +414,14 @@ public class CarRuleHandler implements InfoNotice {
         Map<String, Object> onOffJudge = null;
         Map<String, Object> mileHopJudge = null;
         //3、如果规则启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
+
+        if (1 == carLockStatueChangeRule) {
+            lockStatueChangeJudges = carLockStatueChangeRule(data);
+            if (!ObjectUtils.isNullOrEmpty(lockStatueChangeJudges)) {
+                list.addAll(lockStatueChangeJudges);
+            }
+        }
+
         if (1 == socRule) {
             //lowsoc(data)返回一个map，里面有vid和通知消息（treeMap）
             // SOC 过低
