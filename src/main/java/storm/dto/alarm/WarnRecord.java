@@ -1,6 +1,6 @@
 package storm.dto.alarm;
 
-import storm.util.ObjectUtils;
+import org.apache.commons.lang.StringUtils;
 
 public class WarnRecord {
 
@@ -30,7 +30,7 @@ public class WarnRecord {
 	}
 
 	public boolean isHasEnd(){
-		if (ObjectUtils.isNullOrEmpty(terminalETime)) {
+        if (StringUtils.isEmpty(terminalETime)) {
 			return true;
 		}
 		return false;
@@ -50,8 +50,8 @@ public class WarnRecord {
 			//触发次数
 			addTriggerCount();
 		} else {
-			
-			if (!ObjectUtils.isNullOrEmpty(terTime)) {
+
+            if (!StringUtils.isEmpty(terTime)) {
 				
 				if (0 == endst) {
 					warnVanishAction(terTime);
@@ -123,7 +123,7 @@ public class WarnRecord {
 		if (2 == status+es) {
 			addTriggerCount();
 		} else {
-			if (ObjectUtils.isNullOrEmpty(terTime)) {
+            if (StringUtils.isEmpty(terTime)) {
 				return ;
 			}
 			if (0 == es) {
@@ -169,7 +169,7 @@ public class WarnRecord {
 	}
 
 	private void setTerminalSTime(String time){//yyyyMMddhhmmss
-		if (! ObjectUtils.isNullOrEmpty(time)){
+        if (!StringUtils.isEmpty(time)){
 			if (null == terminalSTime) {
 				terminalETime = null;
 				terminalSTime = time;
@@ -178,7 +178,7 @@ public class WarnRecord {
 	}
 	
 	private void setTerminalETime(String time){
-		if (! ObjectUtils.isNullOrEmpty(time)) {
+        if (!StringUtils.isEmpty(time)) {
 			
 			terminalETime = time;
 		}

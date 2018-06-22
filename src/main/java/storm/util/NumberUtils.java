@@ -1,5 +1,7 @@
 package storm.util;
 
+import org.apache.commons.lang.StringUtils;
+
 /**
  *	数字格式校验工具
  * @author xzp
@@ -13,7 +15,7 @@ public class NumberUtils {
 	 * @return 如果是合法数字格式, 则返回字符串本身, 否则返回"0"
 	 */
 	public static String stringNumber(String str) {
-        if (!ObjectUtils.isNullOrEmpty(str) && str.matches(NUMBER_REGEX)) {
+        if (!StringUtils.isEmpty(str) && str.matches(NUMBER_REGEX)) {
             return str;
         }
         return "0";
@@ -24,7 +26,7 @@ public class NumberUtils {
 	 * @return 字符串格式是否合法
 	 */
 	public static boolean stringIsNumber(String str) {
-		if (!ObjectUtils.isNullOrEmpty(str) && str.trim().matches(NUMBER_REGEX)) {
+        if (!StringUtils.isEmpty(str) && str.trim().matches(NUMBER_REGEX)) {
 			return true;
 		}
 		return false;

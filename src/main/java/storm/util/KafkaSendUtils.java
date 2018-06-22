@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 import kafka.javaapi.producer.Producer;
 import kafka.producer.ProducerConfig;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * kafka发送工具集
@@ -42,10 +43,10 @@ public class KafkaSendUtils {
         
         String pool= configUtils.sysDefine.getProperty("producer.poolNo");
         String again= configUtils.sysDefine.getProperty("producer.againNo");
-        if(!ObjectUtils.isNullOrEmpty(pool)) {
+		if(!StringUtils.isEmpty(pool)) {
 			poolNo=Integer.valueOf(pool);
 		}
-        if(!ObjectUtils.isNullOrEmpty(again)) {
+		if(!StringUtils.isEmpty(again)) {
 			againNo=Integer.valueOf(again);
 		}
         	

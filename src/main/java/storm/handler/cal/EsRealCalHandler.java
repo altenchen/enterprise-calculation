@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
@@ -27,7 +29,6 @@ import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
 
 public class EsRealCalHandler{
 	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
@@ -230,9 +231,9 @@ public class EsRealCalHandler{
 			for (Map.Entry<String, String[]> entry : map.entrySet()) {
 				String key = entry.getKey();
 				String[] strings = entry.getValue();
-				
-				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(strings)) {
+
+                if (StringUtils.isEmpty(key)
+						|| ArrayUtils.isEmpty(strings)) {
                     continue;
                 }
 				
@@ -241,8 +242,8 @@ public class EsRealCalHandler{
                 }
 				String vid=strings[0];
 				String monitor=strings[14];
-				if (ObjectUtils.isNullOrEmpty(vid)
-						|| ObjectUtils.isNullOrEmpty(monitor)) {
+                if (StringUtils.isEmpty(vid)
+						|| StringUtils.isEmpty(monitor)) {
                     continue;
                 }
 					
@@ -283,7 +284,7 @@ public class EsRealCalHandler{
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			Date date = inDate(time);
-			if (ObjectUtils.isNullOrEmpty(msgType) || ObjectUtils.isNullOrEmpty(vid) || null == time || time.length() != 14 || null ==date) {
+            if (StringUtils.isEmpty(msgType) || StringUtils.isEmpty(vid) || null == time || time.length() != 14 || null ==date) {
 				return null;
 			}
 			Map<String, Object> esmap = new TreeMap<String, Object>();
@@ -354,9 +355,9 @@ public class EsRealCalHandler{
 		String orientation = dat.get(DataKey._2501_ORIENTATION);
 		
 		char[] oris = toBinaryCharArr(orientation);
-		if (null != oris && '0' == oris[3] 
-				&& !ObjectUtils.isNullOrEmpty(longitude) 
-				&& !ObjectUtils.isNullOrEmpty(latitude) ) {
+        if (null != oris && '0' == oris[3]
+				&& !StringUtils.isEmpty(longitude)
+				&& !StringUtils.isEmpty(latitude)) {
 			double longit = Double.valueOf(longitude);
 			double latitu = Double.valueOf(latitude);
 			longit=longit/1000000.0;
@@ -456,9 +457,9 @@ public class EsRealCalHandler{
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
-			if(ObjectUtils.isNullOrEmpty(msgType)
-					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time)) {
+            if(StringUtils.isEmpty(msgType)
+					|| StringUtils.isEmpty(vid)
+					|| StringUtils.isEmpty(time)) {
                 return false;
             }
 			long lastTime=0L;
@@ -503,9 +504,9 @@ public class EsRealCalHandler{
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
-			if(ObjectUtils.isNullOrEmpty(msgType)
-					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time)) {
+            if(StringUtils.isEmpty(msgType)
+					|| StringUtils.isEmpty(vid)
+					|| StringUtils.isEmpty(time)) {
                 return false;
             }
 			
@@ -569,9 +570,9 @@ public class EsRealCalHandler{
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
-			if(ObjectUtils.isNullOrEmpty(msgType)
-					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time)) {
+            if(StringUtils.isEmpty(msgType)
+					|| StringUtils.isEmpty(vid)
+					|| StringUtils.isEmpty(time)) {
                 return false;
             }
 			if (CommandType.SUBMIT_LOGIN.equals(msgType)
@@ -650,16 +651,16 @@ public class EsRealCalHandler{
 					if (lastTime - starttime >= stoptime) {
 						String slon = startZero.get(DataKey._2502_LONGITUDE);//经度
 						String slan = startZero.get(DataKey._2503_LATITUDE);//纬度
-						if ( ( ObjectUtils.isNullOrEmpty(lon) 
-									|| ObjectUtils.isNullOrEmpty(lan) )
-								&& ( ObjectUtils.isNullOrEmpty(slon)
-										|| ObjectUtils.isNullOrEmpty(slan) ) ) {
+                        if ( ( StringUtils.isEmpty(lon)
+									|| StringUtils.isEmpty(lan))
+								&& ( StringUtils.isEmpty(slon)
+										|| StringUtils.isEmpty(slan)) ) {
                             return true;
                         }
-						if (   ! ObjectUtils.isNullOrEmpty(lon) 
-							&& ! ObjectUtils.isNullOrEmpty(lan) 
-							&& ! ObjectUtils.isNullOrEmpty(slon)
-							&& ! ObjectUtils.isNullOrEmpty(slan) ){
+                        if (   !StringUtils.isEmpty(lon)
+							&& !StringUtils.isEmpty(lan)
+							&& !StringUtils.isEmpty(slon)
+							&& !StringUtils.isEmpty(slan)){
 							long longi = Long.valueOf(lon);
 							long slongi = Long.valueOf(slon);
 							long lati = Long.valueOf(lan);
@@ -681,7 +682,7 @@ public class EsRealCalHandler{
 	}
 	
 	private char[] toBinaryCharArr(String vl){//String 类型的值v>=0,v<=8
-		if (ObjectUtils.isNullOrEmpty(vl)) {
+        if (StringUtils.isEmpty(vl)) {
 			return null;
 		}
 		String binaryString = toBinary(vl);

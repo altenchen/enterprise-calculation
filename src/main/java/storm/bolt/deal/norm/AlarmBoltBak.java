@@ -3,16 +3,13 @@ package storm.bolt.deal.norm;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -29,7 +26,6 @@ import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
 import storm.dto.alarm.CoefOffset;
 import storm.dto.alarm.CoefOffsetGetter;
 import storm.dto.alarm.EarlyWarn;
@@ -177,8 +173,8 @@ public class AlarmBoltBak extends BaseRichBolt {
                 System.out.println("Receive kafka message REALINFO-------------------------------MSG:" + JSON.toJSONString(dat));
             }
 
-            if (!dat.containsKey(SysDefine.TIME)
-            		|| ObjectUtils.isNullOrEmpty(dat.get(SysDefine.TIME))) {
+			if (!dat.containsKey(SysDefine.TIME)
+            		|| StringUtils.isEmpty(dat.get(SysDefine.TIME))) {
 				return;
 			}
             String type = dat.get(SysDefine.MESSAGETYPE);
@@ -202,7 +198,7 @@ public class AlarmBoltBak extends BaseRichBolt {
 //                sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehRealinfoStoreTopic, vid, JSON.toJSONString(dat));
                 try {
                 	String string = VID2_ALARM.get(vid);
-                    if (!ObjectUtils.isNullOrEmpty(string)) {
+					if (!StringUtils.isEmpty(string)) {
                         String[] alarmStr = string.split("_", 3);
                         dat.put(SysDefine.ISALARM, new String(alarmStr[0]));
                         dat.put(SysDefine.ALARMUTC, new String(alarmStr[1]));
@@ -240,7 +236,7 @@ public class AlarmBoltBak extends BaseRichBolt {
             if (CommandType.SUBMIT_REALTIME.equals(type)) {
                 try {
                 	String veh2000=dat.get("2000");
-                    if (!ObjectUtils.isNullOrEmpty(veh2000)) {
+					if (!StringUtils.isEmpty(veh2000)) {
                     	String string=VEH_DATA_MAP.get(vid);
                         if (null ==string || (string.compareTo(veh2000) < 0)) {
                         	VEH_DATA_MAP.put(vid, veh2000);
@@ -273,12 +269,12 @@ public class AlarmBoltBak extends BaseRichBolt {
      * @param map
      */
     public void processAlarm(Map<String, String> dataMap ,String type) {
-    	if(ObjectUtils.isNullOrEmpty(dataMap))
+		if(MapUtils.isEmpty(dataMap))
     		return;
         String vid = dataMap.get(DataKey.VEHICLE_ID);
         String vType = dataMap.get("VTYPE");
-        if (ObjectUtils.isNullOrEmpty(vid)
-        		|| ObjectUtils.isNullOrEmpty(vType) ) 
+		if (StringUtils.isEmpty(vid)
+        		|| StringUtils.isEmpty(vType))
         	return;
 		
 		
@@ -293,7 +289,7 @@ public class AlarmBoltBak extends BaseRichBolt {
         }
         
         List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vType);
-        if (ObjectUtils.isNullOrEmpty(warns)) 
+		if (CollectionUtils.isEmpty(warns))
         	return;
 
         try {
@@ -392,7 +388,7 @@ public class AlarmBoltBak extends BaseRichBolt {
 			    CoefOffset coefOffset = CoefOffsetGetter.getCoefOffset(left1);
 			    String left1Value = dataMap.get(left1);
 			  //上传的实时数据包含左1字段 才进行预警判定
-			    if (ObjectUtils.isNullOrEmpty(left1Value)) 
+				if (StringUtils.isEmpty(left1Value))
 					return ret;
 				boolean stringIsNum = NumberUtils.stringIsNumber(left1Value);
 				
@@ -410,7 +406,7 @@ public class AlarmBoltBak extends BaseRichBolt {
 			    int midExp = Integer.valueOf(NumberUtils.stringNumber(warn.middleExpression));
 			    double right1 = warn.right1Value;//Double.valueOf(NumberUtils.stringNumber(brr[8]));
 			    double right2 = warn.right2Value;//Double.valueOf(NumberUtils.stringNumber(brr[9]));
-			    if(ObjectUtils.isNullOrEmpty(left2)){   //左二字段为空，L2_ID为空  根据EXPR_MID，和R1_VAL, R2_VAL判断
+				if(StringUtils.isEmpty(left2)){   //左二字段为空，L2_ID为空  根据EXPR_MID，和R1_VAL, R2_VAL判断
 			        
 			    	//不需要处理偏移和系数
 			    	if (null == coefOffset) {
@@ -425,14 +421,14 @@ public class AlarmBoltBak extends BaseRichBolt {
 						String[] arr = left1Value.split("\\|");
 			            for(int i =0;i<arr.length;i++){
 			            	String arri = arr[i];
-			            	if (! ObjectUtils.isNullOrEmpty(arri)) {
+							if (!StringUtils.isEmpty(arri)) {
 								
 			            		String v= new String(Base64.decode(new String(arri)),"GBK");
 			            		
 			            		if (v.contains(":")){
 			            			String [] arr2m = v.split(":");
-			            			if (arr2m.length ==2 
-			            					&& !ObjectUtils.isNullOrEmpty(arr2m[1])) {
+									if (arr2m.length ==2
+			            					&& !StringUtils.isEmpty(arr2m[1])) {
 										
 			            				String[] arr2 = arr2m[1].split("_");
 			            				for(int j=0;j<arr2.length;j++){
@@ -451,7 +447,7 @@ public class AlarmBoltBak extends BaseRichBolt {
 			    } else {
 			    	
 			    	String left2Value = dataMap.get(left2);
-			    	if (ObjectUtils.isNullOrEmpty(left2Value)) 
+					if (StringUtils.isEmpty(left2Value))
 			    		return ret;
 			    	
 			    	if(!left1.equals(left2)){ //L2_ID不为空， L1_ID  EXPR_LEFT  L2_ID
@@ -486,7 +482,7 @@ public class AlarmBoltBak extends BaseRichBolt {
 				        Map<String, String>last=lastCache.get(vid);
 			        	if(null !=last)
 			        		lastData = last.get(left1);
-				        if(!ObjectUtils.isNullOrEmpty(lastData) ){ //上传的实时数据包含左1字段
+						if(!StringUtils.isEmpty(lastData)){ //上传的实时数据包含左1字段
 				            
 				        	if ((left2Value.contains("|") && !lastData.contains("|"))
 				        			||(!left2Value.contains("|") && lastData.contains("|"))
@@ -509,8 +505,8 @@ public class AlarmBoltBak extends BaseRichBolt {
 					            for(int i =0;i<arr.length;i++){
 					            	String larri = larr[i];
 					            	String arri = arr[i];
-					            	if (! ObjectUtils.isNullOrEmpty(larri)
-					            			&& ! ObjectUtils.isNullOrEmpty(arri)) {
+									if (!StringUtils.isEmpty(larri)
+					            			&& !StringUtils.isEmpty(arri)) {
 										
 					            		String lv= new String(Base64.decode(new String(larri)),"GBK");
 					            		String v= new String(Base64.decode(new String(arri)),"GBK");
@@ -521,9 +517,9 @@ public class AlarmBoltBak extends BaseRichBolt {
 					            			if (larr2m.length != arr2m.length) {
 												return ret;
 											}
-					            			if (arr2m.length ==2 
-					            					&& !ObjectUtils.isNullOrEmpty(larr2m[1])
-					            					&& !ObjectUtils.isNullOrEmpty(arr2m[1])) {
+											if (arr2m.length ==2
+					            					&& !StringUtils.isEmpty(larr2m[1])
+					            					&& !StringUtils.isEmpty(arr2m[1])) {
 												
 					            				String[] larr2 = larr2m[1].split("_");
 					            				String[] arr2 = arr2m[1].split("_");
@@ -588,8 +584,8 @@ public class AlarmBoltBak extends BaseRichBolt {
         List<String>list=filterMap.get(vid);
         if(ret == 1){
             //报警缓存包含vid，且vid对应的list含有此约束id，也就是此类型的报警，就说明上一条已报警
-        	
-            if(!ObjectUtils.isNullOrEmpty(list) && list.contains(filterId)){
+
+			if(!CollectionUtils.isEmpty(list) && list.contains(filterId)){
                 //上条报警，本条也报警，说明是【报警进行中】，发送报警进行中报文
                 String alarmId = ALARM_MAP.get(vid+"#"+filterId);
                 StringBuilder alarmKafka=new StringBuilder("VEHICLE_ID:");
@@ -623,7 +619,7 @@ public class AlarmBoltBak extends BaseRichBolt {
                 //上条不报警，本条报警，说明是【开始报警】，发送开始报警报文
                 //String alarmId = vid +"_" + GeneratorPK.instance().getPKString();
                 String string=VID2_ALARM_INFO.get(vidFilterId);
-            	if(!ObjectUtils.isNullOrEmpty(string)){
+				if(!StringUtils.isEmpty(string)){
             		String []infoArr= string.split("_",3);
             		if (infoArr.length >=3) {
             			int alarmNumThid = Integer.valueOf(infoArr[0]);
@@ -689,9 +685,9 @@ public class AlarmBoltBak extends BaseRichBolt {
             }
             VID2_ALARM_END.remove(vidFilterId);
         }else if(ret ==2){
-            if(!ObjectUtils.isNullOrEmpty(list) && list.contains(filterId)){
+			if(!CollectionUtils.isEmpty(list) && list.contains(filterId)){
             	String countTime = VID2_ALARM_END.get(vidFilterId);
-                if(!ObjectUtils.isNullOrEmpty(countTime)){
+				if(!StringUtils.isEmpty(countTime)){
                     
                     String[] ctArr = countTime.split("_");
                     VID2_ALARM_END.put(vidFilterId, Integer.valueOf(ctArr[0])+1 +"_"+ctArr[1]);
@@ -912,12 +908,12 @@ public class AlarmBoltBak extends BaseRichBolt {
 								long timels = Long.parseLong(dat.get(SysDefine.ONLINEUTC));
 								if (now - timels > offtime) {
 							        String vType = dat.get("VTYPE");
-							        if (ObjectUtils.isNullOrEmpty(vid)
-							        		|| ObjectUtils.isNullOrEmpty(vType) ) 
+									if (StringUtils.isEmpty(vid)
+							        		|| StringUtils.isEmpty(vType))
 							        	return;
 									
 							        List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vType);
-							        if (ObjectUtils.isNullOrEmpty(warns)) 
+									if (CollectionUtils.isEmpty(warns))
 							        	return;
 									
 							        sendOverAlarmMessage(vid);

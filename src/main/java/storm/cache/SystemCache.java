@@ -1,10 +1,6 @@
 package storm.cache;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -14,12 +10,13 @@ import com.ctfo.datacenter.cache.handle.CTFOCacheKeys;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 import storm.dao.DataToRedis;
 import storm.system.DataKey;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
 import storm.system.SysDefine;
 
 public class SystemCache {
@@ -162,15 +159,15 @@ public class SystemCache {
                     int size = 0;
                     int count = 0;
 
-                    if (!ObjectUtils.isNullOrEmpty(vid2utc)) {
+					if (!CollectionUtils.isEmpty(vid2utc)) {
                         size = vid2utc.size();
                         List<String> vidList = new LinkedList<String>();
                         for(String value : vid2utc){
-                        	if (!ObjectUtils.isNullOrEmpty(value)) {
+							if (!StringUtils.isEmpty(value)) {
                         		long utc = Long.parseLong(value.split(":")[1]);
                                 if(System.currentTimeMillis() - utc >= time){
                                 	String string=value.split(":")[0];
-                                	if (!ObjectUtils.isNullOrEmpty(string)) {
+									if (!StringUtils.isEmpty(string)) {
                                 		vidList.add(new String(string));
                                         count++;
 									}
@@ -180,7 +177,7 @@ public class SystemCache {
                         }
 
                         for(String vid : vidList){
-                        	if (!ObjectUtils.isNullOrEmpty(vid)) {
+							if (!StringUtils.isEmpty(vid)) {
                         		try {
                                     CTFOUtils.getDefaultCTFOCacheTable().addHash(vid, dataId, "0");
                                 } catch (Exception e) {
@@ -218,10 +215,10 @@ public class SystemCache {
                 while(ctfoCacheKeys.next()){
                 	List<String>keys=ctfoCacheKeys.getKeys();
                     for(String key :keys){
-                    	if(!ObjectUtils.isNullOrEmpty(key)){
+						if(!StringUtils.isEmpty(key)){
                     		key = key.split("-",3)[2];
                             List<String> value = CTFOUtils.getDefaultCTFOCacheTable().queryHash(key, dataId, utcId);
-                            if(!ObjectUtils.isNullOrEmpty(value)
+							if(!CollectionUtils.isEmpty(value)
                             		&& "1".equals(value.get(0))
                             		&& value.size()>=2 ){
                                 list.add(new String(key+":"+value.get(1)));
@@ -233,7 +230,7 @@ public class SystemCache {
             } catch (Exception e) {
                 System.out.println("--------redis实时数据ONLINE遍历异常！" + e);
             }
-            if (ObjectUtils.isNullOrEmpty(list)) {
+			if (CollectionUtils.isEmpty(list)) {
 				return null;
 			}
             return list;
@@ -247,11 +244,11 @@ public class SystemCache {
                 while(ctfoCacheKeys.next()){
                 	List<String>keys=ctfoCacheKeys.getKeys();
                     for(String key :keys){
-                    	if (!ObjectUtils.isNullOrEmpty(key)) {
+						if (!StringUtils.isEmpty(key)) {
                     		String []keyarr=key.split("-",3);
                     		if (keyarr.length>=3) {
                     			key = keyarr[2];
-                    			if (!ObjectUtils.isNullOrEmpty(key)) {
+								if (!StringUtils.isEmpty(key)) {
                     				mileage = mileage + Double.parseDouble(NumberUtils.stringNumber((CTFOUtils.getDefaultCTFOCacheTable().queryHash(key, DataKey._2202_TOTAL_MILEAGE))));
 								}
 							}

@@ -7,6 +7,7 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.storm.kafka.StringScheme;
 import org.apache.storm.spout.Scheme;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
@@ -17,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.protocol.SUBMIT_PACKET;
 import storm.system.DataKey;
-import storm.util.ObjectUtils;
 
 public final class PacketScheme implements Scheme {
 
@@ -28,7 +28,7 @@ public final class PacketScheme implements Scheme {
     @Override
 	public List<Object> deserialize(ByteBuffer buffer) {
         try {
-        	String msg = ObjectUtils.deserialize(buffer);
+            String msg = StringScheme.deserializeString(buffer);
         	return generateValues(msg);
         } catch (Exception exception) {
             exception.printStackTrace();

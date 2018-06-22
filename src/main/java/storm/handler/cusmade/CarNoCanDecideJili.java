@@ -1,7 +1,7 @@
 package storm.handler.cusmade;
 
+import org.apache.commons.lang.StringUtils;
 import storm.system.DataKey;
-import storm.util.ObjectUtils;
 
 import java.util.Map;
 
@@ -37,7 +37,7 @@ public class CarNoCanDecideJili implements ICarNoCanDecide {
         // region 车速 ∈ [0, 200)
         {
             final String speedString = data.get(DataKey._2201_SPEED);
-            if (!ObjectUtils.isNullOrWhiteSpace(speedString)) {
+            if (!StringUtils.isBlank(speedString)) {
                 try {
                     final short speed = Short.parseShort(speedString);
                     if (speed >= MIN_2201_SPEED_JILI && speed < MAX_2201_SPEED_JILI) {
@@ -54,7 +54,7 @@ public class CarNoCanDecideJili implements ICarNoCanDecide {
         // region 累计里程 ∈ [上线开始里程, 上线结束里程]
         {
             final String totalMileageString = data.get(DataKey._2202_TOTAL_MILEAGE);
-            if (!ObjectUtils.isNullOrWhiteSpace(totalMileageString)) {
+            if (!StringUtils.isBlank(totalMileageString)) {
                 try {
                     final int totalMileage = Integer.parseUnsignedInt(totalMileageString);
                     if (totalMileage >= DataKey.MIN_2202_TOTAL_MILEAGE && totalMileage <= DataKey.MAX_2202_TOTAL_MILEAGE) {
@@ -70,7 +70,7 @@ public class CarNoCanDecideJili implements ICarNoCanDecide {
         // region 总电压 ∈ (0, 1000]
         {
             final String totalVoltageString = data.get(DataKey._2613_TOTAL_VOLTAGE);
-            if (!ObjectUtils.isNullOrWhiteSpace(totalVoltageString)) {
+            if (!StringUtils.isBlank(totalVoltageString)) {
                 try {
                     final short totalVoltage = Short.parseShort(totalVoltageString);
                     if (totalVoltage > MIN_2613_TOTAL_VOLTAGE_JILI && totalVoltage <= MAX_2613_TOTAL_VOLTAGE_JILI) {
@@ -87,7 +87,7 @@ public class CarNoCanDecideJili implements ICarNoCanDecide {
         // region 总电流 ∈ [总电流均值 - 100, 总电流均值 + 100]
         {
             final String totalElectricityString = data.get(DataKey._2614_TOTAL_ELECTRICITY);
-            if (!ObjectUtils.isNullOrWhiteSpace(totalElectricityString)) {
+            if (!StringUtils.isBlank(totalElectricityString)) {
                 try {
                     final short totalElectricity = Short.parseShort(totalElectricityString);
                     if (totalElectricity >= DataKey.MIN_2614_TOTAL_ELECTRICITY
@@ -104,7 +104,7 @@ public class CarNoCanDecideJili implements ICarNoCanDecide {
         // region SOC ∈ (0, 100]
         {
             final String stateOfChargeString = data.get(DataKey._7615_STATE_OF_CHARGE);
-            if (!ObjectUtils.isNullOrWhiteSpace(stateOfChargeString)) {
+            if (!StringUtils.isBlank(stateOfChargeString)) {
                 try {
                     final byte stateOfCharge = Byte.parseByte(stateOfChargeString);
                     if (stateOfCharge >= MIN_7615_STATE_OF_CHARGE_JILI
@@ -123,9 +123,9 @@ public class CarNoCanDecideJili implements ICarNoCanDecide {
             final String orientationString = data.get(DataKey._2501_ORIENTATION);
             final String longitudeString = data.get(DataKey._2502_LONGITUDE);
             final String latitudeString = data.get(DataKey._2503_LATITUDE);
-            if (!ObjectUtils.isNullOrWhiteSpace(orientationString)
-                && !ObjectUtils.isNullOrWhiteSpace(longitudeString)
-                && !ObjectUtils.isNullOrWhiteSpace(latitudeString)) {
+            if (!StringUtils.isBlank(orientationString)
+                && !StringUtils.isBlank(longitudeString)
+                && !StringUtils.isBlank(latitudeString)) {
                 try {
                     final int orientation = Integer.parseUnsignedInt(orientationString);
                     final int longitude = Integer.parseUnsignedInt(longitudeString);

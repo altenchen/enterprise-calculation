@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
 
+import org.apache.commons.lang.StringUtils;
 import storm.dto.FaultCode;
 import storm.dto.FaultRuleCode;
 import storm.dto.fault.FaultAlarmRule;
@@ -23,8 +24,8 @@ import storm.handler.fence.input.AlarmRule;
 import storm.handler.fence.input.Rule;
 import storm.handler.fence.input.SpeedAlarmRule;
 import storm.handler.fence.input.StopAlarmRule;
+import storm.system.SysParams;
 import storm.util.ConfigUtils;
-import storm.util.ObjectUtils;
 
 /**
  * @author wza
@@ -32,6 +33,7 @@ import storm.util.ObjectUtils;
  */
 public final class Conn {
 	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
+	private static final SysParams sysParams = SysParams.getInstance();
 
 	static String fence_sql="SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,fe.VALID_TIME FROM SYS_FENCE_ELECTRONIC fe WHERE fe.FENCE_STATE=1";
 	static String fence_rule_only_sql="SELECT tl.FENCE_ID,tl.ALARM_TYPE_CODE,tl.HEIGHEST_SPEED,tl.MINIMUM_SPEED,tl.STOP_CAR_TIME FROM SYS_FENCE_ALARM_TYPE_LK tl WHERE tl.STATE=1";
@@ -69,9 +71,10 @@ public final class Conn {
 			if (sysParams.containsKey("fence.rule.lk.sql")) {
 				fence_rule_lk_sql = sysParams.getProperty("fence.rule.lk.sql");
 			}
-			
-			if (sysParams.containsKey("alarm.code.sql")) {
-				alarm_code_sql = sysParams.getProperty("alarm.code.sql");
+
+            final String alarmCodeSql = Conn.sysParams.getAlarmCodeSql();
+            if (null != alarmCodeSql) {
+				alarm_code_sql = alarmCodeSql;
 			}
 			if (sysParams.containsKey("fault.rule.sql")) {
 				fault_rule_sql = sysParams.getProperty("fault.rule.sql");
@@ -226,7 +229,7 @@ public final class Conn {
 		Statement s = null;
 		ResultSet rs = null;
 		try {
-			if (ObjectUtils.isNullOrEmpty(fault_rule_sql)) {
+            if (StringUtils.isEmpty(fault_rule_sql)) {
 				return null;
 			}
 			if (null == conn || conn.isClosed()) {
@@ -261,7 +264,7 @@ public final class Conn {
 		Statement s = null;
 		ResultSet rs = null;
 		try {
-			if (ObjectUtils.isNullOrEmpty(fault_alarm_lk_sql)) {
+            if (StringUtils.isEmpty(fault_alarm_lk_sql)) {
 				return null;
 			}
 			if (null == conn || conn.isClosed()) {
@@ -285,33 +288,50 @@ public final class Conn {
 		}
 		return rules;
 	}
-	private List<Object[]> getFaultRuleCodeObjects(){
-		List<Object[]> rules=null;
-		Connection conn =null;
-		Statement s = null;
-		ResultSet rs = null;
+
+	private List<Object[]> getFaultRuleCodeObjects() {
+
+		final List<Object[]> rules = new LinkedList<>();
+
+		Connection connection =null;
+		Statement statement = null;
+		ResultSet resultSet = null;
+
 		try {
-			if (ObjectUtils.isNullOrEmpty(alarm_code_sql)) {
-				return null;
+            if (StringUtils.isEmpty(alarm_code_sql)) {
+				return rules;
 			}
-			if (null == conn || conn.isClosed()) {
-				conn = getConn();
+			if (null == connection || connection.isClosed()) {
+				connection = getConn();
 			}
-			if (null == conn) {
-				return null;
+			if (null == connection) {
+				return rules;
 			}
-			rules = new LinkedList<Object[]>();
-			s = conn.createStatement();
-			rs = s.executeQuery(alarm_code_sql);
-			while(rs.next()){
-				Object [] objs=new Object[]{rs.getString(1),rs.getString(2),rs.getInt(3),rs.getInt(4),rs.getString(5),rs.getString(6)};
-				rules.add(objs);
+
+            statement = connection.createStatement();
+			resultSet = statement.executeQuery(alarm_code_sql);
+			while(resultSet.next()) {
+				Object [] rule = new Object[] {
+				    // 故障码种类 ID
+				    resultSet.getString(1),
+                    // 异常码/恢复码
+                    resultSet.getString(2),
+                    // 码类型, 0-恢复码, 1-异常码
+                    resultSet.getInt(3),
+                    // 故障级别
+                    resultSet.getInt(4),
+                    // 故障码/异常码 ID
+                    resultSet.getString(5),
+                    // 车型
+                    resultSet.getString(6)
+				};
+				rules.add(rule);
 			}
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
-			close(rs,s,conn);
+			close(resultSet,statement,connection);
 		}
 		return rules;
 	}
@@ -322,7 +342,7 @@ public final class Conn {
 		Statement s = null;
 		ResultSet rs = null;
 		try {
-			if (ObjectUtils.isNullOrEmpty(fault_alarm_rule_sql)) {
+            if (StringUtils.isEmpty(fault_alarm_rule_sql)) {
 				return null;
 			}
 			if (null == conn || conn.isClosed()) {
@@ -370,7 +390,7 @@ public final class Conn {
 		Statement s = null;
 		ResultSet rs = null;
 		try {
-			if (ObjectUtils.isNullOrEmpty(falut_rank_sql)) {
+            if (StringUtils.isEmpty(falut_rank_sql)) {
 				return null;
 			}
 			if (null == conn || conn.isClosed()) {
@@ -403,7 +423,7 @@ public final class Conn {
 		Statement s = null;
 		ResultSet rs = null;
 		try {
-			if (ObjectUtils.isNullOrEmpty(early_warning_sql)) {
+            if (StringUtils.isEmpty(early_warning_sql)) {
 				return null;
 			}
 			if (null == conn || conn.isClosed()) {
@@ -438,7 +458,7 @@ public final class Conn {
 		Statement s = null;
 		ResultSet rs = null;
 		try {
-			if (ObjectUtils.isNullOrEmpty(item_coef_offset_sql)) {
+            if (StringUtils.isEmpty(item_coef_offset_sql)) {
 				return null;
 			}
 			if (null == conn || conn.isClosed()) {
@@ -566,7 +586,7 @@ public final class Conn {
 		Statement s = null;
 		ResultSet rs = null;
 		try {
-			if (ObjectUtils.isNullOrEmpty(fence_sql)) {
+            if (StringUtils.isEmpty(fence_sql)) {
 				return null;
 			}
 			if (null == conn || conn.isClosed()) {
@@ -605,7 +625,7 @@ public final class Conn {
 		Statement s = null;
 		ResultSet rs = null;
 		try {
-			if (ObjectUtils.isNullOrEmpty(fence_vid_sql)) {
+            if (StringUtils.isEmpty(fence_vid_sql)) {
 				return null;
 			}
 			if (null == conn || conn.isClosed()) {
@@ -636,7 +656,7 @@ public final class Conn {
 		Statement s = null;
 		ResultSet rs = null;
 		try {
-			if (ObjectUtils.isNullOrEmpty(fence_rule_only_sql)) {
+            if (StringUtils.isEmpty(fence_rule_only_sql)) {
 				return null;
 			}
 			if (null == conn || conn.isClosed()) {
@@ -749,7 +769,7 @@ public final class Conn {
 		return Double.valueOf(numst);
 	}
 	private String stringDoubleNumber(String str) {
-        if (!ObjectUtils.isNullOrEmpty(str) && str.matches("[0-9]*.[0-9]{0,10}")) {
+        if (!StringUtils.isEmpty(str) && str.matches("[0-9]*.[0-9]{0,10}")) {
             return str;
         }
         return "-1";
@@ -816,13 +836,17 @@ public final class Conn {
 		}
 		return "".equals(string.trim());
 	}
-	
-	private void close(AutoCloseable ... ables){
-		if (null != ables && ables.length>0) {
-			for (AutoCloseable able : ables) {
-				if (null != able) {
+
+    /**
+     * 释放系统资源
+     * @param resources
+     */
+	private void close(AutoCloseable ... resources){
+		if (null != resources && resources.length > 0) {
+			for (AutoCloseable resource : resources) {
+				if (null != resource) {
 					try {
-						able.close();
+						resource.close();
 					} catch (Exception e) {
 						e.printStackTrace();
 					}

@@ -14,10 +14,11 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.StringUtils;
 import storm.dao.DataToRedis;
 import storm.dao.RedisClusterOldUtil;
 import storm.dao.RedisClusterOldPool;
-import storm.util.ObjectUtils;
 
 public class RedisClusterLoaderOld {
 
@@ -51,9 +52,9 @@ public class RedisClusterLoaderOld {
 			for (Map.Entry<String, String> entry : map.entrySet()) {
 				String key = entry.getKey();
 				String value = entry.getValue();
-				
-				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) 
+
+                if (StringUtils.isEmpty(key)
+						|| StringUtils.isEmpty(value))
 					continue;
 				
 				String []strings=value.split(",",-1);
@@ -145,10 +146,10 @@ public class RedisClusterLoaderOld {
 		void loadBykeys(Set<String> keys){
 			try {
 				for(String key :keys){
-					if (ObjectUtils.isNullOrEmpty(key)) 
+                    if (StringUtils.isEmpty(key))
 						continue;
 					Map<String, String> map = pool.hgetall(0, key);
-					if(ObjectUtils.isNullOrEmpty(map))
+                    if(MapUtils.isEmpty(map))
 						continue;
 					Map<String, String> newmap =  new TreeMap<String, String>();
 					//不缓存无用的数据项，减小缓存大小

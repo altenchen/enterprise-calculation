@@ -6,11 +6,11 @@ import java.util.TreeMap;
 
 import com.sun.jersey.core.util.Base64;
 
+import org.apache.commons.lang.StringUtils;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
-import storm.util.ObjectUtils;
 
 class RegHanler {
 
@@ -36,13 +36,13 @@ class RegHanler {
 
 			    String iccid = null;
 			    String icc = msg.get(ProtocolItem.ICCID);
-			    if (!ObjectUtils.isNullOrEmpty(icc)) {
+				if (!StringUtils.isEmpty(icc)) {
 					
 			    	iccid = new String(Base64.decode(icc),"GBK");
 				}
 			    if (iccid==null || "".equals(iccid.trim())) {
 			    	icc = msg.get(SUBMIT_LOGIN.ICCID_ITEM);
-				    if (!ObjectUtils.isNullOrEmpty(icc)) {
+					if (!StringUtils.isEmpty(icc)) {
 				    	iccid = new String(Base64.decode(icc),"GBK");
 					}
 			    }

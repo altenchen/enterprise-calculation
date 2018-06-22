@@ -1,5 +1,6 @@
 package storm.bolt.deal.cusmade;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -12,7 +13,6 @@ import storm.cache.SystemCache;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
 import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -52,10 +52,11 @@ public class QuickCacheBolt extends BaseRichBolt {
     	String time=data.get("2000");
         String mile=NumberUtils.stringNumber(data.get("2202"));
         String vin=data.get(SysDefine.VIN);
-        if(ObjectUtils.isNullOrEmpty(time)
-        		||ObjectUtils.isNullOrEmpty(mile)
-        		||ObjectUtils.isNullOrEmpty(vin))
-        	return;
+        if(StringUtils.isEmpty(time)
+        		||StringUtils.isEmpty(mile)
+        		||StringUtils.isEmpty(vin)) {
+			return;
+		}
         String year=time.substring(0, 4);
         long mileage = Long.parseLong(mile);
         long timeLong = Long.parseLong(time);
@@ -132,8 +133,9 @@ public class QuickCacheBolt extends BaseRichBolt {
 				public Map<String, String> call() throws Exception {
 					Map<String, String> map=null;
 					map=CTFOUtils.getCacheTable(year).queryHash(vid);
-					if(null == map || map.size()==0)
+					if(null == map || map.size()==0) {
 						map=null;
+					}
 					return map;
 				}
 			});

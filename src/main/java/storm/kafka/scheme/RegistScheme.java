@@ -3,13 +3,12 @@ package storm.kafka.scheme;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.storm.kafka.StringScheme;
 import org.apache.storm.spout.Scheme;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import storm.util.ObjectUtils;
 
 public final class RegistScheme implements Scheme {
 
@@ -19,7 +18,7 @@ public final class RegistScheme implements Scheme {
 	@Override
 	public List<Object> deserialize(ByteBuffer buffer) {
 	    try {
-            String string=ObjectUtils.deserialize(buffer);
+            String string= StringScheme.deserializeString(buffer);
             return new Values(string);
         }
         catch (Exception exception) {

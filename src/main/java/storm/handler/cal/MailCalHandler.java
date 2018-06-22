@@ -14,6 +14,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +32,6 @@ import storm.system.SysDefine;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
 
 /**
  * 计算碳排里程等数据的处理类
@@ -76,9 +78,9 @@ public class MailCalHandler {
 			try {
 				String key = entry.getKey();
 				String value = entry.getValue();
-				
-				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) {
+
+				if (StringUtils.isEmpty(key)
+						|| StringUtils.isEmpty(value)) {
 					continue;
 				}
 
@@ -104,9 +106,9 @@ public class MailCalHandler {
 			try {
 				String key = entry.getKey();
 				String value = entry.getValue();
-				
-				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) {
+
+				if (StringUtils.isEmpty(key)
+						|| StringUtils.isEmpty(value)) {
 					continue;
 				}
 
@@ -244,15 +246,15 @@ public class MailCalHandler {
 		void loadBykeys(List<String> keys){
 			try {
 				for(String key :keys){
-					if (ObjectUtils.isNullOrEmpty(key)) {
+					if (StringUtils.isEmpty(key)) {
 						continue;
 					}
 					key=key.split("-",3)[2];
-					if (ObjectUtils.isNullOrEmpty(key)) {
+					if (StringUtils.isEmpty(key)) {
 						continue;
 					}
 					Map<String, String> map=CTFOUtils.getDefaultCTFOCacheTable().queryHash(key);
-					if(ObjectUtils.isNullOrEmpty(map)) {
+                    if(MapUtils.isEmpty(map)) {
 						continue;
 					}
 					carlastrecord.put(key, map);
@@ -484,8 +486,8 @@ public class MailCalHandler {
 					for(Map.Entry<String, Map<String,String>> entry:map.entrySet()){
 						String key = entry.getKey();
 						Map<String,String> value = entry.getValue();
-						if (ObjectUtils.isNullOrEmpty(key)
-								|| ObjectUtils.isNullOrEmpty(value) ) {
+                        if (StringUtils.isEmpty(key)
+								|| MapUtils.isEmpty(value)) {
 							continue;
 						}
 
@@ -505,7 +507,7 @@ public class MailCalHandler {
 				clearMap();
 				threadPools = Executors.newFixedThreadPool(poolsz);
 				for(Map<String, String> map :maps){
-					if (ObjectUtils.isNullOrEmpty(map)) {
+                    if (MapUtils.isEmpty(map)) {
 						continue;
 					}
 					threadPools.execute(new UnitDatCal(map));
@@ -546,13 +548,13 @@ public class MailCalHandler {
 			}
 			void statistic(Map<String, String> map){
 				try {
-					if(!ObjectUtils.isNullOrEmpty(map)){
+                    if(!MapUtils.isEmpty(map)){
 						
 						String vin=map.get("VIN");
 						if(!vinMap.containsKey(vin)){
 							
 							vinMap.put(vin, true);
-							if (!ObjectUtils.isNullOrEmpty(vin)) {
+							if (!StringUtils.isEmpty(vin)) {
 								String []strings=carInfoByVin(vin);
 								if(strings.length != 15){
 									logger.info("vin carInfo:"+vin);
@@ -586,8 +588,8 @@ public class MailCalHandler {
 										String keyNoUnk="CARINFO.NOUNKNOW."+carType;
 										execu(map,keyNoUnk,infoNoDistMap);
 									}
-									
-									org=ObjectUtils.isNullOrEmpty(org)?unknow:org;
+
+									org= StringUtils.isEmpty(org) ?unknow:org;
 									String orgDistAndType="ORGCAR."+org+"."+district+"."+carType;
 									execu(map,orgDistAndType,orgDistAndTypeMap);
 									
@@ -603,7 +605,7 @@ public class MailCalHandler {
 									Set<String>users=carUserByVin(vin);
 									if(null!=users) {
 										for (String user : users) {
-											if (ObjectUtils.isNullOrEmpty(user)) {
+											if (StringUtils.isEmpty(user)) {
 												continue;
 											}
 											Map<String, Map<String,String>>userDistAndTypeMap=userCacheDistAndTypeMap.get(user);
@@ -747,16 +749,16 @@ public class MailCalHandler {
 						if (lastTime - starttime >= stoptime) {
 							String slon = startZero.get("2502");//经度
 							String slan = startZero.get("2503");//纬度
-							if ( ( ObjectUtils.isNullOrEmpty(lon) 
-										|| ObjectUtils.isNullOrEmpty(lan) )
-									&& ( ObjectUtils.isNullOrEmpty(slon)
-											|| ObjectUtils.isNullOrEmpty(slan) ) ) {
+							if ( ( StringUtils.isEmpty(lon)
+										|| StringUtils.isEmpty(lan))
+									&& ( StringUtils.isEmpty(slon)
+											|| StringUtils.isEmpty(slan)) ) {
 								return true;
 							}
-							if (   ! ObjectUtils.isNullOrEmpty(lon) 
-								&& ! ObjectUtils.isNullOrEmpty(lan) 
-								&& ! ObjectUtils.isNullOrEmpty(slon)
-								&& ! ObjectUtils.isNullOrEmpty(slan) ){
+							if (   !StringUtils.isEmpty(lon)
+								&& !StringUtils.isEmpty(lan)
+								&& !StringUtils.isEmpty(slon)
+								&& !StringUtils.isEmpty(slan)){
 								long longi = Long.valueOf(lon);
 								long slongi = Long.valueOf(slon);
 								long lati = Long.valueOf(lan);
@@ -890,9 +892,9 @@ public class MailCalHandler {
 				try {
 					String key = entry.getKey();
 					String[] strings = entry.getValue();
-					
-					if (ObjectUtils.isNullOrEmpty(key)
-							|| ObjectUtils.isNullOrEmpty(strings)) {
+
+                    if (StringUtils.isEmpty(key)
+							|| ArrayUtils.isEmpty(strings)) {
 						continue;
 					}
 
@@ -947,13 +949,13 @@ public class MailCalHandler {
 					String monitor=strings[14];
 					boolean ismonitor="1".equals(monitor);
 					String plant=strings[5];
-					if (!ObjectUtils.isNullOrEmpty(plant) && !ObjectUtils.isNullOrEmpty(carType)) {
+					if (!StringUtils.isEmpty(plant) && !StringUtils.isEmpty(carType)) {
 						
 						String plantOnlyCarType="STATISTIC.PLANTCAR."+plant+".CARTYPE."+carType;
 						exeCalculate(plantOnlyCarType,staplantOnlyCarTypeMap,ismonitor);
 					}
-					
-					if (!ObjectUtils.isNullOrEmpty(district)){
+
+					if (!StringUtils.isEmpty(district)){
 						
 						Set<String> districts=parentDistrictByVin(district);
 						
@@ -970,7 +972,7 @@ public class MailCalHandler {
 						Set<String>users=carUserByVin(key);
 						if(null!=users) {
 							for (String user : users) {
-								if (ObjectUtils.isNullOrEmpty(user)) {
+								if (StringUtils.isEmpty(user)) {
 									continue;
 								}
 
@@ -1044,8 +1046,8 @@ public class MailCalHandler {
 					for(Map.Entry<String, Map<String,String>> entry:map.entrySet()){
 						String key = entry.getKey();
 						Map<String,String> value = entry.getValue();
-						if (ObjectUtils.isNullOrEmpty(key)
-								|| ObjectUtils.isNullOrEmpty(value) ) {
+                        if (StringUtils.isEmpty(key)
+								|| MapUtils.isEmpty(value)) {
 							continue;
 						}
 

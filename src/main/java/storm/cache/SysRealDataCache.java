@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +26,6 @@ import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
 import storm.util.ParamsRedisUtil;
 
 /**
@@ -100,13 +100,13 @@ public class SysRealDataCache {
 			timeformat = TimeFormatService.getInstance();
 			
 	        Object outbyconf = ParamsRedisUtil.getInstance().PARAMS.get("gt.inidle.timeOut.time");
-			if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
+			if (null != outbyconf) {
 				timeouttime=1000*(int)outbyconf;
 			}
 			if (null != configUtils.sysParams) {
 				
 				String typeparams = configUtils.sysParams.getProperty("charge.car.type.id");
-				if (!ObjectUtils.isNullOrEmpty(typeparams)) {
+				if (!StringUtils.isEmpty(typeparams)) {
 					int colidx = typeparams.indexOf(",");
 					String []strings = null;
 					if (colidx > 0) {
@@ -117,7 +117,7 @@ public class SysRealDataCache {
 					if (null != strings) {
 						chargeTypes = new ArrayList<String>(strings.length);
 						for (int i = 0; i < strings.length; i++) {
-							if(!ObjectUtils.isNullOrEmpty(strings[i])
+							if(!StringUtils.isEmpty(strings[i])
 									&& !chargeTypes.contains(strings[i])){
 								chargeTypes.add(new String(strings[i]));
 							}
@@ -206,10 +206,10 @@ public class SysRealDataCache {
 			String time = dat.get(DataKey.TIME);
 			String latit = dat.get(DataKey._2503_LATITUDE);
 			String longi = dat.get(DataKey._2502_LONGITUDE);
-			
-			if (! ObjectUtils.isNullOrEmpty(time)
-					&& ! ObjectUtils.isNullOrEmpty(latit)
-					&& ! ObjectUtils.isNullOrEmpty(longi)) {
+
+			if (!StringUtils.isEmpty(time)
+					&& !StringUtils.isEmpty(latit)
+					&& !StringUtils.isEmpty(longi)) {
 				double longitude = Double.parseDouble(NumberUtils.stringNumber(longi));
 				double latitude = Double.parseDouble(NumberUtils.stringNumber(latit));
 				longitude = longitude/1000000.0;
@@ -270,9 +270,9 @@ public class SysRealDataCache {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
-			if(ObjectUtils.isNullOrEmpty(msgType)
-					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time)) {
+			if(StringUtils.isEmpty(msgType)
+					|| StringUtils.isEmpty(vid)
+					|| StringUtils.isEmpty(time)) {
 				return false;
 			}
 			
@@ -336,9 +336,9 @@ public class SysRealDataCache {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
-			if(ObjectUtils.isNullOrEmpty(msgType)
-					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time)) {
+			if(StringUtils.isEmpty(msgType)
+					|| StringUtils.isEmpty(vid)
+					|| StringUtils.isEmpty(time)) {
 				return false;
 			}
 			if (dat.containsKey(SysDefine.ONLINEUTC)) {
@@ -366,9 +366,9 @@ public class SysRealDataCache {
 			try {
 				String key = entry.getKey();
 				String value = entry.getValue();
-				
-				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) {
+
+				if (StringUtils.isEmpty(key)
+						|| StringUtils.isEmpty(value)) {
 					continue;
 				}
 

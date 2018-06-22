@@ -3,7 +3,7 @@ package storm.dto.alarm;
 import java.util.Map;
 import java.util.TreeMap;
 
-import storm.util.ObjectUtils;
+import org.apache.commons.lang.StringUtils;
 
 public class WarnningRecorder {
 
@@ -13,7 +13,7 @@ public class WarnningRecorder {
 	}
 	
 	public void addRecords(String vid,Map<String,WarnRecord>records) {
-		if (! ObjectUtils.isNullOrEmpty(vid)
+        if (!StringUtils.isEmpty(vid)
 				&& null != records) {
 			
 			carRecords.put(vid, records);
@@ -21,16 +21,16 @@ public class WarnningRecorder {
 	}
 	
 	public Map<String, WarnRecord> getRecords(String vid) {
-		if (! ObjectUtils.isNullOrEmpty(vid)) {
+        if (!StringUtils.isEmpty(vid)) {
 			return carRecords.get(vid);
 		}
 		return null;
 	}
 	
 	public void putRecord(String vid,WarnRecord record){
-		if (ObjectUtils.isNullOrEmpty(vid)
+        if (StringUtils.isEmpty(vid)
 				|| null == record
-				|| ObjectUtils.isNullOrEmpty(record.warnId)) {
+				|| StringUtils.isEmpty(record.warnId)) {
 			return ;
 		}
 		Map<String, WarnRecord> records = getRecords(vid);
@@ -50,8 +50,8 @@ public class WarnningRecorder {
 	}
 	
 	public WarnRecord getWarnRecord(String vid,String warnId){
-		if (ObjectUtils.isNullOrEmpty(vid)
-				|| ObjectUtils.isNullOrEmpty(warnId)) {
+        if (StringUtils.isEmpty(vid)
+				|| StringUtils.isEmpty(warnId)) {
 			return null;
 		}
 		Map<String, WarnRecord> records = getRecords(vid);

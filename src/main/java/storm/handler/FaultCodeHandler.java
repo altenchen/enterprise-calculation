@@ -8,13 +8,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.StringUtils;
 import storm.dto.FaultCode;
 import storm.dto.FaultRuleCode;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.util.ConfigUtils;
-import storm.util.ObjectUtils;
 import storm.util.UUIDUtils;
 import storm.util.dbconn.Conn;
 
@@ -33,11 +34,11 @@ public class FaultCodeHandler {
 		timeformat = TimeFormatService.getInstance();
 		if (null != configUtils.sysDefine) {
 			String dbflush = configUtils.sysDefine.getProperty("db.cache.flushtime");
-			if (!ObjectUtils.isNullOrEmpty(dbflush)) {
+			if (!StringUtils.isEmpty(dbflush)) {
 				dbflushtime = Long.parseLong(dbflush)*1000;
 			}
 			String off = configUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-			if (!ObjectUtils.isNullOrEmpty(off)) {
+			if (!StringUtils.isEmpty(off)) {
 				offlinetime = Long.parseLong(off)*1000;
 			}
 		}
@@ -115,7 +116,7 @@ public class FaultCodeHandler {
 		return null;
     }
 	public List<Map<String, Object>> generateNotice(Map<String, String>dat){
-		if (ObjectUtils.isNullOrEmpty(dat)) {
+		if (MapUtils.isEmpty(dat)) {
 			return null;
 		}
 		//获得最新的规则规则
@@ -125,8 +126,8 @@ public class FaultCodeHandler {
 		}
 		String vid = dat.get(DataKey.VEHICLE_ID);
 		String time = dat.get(DataKey.TIME);
-		if (ObjectUtils.isNullOrEmpty(vid)
-				|| ObjectUtils.isNullOrEmpty(time)) {
+		if (StringUtils.isEmpty(vid)
+				|| StringUtils.isEmpty(time)) {
 			return null;
 		}
 		List<String>msgFcodes = new LinkedList<String>();
@@ -176,8 +177,8 @@ public class FaultCodeHandler {
 		List<Map<String, Object>>notices = new LinkedList<Map<String, Object>>();
 		String vid = dat.get(DataKey.VEHICLE_ID);
 		String time = dat.get(DataKey.TIME);
-		if (ObjectUtils.isNullOrEmpty(vid)
-				|| ObjectUtils.isNullOrEmpty(time)) {
+		if (StringUtils.isEmpty(vid)
+				|| StringUtils.isEmpty(time)) {
 			return null;
 		}
 		String latit = dat.get(DataKey._2503_LATITUDE);
@@ -280,7 +281,7 @@ public class FaultCodeHandler {
 	Map<String,Object> newCodeMsg(){
 		Map<String,Object> msg = new TreeMap<String,Object>();
 		msg.put("msgType", "FAULT_CODE_ALARM");
-		msg.put("msgId", UUIDUtils.getUUID());
+		msg.put("msgId", UUIDUtils.getUUIDString());
 		return msg;
 	}
 	

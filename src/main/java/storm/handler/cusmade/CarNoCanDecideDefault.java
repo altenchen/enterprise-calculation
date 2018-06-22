@@ -1,9 +1,9 @@
 package storm.handler.cusmade;
 
 import com.sun.jersey.core.util.Base64;
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import storm.system.DataKey;
-import storm.util.ObjectUtils;
 
 import java.io.UnsupportedEncodingException;
 import java.util.HashSet;
@@ -25,8 +25,8 @@ public class CarNoCanDecideDefault implements ICarNoCanDecide {
         String carStatus = data.get(DataKey._3201_CAR_STATUS);
         // 车辆SOC
         String soc = data.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
-        if(!ObjectUtils.isNullOrWhiteSpace(carStatus)
-            && !ObjectUtils.isNullOrWhiteSpace(soc)) {
+        if(!StringUtils.isBlank(carStatus)
+            && !StringUtils.isBlank(soc)) {
             return true;
         }
 
@@ -40,14 +40,14 @@ public class CarNoCanDecideDefault implements ICarNoCanDecide {
         String hignVolt = data.get(DataKey._2603_SINGLE_VOLT_HIGN_VAL);
         // 电池单体最低温度值
         String lowTemp = data.get(DataKey._2612_SINGLE_LOWTEMP_VAL);
-        if(!ObjectUtils.isNullOrWhiteSpace(hignVolt)
-            && !ObjectUtils.isNullOrWhiteSpace(lowTemp)) {
+        if(!StringUtils.isBlank(hignVolt)
+            && !StringUtils.isBlank(lowTemp)) {
             return true;
         }
 
         // CAN列表, 定制协议
         String canList = data.get(DataKey._4410023_CAN_LIST);
-        if(!ObjectUtils.isNullOrWhiteSpace(canList)) {
+        if(!StringUtils.isBlank(canList)) {
             return true;
         }
 
@@ -77,7 +77,7 @@ public class CarNoCanDecideDefault implements ICarNoCanDecide {
      * @return
      */
     private static final boolean hasMacCan(@Nullable String macList) {
-        if (ObjectUtils.isNullOrWhiteSpace(macList)) {
+        if (StringUtils.isBlank(macList)) {
             return false;
         }
 
@@ -104,7 +104,7 @@ public class CarNoCanDecideDefault implements ICarNoCanDecide {
                     final String macValue = p[1];
                     // 只要有其中之一的数据有效就说明有电机can状态
                     if(drivingMotorMacKey.contains(macKey)
-                        && !ObjectUtils.isNullOrWhiteSpace(macValue)) {
+                        && !StringUtils.isBlank(macValue)) {
                         return true;
                     }
                 }

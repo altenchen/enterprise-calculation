@@ -9,9 +9,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import storm.dto.TimePeriod;
 import storm.handler.fence.input.Rule;
-import storm.util.ObjectUtils;
 
 /**
  * @author wza
@@ -521,7 +521,7 @@ public class EleFence implements Serializable {
 		return dateIntimes(new Date(utc));
 	}
 	boolean isNumber(String str) {
-        if (!ObjectUtils.isNullOrEmpty(str) && str.matches("[0-9]*.[0-9]{0,50}")) {
+        if (!StringUtils.isEmpty(str) && str.matches("[0-9]*.[0-9]{0,50}")) {
             return true;
         }
         return false;
@@ -561,8 +561,8 @@ public class EleFence implements Serializable {
 		for (String string : timeQuantum) {
 			if (null !=string) {
 				String []quantums = string.split("\\|",-1);
-				if (ObjectUtils.isNullOrEmpty(quantums[0].trim()) 
-						|| ObjectUtils.isNullOrEmpty(quantums[1].trim())) {
+                if (StringUtils.isEmpty(quantums[0].trim())
+						|| StringUtils.isEmpty(quantums[1].trim())) {
 					continue;
 				}
 				long st = Long.valueOf(quantums[0]);
@@ -586,8 +586,8 @@ public class EleFence implements Serializable {
 			for (String string : timeQuantum) {
 				if (null !=string) {
 					String []quantums = string.split("\\|",-1);
-					if (ObjectUtils.isNullOrEmpty(quantums[0].trim()) 
-							|| ObjectUtils.isNullOrEmpty(quantums[1].trim())) {
+                    if (StringUtils.isEmpty(quantums[0].trim())
+							|| StringUtils.isEmpty(quantums[1].trim())) {
 						continue;
 					}
 					long st = getDateFormat().parse(quantums[0]).getTime();

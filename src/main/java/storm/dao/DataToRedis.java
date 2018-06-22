@@ -1,11 +1,10 @@
 package storm.dao;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +14,6 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
 import storm.system.DataKey;
-import storm.util.ObjectUtils;
 import storm.util.RedisPoolUtils;
 
 /**
@@ -290,11 +288,11 @@ public final class DataToRedis {
 			jedis = jedisPool.getResource();
 			jedis.select(4);
 			m = jedis.hgetAll("XNY.FILTER");
-			if (!ObjectUtils.isNullOrEmpty(m)) 
+			if (!MapUtils.isEmpty(m))
 				if(m.size()==1)
 					for (Map.Entry<String,String> entry : m.entrySet()) {
-						if(ObjectUtils.isNullOrEmpty(entry.getKey())
-								||ObjectUtils.isNullOrEmpty(entry.getValue()))
+						if(StringUtils.isEmpty(entry.getKey())
+								|| StringUtils.isEmpty(entry.getValue()))
 							m=null;
 						break;
 					}
@@ -308,7 +306,7 @@ public final class DataToRedis {
 				jedisPool.returnResourceObject(jedis);
 			}
 		}
-		if (ObjectUtils.isNullOrEmpty(m)) 
+		if (MapUtils.isEmpty(m))
 			return null;
 		return m;
 	}
@@ -331,13 +329,13 @@ public final class DataToRedis {
 			Set<String> defaultAlarm = jedis.smembers("XNY.ALARM");
 
 			keys = jedis.keys("XNY.ALARM_*");
-			if (!ObjectUtils.isNullOrEmpty(keys)) {
+			if (!CollectionUtils.isEmpty(keys)) {
 				for(String key : keys){
-					if (!ObjectUtils.isNullOrEmpty(key)) {
+					if (!StringUtils.isEmpty(key)) {
 						Set<String> value = jedis.smembers(key);
-						
-						if (!ObjectUtils.isNullOrEmpty(value)) {
-							if(!ObjectUtils.isNullOrEmpty(defaultAlarm))
+
+						if (!CollectionUtils.isEmpty(value)) {
+							if(!CollectionUtils.isEmpty(defaultAlarm))
 								value.addAll(defaultAlarm);
 							s.put(key.split("_")[1],value);
 						}
@@ -355,7 +353,7 @@ public final class DataToRedis {
 				jedisPool.returnResourceObject(jedis);
 			}
 		}
-		if (ObjectUtils.isNullOrEmpty(s)) 
+		if (MapUtils.isEmpty(s))
 			return null;
 		return s;
 	}
@@ -510,7 +508,7 @@ public final class DataToRedis {
 			for(String vid : keys){
 				if("1".equals(jedis.hget(vid, dataId))){
 					String utc = jedis.hget(vid, utcId);
-					utc=ObjectUtils.isNullOrEmpty(utc)?"0":utc;
+					utc= StringUtils.isEmpty(utc) ?"0":utc;
 					list.add(vid+":"+utc);
 				}
 			}
@@ -688,11 +686,11 @@ public final class DataToRedis {
 			jedis = jedisPool.getResource();
 			jedis.select(db);
 			m = jedis.hgetAll(name);
-			if (!ObjectUtils.isNullOrEmpty(m)) 
+			if (!MapUtils.isEmpty(m))
 				if(m.size()==1)
 					for (Map.Entry<String,String> entry : m.entrySet()) {
-						if(ObjectUtils.isNullOrEmpty(entry.getKey())
-								||ObjectUtils.isNullOrEmpty(entry.getValue()))
+						if(StringUtils.isEmpty(entry.getKey())
+								|| StringUtils.isEmpty(entry.getValue()))
 							m=null;
 						break;
 					}
@@ -706,7 +704,7 @@ public final class DataToRedis {
 				jedisPool.returnResourceObject(jedis);
 
 		}
-		if (ObjectUtils.isNullOrEmpty(m)) 
+		if (MapUtils.isEmpty(m))
 			return null;
 		return m;
 	}

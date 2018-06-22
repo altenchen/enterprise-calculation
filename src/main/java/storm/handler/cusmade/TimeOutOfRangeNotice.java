@@ -1,12 +1,12 @@
 package storm.handler.cusmade;
 
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.util.DataUtils;
-import storm.util.ObjectUtils;
 import storm.util.ParamsRedisUtil;
 import storm.util.UUIDUtils;
 
@@ -44,7 +44,7 @@ public final class TimeOutOfRangeNotice {
         final Map<String, Object> result = new TreeMap<>();
 
         final String vid = data.get(DataKey.VEHICLE_ID);
-        if(ObjectUtils.isNullOrWhiteSpace(vid)) {
+        if(StringUtils.isBlank(vid)) {
             return result;
         }
 
@@ -55,7 +55,7 @@ public final class TimeOutOfRangeNotice {
         final String terminalTimeString = data.get(DataKey._2000_COLLECT_TIME);
 
         // 时间有效性异常
-        if(ObjectUtils.isNullOrWhiteSpace(terminalTimeString)) {
+        if(StringUtils.isBlank(terminalTimeString)) {
             final Map<String, Object> notice = generateNotice(data, 1);
             result.put(vid, notice);
             return result;
@@ -107,7 +107,7 @@ public final class TimeOutOfRangeNotice {
         final Map<String, Object> notice = new TreeMap<>();
         notice.put("vid", vid);
         notice.put("msgType", "TIME_EXCEPTION_VEH");
-        notice.put("msgId", UUIDUtils.getUUID());
+        notice.put("msgId", UUIDUtils.getUUIDString());
         notice.put("exceptionType", exceptionType);
         notice.put("ttime", terminalTimeString);
         notice.put("ptime", platformTimeString);

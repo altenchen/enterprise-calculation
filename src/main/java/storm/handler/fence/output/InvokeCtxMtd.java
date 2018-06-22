@@ -2,18 +2,16 @@ package storm.handler.fence.output;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.StringUtils;
 import storm.handler.fence.input.Rule;
 import storm.handler.fence.input.StopAlarmRule;
 import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
-import storm.util.ObjectUtils;
 
 public class InvokeCtxMtd extends InvokeMtd implements Invoke {
 	private static final ConfigUtils configUtils = storm.util.ConfigUtils.getInstance();
@@ -93,8 +91,8 @@ public class InvokeCtxMtd extends InvokeMtd implements Invoke {
 	}
 	
 	boolean continuousZero(String vid,Map<String, List<Map<String, String>>> ctxdatas){
-		
-		if (ObjectUtils.isNullOrEmpty(ctxdatas)) {
+
+		if (MapUtils.isEmpty(ctxdatas)) {
 			return false;
 		}
 		
@@ -114,15 +112,15 @@ public class InvokeCtxMtd extends InvokeMtd implements Invoke {
 		return false;
 	}
 	boolean continuousZero(List<Map<String, String>> datas){
-		
-		if (ObjectUtils.isNullOrEmpty(datas) || datas.size()<datsize) {
+
+		if (CollectionUtils.isEmpty(datas) || datas.size()<datsize) {
 			return false;
 		}
 		
 		boolean allzero=true;
 		for(Map<String, String> data : datas){
 			String speed = data.get("2201");
-			if (!ObjectUtils.isNullOrEmpty(speed)){
+			if (!StringUtils.isEmpty(speed)){
 				
 				if(!"0".equals(speed)){
 					allzero = false;
@@ -137,7 +135,7 @@ public class InvokeCtxMtd extends InvokeMtd implements Invoke {
 	}
 	
 	public void addData(String key,Map<String,String> data){
-		if (!ObjectUtils.isNullOrEmpty(key)) {
+		if (!StringUtils.isEmpty(key)) {
 			List<Map<String, String>>datas = ctxData.get(key);
 			if (null==datas) {
 				datas = new LinkedList<Map<String, String>>();
@@ -148,7 +146,7 @@ public class InvokeCtxMtd extends InvokeMtd implements Invoke {
 	}
 	
 	public void addData(String key,Map<String,String> data,int datsize){
-		if (!ObjectUtils.isNullOrEmpty(key)) {
+		if (!StringUtils.isEmpty(key)) {
 			List<Map<String, String>>datas = ctxData.get(key);
 			if (null==datas) {
 				datas = new LinkedList<Map<String, String>>();

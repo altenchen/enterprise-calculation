@@ -1,5 +1,7 @@
 package storm.util;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.util.Calendar;
 
 public class TimeUtils {
@@ -12,7 +14,7 @@ public class TimeUtils {
         cal.set(Calendar.MILLISECOND, 0);
 	}
 	public static String fillNBitBefore(String s, int length, String fillchar) {
-		if (ObjectUtils.isNullOrEmpty(s)) {
+        if (StringUtils.isEmpty(s)) {
 			s ="0";
 		}
 		StringBuilder builder=new StringBuilder();

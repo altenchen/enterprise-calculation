@@ -1,6 +1,9 @@
 package storm.handler.cusmade;
 
 import com.alibaba.fastjson.JSON;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,78 +130,78 @@ public class CarRuleHandler implements InfoNotice {
         if (null != configUtils.sysDefine) {
             logger.warn("运行静态代码块，判断配置文件是否存在");
             String off = configUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-            if (!ObjectUtils.isNullOrEmpty(off)) {
+            if (!StringUtils.isEmpty(off)) {
                 offlinetime = Long.parseLong(off) * 1000;
             }
 
             String value = configUtils.sysDefine.getProperty("sys.soc.rule");
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 socRule = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty("sys.can.rule");
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 enableCanRule = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty("sys.ignite.rule");
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 igniteRule = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty("sys.gps.rule");
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 gpsRule = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty("sys.abnormal.rule");
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 abnormalRule = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty("sys.fly.rule");
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 flyRule = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty("sys.onoff.rule");
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 onoffRule = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty("sys.milehop.rule");
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 mileHopRule = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_TIME);
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 lowsocIntervalMillisecond = Long.parseLong(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_NO);
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 lowsocJudgeNum = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty(SysDefine.LT_ALARM_SOC);
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 socAlarm = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty(SysDefine.SYS_TIME_RULE);
-            if (!ObjectUtils.isNullOrEmpty(value)) {
+            if (!StringUtils.isEmpty(value)) {
                 enableTimeRule = Integer.parseInt(value);
                 value = null;
             }
@@ -258,7 +261,7 @@ public class CarRuleHandler implements InfoNotice {
             final String ruleOverride = paramsRedisUtil.PARAMS.getOrDefault(
                 SysDefine.RULE_OVERRIDE,
                 SysDefine.RULE_OVERRIDE_VALUE_DEFAULT).toString();
-            if(!ObjectUtils.isNullOrWhiteSpace(ruleOverride)) {
+            if(!StringUtils.isBlank(ruleOverride)) {
                 if(SysDefine.RULE_OVERRIDE_VALUE_DEFAULT.equals(ruleOverride)) {
                     if(!(CarNoCanJudge.getCarNoCanDecide() instanceof CarNoCanDecideDefault)) {
                         CarNoCanJudge.setCarNoCanDecide(new CarNoCanDecideDefault());
@@ -383,15 +386,15 @@ public class CarRuleHandler implements InfoNotice {
         final List<Map<String, Object>> list = new LinkedList<>();
 
         // 验证data的有效性
-        if (ObjectUtils.isNullOrEmpty(data)
+        if (MapUtils.isEmpty(data)
                 || !data.containsKey(DataKey.VEHICLE_ID)
                 || !data.containsKey(DataKey.TIME)) {
             return list;
         }
 
         String vid = data.get(DataKey.VEHICLE_ID);
-        if (ObjectUtils.isNullOrEmpty(vid)
-                || ObjectUtils.isNullOrEmpty(data.get(DataKey.TIME))) {
+        if (StringUtils.isEmpty(vid)
+                || StringUtils.isEmpty(data.get(DataKey.TIME))) {
             return list;
         }
 
@@ -414,14 +417,14 @@ public class CarRuleHandler implements InfoNotice {
             //lowsoc(data)返回一个map，里面有vid和通知消息（treeMap）
             // SOC 过低
             socJudges = lowSoc(data);
-            if (!ObjectUtils.isNullOrEmpty(socJudges)) {
+            if (!CollectionUtils.isEmpty(socJudges)) {
                 list.addAll(socJudges);
             }
         }
         if (1 == enableCanRule) {
             // 无CAN车辆
             canJudge = carNoCanJudge.processFrame(data);
-            if (!ObjectUtils.isNullOrEmpty(canJudge)) {
+            if (!MapUtils.isEmpty(canJudge)) {
                 logger.warn("收到无CAN告警通知:" + canJudge.get("status"));
                 list.add(canJudge);
             }
@@ -429,7 +432,7 @@ public class CarRuleHandler implements InfoNotice {
         if (1 == igniteRule) {
             // 点火熄火
             igniteJudge = igniteOrShut(data);
-            if (!ObjectUtils.isNullOrEmpty(igniteJudge)) {
+            if (!MapUtils.isEmpty(igniteJudge)) {
                 list.add(igniteJudge);
             }
         }
@@ -455,23 +458,23 @@ public class CarRuleHandler implements InfoNotice {
         }
         if(1 == enableTimeRule) {
             final Map<String, Object> timeRangeJudge = timeOutOfRangeNotice.process(data);
-            if (!ObjectUtils.isNullOrEmpty(timeRangeJudge)) {
+            if (!MapUtils.isEmpty(timeRangeJudge)) {
                 list.add(timeRangeJudge);
             }
         }
-        if (!ObjectUtils.isNullOrEmpty(gpsJudge)) {
+        if (!MapUtils.isEmpty(gpsJudge)) {
             list.add(gpsJudge);
         }
-        if (!ObjectUtils.isNullOrEmpty(abnormalJudge)) {
+        if (!MapUtils.isEmpty(abnormalJudge)) {
             list.add(abnormalJudge);
         }
-        if (!ObjectUtils.isNullOrEmpty(flyJudge)) {
+        if (!MapUtils.isEmpty(flyJudge)) {
             list.add(flyJudge);
         }
-        if (!ObjectUtils.isNullOrEmpty(onOffJudge)) {
+        if (!MapUtils.isEmpty(onOffJudge)) {
             list.add(onOffJudge);
         }
-        if (!ObjectUtils.isNullOrEmpty(mileHopJudge)) {
+        if (!MapUtils.isEmpty(mileHopJudge)) {
             list.add(mileHopJudge);
         }
 
@@ -483,15 +486,15 @@ public class CarRuleHandler implements InfoNotice {
      * soc 过低
      */
     private List<Map<String, Object>> lowSoc(Map<String, String> dat) {
-        if (ObjectUtils.isNullOrEmpty(dat)) {
+        if (MapUtils.isEmpty(dat)) {
             return null;
         }
         try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             String time = dat.get(DataKey.TIME);
             Date date = new Date();
-            if (ObjectUtils.isNullOrEmpty(vid)
-                    || ObjectUtils.isNullOrEmpty(time)) {
+            if (StringUtils.isEmpty(vid)
+                    || StringUtils.isEmpty(time)) {
                 return null;
             }
             String soc = dat.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
@@ -500,7 +503,7 @@ public class CarRuleHandler implements InfoNotice {
             String location = longi + "," + latit;
             String noticetime = timeformat.toDateString(date);
             List<Map<String, Object>> noticeMsgs = new LinkedList<Map<String, Object>>();
-            if (!ObjectUtils.isNullOrEmpty(soc)) {
+            if (!StringUtils.isEmpty(soc)) {
                 double socNum = Double.parseDouble(NumberUtils.stringNumber(soc));
 
                 //想判断是一个车辆是否为低电量，不能根据一个报文就下结论，而是要连续多个报文都是报低电量才行。
@@ -519,7 +522,7 @@ public class CarRuleHandler implements InfoNotice {
                         if (null == notice) {
                             notice = new TreeMap<String, Object>();
                             notice.put("msgType", "SOC_ALARM");
-                            notice.put("msgId", UUIDUtils.getUUID());
+                            notice.put("msgId", UUIDUtils.getUUIDString());
                             notice.put("vid", vid);
                             notice.put("stime", time);
                             notice.put("ssoc", socNum);
@@ -545,7 +548,7 @@ public class CarRuleHandler implements InfoNotice {
                         if (null == notice) {
                             notice = new TreeMap<String, Object>();
                             notice.put("msgType", "SOC_ALARM");
-                            notice.put("msgId", UUIDUtils.getUUID());
+                            notice.put("msgId", UUIDUtils.getUUIDString());
                             notice.put("vid", vid);
                             notice.put("stime", time);
                             notice.put("ssoc", socNum);
@@ -762,16 +765,16 @@ public class CarRuleHandler implements InfoNotice {
      * @return 实时里程跳变通知notice，treemap类型。
      */
     private Map<String, Object> mileHopHandle(Map<String, String> dat) {
-        if (ObjectUtils.isNullOrEmpty(dat)) {
+        if (MapUtils.isEmpty(dat)) {
             return null;
         }
         try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             String time = dat.get(DataKey.TIME);
             String msgType = dat.get(SysDefine.MESSAGETYPE);
-            if (ObjectUtils.isNullOrEmpty(vid)
-                    || ObjectUtils.isNullOrEmpty(time)
-                    || ObjectUtils.isNullOrEmpty(msgType)) {
+            if (StringUtils.isEmpty(vid)
+                    || StringUtils.isEmpty(time)
+                    || StringUtils.isEmpty(msgType)) {
                 return null;
             }
             Map<String, Object> notice = null;
@@ -838,7 +841,7 @@ public class CarRuleHandler implements InfoNotice {
      * @return
      */
     private Map<String, Object> igniteOrShut(Map<String, String> dat) {
-        if (ObjectUtils.isNullOrEmpty(dat)) {
+        if (MapUtils.isEmpty(dat)) {
             return null;
         }
         try {
@@ -846,9 +849,9 @@ public class CarRuleHandler implements InfoNotice {
             String vin = dat.get(DataKey.VEHICLE_NUMBER);
             String time = dat.get(DataKey.TIME);
             String carStatus = dat.get(DataKey._3201_CAR_STATUS);
-            if (ObjectUtils.isNullOrEmpty(vid)
-                    || ObjectUtils.isNullOrEmpty(time)
-                    || ObjectUtils.isNullOrEmpty(carStatus)) {
+            if (StringUtils.isEmpty(vid)
+                    || StringUtils.isEmpty(time)
+                    || StringUtils.isEmpty(carStatus)) {
                 return null;
             }
 
@@ -861,7 +864,7 @@ public class CarRuleHandler implements InfoNotice {
             String mileageStr = dat.get(DataKey._2202_TOTAL_MILEAGE);
 
             double soc = -1;
-            if (!ObjectUtils.isNullOrEmpty(socStr)) {
+            if (!StringUtils.isEmpty(socStr)) {
                 soc = Double.parseDouble(NumberUtils.stringNumber(socStr));
                 if (-1 != soc) {
 
@@ -873,7 +876,7 @@ public class CarRuleHandler implements InfoNotice {
                 }
             }
             double mileage = -1;
-            if (!ObjectUtils.isNullOrEmpty(mileageStr)) {
+            if (!StringUtils.isEmpty(mileageStr)) {
                 mileage = Double.parseDouble(NumberUtils.stringNumber(mileageStr));
                 if (-1 != mileage) {
 
@@ -892,7 +895,7 @@ public class CarRuleHandler implements InfoNotice {
                 if (!igniteShutMaxSpeed.containsKey(vid)) {
                     igniteShutMaxSpeed.put(vid, maxSpd);
                 }
-                if (!ObjectUtils.isNullOrEmpty(speed)) {
+                if (!StringUtils.isEmpty(speed)) {
 
                     maxSpd = igniteShutMaxSpeed.get(vid);
                     spd = Double.parseDouble(NumberUtils.stringNumber(speed));
@@ -921,7 +924,7 @@ public class CarRuleHandler implements InfoNotice {
                         notice.put("msgType", "IGNITE_SHUT_MESSAGE");
                         notice.put("vid", vid);
                         notice.put("vin", vin);
-                        notice.put("msgId", UUIDUtils.getUUID());
+                        notice.put("msgId", UUIDUtils.getUUIDString());
                         notice.put("stime", time);
                         notice.put("soc", soc);
                         notice.put("ssoc", soc);
@@ -990,7 +993,7 @@ public class CarRuleHandler implements InfoNotice {
      * @return
      */
     private Map<String, Object> flySe(Map<String, String> dat) {
-        if (ObjectUtils.isNullOrEmpty(dat)) {
+        if (MapUtils.isEmpty(dat)) {
             return null;
         }
         try {
@@ -998,10 +1001,10 @@ public class CarRuleHandler implements InfoNotice {
             String time = dat.get(DataKey.TIME);
             String speed = dat.get(DataKey._2201_SPEED);
             String rev = dat.get(DataKey._2303_DRIVING_ELE_MAC_REV);
-            if (ObjectUtils.isNullOrEmpty(vid)
-                    || ObjectUtils.isNullOrEmpty(time)
-                    || ObjectUtils.isNullOrEmpty(speed)
-                    || ObjectUtils.isNullOrEmpty(rev)) {
+            if (StringUtils.isEmpty(vid)
+                    || StringUtils.isEmpty(time)
+                    || StringUtils.isEmpty(speed)
+                    || StringUtils.isEmpty(rev)) {
                 return null;
             }
             double spd = Double.parseDouble(NumberUtils.stringNumber(speed));
@@ -1025,7 +1028,7 @@ public class CarRuleHandler implements InfoNotice {
                         notice = new TreeMap<String, Object>();
                         notice.put("msgType", "FLY_RECORD");
                         notice.put("vid", vid);
-                        notice.put("msgId", UUIDUtils.getUUID());
+                        notice.put("msgId", UUIDUtils.getUUIDString());
                         notice.put("stime", time);
                         notice.put("count", cnts);
                         notice.put("status", 1);
@@ -1079,16 +1082,16 @@ public class CarRuleHandler implements InfoNotice {
      * @return
      */
     private Map<String, Object> abnormalCar(Map<String, String> dat) {
-        if (ObjectUtils.isNullOrEmpty(dat)) {
+        if (MapUtils.isEmpty(dat)) {
             return null;
         }
         try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             String time = dat.get(DataKey.TIME);
             String speed = dat.get(DataKey._2201_SPEED);
-            if (ObjectUtils.isNullOrEmpty(vid)
-                    || ObjectUtils.isNullOrEmpty(time)
-                    || ObjectUtils.isNullOrEmpty(speed)) {
+            if (StringUtils.isEmpty(vid)
+                    || StringUtils.isEmpty(time)
+                    || StringUtils.isEmpty(speed)) {
                 return null;
             }
             String latit = dat.get(DataKey._2503_LATITUDE);
@@ -1111,7 +1114,7 @@ public class CarRuleHandler implements InfoNotice {
                         notice = new TreeMap<String, Object>();
                         notice.put("msgType", "ABNORMAL_USE_VEH");
                         notice.put("vid", vid);
-                        notice.put("msgId", UUIDUtils.getUUID());
+                        notice.put("msgId", UUIDUtils.getUUIDString());
                         notice.put("stime", time);
                         notice.put("count", cnts);
                         notice.put("status", 1);
@@ -1174,14 +1177,14 @@ public class CarRuleHandler implements InfoNotice {
      * 未定位车辆_于心沼
      */
     Map<String, Object> noGps(Map<String, String> dat) {
-        if (ObjectUtils.isNullOrEmpty(dat)) {
+        if (MapUtils.isEmpty(dat)) {
             return null;
         }
         try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             String time = dat.get(DataKey.TIME);
-            if (ObjectUtils.isNullOrEmpty(vid)
-                    || ObjectUtils.isNullOrEmpty(time)) {
+            if (StringUtils.isEmpty(vid)
+                    || StringUtils.isEmpty(time)) {
                 return null;
             }
             String latit = dat.get(DataKey._2503_LATITUDE);
@@ -1191,8 +1194,8 @@ public class CarRuleHandler implements InfoNotice {
             String noticetime = timeformat.toDateString(date);
 
             boolean isValid = true;
-            if (!ObjectUtils.isNullOrEmpty(latit)
-                    && !ObjectUtils.isNullOrEmpty(longi)) {
+            if (!StringUtils.isEmpty(latit)
+                    && !StringUtils.isEmpty(longi)) {
                 latit = NumberUtils.stringNumber(latit);
                 longi = NumberUtils.stringNumber(longi);
                 double latitd = Double.parseDouble(latit);
@@ -1203,8 +1206,8 @@ public class CarRuleHandler implements InfoNotice {
                 }
             }
             if (!isValid
-                    || ObjectUtils.isNullOrEmpty(latit)
-                    || ObjectUtils.isNullOrEmpty(longi)) {
+                    || StringUtils.isEmpty(latit)
+                    || StringUtils.isEmpty(longi)) {
 
                 int cnts = 0;
                 //vidnogps缓存无gps车辆的vid和报文帧数
@@ -1220,7 +1223,7 @@ public class CarRuleHandler implements InfoNotice {
                         notice = new TreeMap<String, Object>();
                         notice.put("msgType", "NO_POSITION_VEH");
                         notice.put("vid", vid);
-                        notice.put("msgId", UUIDUtils.getUUID());
+                        notice.put("msgId", UUIDUtils.getUUIDString());
                         notice.put("stime", time);
                         notice.put("count", cnts);
                         notice.put("status", 1);//1开始，2持续，3结束
@@ -1287,16 +1290,16 @@ public class CarRuleHandler implements InfoNotice {
     }
 
     private Map<String, Object> onOffline(Map<String, String> dat) {
-        if (ObjectUtils.isNullOrEmpty(dat)) {
+        if (MapUtils.isEmpty(dat)) {
             return null;
         }
         try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             String vin = dat.get(DataKey.VEHICLE_NUMBER);
             String time = dat.get(DataKey.TIME);
-            if (ObjectUtils.isNullOrEmpty(vid)
-                    || ObjectUtils.isNullOrEmpty(time)
-                    || ObjectUtils.isNullOrEmpty(vin)) {
+            if (StringUtils.isEmpty(vid)
+                    || StringUtils.isEmpty(time)
+                    || StringUtils.isEmpty(vin)) {
                 return null;
             }
 
@@ -1309,7 +1312,7 @@ public class CarRuleHandler implements InfoNotice {
                     notice.put("msgType", "ON_OFF");
                     notice.put("vid", vid);
                     notice.put("vin", vin);
-                    notice.put("msgId", UUIDUtils.getUUID());
+                    notice.put("msgId", UUIDUtils.getUUIDString());
                     notice.put("stime", time);
                     notice.put("status", 1);
                     notice.put("noticetime", noticetime);
@@ -1355,8 +1358,8 @@ public class CarRuleHandler implements InfoNotice {
             } else {
                 String logoutTime = dat.get(SUBMIT_LOGIN.LOGOUT_TIME);
                 String loginTime = dat.get(SUBMIT_LOGIN.LOGIN_TIME);
-                if (!ObjectUtils.isNullOrEmpty(logoutTime)
-                        && !ObjectUtils.isNullOrEmpty(logoutTime)) {
+                if (!StringUtils.isEmpty(logoutTime)
+                        && !StringUtils.isEmpty(logoutTime)) {
                     long logout = Long.parseLong(NumberUtils.stringNumber(logoutTime));
                     long login = Long.parseLong(NumberUtils.stringNumber(loginTime));
                     if (login > logout) {
@@ -1365,7 +1368,7 @@ public class CarRuleHandler implements InfoNotice {
                     return true;
 
                 } else {
-                    if (ObjectUtils.isNullOrEmpty(loginTime)) {
+                    if (StringUtils.isEmpty(loginTime)) {
                         return false;
                     }
                     return true;

@@ -4,12 +4,12 @@ package storm.handler.fence.output;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.apache.commons.lang.StringUtils;
 import storm.handler.fence.input.AlarmRule;
 import storm.handler.fence.input.AreaIOAlarmRule;
 import storm.handler.fence.input.Rule;
 import storm.handler.fence.input.SpeedAlarmRule;
 import storm.system.SysDefine;
-import storm.util.ObjectUtils;
 
 public class InvokeSglMtd extends InvokeMtd implements Invoke {
 
@@ -54,7 +54,7 @@ public class InvokeSglMtd extends InvokeMtd implements Invoke {
 			SpeedAlarmRule alarmRule=(SpeedAlarmRule)rule;
 			
 			String speed = dat.get("2201");
-			if (!ObjectUtils.isNullOrEmpty(speed)){
+            if (!StringUtils.isEmpty(speed)){
 				double spd = Double.valueOf(speed);
 			
 				boolean isalm = false;

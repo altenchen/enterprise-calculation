@@ -1,5 +1,6 @@
 package storm.bolt.deal.norm;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -15,7 +16,6 @@ import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -47,7 +47,7 @@ public class SynEsculBolt extends BaseRichBolt {
         lastExeTime = now;
         rebootTime = now;
         String nocheckObj = configUtils.sysDefine.getProperty("sys.reboot.nocheck");
-        if (! ObjectUtils.isNullOrEmpty(nocheckObj)) {
+        if (!StringUtils.isEmpty(nocheckObj)) {
         	againNoproTime=Long.parseLong(nocheckObj)*1000;
 		}
         offlinechecktime=Long.parseLong(stormConf.get("offline.check.time").toString());

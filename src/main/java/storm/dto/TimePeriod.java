@@ -6,7 +6,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
-import storm.util.ObjectUtils;
+import org.apache.commons.lang.StringUtils;
 
 public class TimePeriod implements Serializable {
 
@@ -254,7 +254,7 @@ public class TimePeriod implements Serializable {
 		return dateIntimes(new Date(utc));
 	}
 	boolean isNumber(String str) {
-        if (!ObjectUtils.isNullOrEmpty(str) && str.matches("[0-9]*.[0-9]{0,10}")) {
+        if (!StringUtils.isEmpty(str) && str.matches("[0-9]*.[0-9]{0,10}")) {
             return true;
         }
         return false;

@@ -1,5 +1,6 @@
 package storm.handler.cusmade;
 
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -11,7 +12,6 @@ import storm.service.TimeFormatService;
 import storm.system.AlarmMessageType;
 import storm.system.DataKey;
 import storm.util.DataUtils;
-import storm.util.ObjectUtils;
 import storm.util.ParamsRedisUtil;
 import storm.util.UUIDUtils;
 
@@ -180,8 +180,8 @@ public final class CarNoCanJudge {
         final String timeString = data.get(DataKey.TIME);
         final boolean traceVehicleId = paramsRedisUtil.isTraceVehicleId(vid);
 
-        if(ObjectUtils.isNullOrWhiteSpace(vid)
-            || ObjectUtils.isNullOrWhiteSpace(timeString)) {
+        if(StringUtils.isBlank(vid)
+            || StringUtils.isBlank(timeString)) {
             return result;
         }
         final long time;
@@ -347,7 +347,7 @@ public final class CarNoCanJudge {
         /**
          * 消息唯一ID
          */
-        public final String msgId = UUIDUtils.getUUID();
+        public final String msgId = UUIDUtils.getUUIDString();
 
         /**
          * 正常运行时创建的项

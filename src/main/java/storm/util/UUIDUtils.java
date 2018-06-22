@@ -2,11 +2,15 @@ package storm.util;
 
 import java.util.UUID;
 
+/**
+ * @author xzp
+ */
 public class UUIDUtils {
 
-	public static String getUUID(){
-		String uuid = UUID.randomUUID().toString();
-		uuid = uuid.replace("-", "");
-		return uuid;
+	public static String getUUIDString(){
+        return UUID
+            .randomUUID()
+            .toString()
+            .replaceAll("-", "");
 	}
 }

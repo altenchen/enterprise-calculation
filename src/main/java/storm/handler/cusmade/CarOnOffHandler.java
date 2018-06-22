@@ -3,6 +3,7 @@ package storm.handler.cusmade;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import storm.cache.SysRealDataCache;
 import storm.handler.ctx.Recorder;
@@ -14,8 +15,8 @@ import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
+import storm.util.DataUtils;
 import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
 import storm.util.UUIDUtils;
 
 /**
@@ -213,15 +214,15 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 		//过滤掉自动唤醒的数据，判断依据：总电压、总电流同时为空则为自动唤醒数据
-        if (ObjectUtils.judgeAutoWake(dat)) {
+        if (DataUtils.judgeAutoWake(dat)) {
             return null;
         }
 
 		String vid = dat.get(DataKey.VEHICLE_ID);
 		String time = dat.get(DataKey.TIME);
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
-		if (ObjectUtils.isNullOrEmpty(vid)
-				|| ObjectUtils.isNullOrEmpty(time)) {
+        if (StringUtils.isEmpty(vid)
+				|| StringUtils.isEmpty(time)) {
 			return null;
 		}
 		int numSpeed = -1;
@@ -290,7 +291,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				notice =  new TreeMap<String, Object>();
 				notice.put("msgType", "IDLE_VEH");
 				notice.put("vid", vid);
-				notice.put("msgId", UUIDUtils.getUUID());
+				notice.put("msgId", UUIDUtils.getUUIDString());
 				notice.put("stime", time);
 				notice.put("soc", numSoc);
                 //吉利要求，新增
@@ -364,9 +365,9 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
 		String vid = dat.get(DataKey.VEHICLE_ID);
 		String time = dat.get(DataKey.TIME);
-		if (ObjectUtils.isNullOrEmpty(msgType)
-				||ObjectUtils.isNullOrEmpty(vid)
-				|| ObjectUtils.isNullOrEmpty(time)) {
+        if (StringUtils.isEmpty(msgType)
+				|| StringUtils.isEmpty(vid)
+				|| StringUtils.isEmpty(time)) {
 			return null;
 		}
 		String lastUtc = dat.get(SysDefine.ONLINEUTC);
@@ -414,9 +415,9 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
 		String vid = dat.get(DataKey.VEHICLE_ID);
 		String time = dat.get(DataKey.TIME);
-		if (ObjectUtils.isNullOrEmpty(msgType)
-				||ObjectUtils.isNullOrEmpty(vid)
-				|| ObjectUtils.isNullOrEmpty(time)) {
+        if (StringUtils.isEmpty(msgType)
+				|| StringUtils.isEmpty(vid)
+				|| StringUtils.isEmpty(time)) {
 			return null;
 		}
 		String lastUtc = dat.get(SysDefine.ONLINEUTC);
@@ -506,8 +507,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				//2、如果自带的type字段没数据，则根据登入登出流水号判断。
 				String logoutSeq = dat.get(SUBMIT_LOGIN.LOGOUT_SEQ);
 				String loginSeq = dat.get(SUBMIT_LOGIN.LOGIN_SEQ);
-				if (! ObjectUtils.isNullOrEmpty(logoutSeq)
-						&& !ObjectUtils.isNullOrEmpty(logoutSeq)) {
+                if (!StringUtils.isEmpty(logoutSeq)
+						&& !StringUtils.isEmpty(logoutSeq)) {
 					int logout = Integer.parseInt(NumberUtils.stringNumber(logoutSeq));
 					int login = Integer.parseInt(NumberUtils.stringNumber(loginSeq));
 					if(login >logout){
@@ -516,7 +517,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 					return true;
 
 				} else{
-					if (ObjectUtils.isNullOrEmpty(loginSeq)) {
+                    if (StringUtils.isEmpty(loginSeq)) {
 						return false;
 					}
 					return true;

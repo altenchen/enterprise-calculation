@@ -1,5 +1,6 @@
 package storm.bolt.deal.norm;
 
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -77,7 +78,7 @@ public class FilterBolt extends BaseRichBolt {
 
         rebootTime = System.currentTimeMillis();
         String nocheckObj = configUtils.sysDefine.getProperty("sys.reboot.nocheck");
-        if (! ObjectUtils.isNullOrEmpty(nocheckObj)) {
+        if (!StringUtils.isEmpty(nocheckObj)) {
         	againNoproTime=Long.parseLong(nocheckObj)*1000;
 		}
 //        areaHandler = new AreaFenceHandler();
@@ -308,7 +309,7 @@ public class FilterBolt extends BaseRichBolt {
 
     @Nullable
     private Map<String, String> processValid(@NotNull Map<String, String> dataMap) {
-        if(ObjectUtils.isNullOrEmpty(dataMap)) {
+        if(MapUtils.isEmpty(dataMap)) {
             return null;
         }
         
@@ -327,8 +328,8 @@ public class FilterBolt extends BaseRichBolt {
                 );
                 Long maxCacheMileage = maxMileMap.get(vid);
                 Long minCacheMileage = minMileMap.get(vid);
-                maxCacheMileage = ObjectUtils.isNullOrEmpty(maxCacheMileage) ? 0L : maxCacheMileage;
-                minCacheMileage = ObjectUtils.isNullOrEmpty(minCacheMileage) ? 0L : minCacheMileage;
+                maxCacheMileage = null == maxCacheMileage ? 0L : maxCacheMileage;
+                minCacheMileage = null == minCacheMileage ? 0L : minCacheMileage;
                 long maxMileage = maxCacheMileage;
                 long minMileage = minCacheMileage;
 
@@ -357,7 +358,7 @@ public class FilterBolt extends BaseRichBolt {
             final String disCharging = "2";
             if (CommandType.SUBMIT_REALTIME.equals(dataMap.get(SysDefine.MESSAGETYPE))) {
                 if (dataMap.containsKey(DataKey._2301_CHARGE_STATUS)
-                    && !ObjectUtils.isNullOrEmpty(dataMap.get(DataKey._2301_CHARGE_STATUS))) {
+                    && !StringUtils.isEmpty(dataMap.get(DataKey._2301_CHARGE_STATUS))) {
                     String status = dataMap.get(DataKey._2301_CHARGE_STATUS);
                     if (chargeMap.get(vid) == null) {
                         chargeMap.put(vid, 0);

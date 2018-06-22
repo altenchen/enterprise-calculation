@@ -14,6 +14,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +32,6 @@ import storm.system.SysDefine;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
 import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
 
 public class RedisTotalCacheInitUtil {
 	private static Logger logger = LoggerFactory.getLogger(RedisTotalCacheInitUtil.class);
@@ -69,9 +71,9 @@ public class RedisTotalCacheInitUtil {
 			try {
 				String key = entry.getKey();
 				String value = entry.getValue();
-				
-				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) {
+
+				if (StringUtils.isEmpty(key)
+						|| StringUtils.isEmpty(value)) {
 					continue;
 				}
 
@@ -100,9 +102,9 @@ public class RedisTotalCacheInitUtil {
 			try {
 				String key = entry.getKey();
 				String value = entry.getValue();
-				
-				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) {
+
+				if (StringUtils.isEmpty(key)
+						|| StringUtils.isEmpty(value)) {
 					continue;
 				}
 
@@ -170,7 +172,7 @@ public class RedisTotalCacheInitUtil {
 						while (i < 3) {
 							i++;
 							string=redis.hgetBykeyAndFiled("XNY.CARINFO", vin, 0);
-							if(!ObjectUtils.isNullOrEmpty(string)) {
+							if(!StringUtils.isEmpty(string)) {
 								return string;
 							}
 							TimeUnit.MILLISECONDS.sleep(3);
@@ -179,7 +181,7 @@ public class RedisTotalCacheInitUtil {
 						e.printStackTrace();
 						TimeUnit.MILLISECONDS.sleep(3);
 						string=redis.hgetBykeyAndFiled("XNY.CARINFO", vin, 0);
-						if(!ObjectUtils.isNullOrEmpty(string)) {
+						if(!StringUtils.isEmpty(string)) {
 							return string;
 						}
 					}
@@ -467,8 +469,8 @@ public class RedisTotalCacheInitUtil {
 					for(Map.Entry<String, Map<String,String>> entry:map.entrySet()){
 						String key = entry.getKey();
 						Map<String,String> value = entry.getValue();
-						if (ObjectUtils.isNullOrEmpty(key)
-								|| ObjectUtils.isNullOrEmpty(value) ) {
+						if (StringUtils.isEmpty(key)
+								|| MapUtils.isEmpty(value)) {
 							continue;
 						}
 
@@ -538,14 +540,14 @@ public class RedisTotalCacheInitUtil {
         }
 
         private synchronized void statisticsUser(Map<String, Map<String, Map<String,String>>>from,Map<String, Map<String, Map<String,String>>>total){
-        	if (ObjectUtils.isNullOrEmpty(from)) {
+			if (MapUtils.isEmpty(from)) {
 				return;
 			}
         	for (Map.Entry<String, Map<String, Map<String,String>>> entry : from.entrySet()){
         		try {
 					String user=entry.getKey();
 					Map<String, Map<String,String>> fromMap=entry.getValue();
-					if(ObjectUtils.isNullOrEmpty(user) || ObjectUtils.isNullOrEmpty(fromMap)) {
+					if(StringUtils.isEmpty(user) || MapUtils.isEmpty(fromMap)) {
 						continue;
 					}
 					Map<String, Map<String, String>>totalMap=total.get(user);
@@ -562,7 +564,7 @@ public class RedisTotalCacheInitUtil {
 
         private synchronized void statistics(Map<String, Map<String, String>>fromMap,Map<String, Map<String, String>>totalMap){
 
-        	if (ObjectUtils.isNullOrEmpty(fromMap)) {
+			if (MapUtils.isEmpty(fromMap)) {
 				return;
 			}
 			
@@ -570,7 +572,7 @@ public class RedisTotalCacheInitUtil {
 				try {
 					String key=entry.getKey();
 					Map<String, String> data=entry.getValue();
-					if(ObjectUtils.isNullOrEmpty(key) || ObjectUtils.isNullOrEmpty(data)) {
+					if(StringUtils.isEmpty(key) || MapUtils.isEmpty(data)) {
 						continue;
 					}
 
@@ -724,15 +726,15 @@ public class RedisTotalCacheInitUtil {
 		void executeBykeys(List<String> keys){
 			try {
 				for(String key :keys){
-					if (ObjectUtils.isNullOrEmpty(key)) {
+					if (StringUtils.isEmpty(key)) {
 						continue;
 					}
 					key=key.split("-",3)[2];
-					if (ObjectUtils.isNullOrEmpty(key)) {
+					if (StringUtils.isEmpty(key)) {
 						continue;
 					}
 					Map<String, String> map=CTFOUtils.getDefaultCTFOCacheTable().queryHash(key);
-					if(ObjectUtils.isNullOrEmpty(map)) {
+					if(MapUtils.isEmpty(map)) {
 						continue;
 					}
 					String vin=map.get("VIN");
@@ -740,7 +742,7 @@ public class RedisTotalCacheInitUtil {
 						continue;
 					}
 					vinMap.put(vin, true);
-					if (!ObjectUtils.isNullOrEmpty(vin)) {
+					if (!StringUtils.isEmpty(vin)) {
         				String []strings=carInfoArray.get(vin);
 						if(null == strings || strings.length != 15){
 							logger.info("carInfo vin:"+vin);
@@ -780,7 +782,7 @@ public class RedisTotalCacheInitUtil {
                 			execu(now,map,keyNoUnk,infoNoDistMap);
             			}
 
-            			org=ObjectUtils.isNullOrEmpty(org)?unknow:org;
+						org= StringUtils.isEmpty(org) ?unknow:org;
             			String orgDistAndType="ORGCAR."+org+"."+district+"."+carType;
             			execu(now,map,orgDistAndType,orgDistAndTypeMap);
             			
@@ -798,7 +800,7 @@ public class RedisTotalCacheInitUtil {
             			Set<String>users=carUserByVin(vin);
             			if(null!=users) {
 							for (String user : users) {
-								if (ObjectUtils.isNullOrEmpty(user)) {
+								if (StringUtils.isEmpty(user)) {
 									continue;
 								}
 								Map<String, Map<String,String>>userDistAndTypeMap=userCacheDistAndTypeMap.get(user);
@@ -951,16 +953,16 @@ public class RedisTotalCacheInitUtil {
 						if (lastTime - starttime >= stoptime) {
 							String slon = startZero.get("2502");//经度
 							String slan = startZero.get("2503");//纬度
-							if ( ( ObjectUtils.isNullOrEmpty(lon) 
-										|| ObjectUtils.isNullOrEmpty(lan) )
-									&& ( ObjectUtils.isNullOrEmpty(slon)
-											|| ObjectUtils.isNullOrEmpty(slan) ) ) {
+							if ( ( StringUtils.isEmpty(lon)
+										|| StringUtils.isEmpty(lan))
+									&& ( StringUtils.isEmpty(slon)
+											|| StringUtils.isEmpty(slan)) ) {
 								return true;
 							}
-							if (   ! ObjectUtils.isNullOrEmpty(lon) 
-								&& ! ObjectUtils.isNullOrEmpty(lan) 
-								&& ! ObjectUtils.isNullOrEmpty(slon)
-								&& ! ObjectUtils.isNullOrEmpty(slan) ){
+							if (   !StringUtils.isEmpty(lon)
+								&& !StringUtils.isEmpty(lan)
+								&& !StringUtils.isEmpty(slon)
+								&& !StringUtils.isEmpty(slan)){
 								long longi = Long.valueOf(lon);
 								long slongi = Long.valueOf(slon);
 								long lati = Long.valueOf(lan);
@@ -1067,9 +1069,9 @@ public class RedisTotalCacheInitUtil {
 				try {
 					String key = entry.getKey();
 					String[] strings = entry.getValue();
-					
-					if (ObjectUtils.isNullOrEmpty(key)
-							|| ObjectUtils.isNullOrEmpty(strings)) {
+
+					if (StringUtils.isEmpty(key)
+							|| ArrayUtils.isEmpty(strings)) {
 						continue;
 					}
 
@@ -1084,13 +1086,13 @@ public class RedisTotalCacheInitUtil {
 					String monitor=strings[14];
 					boolean ismonitor="1".equals(monitor);
 					String plant=strings[5];
-					if (!ObjectUtils.isNullOrEmpty(plant) && !ObjectUtils.isNullOrEmpty(carType)) {
+					if (!StringUtils.isEmpty(plant) && !StringUtils.isEmpty(carType)) {
 						
 						String plantOnlyCarType="STATISTIC.PLANTCAR."+plant+".CARTYPE."+carType;
 						exeCalculate(plantOnlyCarType,staplantOnlyCarTypeMap,ismonitor);
 					}
 					
-					if (ObjectUtils.isNullOrEmpty(district)) 
+					if (StringUtils.isEmpty(district))
 						continue;
 					
 					Set<String> districts=parentDistrictByVin(district);
@@ -1108,7 +1110,7 @@ public class RedisTotalCacheInitUtil {
 					Set<String>users=carUserByVin(key);
 					if(null!=users)
 						for (String user : users) {
-							if (ObjectUtils.isNullOrEmpty(user)) 
+							if (StringUtils.isEmpty(user))
 								continue;
 							
 							if(null!=districts && 0<districts.size()){
@@ -1179,13 +1181,13 @@ public class RedisTotalCacheInitUtil {
 					String monitor=strings[14];
 					boolean ismonitor="1".equals(monitor);
 					String plant=strings[5];
-					if (!ObjectUtils.isNullOrEmpty(plant) && !ObjectUtils.isNullOrEmpty(carType)) {
+					if (!StringUtils.isEmpty(plant) && !StringUtils.isEmpty(carType)) {
 						
 						String plantOnlyCarType="STATISTIC.PLANTCAR."+plant+".CARTYPE."+carType;
 						exeCalculate(plantOnlyCarType,staplantOnlyCarTypeMap,ismonitor);
 					}
-					
-					if (!ObjectUtils.isNullOrEmpty(district)){
+
+					if (!StringUtils.isEmpty(district)){
 						
 						Set<String> districts=parentDistrictByVin(district);
 						
@@ -1202,7 +1204,7 @@ public class RedisTotalCacheInitUtil {
 						Set<String>users=carUserByVin(key);
 						if(null!=users) {
 							for (String user : users) {
-								if (ObjectUtils.isNullOrEmpty(user)) {
+								if (StringUtils.isEmpty(user)) {
 									continue;
 								}
 
@@ -1325,8 +1327,8 @@ public class RedisTotalCacheInitUtil {
 					for(Map.Entry<String, Map<String,String>> entry:map.entrySet()){
 						String key = entry.getKey();
 						Map<String,String> value = entry.getValue();
-						if (ObjectUtils.isNullOrEmpty(key)
-								|| ObjectUtils.isNullOrEmpty(value) ) {
+						if (StringUtils.isEmpty(key)
+								|| MapUtils.isEmpty(value)) {
 							continue;
 						}
 

@@ -1,12 +1,10 @@
 package storm.cache.util;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 import storm.dao.DataToRedis;
-import storm.util.ObjectUtils;
 
 public class RedisOrganizationUtil {
 
@@ -113,13 +111,13 @@ public class RedisOrganizationUtil {
 		Map<String, Set<String>> districtMap=new HashMap<String,Set<String>>();
 
 		Set<String> districtOrg=redis.getKeysSet(10, "XNY.AREA.*");
-		if(!ObjectUtils.isNullOrEmpty(districtOrg))
+        if(!CollectionUtils.isEmpty(districtOrg))
 		for (String org : districtOrg) {
 			int last=org.lastIndexOf(".");
 			if(last+1==org.length())
 				continue;
 			String districtId=org.substring(last+1);
-			if(ObjectUtils.isNullOrEmpty(districtId))
+            if(StringUtils.isEmpty(districtId))
 				continue;
 			Set<String> sets=districtMap.get(districtId);
 			if(null==sets)
@@ -175,8 +173,8 @@ public class RedisOrganizationUtil {
 		for (Map.Entry<String, Set<String>> entry : districtMap.entrySet()) {
 			String districtId=entry.getKey();
 			Set<String> districts=entry.getValue();
-			if(ObjectUtils.isNullOrEmpty(districtId) 
-					|| ObjectUtils.isNullOrEmpty(districts))
+            if(StringUtils.isEmpty(districtId)
+					|| CollectionUtils.isEmpty(districts))
 				continue;
 			for (String district : districts) {
 				Set<String> pids=districtIds.get(district);

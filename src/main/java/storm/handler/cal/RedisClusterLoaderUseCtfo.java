@@ -14,9 +14,10 @@ import com.ctfo.datacenter.cache.handle.CTFOCacheKeys;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.StringUtils;
 import storm.dao.DataToRedis;
 import storm.util.CTFOUtils;
-import storm.util.ObjectUtils;
 
 public class RedisClusterLoaderUseCtfo {
 
@@ -47,9 +48,9 @@ public class RedisClusterLoaderUseCtfo {
 			for (Map.Entry<String, String> entry : map.entrySet()) {
 				String key = entry.getKey();
 				String value = entry.getValue();
-				
-				if (ObjectUtils.isNullOrEmpty(key)
-						|| ObjectUtils.isNullOrEmpty(value)) {
+
+                if (StringUtils.isEmpty(key)
+						|| StringUtils.isEmpty(value)) {
 					continue;
 				}
 				
@@ -137,15 +138,15 @@ public class RedisClusterLoaderUseCtfo {
 		void loadBykeys(List<String> keys){
 			try {
 				for(String key :keys){
-					if (ObjectUtils.isNullOrEmpty(key)) {
+                    if (StringUtils.isEmpty(key)) {
 						continue;
 					}
 					key=key.split("-",3)[2];
-					if (ObjectUtils.isNullOrEmpty(key)) {
+                    if (StringUtils.isEmpty(key)) {
 						continue;
 					}
 					Map<String, String> map=CTFOUtils.getDefaultCTFOCacheTable().queryHash(key);
-					if(ObjectUtils.isNullOrEmpty(map)) {
+                    if(MapUtils.isEmpty(map)) {
 						continue;
 					}
 					Map<String, String> newmap =  new TreeMap<String, String>();

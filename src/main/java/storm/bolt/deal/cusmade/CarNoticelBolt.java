@@ -1,5 +1,7 @@
 package storm.bolt.deal.cusmade;
 
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -20,7 +22,6 @@ import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
 import storm.util.ParamsRedisUtil;
 
 import java.util.List;
@@ -95,7 +96,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 			paramsRedisUtil.rebulid();
             // 从Redis读取超时时间
 			Object outbyconf = paramsRedisUtil.PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
-			if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
+			if (null != outbyconf) {
 				idleTimeoutMillsecond =1000*(int)outbyconf;
 			}
 		} catch (Exception e) {
@@ -103,17 +104,14 @@ public final class CarNoticelBolt extends BaseRichBolt {
 		}
 
         // 多长时间算是离线
-        String offLineSecond = ObjectUtils.getNullOrString(stormConf, StormConfigKey.REDIS_OFFLINE_SECOND);
-        if (!ObjectUtils.isNullOrEmpty(offLineSecond)) {
+        String offLineSecond = MapUtils.getString(stormConf, StormConfigKey.REDIS_OFFLINE_SECOND);
+        if (!StringUtils.isEmpty(offLineSecond)) {
 			offlineTimeMillisecond = Long.parseLong(NumberUtils.stringNumber(offLineSecond))*1000;
 		}
 
         // 多长时间检查一下是否离线
-        String offLineCheckSpanSecond = ObjectUtils.getNullOrString(
-            stormConf,
-            StormConfigKey.REDIS_OFFLINE_CHECK_SPAN_SECOND
-        );
-        if (!ObjectUtils.isNullOrEmpty(offLineCheckSpanSecond)) {
+        String offLineCheckSpanSecond = MapUtils.getString(stormConf, StormConfigKey.REDIS_OFFLINE_CHECK_SPAN_SECOND);
+        if (!StringUtils.isEmpty(offLineCheckSpanSecond)) {
         	offlineCheckSpanMillisecond = Long.parseLong(NumberUtils.stringNumber(offLineCheckSpanSecond))*1000;
         }
 
@@ -167,7 +165,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 							CarRuleHandler.rebulid();
                             //从配置文件中读出超时时间
 							Object outbyconf = ParamsRedisUtil.getInstance().PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
-							if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
+							if (null != outbyconf) {
 								idleTimeoutMillsecond =1000*(int)outbyconf;
 							}
 						} catch (Exception e) {

@@ -1,5 +1,6 @@
 package storm.util;
 
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,7 +139,7 @@ public final class ParamsRedisUtil {
             // region 规则覆盖
             {
                 final String ruleOverride = properties.getProperty(SysDefine.RULE_OVERRIDE);
-                if (!ObjectUtils.isNullOrWhiteSpace(ruleOverride)) {
+                if (!StringUtils.isBlank(ruleOverride)) {
                     PARAMS.put(SysDefine.RULE_OVERRIDE, ruleOverride);
                 }
             }
@@ -147,7 +148,7 @@ public final class ParamsRedisUtil {
             {
                 final String alarmCanFaultTriggerContinueCount = properties.getProperty(
                     SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT);
-                if (!ObjectUtils.isNullOrWhiteSpace(alarmCanFaultTriggerContinueCount)) {
+                if (!StringUtils.isBlank(alarmCanFaultTriggerContinueCount)) {
                     PARAMS.put(
                         SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT,
                         alarmCanFaultTriggerContinueCount);
@@ -158,7 +159,7 @@ public final class ParamsRedisUtil {
             {
                 final String alarmCanFaultTriggerTimeoutMillisecond = properties.getProperty(
                     SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND);
-                if (!ObjectUtils.isNullOrWhiteSpace(alarmCanFaultTriggerTimeoutMillisecond)) {
+                if (!StringUtils.isBlank(alarmCanFaultTriggerTimeoutMillisecond)) {
                     PARAMS.put(
                         SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND,
                         alarmCanFaultTriggerTimeoutMillisecond);
@@ -169,7 +170,7 @@ public final class ParamsRedisUtil {
             {
                 final String alarmCanNormalTriggerContinueCount = properties.getProperty(
                     SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT);
-                if (!ObjectUtils.isNullOrWhiteSpace(alarmCanNormalTriggerContinueCount)) {
+                if (!StringUtils.isBlank(alarmCanNormalTriggerContinueCount)) {
                     PARAMS.put(
                         SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT,
                         alarmCanNormalTriggerContinueCount);
@@ -180,7 +181,7 @@ public final class ParamsRedisUtil {
             {
                 final String alarmCanNormalTriggerTimeoutMillisecond = properties.getProperty(
                     SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND);
-                if (!ObjectUtils.isNullOrWhiteSpace(alarmCanNormalTriggerTimeoutMillisecond)) {
+                if (!StringUtils.isBlank(alarmCanNormalTriggerTimeoutMillisecond)) {
                     PARAMS.put(
                         SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND,
                         alarmCanNormalTriggerTimeoutMillisecond);
@@ -191,7 +192,7 @@ public final class ParamsRedisUtil {
             {
                 final String noticeTimeRangeAbsMillisecond = properties.getProperty(
                     SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND);
-                if (!ObjectUtils.isNullOrWhiteSpace(noticeTimeRangeAbsMillisecond)) {
+                if (!StringUtils.isBlank(noticeTimeRangeAbsMillisecond)) {
                     PARAMS.put(
                         SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND,
                         noticeTimeRangeAbsMillisecond);
@@ -208,7 +209,7 @@ public final class ParamsRedisUtil {
         }
         if(PARAMS.containsKey(TRACE_VEHICLE_ID)) {
             final String traceVehicleId = (String) PARAMS.get(TRACE_VEHICLE_ID);
-            if (!ObjectUtils.isNullOrWhiteSpace(traceVehicleId)) {
+            if (!StringUtils.isBlank(traceVehicleId)) {
                 final String message = "[" + TRACE_VEHICLE_ID + "]初始化为[" + traceVehicleId + "]";
                 logger.info(message);
             }
@@ -216,12 +217,12 @@ public final class ParamsRedisUtil {
 	}
 
 	public boolean isTraceVehicleId(String vehicleId) {
-	    if(ObjectUtils.isNullOrWhiteSpace(vehicleId)) {
+	    if(StringUtils.isBlank(vehicleId)) {
 	        return false;
         }
 
         final String traceVehicleId = (String)PARAMS.get(TRACE_VEHICLE_ID);
-        if(!ObjectUtils.isNullOrWhiteSpace(traceVehicleId)) {
+        if(!StringUtils.isBlank(traceVehicleId)) {
             return vehicleId.matches(traceVehicleId);
         }
         return false;
@@ -231,8 +232,8 @@ public final class ParamsRedisUtil {
         for (Map.Entry<String, String> entry : paramCache.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
-            if (ObjectUtils.isNullOrWhiteSpace(key)
-                || ObjectUtils.isNullOrWhiteSpace(value)) {
+            if (StringUtils.isBlank(key)
+                || StringUtils.isBlank(value)) {
             } else {
 
                 if (NumberUtils.stringIsNumber(value)) {
