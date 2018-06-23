@@ -5,18 +5,19 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.TreeMap;
+import java.util.*;
 
+import com.alibaba.fastjson.JSON;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
-import storm.dto.FaultCode;
-import storm.dto.FaultRuleCode;
-import storm.dto.fault.FaultAlarmRule;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import storm.dto.ExceptionSingleBit;
+import storm.dto.FaultCodeByte;
+import storm.dto.FaultCodeByteRule;
+import storm.dto.FaultTypeSingleBit;
 import storm.dto.fault.FaultRule;
 import storm.dto.fault.RiskDef;
 import storm.dto.fence.EleFence;
@@ -32,6 +33,8 @@ import storm.util.ConfigUtils;
  * 数据库操作工具类
  */
 public final class Conn {
+	private static final Logger LOG = LoggerFactory.getLogger(Conn.class);
+
 	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	private static final SysParams sysParams = SysParams.getInstance();
 
@@ -45,7 +48,67 @@ public final class Conn {
 	static String fault_alarm_lk_sql="select SYS_FAULT_ALARM_ID,SYS_DATA_CONST_ID from SYS_FAULT_ALARM_LK";
 	static String fault_alarm_rule_sql="select ID,TYPE,LEVELS,NEED_CONFIRD_FLAG,L1_SEQ_NO,L2_SEQ_NO,EXPR_LEFT,EXPR_MID,R1_VAL,R2_VAL,DEPEND_ID,ALL_HOURS,START_TIME,END_TIME from SYS_DATA_CONST where IS_VALID='1'";
 	static String falut_rank_sql="select ID,SYS_FAULT_ALARM_ID,LEVL,MIN_NUMBER,MAX_NUMBER,MIN_TIME,MAX_TIME from SYS_FAULT_RANK";
-	static String alarm_code_sql="SELECT fc.id AS id,fc.normal_code AS CODE,'0' AS type,'0' AS LEVEL,fc.id AS codeId,fc.subordinate_parts as parts_type FROM sys_fault_code fc WHERE fc.is_delete = '0' UNION ALL SELECT fc.id AS  id,fce.exception_code AS CODE,'1' AS type,fce.response_level AS LEVEL,fce.id AS codeId,fc.subordinate_parts as parts_type FROM sys_fault_code_exception fce,sys_fault_code fc WHERE fce.fault_code_id = fc.id and fce.is_delete = '0'";
+
+
+    /**
+     * 故障码按字节解析规则
+     * SELECT
+     *   faultCode.id fault_id,
+     *   faultCode.fault_type,
+     *   faultCode.analyze_type,
+     *   GROUP_CONCAT(model.id) model_num,
+     *   '0' AS exception_type,
+     *   faultCode.id AS exception_id,
+     *   faultCode.normal_code exception_code,
+     *   '0' AS response_level
+     * FROM sys_fault_code faultCode
+     *   LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id
+     *   LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id
+     * WHERE faultCode.is_delete = '0'
+     *   AND faultCode.analyze_type = '1'
+     * GROUP BY faultCode.id
+     * UNION ALL SELECT
+     *   faultCode.id fault_id,
+     *   faultCode.fault_type,
+     *   faultCode.analyze_type,
+     *   GROUP_CONCAT(model.id) model_num,
+     *   '1' AS exception_type,
+     *   excep.id AS exception_id,
+     *   excep.exception_code exception_code,
+     *   excep.response_level AS response_level
+     * FROM sys_fault_code_exception excep
+     *   LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id
+     *   LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id
+     *   LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id
+     * WHERE excep.is_delete = '0'
+     *   AND faultCode.is_delete = '0'
+     *   AND faultCode.analyze_type = '1'
+     */
+	private static String alarm_code_sql="SELECT faultCode.id fault_id,faultCode.fault_type,faultCode.analyze_type,GROUP_CONCAT(model.id) model_num,'0' AS exception_type,faultCode.id AS exception_id,faultCode.normal_code exception_code,'0' AS response_level FROM sys_fault_code faultCode LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id WHERE faultCode.is_delete='0' AND faultCode.analyze_type='1' GROUP BY faultCode.id UNION ALL SELECT faultCode.id fault_id,faultCode.fault_type,faultCode.analyze_type,GROUP_CONCAT(model.id) model_num,'1' AS exception_type,excep.id AS exception_id,excep.exception_code exception_code,excep.response_level AS response_level FROM sys_fault_code_exception excep LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id WHERE excep.is_delete='0' AND faultCode.is_delete='0' AND faultCode.analyze_type='1'";
+
+    /**
+     * 故障码按位解析规则
+     * SELECT
+     *   faultCode.id fault_id,
+     *   faultCode.fault_type,
+     *   faultCode.analyze_type,
+     *   faultCode.param_length,
+     *   GROUP_CONCAT(model.id) model_num,
+     *   excep.start_point,
+     *   excep.id exception_id,
+     *   excep.exception_code,
+     *   faultCode.threshold time_threshold,
+     *   excep.response_level
+     * FROM sys_fault_code_exception excep
+     *   LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id
+     *   LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id
+     *   LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id
+     * WHERE excep.is_delete = '0'
+     *   AND faultCode.is_delete = '0'
+     *   AND faultCode.analyze_type = '2'
+     * GROUP BY excep.id
+     */
+	private static String alarm_code_bit_sql = "SELECT faultCode.id fault_id,faultCode.fault_type,faultCode.analyze_type,faultCode.param_length,GROUP_CONCAT(model.id) model_num,excep.start_point,excep.id exception_id,excep.exception_code,faultCode.threshold time_threshold,excep.response_level FROM sys_fault_code_exception excep LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id WHERE excep.is_delete='0' AND faultCode.is_delete='0' AND faultCode.analyze_type='2' GROUP BY excep.id";
 
 	//预警规则
 	static String early_warning_sql="SELECT ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL FROM SYS_DATA_CONST WHERE TYPE = 1 AND IS_VALID = 1 AND ID is not null AND R1_VAL is not null ";
@@ -55,47 +118,49 @@ public final class Conn {
 	
 	static {
 		Properties sysParams = configUtils.sysParams;
-		if (null != sysParams) {
-			if (sysParams.containsKey("fence.sql")) {
-				fence_sql = sysParams.getProperty("fence.sql");
-			}
-			if (sysParams.containsKey("fence.rule.only.sql")) {
-				fence_rule_only_sql = sysParams.getProperty("fence.rule.only.sql");
-			}
-			if (sysParams.containsKey("fence.vid.sql")) {
-				fence_vid_sql = sysParams.getProperty("fence.vid.sql");
-			}
-			if (sysParams.containsKey("fence.rule.sql")) {
-				fence_rule_sql = sysParams.getProperty("fence.rule.sql");
-			}
-			if (sysParams.containsKey("fence.rule.lk.sql")) {
-				fence_rule_lk_sql = sysParams.getProperty("fence.rule.lk.sql");
-			}
+        if (sysParams.containsKey("fence.sql")) {
+            fence_sql = sysParams.getProperty("fence.sql");
+        }
+        if (sysParams.containsKey("fence.rule.only.sql")) {
+            fence_rule_only_sql = sysParams.getProperty("fence.rule.only.sql");
+        }
+        if (sysParams.containsKey("fence.vid.sql")) {
+            fence_vid_sql = sysParams.getProperty("fence.vid.sql");
+        }
+        if (sysParams.containsKey("fence.rule.sql")) {
+            fence_rule_sql = sysParams.getProperty("fence.rule.sql");
+        }
+        if (sysParams.containsKey("fence.rule.lk.sql")) {
+            fence_rule_lk_sql = sysParams.getProperty("fence.rule.lk.sql");
+        }
 
-            final String alarmCodeSql = Conn.sysParams.getAlarmCodeSql();
-            if (null != alarmCodeSql) {
-				alarm_code_sql = alarmCodeSql;
-			}
-			if (sysParams.containsKey("fault.rule.sql")) {
-				fault_rule_sql = sysParams.getProperty("fault.rule.sql");
-			}
-			if (sysParams.containsKey("fault.alarm.lk.sql")) {
-				fault_alarm_lk_sql = sysParams.getProperty("fault.alarm.lk.sql");
-			}
-			if (sysParams.containsKey("fault.alarm.rule.sql")) {
-				fault_alarm_rule_sql = sysParams.getProperty("fault.alarm.rule.sql");
-			}
-			if (sysParams.containsKey("falut.rank.sql")) {
-				falut_rank_sql = sysParams.getProperty("falut.rank.sql");
-			}
-			if (sysParams.containsKey("early.warning.sql")) {
-				early_warning_sql = sysParams.getProperty("early.warning.sql");
-			}
-			if (sysParams.containsKey("item.coef.offset.sql")) {
-				item_coef_offset_sql = sysParams.getProperty("item.coef.offset.sql");
-			}
-		}
-	}
+        final String alarmCodeSql = Conn.sysParams.getAlarmCodeSql();
+        if (null != alarmCodeSql) {
+            alarm_code_sql = alarmCodeSql;
+        }
+        if (sysParams.containsKey("fault.rule.sql")) {
+            fault_rule_sql = sysParams.getProperty("fault.rule.sql");
+        }
+        if (sysParams.containsKey("fault.alarm.lk.sql")) {
+            fault_alarm_lk_sql = sysParams.getProperty("fault.alarm.lk.sql");
+        }
+        if (sysParams.containsKey("fault.alarm.rule.sql")) {
+            fault_alarm_rule_sql = sysParams.getProperty("fault.alarm.rule.sql");
+        }
+        if (sysParams.containsKey("falut.rank.sql")) {
+            falut_rank_sql = sysParams.getProperty("falut.rank.sql");
+        }
+        if (sysParams.containsKey("early.warning.sql")) {
+            early_warning_sql = sysParams.getProperty("early.warning.sql");
+        }
+        if (sysParams.containsKey("item.coef.offset.sql")) {
+            item_coef_offset_sql = sysParams.getProperty("item.coef.offset.sql");
+        }
+
+        alarm_code_bit_sql = sysParams.getProperty(
+            SysParams.ALARM_CODE_BIT_SQL,
+            alarm_code_bit_sql);
+    }
 	public Connection getConn(){
 		try {
 			Properties p = configUtils.sysDefine;
@@ -103,10 +168,8 @@ public final class Conn {
 			String url = p.getProperty("jdbc.url");
 			String username = p.getProperty("jdbc.username");
 			String password = p.getProperty("jdbc.password");
-			Connection conn = null;
 			Class.forName(driver);
-			conn = DriverManager.getConnection(url, username, password);
-			return conn;
+            return DriverManager.getConnection(url, username, password);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -134,7 +197,7 @@ public final class Conn {
 		try {
 			Map<String, FaultRule>faultMaps = getFaults();
 			List<String[]> faultLkAlarm = getFaultLkAlarm();
-			Map<String,FaultAlarmRule> alarmRules = getFaultAlarmRules();
+			Map<String, storm.dto.fault.FaultAlarmRule> alarmRules = getFaultAlarmRules();
 			List<String[]> rankDefs = getFaultRanks();
 			if (null == faultMaps
 					|| null == faultLkAlarm
@@ -150,7 +213,7 @@ public final class Conn {
 				FaultRule faultRule = faultMaps.get(alarmlks[0]);
 				if(null != faultRule){
 					
-					FaultAlarmRule alarmRule = alarmRules.get(alarmlks[1]);
+					storm.dto.fault.FaultAlarmRule alarmRule = alarmRules.get(alarmlks[1]);
 					faultRule.addFaultAlarmRule(alarmRule);
 					faultMaps.put(alarmlks[0], faultRule);
 				}
@@ -196,31 +259,105 @@ public final class Conn {
 		}
 		return null;
 	}
-	
-	public Collection<FaultRuleCode> getFaultAlarmCodes(){
-		List<Object[]> objects = getFaultRuleCodeObjects();
-		Map<String, FaultRuleCode> ruleMap = new HashMap<String, FaultRuleCode>();
-		if (null != objects && objects.size()>0) {
-			for (Object[] objs : objects) {
-				String ruleId = (String)objs[0];
-				String code = (String)objs[1];
-				int type = (int)objs[2];
-				int level = (int)objs[3];
-				String codeId = (String)objs[4];
-				String itemType = (String)objs[5];
-				FaultRuleCode ruleCode = ruleMap.get(ruleId);
-				if (null == ruleCode) {
-					ruleCode = new FaultRuleCode(ruleId,itemType);
-				}
-				FaultCode faultCode = new FaultCode(codeId,code, level, type);
-				ruleCode.addFaultCode(faultCode);
-				ruleMap.put(ruleId, ruleCode);
-			}
-		}
-		if (ruleMap.size() > 0) {
-			return ruleMap.values();
-		}
-		return null;
+    /**
+     * @return 故障码报警规则
+     */
+    @NotNull
+	public Collection<FaultCodeByteRule> getFaultAlarmCodes(){
+        final Map<String, FaultCodeByteRule> result = new HashMap<>();
+
+		final List<String[]> rules = getFaultRuleCodeObjects();
+
+        final byte fault_id = 0;
+        final byte fault_type = 1;
+        final byte analyze_type = 2;
+        final byte model_num = 3;
+        final byte exception_type = 4;
+        final byte exception_id = 5;
+        final byte exception_code = 6;
+        final byte response_level = 7;
+
+        for (String[] objs : rules) {
+
+            final String faultId = objs[fault_id];
+            if(StringUtils.isBlank(faultId)) {
+                continue;
+            }
+
+            final String faultType = objs[fault_type];
+            if(StringUtils.isBlank(faultType)) {
+                LOG.trace("故障码[{}]: 空白的故障码类型.", faultType);
+                continue;
+            }
+
+            final String analyzeType = objs[analyze_type];
+            if(StringUtils.isBlank(analyzeType)) {
+                LOG.trace("故障码[{}]: 无效的解析方式[{}].", faultType, analyzeType);
+                continue;
+            }
+            // 解析方式 1-按字节, 2-按位; 这里只处理按字节解析的情况
+            if(!"1".equals(analyzeType)) {
+                continue;
+            }
+
+            // 适用车型, 车型Id用英文逗号衔接, 如果为空, 则适用于所有车型.
+            final String[] modelNum = Arrays.stream(StringUtils
+                .defaultIfEmpty(
+                    objs[model_num],
+                    "")
+                .split("\\s*,\\s*"))
+                .filter(s -> StringUtils.isNotBlank(s))
+                .distinct()
+                .toArray(String[]::new);
+            // 原逻辑没处理车型, 暂时不动
+
+            // 异常类型, 1-正常码, 2-异常码
+            final int exceptionType;
+            try {
+                exceptionType = Integer.parseInt(objs[exception_type]);
+            } catch (NumberFormatException ex) {
+                ex.printStackTrace();
+                LOG.error("故障码[{}]: 无效的异常类型[{}].", faultType, objs[exception_type]);
+                continue;
+            }
+            if(exceptionType != 0 && exceptionType != 1) {
+                LOG.error("故障码[{}]: 错误的异常类型[{}].", faultType, exceptionType);
+                continue;
+            }
+
+            String exceptionId = objs[exception_id];
+            if(StringUtils.isBlank(exceptionId)) {
+                LOG.error("故障码[{}]: 空白的异常码Id.", faultType);
+                continue;
+            }
+
+            String exceptionCode = objs[exception_code];
+            if(StringUtils.isBlank(exceptionCode)) {
+                LOG.error("故障码[{}]异常码[{}]: 空白的异常码值.", faultType, exceptionId);
+                continue;
+            }
+
+            final int responseLevel;
+            try {
+                responseLevel = Integer.parseInt(objs[response_level]);
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                LOG.error("故障码[{}]异常码[{}]: 错误的告警等级[{}].", faultType, exceptionId, objs[response_level]);
+                continue;
+            }
+
+            FaultCodeByteRule ruleCode = result.get(faultId);
+            if (null == ruleCode) {
+                ruleCode = new FaultCodeByteRule(faultId, faultType);
+            }
+
+            FaultCodeByte faultCode = new FaultCodeByte(exceptionId,exceptionCode, responseLevel, exceptionType);
+            ruleCode.addFaultCode(faultCode);
+
+            result.put(faultId, ruleCode);
+        }
+
+		return result.values();
 	}
 	
 	private Map<String, FaultRule> getFaults(){
@@ -289,9 +426,240 @@ public final class Conn {
 		return rules;
 	}
 
-	private List<Object[]> getFaultRuleCodeObjects() {
+    /**
+     * @return 从数据库拉取数据构建完整的按位解析故障码规则
+     */
+    @SuppressWarnings("Duplicates")
+    @NotNull
+    public Map<String, FaultTypeSingleBit> getFaultSingleBitRules() {
 
-		final List<Object[]> rules = new LinkedList<>();
+        // fault_type, fault
+        final Map<String, FaultTypeSingleBit> faultTypes = new TreeMap<>();
+
+        if (StringUtils.isBlank(alarm_code_bit_sql)) {
+            return faultTypes;
+        }
+
+//        if (StringUtils.isBlank(alarm_code_sql)) {
+//            return faultTypes;
+//        }
+
+        Connection connection = null;
+        Statement statement = null;
+        ResultSet analyzeBitResult = null;
+        //ResultSet analyzeValueResult = null;
+
+        try {
+            connection = getConn();
+            if (null == connection) {
+                LOG.warn("创建数据库连接失败");
+                return faultTypes;
+            }
+
+            statement = connection.createStatement();
+            analyzeBitResult = statement.executeQuery(alarm_code_bit_sql);
+            //analyzeValueResult = statement.executeQuery(alarm_code_sql);
+
+            // exception_id, exception
+            final Map<String, ExceptionSingleBit> faultExceptionsCache = new TreeMap<>();
+
+            while(analyzeBitResult.next()) {
+
+                // 故障码Id
+                final String fault_id = analyzeBitResult.getString(1);
+                if(StringUtils.isBlank(fault_id)) {
+                    continue;
+                }
+
+                // 故障码类型(内部协议标号)
+                final String fault_type = analyzeBitResult.getString(2);
+                if (StringUtils.isBlank(fault_id)) {
+                    LOG.trace("故障码[{}]: 空白的故障码类型.", fault_id);
+                    continue;
+                }
+
+                // 解析方式 1-按字节, 2-按位
+                final String analyze_type = analyzeBitResult.getString(3);
+                if (!StringUtils.isNumeric(analyze_type)) {
+                    LOG.trace("故障码[{}]: 无效的解析方式[{}].", fault_id, analyze_type);
+                    continue;
+                }
+
+                final boolean isAnalyzeByBit = "2".equals(analyze_type);
+
+				// 目前只处理按1位解析规则, 其它的走老规则
+				if(isAnalyzeByBit) {
+
+                    // 位长, 目前固定为1
+                    final String param_length = analyzeBitResult.getString(4);
+                    if (!StringUtils.isNumeric(param_length)) {
+                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的位长类型.", fault_id);
+                        continue;
+                    }
+
+                    // 目前只处理按1位解析规则, 其它的走老规则
+                    if(param_length != "1") {
+                        continue;
+                    }
+
+                    // 适用车型, 车型Id用英文逗号衔接, 如果为空, 则适用于所有车型.
+                    final String[] model_num = Arrays.stream(StringUtils
+                        .defaultIfEmpty(
+                            analyzeBitResult.getString(5),
+                            "")
+                        .split("\\s*,\\s*"))
+                        .filter(s -> StringUtils.isNotBlank(s))
+                        .distinct()
+                        .toArray(String[]::new);
+
+                    // 起始位偏移量
+                    final String start_point = analyzeBitResult.getString(6);
+                    if (!StringUtils.isNumeric(start_point)) {
+                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的起始位偏移量.", fault_id);
+                        continue;
+                    }
+
+                    // 异常码Id
+                    final String exception_id = analyzeBitResult.getString(7);
+                    if (StringUtils.isBlank(exception_id)) {
+                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的异常码Id.", fault_id);
+                        continue;
+                    }
+
+                    final Short faultOffset;
+                    try {
+                        faultOffset = Short.decode(start_point);
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
+                        LOG.warn(
+                            "故障码[{}]异常码[{}]: 起始位偏移量格式错误: {}",
+                            fault_id,
+                            exception_id,
+                            e.getLocalizedMessage());
+                        continue;
+                    }
+
+                    // 异常码码值, 应为目前固定位长为1, 所以码值也只有1了
+                    final String exception_code = analyzeBitResult.getString(8);
+                    if (!StringUtils.isNumeric(exception_code)) {
+                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的异常码码值.", fault_id);
+                        continue;
+                    }
+
+                    // 时间阈值
+                    final String time_threshold = analyzeBitResult.getString(9);
+                    if (!StringUtils.isNumeric(time_threshold)) {
+                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的时间阈值.", fault_id);
+                        continue;
+                    }
+
+                    final int lazy;
+                    try {
+                        lazy = Integer.decode(time_threshold);
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
+                        LOG.warn(
+                            "故障码[{}]异常码[{}]: 时间阈值格式错误: {}",
+                            fault_id,
+                            exception_id,
+                            e.getLocalizedMessage());
+                        continue;
+                    }
+
+                    // 告警等级
+                    final String response_level = analyzeBitResult.getString(10);
+                    if (!StringUtils.isNumeric(response_level)) {
+                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的告警等级.", fault_id);
+                        continue;
+                    }
+
+                    final byte level;
+                    try {
+                        level = Byte.decode(time_threshold);
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
+                        LOG.warn(
+                            "故障码[{}]异常码[{}]: 告警等级格式错误: {}",
+                            fault_id,
+                            exception_id,
+                            e.getLocalizedMessage());
+                        continue;
+                    }
+
+                    // Key-故障类型
+                    final FaultTypeSingleBit faultTypeSingleBit;
+                    if(faultTypes.containsKey(fault_type)) {
+                        faultTypeSingleBit = faultTypes.get(fault_type);
+                    } else {
+                        faultTypeSingleBit = new FaultTypeSingleBit(fault_id, fault_type, analyze_type);
+                        faultTypes.put(faultTypeSingleBit.faultType, faultTypeSingleBit);
+                    }
+
+                    if (faultExceptionsCache.containsKey(exception_id)) {
+                        LOG.warn("重复的异常码[{}].", exception_id);
+                        continue;
+                    }
+
+                    final ExceptionSingleBit exception = new ExceptionSingleBit(exception_id, faultOffset, lazy, level);
+                    faultExceptionsCache.put(exception.exceptionId, exception);
+
+                    // 将异常关联到适用车型, 空字符串表示默认车型
+                    final String[] vehicleModels = ArrayUtils.isEmpty(model_num) ? new String[] {""} : model_num;
+                    for (String vehicleModel : vehicleModels) {
+                        final Map<String, ExceptionSingleBit> exceptions =
+                            faultTypeSingleBit.ensureVehExceptions(vehicleModel);
+                        if(exceptions.containsKey(exception.exceptionId)) {
+                            LOG.warn(
+                                "故障码[{}]车型[{}]重复的异常码[{}].",
+                                faultTypeSingleBit.faultId,
+                                vehicleModel,
+                                exception.exceptionId);
+                            continue;
+                        }
+                        exceptions.put(exception.exceptionId, exception);
+                    }
+                }
+            }
+
+
+//            while(analyzeValueResult.next()) {
+//
+//                // 故障码种类 ID
+//                final String fault_id = analyzeValueResult.getString(1);
+//                // 异常码/恢复码 码值
+//                final String exception_code = analyzeValueResult.getString(2);
+//                // 码类型, 0-恢复码, 1-异常码
+//                final int type = analyzeValueResult.getInt(3);
+//                // 故障级别
+//                final int level = analyzeValueResult.getInt(4);
+//                // 故障码/异常码 ID
+//                final String exception_id = analyzeValueResult.getString(5);
+//                // 所需零部件(废除)
+//                final String parts_type = analyzeValueResult.getString(6);
+//
+//                FaultCodeByteRule ruleCode = new FaultCodeByteRule(fault_id, parts_type);
+//
+//                FaultCodeByte faultCode = new FaultCodeByte(exception_id,exception_code, level, type);
+//                ruleCode.addFaultCode(faultCode);
+//            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            //close(analyzeValueResult, analyzeBitResult, statement, connection);
+            close(analyzeBitResult, statement, connection);
+        }
+
+        return faultTypes;
+    }
+
+    /**
+     * @return 获取故障码规则
+     */
+    @NotNull
+	private List<String[]> getFaultRuleCodeObjects() {
+
+		final List<String[]> rules = new LinkedList<>();
 
 		Connection connection =null;
 		Statement statement = null;
@@ -311,19 +679,23 @@ public final class Conn {
             statement = connection.createStatement();
 			resultSet = statement.executeQuery(alarm_code_sql);
 			while(resultSet.next()) {
-				Object [] rule = new Object[] {
-				    // 故障码种类 ID
+                String [] rule = new String[] {
+				    // fault_id
 				    resultSet.getString(1),
-                    // 异常码/恢复码
+                    // fault_type
                     resultSet.getString(2),
-                    // 码类型, 0-恢复码, 1-异常码
-                    resultSet.getInt(3),
-                    // 故障级别
-                    resultSet.getInt(4),
-                    // 故障码/异常码 ID
+                    // analyze_type
+                    resultSet.getString(3),
+                    // model_num
+                    resultSet.getString(4),
+                    // exception_type
                     resultSet.getString(5),
-                    // 车型
-                    resultSet.getString(6)
+                    // exception_id
+                    resultSet.getString(6),
+                    // exception_code
+                    resultSet.getString(7),
+                    // response_level
+                    resultSet.getString(8),
 				};
 				rules.add(rule);
 			}
@@ -336,8 +708,8 @@ public final class Conn {
 		return rules;
 	}
 	
-	private Map<String,FaultAlarmRule> getFaultAlarmRules(){
-		Map<String,FaultAlarmRule> rules=null;
+	private Map<String, storm.dto.fault.FaultAlarmRule> getFaultAlarmRules(){
+		Map<String, storm.dto.fault.FaultAlarmRule> rules=null;
 		Connection conn =null;
 		Statement s = null;
 		ResultSet rs = null;
@@ -351,7 +723,7 @@ public final class Conn {
 			if (null == conn) {
 				return null;
 			}
-			rules = new HashMap<String,FaultAlarmRule>();
+			rules = new HashMap<String, storm.dto.fault.FaultAlarmRule>();
 			s = conn.createStatement();
 			rs = s.executeQuery(fault_alarm_rule_sql);
 			while(rs.next()){
@@ -359,7 +731,7 @@ public final class Conn {
 				String ruleId = rs.getString(1);
 				if (! isNullOrEmpty(ruleId)) {
 					
-					FaultAlarmRule rule = new FaultAlarmRule();
+					storm.dto.fault.FaultAlarmRule rule = new storm.dto.fault.FaultAlarmRule();
 					rule.id = ruleId;
 					rule.type = rs.getInt(2);
 					rule.risk = rs.getInt(3);
@@ -856,21 +1228,28 @@ public final class Conn {
 	}
 	
 	public static void main(String[] args) {
-		Conn conn = new Conn();
-		
-		
-		Collection<FaultRule> faultRules = conn.getFaultAndDepends();
-		
-		for (FaultRule faultRule : faultRules) {
-			System.out.print(faultRule.toString());
-			List<FaultAlarmRule>alarmRules = faultRule.dependAlarmRules;
-			if (null != alarmRules) {
-				for (FaultAlarmRule faultAlarmRule : alarmRules) {
-					System.out.print(faultAlarmRule);
-				}
-			}
-			System.out.println();
-		}
+
+        Conn conn = new Conn();
+
+        final Map<String, FaultTypeSingleBit> faultRuleCodeBitObjects = conn.getFaultSingleBitRules();
+        for (FaultTypeSingleBit faultRuleCodeBitObject : faultRuleCodeBitObjects.values()) {
+            LOG.debug("------------");
+            final String json = JSON.toJSONString(faultRuleCodeBitObject, true);
+            LOG.debug(json);
+        }
+
+//        Collection<FaultRule> faultRules = conn.getFaultAndDepends();
+//
+//		for (FaultRule faultRule : faultRules) {
+//			System.out.print(faultRule.toString());
+//			List<storm.dto.fault.FaultAlarmRule>alarmRules = faultRule.dependAlarmRules;
+//			if (null != alarmRules) {
+//				for (storm.dto.fault.FaultAlarmRule faultAlarmRule : alarmRules) {
+//					System.out.print(faultAlarmRule);
+//				}
+//			}
+//			System.out.println();
+//		}
 		
 	}
 }

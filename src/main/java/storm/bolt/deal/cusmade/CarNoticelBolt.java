@@ -12,6 +12,7 @@ import org.apache.storm.tuple.Values;
 
 import com.alibaba.fastjson.JSON;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
@@ -249,7 +250,12 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
     	if(CUS_NOTICE_GROUP.streamId.equals(tuple.getSourceStreamId())){
     		String vid = tuple.getString(0);
-            Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
+
+    		final Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
+
+    		if(MapUtils.isEmpty(data)) {
+    		    return;
+            }
 
             if (null == data.get(DataKey.VEHICLE_ID)) {
                 data.put(DataKey.VEHICLE_ID, vid);

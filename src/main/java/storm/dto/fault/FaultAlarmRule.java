@@ -63,7 +63,7 @@ public class FaultAlarmRule implements Serializable {
 	}
 	@Override
 	public String toString() {
-		return "FaultAlarmRule [id=" + id + ", name=" + name + ", type=" + type + ", risk=" + risk + ", leftField1="
+		return "FaultCodeByteRule [id=" + id + ", name=" + name + ", type=" + type + ", risk=" + risk + ", leftField1="
 				+ leftField1 + ", leftOper1=" + leftOper1 + ", leftField2=" + leftField2 + ", leftOper2=" + leftOper2
 				+ ", rightVal1=" + rightVal1 + ", rightVal2=" + rightVal2 + ", dependRules=" + dependRules + ", period="
 				+ period + ", isalive=" + isalive + ", lastalivetime=" + lastalivetime + "]";

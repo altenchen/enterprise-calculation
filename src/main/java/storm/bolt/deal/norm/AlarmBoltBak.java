@@ -77,7 +77,7 @@ public class AlarmBoltBak extends BaseRichBolt {
 			Object oncetime = stormConf.get("es.send.time");
 			if(null != oncetime)
 				oncesend = Long.valueOf(oncetime.toString());
-			flushtime=Long.parseLong(stormConf.get("db.cache.flushtime").toString());
+			flushtime=Long.parseLong(stormConf.get(SysDefine.DB_CACHE_FLUSH_TIME_SECOND).toString());
 			
 			Object offli=stormConf.get(StormConfigKey.REDIS_OFFLINE_SECOND);
 			if(null != offli)

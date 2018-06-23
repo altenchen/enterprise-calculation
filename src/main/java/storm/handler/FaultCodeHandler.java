@@ -1,88 +1,150 @@
 package storm.handler;
 
-import java.util.*;
-
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
-import storm.dto.FaultCode;
-import storm.dto.FaultRuleCode;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import storm.dto.*;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
+import storm.system.SysDefine;
 import storm.util.ConfigUtils;
+import storm.util.DataUtils;
 import storm.util.dbconn.Conn;
+
+import java.util.*;
 
 /**
  * 故障处理
  * @author wza
  */
 public class FaultCodeHandler {
-	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
+	private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
-	static TimeFormatService timeformat;
-	long lastflushtime;
-	static long dbflushtime = 360000;//360秒
-	static long offlinetime = 600000;//600秒
+	private static final TimeFormatService TIME_FORMAT = TimeFormatService.getInstance();
+
+	/**
+	 * 从数据库拉取规则的时间间隔, 默认360秒
+	 */
+	private static long dbFlushTimeSpanMillisecond = 360 * 1000;
+
+	/**
+	 * 多长时间算是离线, 默认600秒
+	 */
+	private static long offlineTimeMillisecond = 600 * 1000;
+
 	static {
-		timeformat = TimeFormatService.getInstance();
-		if (null != configUtils.sysDefine) {
-			String dbflush = configUtils.sysDefine.getProperty("db.cache.flushtime");
-			if (!StringUtils.isEmpty(dbflush)) {
-				dbflushtime = Long.parseLong(dbflush)*1000;
-			}
-			String off = configUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-			if (!StringUtils.isEmpty(off)) {
-				offlinetime = Long.parseLong(off)*1000;
-			}
-		}
+
+        String dbFlushTimeSpanSecond = CONFIG_UTILS.sysDefine.getProperty(SysDefine.DB_CACHE_FLUSH_TIME_SECOND);
+        if (StringUtils.isNumeric(dbFlushTimeSpanSecond)) {
+            dbFlushTimeSpanMillisecond = Long.parseLong(dbFlushTimeSpanSecond)*1000;
+        }
+
+        String offlineSecond = CONFIG_UTILS.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
+        if (StringUtils.isNumeric(offlineSecond)) {
+            offlineTimeMillisecond = Long.parseLong(offlineSecond)*1000;
+        }
 	}
-    private Conn conn;
-    private Collection<FaultRuleCode>rules;
-    Map<String, Map<String,Map<String,Object>>>vidRuleMsgs;//vidRuleMsgs是每辆车的故障码信息缓存
-    private Map<String, Long> lastTime;
+
+	/**
+	 * 最近一次从数据库拉取规则的时间
+	 */
+	private long lastPullRuleTime = System.currentTimeMillis();
+
+    /**
+     * 处理一些数据库查询的事情
+     */
+    private final Conn conn = new Conn();
+
+    // region 按字节解析
+    /**
+     * 故障码规则, 按时间周期从数据库拉取下来.
+     */
+    @SuppressWarnings("unchecked")
+    @NotNull
+    private Collection<FaultCodeByteRule> rules = CollectionUtils.EMPTY_COLLECTION;
+
+    /**
+     * vidRuleMsgs是每辆车的故障码信息缓存, <vid, <faultId, <k,v>>>
+     */
+    private final Map<String, Map<String,Map<String,Object>>> vidRuleMsg = new HashMap<>();
+    // endregion
+
+    // region 按位解析
+    /**
+     * 按位解析故障码规则, 目前会覆盖按字节解析规则
+     * Key-故障类型
+     */
+    private Map<String, FaultTypeSingleBit> bitRules = MapUtils.EMPTY_MAP;
+
+    /**
+     * vidRuleMsgs是每辆车的故障码信息缓存, <vid, <exceptionId, <k,v>>>
+     */
+    private final Map<String, Map<String,Map<String,Object>>> vidBitRuleMsg = new HashMap<>();
+
+    // endregion 按位解析
+
+    /**
+     * 所有车辆的最后一帧报文的时间, <vid, lastFrameTimeMillisecond>
+     */
+    private Map<String, Long> lastTime = new HashMap<>();
+
     {
     	try {
-    		vidRuleMsgs = new HashMap<String, Map<String,Map<String,Object>>>();
-    		lastTime = new HashMap<String, Long>();
-    		conn = new Conn();
-        	lastflushtime = System.currentTimeMillis();
-        	initRules();
+        	autoPullRules();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
     }
 
-    private void initRules(){
-    	rules = conn.getFaultAlarmCodes();
+	/**
+	 * 初始化故障码报警规则
+	 */
+    private void autoPullRules() {
+        long requestTime = System.currentTimeMillis();
+        if (requestTime - lastPullRuleTime > dbFlushTimeSpanMillisecond) {
+            synchronized (this) {
+                if(requestTime - lastPullRuleTime > dbFlushTimeSpanMillisecond) {
+                    // 从数据库重新构建完整的规则
+                    rules = conn.getFaultAlarmCodes();
+                    bitRules = conn.getFaultSingleBitRules();
+                    lastPullRuleTime = System.currentTimeMillis();
+                }
+            }
+        }
     }
-    
-    private Collection<FaultRuleCode> getRules(){
-    	long now = System.currentTimeMillis();
-    	if (now - lastflushtime > dbflushtime) {
-    		initRules();
-    		lastflushtime = now;
-		}
+
+    private Collection<FaultCodeByteRule> getByteRules(){
+        autoPullRules();
     	return rules;
+    }
+
+    private Map<String, FaultTypeSingleBit> getBitRules(){
+        autoPullRules();
+        return bitRules;
     }
      
     public List<Map<String, Object>> generateNotice(long now){
-    	if (vidRuleMsgs.size() == 0) {
+    	if (vidRuleMsg.size() == 0) {
 			return null;
 		}
-    	List<Map<String, Object>>notices = new LinkedList<Map<String, Object>>();
-    	String noticetime = timeformat.toDateString(new Date(now));
+    	List<Map<String, Object>>notices = new LinkedList<>();
+    	String noticetime = TIME_FORMAT.toDateString(new Date(now));
     	//needRemoves缓存需要移除的故障码id（因为map不能在遍历的时候删除id或者放入id，否则会引发并发修改异常）
-    	List<String> needRemoves = new LinkedList<String>();
+    	List<String> needRemoves = new LinkedList<>();
     	//lastTime为所有车辆的最后一帧报文的时间（vid，lastTime）
     	for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
     		long last = entry.getValue();
     		//如果这辆车已经离线，则把这辆车的故障码缓存移除，并且针对每个故障都发一个结束通知
     		//offlinetime为车辆多长时间算是离线，
-			if (now - last > offlinetime) {
+			if (now - last > offlineTimeMillisecond) {
 				String vid = entry.getKey();
 				needRemoves.add(vid);
 				//vidRuleMsgs是每辆车的故障码信息缓存
-				Map<String,Map<String,Object>> ruleMsgs = vidRuleMsgs.get(vid);
+				Map<String,Map<String,Object>> ruleMsgs = vidRuleMsg.get(vid);
 				if (null != ruleMsgs) {
 					for (Map.Entry<String,Map<String,Object>> ruleEntry : ruleMsgs.entrySet()) {
 						
@@ -101,186 +163,296 @@ public class FaultCodeHandler {
     	
     	for (String vid : needRemoves) {
     		lastTime.remove(vid);
-    		vidRuleMsgs.remove(vid);
+    		vidRuleMsg.remove(vid);
 		}
     	if (notices.size()>0) {
 			return notices;
 		}
 		return null;
     }
-	public List<Map<String, Object>> generateNotice(Map<String, String>dat){
-		if (MapUtils.isEmpty(dat)) {
-			return null;
+
+    @NotNull
+	public List<Map<String, Object>> generateNotice(@NotNull Map<String, String> data) {
+        final List<Map<String, Object>> notices = new LinkedList<>();
+
+		if (MapUtils.isEmpty(data)) {
+            return notices;
 		}
-		//获得最新的规则规则
-		Collection<FaultRuleCode> rules = getRules();
-		if (null == rules || rules.size() == 0) {
-			return null;
-		}
-		String vid = dat.get(DataKey.VEHICLE_ID);
-		String time = dat.get(DataKey.TIME);
-		if (StringUtils.isEmpty(vid)
-				|| StringUtils.isEmpty(time)) {
-			return null;
-		}
-		List<String>msgFcodes = new LinkedList<String>();
-		//后续对应的字段需要在配置文件中配置
-		String code2922 = dat.get("2922");//可充电储能故障码
-		String code2805 = dat.get("2805");//驱动电机故障码
-		String code2924 = dat.get("2924");//发动机故障码
-		String code2809 = dat.get("2809");//其他故障(厂商扩展)
-		//北汽故障码
-		String codebq4510003 = dat.get("4510003");
-		
-		setMsgFcodes(code2922, msgFcodes);
-		setMsgFcodes(code2805, msgFcodes);
-		setMsgFcodes(code2924, msgFcodes);
-		setMsgFcodes(code2809, msgFcodes);
-		setMsgFcodes(codebq4510003, msgFcodes);
-		
-		if (msgFcodes.size() == 0) {
-			return null;
-		}
-		List<Map<String, Object>>notices = new LinkedList<Map<String, Object>>();
-		
-		for (FaultRuleCode  ruleCode: rules) {
-			List<Map<String, Object>>msgs = msgFault(dat, msgFcodes, ruleCode);
-			if (null != msgs) {
-				notices.addAll(msgs);
-			}
-		}
-		if (notices.size() > 0) {
+
+		final String vid = data.get(DataKey.VEHICLE_ID);
+		final String time = data.get(DataKey.TIME);
+
+		if (StringUtils.isBlank(vid)
+				|| StringUtils.isBlank(time)) {
 			return notices;
 		}
-		return null;
+
+        String latitude = data.get(DataKey._2503_LATITUDE);
+        String longitude = data.get(DataKey._2502_LONGITUDE);
+        String location = DataUtils.buildLocation(longitude, latitude);
+
+
+        final Date now = new Date();
+
+        //获得最新的按单个位解析故障码告警规则
+        final Map<String, FaultTypeSingleBit> bitRules = getBitRules();
+
+        //获得最新的按字节解析故障码告警规则
+        final Collection<FaultCodeByteRule> rules = getByteRules();
+
+        // 目前只处理按1位解析规则, 否则走老规则
+
+        //可充电储能故障码
+        generateFaultMsg(notices, data, bitRules, rules, vid, time, location, now, DataKey._2922);
+        //驱动电机故障码
+        generateFaultMsg(notices, data, bitRules, rules, vid, time, location, now, DataKey._2805);
+        //发动机故障码
+        generateFaultMsg(notices, data, bitRules, rules, vid, time, location, now, DataKey._2924);
+        //其他故障(厂商扩展)
+        generateFaultMsg(notices, data, bitRules, rules, vid, time, location, now, DataKey._2809);
+        //北汽故障码
+        generateFaultMsg(notices, data, bitRules, rules, vid, time, location, now, "4510003");
+
+		return notices;
 	}
-	
-	private void setMsgFcodes(String fcode,List<String>msgFcodes){
-		if (null != fcode && !"".equals(fcode)) {
-			String [] codes = fcode.split("\\|");
-			for (String code : codes) {
-				if (null != code && !msgFcodes.contains(code)) {
-					msgFcodes.add(code);
-				}
-			}
-		}
-	}
-	
-	private List<Map<String, Object>> msgFault(Map<String, String>dat,List<String>msgFcodes,FaultRuleCode rule){
-		List<Map<String, Object>>notices = new LinkedList<Map<String, Object>>();
-		String vid = dat.get(DataKey.VEHICLE_ID);
-		String time = dat.get(DataKey.TIME);
+
+    private void generateFaultMsg(
+        @NotNull final List<Map<String, Object>> notices,
+        @NotNull final Map<String, String> data,
+        @NotNull final Map<String, FaultTypeSingleBit> bitRules,
+        @NotNull final Collection<FaultCodeByteRule> byteRules,
+        @NotNull final String vid,
+        @NotNull final String time,
+        @NotNull final String location,
+        @NotNull final Date now,
+        @NotNull final String faultType) {
+
+        final String codeValues = data.get(faultType);
+        final @NotNull long[] values = parseFaultCodes(codeValues);
+
+        // 车型, 空字符串代表默认车型
+        final String vehModel = "";
+        String noticetime = TIME_FORMAT.toDateString(now);
+
+        boolean processByBit = false;
+        if(bitRules.containsKey(faultType)) {
+            final FaultTypeSingleBit faultTypeRule = bitRules.get(faultType);
+            final Map<String, ExceptionSingleBit> exceptions = getVehicleExceptions(vehModel, faultTypeRule);
+            if(MapUtils.isNotEmpty(exceptions)) {
+                processByBit = true;
+
+                final Map<String,Map<String,Object>> alarms = ensureVehicleBitRuleMsg(vid);
+                for (ExceptionSingleBit bit : exceptions.values()) {
+                    final long code = PartationBit.computeValue(values, bit.offset);
+
+                    if(code != 0) {
+                        final Map<String, Object> alarmMessage = updateNoticeMsg(
+                            alarms.get(bit.exceptionId),
+                            vid,
+                            time,
+                            location,
+                            bit.exceptionId,
+                            bit.level,
+                            code,
+                            noticetime);
+                        alarms.put(bit.exceptionId, alarmMessage);
+
+                        if(1 == (int)alarmMessage.get(NOTICE_STATUS)) {
+                            notices.add(alarmMessage);
+                        }
+                    } else {
+                        if(alarms.containsKey(bit.exceptionId)) {
+                            final Map<String, Object> alarmMessage = alarms.get(bit.exceptionId);
+                            alarms.remove(bit.exceptionId);
+
+                            deleteNoticeMsg(alarmMessage, time, location, bit.exceptionId, noticetime);
+                            notices.add(alarmMessage);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 没有匹配按位处理规则, 转为按字节处理
+        if(!processByBit) {
+            for (FaultCodeByteRule ruleCode: byteRules) {
+                List<Map<String, Object>> msgs = byteFaultMsg(data, values, ruleCode);
+                if (null != msgs) {
+                    notices.addAll(msgs);
+                }
+            }
+        }
+    }
+
+    private static Map<String, ExceptionSingleBit> getVehicleExceptions(
+        @NotNull final String vehModel,
+        final FaultTypeSingleBit faultTypeRule) {
+
+        final Map<String, Map<String, ExceptionSingleBit>> vehExceptions = faultTypeRule.vehExceptions;
+        final Map<String, ExceptionSingleBit> exceptions = vehExceptions.containsKey(vehModel)
+            ? vehExceptions.get(vehModel)
+            : vehExceptions.get("");
+        return exceptions;
+    }
+
+    private final Object ensureVehicleBitRuleMsgLock = new Object();
+	private Map<String,Map<String,Object>> ensureVehicleBitRuleMsg(@NotNull String vid) {
+        if(!vidBitRuleMsg.containsKey(vid)) {
+            synchronized (ensureVehicleBitRuleMsgLock) {
+                if(!vidBitRuleMsg.containsKey(vid)) {
+                    vidBitRuleMsg.put(vid, new TreeMap<>());
+                }
+            }
+        }
+        return vidBitRuleMsg.get(vid);
+    }
+
+	@NotNull
+	private static long[] parseFaultCodes(@NotNull String faultCodes) {
+        if(StringUtils.isBlank(faultCodes)) {
+            return new long[0];
+        }
+        final String[] intStrings = StringUtils.split(faultCodes, '|');
+        final long[] result = new long[intStrings.length];
+        for (int i = 0; i < intStrings.length; i++) {
+            result[i] = Long.decode(intStrings[i]);
+        }
+        return result;
+    }
+
+    /**
+     * @param data 实时数据
+     * @param msgFcodes 故障码
+     * @param rule 故障码告警规则
+     * @return 故障码告警
+     */
+	private List<Map<String, Object>> byteFaultMsg(
+	    @NotNull Map<String, String> data,
+        @NotNull long[] msgFcodes,
+        FaultCodeByteRule rule) {
+
+		final List<Map<String, Object>> notices = new LinkedList<>();
+
+		String vid = data.get(DataKey.VEHICLE_ID);
+		String time = data.get(DataKey.TIME);
+
 		if (StringUtils.isEmpty(vid)
 				|| StringUtils.isEmpty(time)) {
-			return null;
+			return notices;
 		}
-		String latit = dat.get(DataKey._2503_LATITUDE);
-		String longi = dat.get(DataKey._2502_LONGITUDE);
-		String location = longi+","+latit;
-		Date date = new Date();
-		String noticetime = timeformat.toDateString(date);
-		long last = date.getTime();
-		Map<String,Map<String,Object>> ruleMsgs = vidRuleMsgs.get(vid);
-		//codes为若干个数字
-		List<FaultCode> codes = rule.codes;
-		for (FaultCode faultCode : codes) {
+
+		String latitude = data.get(DataKey._2503_LATITUDE);
+		String longitude = data.get(DataKey._2502_LONGITUDE);
+		String location = DataUtils.buildLocation(longitude, latitude);
+
+		Date now = new Date();
+		String noticetime = TIME_FORMAT.toDateString(now);
+		long last = now.getTime();
+
+		// 一辆车的故障信息缓存, Key是故障码Id(faultId)
+		Map<String,Map<String,Object>> ruleMsgs = vidRuleMsg.get(vid);
+
+		//codes为若干个数字, 包含正常码和异常码集合
+		Iterable<FaultCodeByte> codes = rule.getFaultCodes();
+		for (FaultCodeByte faultCode : codes) {
 			//十六进制转换为十进制
-			String fcode = hexToDec(faultCode.code);
-			if (msgFcodes.contains(fcode)) {
+            long fcode = Long.decode(faultCode.equalCode);
+			if (ArrayUtils.contains(msgFcodes, fcode)) {
 				lastTime.put(vid, last);
 				//如果faultCode为0，则说明故障结束，发送故障结束报文
-				boolean end = (faultCode.type ==0 );//0为正常码
+				boolean end = (0 == faultCode.type);
 				if (end) {
 					if (null != ruleMsgs) {
-						Map<String, Object> msg = ruleMsgs.get(rule.ruleId);
+						Map<String, Object> msg = ruleMsgs.get(rule.faultId);
 						if (null != msg) {
-							msg.put("ruleId", faultCode.id);
-							msg.put("noticetime", noticetime);
-							msg.put("status", 3);
-							msg.put("etime", time);
-							msg.put("location", location);
-							ruleMsgs.remove(rule.ruleId);
+                            ruleMsgs.remove(rule.faultId);
+
+                            deleteNoticeMsg(msg, time, location,faultCode.codeId, noticetime);
 							notices.add(msg);
 						}
-						if (notices.size()>0) {
-							return notices;
-						}
-						return null;
+						return notices;
 					}
 				}
 				boolean start = (1 == faultCode.type);
 				if (start) {
 					
 					if (null == ruleMsgs) {
-						ruleMsgs = new TreeMap<String,Map<String, Object>>();
+						ruleMsgs = new TreeMap<>();
 					}
-					Map<String, Object> msg = ruleMsgs.get(rule.ruleId);
-					if (null == msg) {
-						msg = newCodeMsg();
-						msg.put("vid", vid);
-						msg.put("status", 1);
-						msg.put("stime", time);
-						msg.put("level", faultCode.level);
-					} else {
-						if ((int)msg.get("level") == faultCode.level) {
-							msg.put("status", 2);
-						}else{
-							msg.put("status", 1);
-							msg.put("stime", time);
-							msg.put("level", faultCode.level);
-						}
-					}
-					msg.put("ruleId", faultCode.id);
-					msg.put("faultCode", faultCode.code);
-					msg.put("noticetime", noticetime);
-					msg.put("location", location);
+					// 一个故障信息, 表示这个故障码是否触发
+                    Map<String, Object> msg = updateNoticeMsg(
+                        ruleMsgs.get(rule.faultId),
+                        vid,
+                        time,
+                        location,
+                        faultCode.codeId,
+                        faultCode.alarmLevel,
+                        fcode,
+                        noticetime);
+
 					//添加同通知消息
-					if(1 == (int)msg.get("status")) {
+					if(1 == (int)msg.get(NOTICE_STATUS)) {
 						notices.add(msg);
 					}
 					//添加缓存
-					ruleMsgs.put(rule.ruleId, msg);
-					vidRuleMsgs.put(vid, ruleMsgs);
+					ruleMsgs.put(rule.faultId, msg);
+					vidRuleMsg.put(vid, ruleMsgs);
 				}
 			}
 		}
-		if (notices.size()>0) {
-			return notices;
-		}
-		return null;
+
+		return notices;
 	}
-	
-	/**
-	 * <p>
-	 * 此方法是需要自己将10进制值转换为16进制后再进行判定
-	 * 后续采用原始值字符串时候就不需要再这样处理
-	 * </p>
-	 * @param hex
-	 * @return
-	 */
-	String hexToDec(String hex){
-		if (null == hex || "".equals(hex.trim())) {
-			return "-1";
-		}
-		if (hex.startsWith("0x") || hex.startsWith("0X")) {
-			if (hex.length()>2) {
-				hex = hex.substring(2);
-				return ""+Long.parseLong(hex, 16);
-			}
-		} 
-		return hex;
-	}
-	
-	Map<String,Object> newCodeMsg(){
-		Map<String,Object> msg = new TreeMap<String,Object>();
-		msg.put("msgType", "FAULT_CODE_ALARM");
-        msg.put("msgId", UUID.randomUUID().toString());
-		return msg;
-	}
-	
-	public static void main(String[] args) {
-		FaultCodeHandler handler = new FaultCodeHandler();
-		String res = handler.hexToDec("0x000010");
-		System.out.println(res);
-	}
+
+	private static final String NOTICE_STATUS = "status";
+	private static final String NOTICE_LEVEL = "level";
+
+	@NotNull
+	private Map<String,Object> updateNoticeMsg(
+	    @Nullable Map<String, Object> notice,
+        @NotNull final String vid,
+        final String time,
+        final String location,
+        final String exceptionId,
+        final int alarmLevel,
+        final long faultCode,
+        final String noticeTime) {
+
+	    if(MapUtils.isEmpty(notice)) {
+	        notice = new TreeMap<>();
+            notice.put("msgType", "FAULT_CODE_ALARM");
+            notice.put("msgId", UUID.randomUUID().toString());
+            notice.put("vid", vid);
+        }
+
+        if (!notice.containsKey(NOTICE_LEVEL) || (int) notice.get(NOTICE_LEVEL) != alarmLevel) {
+            notice.put(NOTICE_STATUS, 1);
+            notice.put("stime", time);
+            notice.put("slocation", location);
+            notice.put(NOTICE_LEVEL, alarmLevel);
+        } else {
+            notice.put(NOTICE_STATUS, 2);
+        }
+
+        // 按字节解析当前逻辑下, 异常码改变并不会发出通知, 也就是说, 不论有多少个异常码, 都只会发出第一个.
+        notice.put("ruleId", exceptionId);
+        notice.put("faultCode", faultCode);
+        notice.put("noticetime", noticeTime);
+
+        return notice;
+    }
+
+    private void deleteNoticeMsg(
+        @NotNull final Map<String, Object> notice,
+        final String time,
+        final String location,
+        final String normalId,
+        final String noticeTime) {
+
+        notice.put(NOTICE_STATUS, 3);
+        notice.put("etime", time);
+        notice.put("elocation", location);
+        notice.put("ruleId", normalId);
+        notice.put("noticetime", noticeTime);
+    }
 }

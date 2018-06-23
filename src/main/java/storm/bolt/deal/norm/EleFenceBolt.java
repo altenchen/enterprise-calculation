@@ -74,7 +74,7 @@ public class EleFenceBolt extends BaseRichBolt {
 			e.printStackTrace();
 		}
         lastExeTime=System.currentTimeMillis();
-        flushtime=1000*Long.parseLong(stormConf.get("db.cache.flushtime").toString());
+        flushtime=1000*Long.parseLong(stormConf.get(SysDefine.DB_CACHE_FLUSH_TIME_SECOND).toString());
     }
     @Override
     public void execute(Tuple tuple) {

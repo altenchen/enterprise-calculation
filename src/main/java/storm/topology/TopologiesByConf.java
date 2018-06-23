@@ -89,7 +89,7 @@ public class TopologiesByConf {
         stormConf.put("ctfo.cacheTable", properties.getProperty("ctfo.cacheTable"));
         //endregion
 
-        stormConf.put("db.cache.flushtime", properties.get("db.cache.flushtime"));
+        stormConf.put(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, properties.get(SysDefine.DB_CACHE_FLUSH_TIME_SECOND));
 
         stormConf.put("es.send.time", properties.get("es.send.time"));
 

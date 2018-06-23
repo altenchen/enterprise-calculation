@@ -3,6 +3,8 @@ package storm.system;
 import org.jetbrains.annotations.Contract;
 import storm.util.ConfigUtils;
 
+import java.util.Properties;
+
 /**
  * @author: xzp
  * @date: 2018-06-21
@@ -11,23 +13,26 @@ import storm.util.ConfigUtils;
 public final class SysParams {
 
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
+    private static final Properties sysParams = configUtils.sysParams;
 
-    private static final String CHARGE_CAR_TYPE_ID = "charge.car.type.id";
+    public static final String CHARGE_CAR_TYPE_ID = "charge.car.type.id";
 
-    private static final String ALARM_CODE_SQL = "alarm.code.sql";
+    public static final String ALARM_CODE_SQL = "alarm.code.sql";
 
-    private static final String FENCE_SQL = "fence.sql";
+    public static final String ALARM_CODE_BIT_SQL = "alarm.code.bit.sql";
 
-    private static final String EARLY_WARNING_SQL = "early.warning.sql";
+    public static final String FENCE_SQL = "fence.sql";
 
-    private static final String ITEM_COEF_OFFSET_SQL = "item.coef.offset.sql";
+    public static final String EARLY_WARNING_SQL = "early.warning.sql";
 
-    private String getProperty(String property) {
-        return configUtils.sysParams.getProperty(property);
+    public static final String ITEM_COEF_OFFSET_SQL = "item.coef.offset.sql";
+
+    public String getProperty(String property) {
+        return sysParams.getProperty(property);
     }
 
-    private String getProperty(String property, String defaultValue) {
-        return configUtils.sysParams.getProperty(property, defaultValue);
+    public String getProperty(String property, String defaultValue) {
+        return sysParams.getProperty(property, defaultValue);
     }
 
     private static final SysParams INSTANCE = new SysParams();
@@ -55,6 +60,13 @@ public final class SysParams {
      */
     public final String getAlarmCodeSql() {
         return getProperty(ALARM_CODE_SQL);
+    }
+
+    /**
+     * @return 从数据库获取故障码按位解析规则的SQL
+     */
+    public final String getAlarmCodeBitSql() {
+        return getProperty(ALARM_CODE_BIT_SQL);
     }
 
     /**

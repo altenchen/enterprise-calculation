@@ -457,7 +457,7 @@ public final class DataKey {
     public static final String _2804 = "2804";
 
     /**
-     * 电机故障代码列表
+     * 驱动电机故障代码列表
      */
     public static final String _2805 = "2805";
 
@@ -490,6 +490,16 @@ public final class DataKey {
      * 充电状态
      */
     public static final String _2920_ALARM_STATUS = "2920";
+
+    /**
+     * 可充电储能装置故障代码列表
+     */
+    public static final String _2922 = "2922";
+
+    /**
+     * 发动机故障代码列表
+     */
+    public static final String _2924 = "2924";
 
     /**
      * 采集时间

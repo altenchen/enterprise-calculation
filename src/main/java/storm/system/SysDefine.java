@@ -3,6 +3,8 @@ package storm.system;
 public final class SysDefine {
     public static final String TOPOLOGY_NAME = "topology.name";
 
+    public static final String DB_CACHE_FLUSH_TIME_SECOND = "db.cache.flushtime";
+
 	//接收实时数据TOPIC
     public static String VEH_REALINFO_DATA_TOPIC ;
 

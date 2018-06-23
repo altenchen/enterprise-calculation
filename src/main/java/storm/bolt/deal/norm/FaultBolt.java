@@ -37,7 +37,7 @@ public class FaultBolt extends BaseRichBolt {
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
         faultTopic = stormConf.get("kafka.topic.customfault").toString();
-        flushtime=1000*Long.parseLong(stormConf.get("db.cache.flushtime").toString());
+        flushtime=1000*Long.parseLong(stormConf.get(SysDefine.DB_CACHE_FLUSH_TIME_SECOND).toString());
         service = new ExamineService();
         System.out.println("fault rule size----------------->");
         lastExeTime=System.currentTimeMillis();

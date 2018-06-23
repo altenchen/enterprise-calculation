@@ -26,8 +26,10 @@ public final class ConfigUtils {
 	    return INSTANCE;
 	}
 
+	@NotNull
 	public final Properties sysDefine = new Properties();
 
+	@NotNull
 	public final Properties sysParams = new Properties();
 
 	{
