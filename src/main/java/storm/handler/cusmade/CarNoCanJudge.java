@@ -87,6 +87,8 @@ public final class CarNoCanJudge {
         recorder.rebootInit(REDIS_DB_INDEX, REDIS_TABLE_NAME, restoreFromRedis);
 
         for(String vid : restoreFromRedis.keySet()) {
+            logger.info("从Redis还原无CAN车辆信息:" + vid);
+
             final Map<String, Object> item = restoreFromRedis.get(vid);
             try {
                 final AlarmStatus status = AlarmStatus.parseOf(
@@ -178,10 +180,13 @@ public final class CarNoCanJudge {
 
         final String vid = data.get(DataKey.VEHICLE_ID);
         final String timeString = data.get(DataKey.TIME);
-        final boolean traceVehicleId = paramsRedisUtil.isTraceVehicleId(vid);
+        final boolean traceVehicle = paramsRedisUtil.isTraceVehicleId(vid);
 
         if(ObjectUtils.isNullOrWhiteSpace(vid)
             || ObjectUtils.isNullOrWhiteSpace(timeString)) {
+            if(traceVehicle) {
+                logger.info("无CAN放弃判定, 时间空白.");
+            }
             return result;
         }
         final long time;
@@ -189,6 +194,7 @@ public final class CarNoCanJudge {
             time = TIME_FORMAT_SERVICE.stringTimeLong(timeString);
         } catch (ParseException e) {
             e.printStackTrace();
+            logger.info("无CAN放弃判定, 时间格式错误.");
             return result;
         }
 
@@ -233,7 +239,7 @@ public final class CarNoCanJudge {
         @NotNull final String totalMileage,
         @NotNull final String location
     ) {
-        final boolean traceVehicleId = paramsRedisUtil.isTraceVehicleId(item.vid);
+        final boolean traceVehicle = paramsRedisUtil.isTraceVehicleId(item.vid);
 
         if(item.continueCount > FIRST_FAULT_FRAME) {
             item.continueCount = FIRST_FAULT_FRAME;
@@ -241,6 +247,10 @@ public final class CarNoCanJudge {
 
         if(item.continueCount == FIRST_FAULT_FRAME) {
             item.firstFrameEnterFault(time, totalMileage, location);
+        }
+
+        if(traceVehicle) {
+            logger.info("VID[" + item.vid + "]判定为无CAN[" + item.continueCount + "]");
         }
 
         if(item.continueCount > -getFaultTriggerContinueCount()) {
@@ -251,6 +261,10 @@ public final class CarNoCanJudge {
         if(time - item.getFirstFrameTime() > getFaultTriggerTimeoutMillisecond()) {
             if(item.getAlarmStatus() == AlarmStatus.Init) {
                 item.setAlarmStatus(AlarmStatus.Start);
+
+                if(traceVehicle) {
+                    logger.info("VID[" + item.vid + "]触发CAN故障[" + item.getAlarmStatus() + "]");
+                }
 
                 final Map<String, Object> notice = item.generateNotice();
                 noticeResult.put(item.vid, notice);
@@ -269,7 +283,7 @@ public final class CarNoCanJudge {
         @NotNull final String totalMileage,
         @NotNull final String location
     ) {
-        final boolean traceVehicleId = paramsRedisUtil.isTraceVehicleId(item.vid);
+        final boolean traceVehicle = paramsRedisUtil.isTraceVehicleId(item.vid);
 
         if(item.continueCount < FIRST_NORMAL_FRAME) {
             item.continueCount = FIRST_NORMAL_FRAME;
@@ -277,6 +291,10 @@ public final class CarNoCanJudge {
 
         if(item.continueCount == FIRST_NORMAL_FRAME) {
             item.firstFrameExitFault(time, totalMileage, location);
+        }
+
+        if(traceVehicle) {
+            logger.info("VID[" + item.vid + "]判定为有CAN[" + item.continueCount + "]");
         }
 
         if(item.continueCount < getNormalTriggerContinueCount()) {
@@ -288,6 +306,10 @@ public final class CarNoCanJudge {
             if(item.getAlarmStatus() == AlarmStatus.Start
                 || item.getAlarmStatus() == AlarmStatus.Continue) {
                 item.setAlarmStatus(AlarmStatus.End);
+
+                if(traceVehicle) {
+                    logger.info("VID[" + item.vid + "]触发CAN正常[" + item.getAlarmStatus() + "]");
+                }
 
                 final Map<String, Object> notice = item.generateNotice();
                 noticeResult.put(item.vid, notice);
