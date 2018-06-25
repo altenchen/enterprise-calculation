@@ -381,7 +381,6 @@ public class CarRuleHandler implements InfoNotice {
         recorder = new RedisRecorder(redis);
         restartInit(true);
         carLockStatusChange = new CarLockStatusChangeJudge();
-
     }
 
     public static void rebulid() {
@@ -1565,6 +1564,7 @@ public class CarRuleHandler implements InfoNotice {
         if (isRestart) {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
             recorder.rebootInit(db, socRedisKeys, vidsocNotice);
+            recorder.rebootInit(CarLockStatusChangeJudge.db, CarLockStatusChangeJudge.lockStatusRedisKeys, vidLockStatus);
         }
     }
 

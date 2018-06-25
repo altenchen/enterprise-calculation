@@ -21,15 +21,10 @@ import static storm.handler.cusmade.CarRuleHandler.timeformat;
 public class CarLockStatusChangeJudge {
 
     DataToRedis redis = new DataToRedis();
-    static int db = 4;
-    static String lockStatusRedisKeys = "vidLockStatus";
+    public static final int db = 4;
+    public static final String lockStatusRedisKeys = "vidLockStatus";
     private Map<String, Map<String, Object>> vidLockStatus;
     private Recorder recorder = new RedisRecorder(redis);
-
-    {
-        restartInit(true);
-    }
-
 
     /**
      *
@@ -168,12 +163,5 @@ public class CarLockStatusChangeJudge {
             vidLockStatus.put(vid, lastLockStatus);
         }
     }
-
-    void restartInit(boolean isRestart) {
-        if (isRestart) {
-            recorder.rebootInit(db, lockStatusRedisKeys, vidLockStatus);
-        }
-    }
-
 }
 
