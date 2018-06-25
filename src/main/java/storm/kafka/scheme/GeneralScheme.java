@@ -36,17 +36,18 @@ public final class GeneralScheme implements Scheme {
             final Values values = generateValues(message);
             if(!values.isEmpty()) {
                 final String vid = (String) values.get(0);
+                logger.debug("收到VID[" + vid + "]的实时数据.");
                 if(paramsRedisUtil.isTraceVehicleId(vid)) {
-                    logger.warn("收到VID[" + vid + "]的实时数据.");
+                    logger.info("收到VID[" + vid + "]的实时数据.");
                 }
+                return values;
             }
-            return values;
         }
         catch (Exception exception) {
             exception.printStackTrace();
             logger.error(exception.getMessage(), exception);
         }
-        return new Values();
+        return null;
     }
 
     @Override
@@ -68,12 +69,10 @@ public final class GeneralScheme implements Scheme {
             String vid = matcher.group(1);
             return new Values(vid, message);
         }
-
         return new Values();
     }
 
 	public static void main(String[] args) {
-
         ImmutableList
             .of(
                 new Values("5e87d889-f029-4767-a9bc-3fdfecdb5a08", "SUBMIT 0 LKJTBKBY3HF012267 REALTIME {VID:5e87d889-f029-4767-a9bc-3fdfecdb5a08,VTYPE:ff8080816252c33a016260d31c1a04b0,CTYPE:2_1_1,2000:20180604224708,2501:0,2502:120243408,2503:31626550,9999:20180604224711}"),
