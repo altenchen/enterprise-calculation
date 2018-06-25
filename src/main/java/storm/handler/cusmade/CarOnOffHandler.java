@@ -290,7 +290,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				notice =  new TreeMap<String, Object>();
 				notice.put("msgType", "IDLE_VEH");
 				notice.put("vid", vid);
-				notice.put("msgId", UUIDUtils.getUUID());
+				notice.put("msgId", UUIDUtils.randomUuidString());
 				notice.put("stime", time);
 				notice.put("soc", numSoc);
                 //吉利要求，新增

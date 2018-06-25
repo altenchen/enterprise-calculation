@@ -107,7 +107,7 @@ public final class TimeOutOfRangeNotice {
         final Map<String, Object> notice = new TreeMap<>();
         notice.put("vid", vid);
         notice.put("msgType", "TIME_EXCEPTION_VEH");
-        notice.put("msgId", UUIDUtils.getUUID());
+        notice.put("msgId", UUIDUtils.randomUuidString());
         notice.put("exceptionType", exceptionType);
         notice.put("ttime", terminalTimeString);
         notice.put("ptime", platformTimeString);

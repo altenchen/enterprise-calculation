@@ -278,7 +278,7 @@ public class FaultCodeHandler {
 	Map<String,Object> newCodeMsg(){
 		Map<String,Object> msg = new TreeMap<String,Object>();
 		msg.put("msgType", "FAULT_CODE_ALARM");
-		msg.put("msgId", UUIDUtils.getUUID());
+		msg.put("msgId", UUIDUtils.randomUuidString());
 		return msg;
 	}
 	

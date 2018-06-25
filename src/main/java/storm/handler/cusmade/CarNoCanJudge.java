@@ -194,7 +194,9 @@ public final class CarNoCanJudge {
             time = TIME_FORMAT_SERVICE.stringTimeLong(timeString);
         } catch (ParseException e) {
             e.printStackTrace();
-            logger.info("无CAN放弃判定, 时间格式错误.");
+            if(traceVehicle) {
+                logger.info("无CAN放弃判定, 时间格式错误.");
+            }
             return result;
         }
 
@@ -258,7 +260,11 @@ public final class CarNoCanJudge {
             return;
         }
 
-        if(time - item.getFirstFrameTime() > getFaultTriggerTimeoutMillisecond()) {
+        final long delayMillisecond = getFaultTriggerTimeoutMillisecond();
+        if(time - item.getFirstFrameTime() > delayMillisecond) {
+
+            item.lastFrameEnterFault(delayMillisecond);
+
             if(item.getAlarmStatus() == AlarmStatus.Init) {
                 item.setAlarmStatus(AlarmStatus.Start);
 
@@ -290,7 +296,7 @@ public final class CarNoCanJudge {
         }
 
         if(item.continueCount == FIRST_NORMAL_FRAME) {
-            item.firstFrameExitFault(time, totalMileage, location);
+            item.firstFrameLeaveFault(time, totalMileage, location);
         }
 
         if(traceVehicle) {
@@ -302,7 +308,10 @@ public final class CarNoCanJudge {
             return;
         }
 
-        if(time - item.getFirstFrameTime() > getNormalTriggerTimeoutMillisecond()) {
+        final long delayMillisecond = getNormalTriggerTimeoutMillisecond();
+        if(time - item.getFirstFrameTime() > delayMillisecond) {
+            item.lastFrameLeaveFault(delayMillisecond);
+
             if(item.getAlarmStatus() == AlarmStatus.Start
                 || item.getAlarmStatus() == AlarmStatus.Continue) {
                 item.setAlarmStatus(AlarmStatus.End);
@@ -369,7 +378,7 @@ public final class CarNoCanJudge {
         /**
          * 消息唯一ID
          */
-        public final String msgId = UUIDUtils.getUUID();
+        public final String msgId = UUIDUtils.randomUuidString();
 
         /**
          * 正常运行时创建的项
@@ -380,6 +389,8 @@ public final class CarNoCanJudge {
             this.properties = new TreeMap<>();
             this.setAlarmStatus(AlarmStatus.Init);
 
+            // 车辆Id
+            this.properties.put("vid", msgId);
             // 消息类型
             this.properties.put("msgType", AlarmMessageType.NO_CAN_VEH);
             // 消息唯一ID
@@ -399,7 +410,7 @@ public final class CarNoCanJudge {
         }
 
         /**
-         * 进入告警的第一帧填充状态
+         * 进入告警的首帧填充状态
          * @param time
          * @param totalMileage
          * @param location
@@ -417,12 +428,20 @@ public final class CarNoCanJudge {
         }
 
         /**
-         * 退出告警的第一帧填充状态
+         * 进入告警的末帧填充状态
+         * @param delayMillisecond
+         */
+        public final void lastFrameEnterFault(final long delayMillisecond) {
+            properties.put("sdelay", delayMillisecond / 1000);
+        }
+
+        /**
+         * 退出告警的首帧填充状态
          * @param time
          * @param totalMileage
          * @param location
          */
-        public final void firstFrameExitFault(
+        public final void firstFrameLeaveFault(
             final long time,
             final String totalMileage,
             final String location
@@ -432,6 +451,14 @@ public final class CarNoCanJudge {
             properties.put("etime", etime);
             properties.put("emileage", totalMileage);
             properties.put("elocation", location);
+        }
+
+        /**
+         * 退出告警的末帧填充状态
+         * @param delayMillisecond
+         */
+        public final void lastFrameLeaveFault(final long delayMillisecond) {
+            properties.put("edelay", delayMillisecond / 1000);
         }
 
         /**
