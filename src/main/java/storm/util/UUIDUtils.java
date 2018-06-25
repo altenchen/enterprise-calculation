@@ -3,7 +3,7 @@ package storm.util;
 import java.util.UUID;
 
 /**
- * @author xzp
+ * @author unknown
  */
 public class UUIDUtils {
 
