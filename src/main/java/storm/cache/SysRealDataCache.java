@@ -21,10 +21,12 @@ import com.google.common.cache.CacheBuilder;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.handler.cal.RedisClusterLoaderUseCtfo;
+import storm.protocol.CommandType;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
+import storm.util.DataUtils;
 import storm.util.NumberUtils;
 import storm.util.ParamsRedisUtil;
 
@@ -103,6 +105,7 @@ public class SysRealDataCache {
 			if (null != outbyconf) {
 				timeouttime=1000*(int)outbyconf;
 			}
+			timeouttime = Math.max(1000000, timeouttime);
 			if (null != configUtils.sysParams) {
 				
 				String typeparams = configUtils.sysParams.getProperty("charge.car.type.id");
@@ -275,7 +278,13 @@ public class SysRealDataCache {
 					|| StringUtils.isEmpty(time)) {
 				return false;
 			}
-			
+			//吉利厂商，当为实时报文且为自动唤醒报文时，忽略
+			if(CommandType.SUBMIT_REALTIME.equals(msgType)){
+				if(DataUtils.judgeAutoWake(dat)){
+					return false;
+				}
+			}
+
 			String utc = dat.get(SysDefine.ONLINEUTC);
 			long utctime = Long.valueOf(NumberUtils.stringNumber(utc));
 			long tertime = timeformat.stringTimeLong(time);

@@ -4,7 +4,6 @@ import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import storm.system.DataKey;
-
 import java.util.Map;
 
 /**
@@ -35,10 +34,11 @@ public final class DataUtils {
      * @param map 集合
      * @return 是否为自动唤醒报文
      */
-    public static boolean judgeAutoWake(@NotNull Map map){
-        String totalVoltage = (String)map.get(DataKey._2613_TOTAL_VOLTAGE);
-        String totalElectricity = (String)map.get(DataKey._2614_TOTAL_ELECTRICITY);
+    public static boolean judgeAutoWake(@NotNull Map<String,String> map){
+        String totalVoltage = map.get(DataKey._2613_TOTAL_VOLTAGE);
+        String totalElectricity = map.get(DataKey._2614_TOTAL_ELECTRICITY);
         return StringUtils.isBlank(totalVoltage)
                 && StringUtils.isBlank(totalElectricity);
     }
+
 }
