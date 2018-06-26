@@ -175,6 +175,7 @@ public final class CarNoCanJudge {
      */
     @NotNull
     public Map<String, Object> processFrame(@NotNull Map<String, String> data) {
+        // vid, notice
         final TreeMap<String, Object> result = new TreeMap<>();
 
         final String vid = data.get(DataKey.VEHICLE_ID);
@@ -272,7 +273,7 @@ public final class CarNoCanJudge {
                 }
 
                 final Map<String, Object> notice = item.generateNotice();
-                noticeResult.put(item.vid, notice);
+                noticeResult.putAll(notice);
                 recorder.save(REDIS_DB_INDEX, REDIS_TABLE_NAME, item.vid, notice);
             }
         }
@@ -320,7 +321,7 @@ public final class CarNoCanJudge {
                 }
 
                 final Map<String, Object> notice = item.generateNotice();
-                noticeResult.put(item.vid, notice);
+                noticeResult.putAll(notice);
                 recorder.del(REDIS_DB_INDEX, REDIS_TABLE_NAME, item.vid);
             }
 
