@@ -13,7 +13,6 @@ import storm.system.AlarmMessageType;
 import storm.system.DataKey;
 import storm.util.DataUtils;
 import storm.util.ParamsRedisUtil;
-import storm.util.UUIDUtils;
 
 import java.text.ParseException;
 import java.util.*;
@@ -378,7 +377,7 @@ public final class CarNoCanJudge {
         /**
          * 消息唯一ID
          */
-        public final String msgId = UUIDUtils.getUUIDString();
+        public final String msgId = UUID.randomUUID().toString();
 
         /**
          * 正常运行时创建的项
@@ -390,7 +389,7 @@ public final class CarNoCanJudge {
             this.setAlarmStatus(AlarmStatus.Init);
 
             // 车辆Id
-            this.properties.put("vid", msgId);
+            this.properties.put("vid", vid);
             // 消息类型
             this.properties.put("msgType", AlarmMessageType.NO_CAN_VEH);
             // 消息唯一ID

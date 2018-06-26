@@ -1,12 +1,6 @@
 package storm.handler;
 
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -16,7 +10,6 @@ import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.util.ConfigUtils;
-import storm.util.UUIDUtils;
 import storm.util.dbconn.Conn;
 
 /**
@@ -281,7 +274,7 @@ public class FaultCodeHandler {
 	Map<String,Object> newCodeMsg(){
 		Map<String,Object> msg = new TreeMap<String,Object>();
 		msg.put("msgType", "FAULT_CODE_ALARM");
-		msg.put("msgId", UUIDUtils.getUUIDString());
+        msg.put("msgId", UUID.randomUUID().toString());
 		return msg;
 	}
 	

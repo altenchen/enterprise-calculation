@@ -8,11 +8,11 @@ import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.util.DataUtils;
 import storm.util.ParamsRedisUtil;
-import storm.util.UUIDUtils;
 
 import java.text.ParseException;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 
 /**
  * @author: xzp
@@ -107,7 +107,7 @@ public final class TimeOutOfRangeNotice {
         final Map<String, Object> notice = new TreeMap<>();
         notice.put("vid", vid);
         notice.put("msgType", "TIME_EXCEPTION_VEH");
-        notice.put("msgId", UUIDUtils.getUUIDString());
+        notice.put("msgId", UUID.randomUUID().toString());
         notice.put("exceptionType", exceptionType);
         notice.put("ttime", terminalTimeString);
         notice.put("ptime", platformTimeString);

@@ -545,7 +545,7 @@ public class CarRuleHandler implements InfoNotice {
                         if (null == notice) {
                             notice = new TreeMap<String, Object>();
                             notice.put("msgType", "SOC_ALARM");
-                            notice.put("msgId", UUIDUtils.getUUIDString());
+                            notice.put("msgId", UUID.randomUUID().toString());
                             notice.put("vid", vid);
                             notice.put("stime", time);
                             notice.put("ssoc", socNum);
@@ -571,7 +571,7 @@ public class CarRuleHandler implements InfoNotice {
                         if (null == notice) {
                             notice = new TreeMap<String, Object>();
                             notice.put("msgType", "SOC_ALARM");
-                            notice.put("msgId", UUIDUtils.getUUIDString());
+                            notice.put("msgId", UUID.randomUUID().toString());
                             notice.put("vid", vid);
                             notice.put("stime", time);
                             notice.put("ssoc", socNum);
@@ -947,7 +947,7 @@ public class CarRuleHandler implements InfoNotice {
                         notice.put("msgType", "IGNITE_SHUT_MESSAGE");
                         notice.put("vid", vid);
                         notice.put("vin", vin);
-                        notice.put("msgId", UUIDUtils.getUUIDString());
+                        notice.put("msgId", UUID.randomUUID().toString());
                         notice.put("stime", time);
                         notice.put("soc", soc);
                         notice.put("ssoc", soc);
@@ -1051,7 +1051,7 @@ public class CarRuleHandler implements InfoNotice {
                         notice = new TreeMap<String, Object>();
                         notice.put("msgType", "FLY_RECORD");
                         notice.put("vid", vid);
-                        notice.put("msgId", UUIDUtils.getUUIDString());
+                        notice.put("msgId", UUID.randomUUID().toString());
                         notice.put("stime", time);
                         notice.put("count", cnts);
                         notice.put("status", 1);
@@ -1137,7 +1137,7 @@ public class CarRuleHandler implements InfoNotice {
                         notice = new TreeMap<String, Object>();
                         notice.put("msgType", "ABNORMAL_USE_VEH");
                         notice.put("vid", vid);
-                        notice.put("msgId", UUIDUtils.getUUIDString());
+                        notice.put("msgId", UUID.randomUUID().toString());
                         notice.put("stime", time);
                         notice.put("count", cnts);
                         notice.put("status", 1);
@@ -1246,7 +1246,7 @@ public class CarRuleHandler implements InfoNotice {
                         notice = new TreeMap<String, Object>();
                         notice.put("msgType", "NO_POSITION_VEH");
                         notice.put("vid", vid);
-                        notice.put("msgId", UUIDUtils.getUUIDString());
+                        notice.put("msgId", UUID.randomUUID().toString());
                         notice.put("stime", time);
                         notice.put("count", cnts);
                         notice.put("status", 1);//1开始，2持续，3结束
@@ -1335,7 +1335,7 @@ public class CarRuleHandler implements InfoNotice {
                     notice.put("msgType", "ON_OFF");
                     notice.put("vid", vid);
                     notice.put("vin", vin);
-                    notice.put("msgId", UUIDUtils.getUUIDString());
+                    notice.put("msgId", UUID.randomUUID().toString());
                     notice.put("stime", time);
                     notice.put("status", 1);
                     notice.put("noticetime", noticetime);

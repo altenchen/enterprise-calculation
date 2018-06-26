@@ -17,7 +17,6 @@ import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.DataUtils;
 import storm.util.NumberUtils;
-import storm.util.UUIDUtils;
 
 /**
  * 车辆上下线及相关处理
@@ -294,7 +293,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				notice =  new TreeMap<String, Object>();
 				notice.put("msgType", "IDLE_VEH");
 				notice.put("vid", vid);
-				notice.put("msgId", UUIDUtils.getUUIDString());
+                notice.put("msgId", UUID.randomUUID().toString());
 				notice.put("stime", time);
 				notice.put("soc", numSoc);
                 //吉利要求，新增
