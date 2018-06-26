@@ -213,10 +213,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		if (null == dat || dat.size() ==0) {
 			return null;
 		}
-		//过滤掉自动唤醒的数据，判断依据：总电压、总电流同时为空则为自动唤醒数据
-        if (DataUtils.judgeAutoWake(dat)) {
-            return null;
-        }
+
 
 		String vid = dat.get(DataKey.VEHICLE_ID);
 		String time = dat.get(DataKey.TIME);
@@ -230,6 +227,12 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		int numMileage = -1;
 		try {
 			if (CommandType.SUBMIT_REALTIME.equals(msgType)){
+
+				//过滤掉自动唤醒的数据，判断依据：总电压、总电流同时为空则为自动唤醒数据
+				//6.26号，修复闲置车辆bug
+				if (DataUtils.judgeAutoWake(dat)) {
+					return null;
+				}
 
 				String speed = dat.get(DataKey._2201_SPEED);
 				String soc = dat.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
