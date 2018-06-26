@@ -36,6 +36,7 @@ public class CarLockStatusChangeJudge {
         if (MapUtils.isEmpty(dat)) {
             return null;
         }
+        System.out.println("..........................."+"进入了carLockStatueChangeJudge方法内"+".................................");
         try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             Date date = new Date();
@@ -49,7 +50,13 @@ public class CarLockStatusChangeJudge {
             if (CommandType.SUBMIT_REALTIME.equals(msgType)) {
                 //当前车辆锁止状态
                 String lockFunctionStatusNow = lockFunctionJudge(dat);
+                System.out.println("...........................当前车辆锁止功能是否开启："+lockFunctionStatusNow+".................................");
                 String carLockStatusNow = carLockStatusJudge(dat);
+                System.out.println("...........................当前车辆是否被锁止："+lockFunctionStatusNow+".................................");
+                if(StringUtils.isEmpty(lockFunctionStatusNow) && StringUtils.isEmpty(carLockStatusNow)){
+                    return null;
+                }
+
                 //之前的车辆锁止状态
                 String lockFunctionStatusBefore = null;
                 String carLockStatusBefore = null;
@@ -61,21 +68,24 @@ public class CarLockStatusChangeJudge {
                     Map<String, Object> lastLockStatus = vidLockStatus.get(vid);
                     lockFunctionStatusBefore = String.valueOf(lastLockStatus.get(DataKey._4710061_LOCK_FUNCTION_STATUS));
                     carLockStatusBefore = String.valueOf(lastLockStatus.get(DataKey._4710062_CAR_LOCK_STATUS).toString());
+                    System.out.println("...........................车辆之前锁止功能是否开启："+lockFunctionStatusBefore+".................................");
+                    System.out.println("...........................车辆之前是否被锁止："+carLockStatusBefore+".................................");
                 }
 
                 //如果发生了变化则发出通知报文。
-                if (lockFunctionStatusNow.equals(lockFunctionStatusBefore) || carLockStatusNow.equals(carLockStatusBefore)) {
+                if (!lockFunctionStatusNow.equals(lockFunctionStatusBefore) || !carLockStatusNow.equals(carLockStatusBefore)) {
                     notice = new TreeMap<String, Object>();
                     notice.put("msgType", "VEH_LOCK_STATUS_CHANGE");
                     notice.put("vid", vid);
                     notice.put("noticetime", noticetime);
                     notice.put("lockFunctionStatusChange", lockFunctionStatusNow);
-                    notice.put("carLockStatusChange", carLockStatusNow);
+                    notice.put("LockStatusChange", carLockStatusNow);
                     //把当前的锁止状态缓存起来
                     setLockStatus(dat,vidLockStatus);
                 }
                 //把车辆的锁止状态存储到redis中
                 recorder.save(db, lockStatusRedisKeys,vid,vidLockStatus.get(vid));
+                System.out.println("成功返回");
                 return notice;
             }
         } catch (Exception e) {
