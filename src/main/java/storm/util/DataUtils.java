@@ -1,5 +1,6 @@
 package storm.util;
 
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
@@ -19,6 +20,10 @@ public final class DataUtils {
     @NotNull
     @Contract(pure = true)
     public static final String buildLocation(@NotNull final String longitude, @NotNull final String latitude) {
-        return longitude + "," + latitude;
+        if(StringUtils.isNotBlank(longitude) && StringUtils.isNotBlank(latitude)) {
+            return new StringBuilder(longitude).append(',').append(latitude).toString();
+        } else {
+            return StringUtils.EMPTY;
+        }
     }
 }
