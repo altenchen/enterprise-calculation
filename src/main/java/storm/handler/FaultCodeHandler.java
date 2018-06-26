@@ -275,7 +275,11 @@ public class FaultCodeHandler {
 
         // 没有匹配按位处理规则, 转为按字节处理
         if(!processByBit) {
-            for (FaultCodeByteRule ruleCode: byteRules) {
+
+            for (FaultCodeByteRule ruleCode: byteRules.stream()
+                .filter(r -> r.faultType == faultType)
+                .toArray(FaultCodeByteRule[]::new)) {
+
                 List<Map<String, Object>> msgs = byteFaultMsg(data, values, ruleCode);
                 if (null != msgs) {
                     notices.addAll(msgs);
