@@ -227,11 +227,11 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		try {
 			if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 
-				//过滤掉自动唤醒的数据，判断依据：总电压、总电流同时为空则为自动唤醒数据
-				//6.26号，修复闲置车辆bug
-				if (ObjectUtils.judgeAutoWake(dat)) {
-					return null;
-				}
+//				//过滤掉自动唤醒的数据，判断依据：总电压、总电流同时为空则为自动唤醒数据
+//				//6.26号，修复闲置车辆bug
+//				if (ObjectUtils.judgeAutoWake(dat)) {
+//					return null;
+//				}
 
 				String speed = dat.get(DataKey._2201_SPEED);
 				String soc = dat.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
@@ -283,6 +283,9 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		}
 		String lastUtc = dat.get(SysDefine.ONLINEUTC);
 		String noticetime = timeFormatService.toDateString(new Date(now));
+
+		//是否为登入报文
+		boolean isLogin = CommandType.SUBMIT_LOGIN.equals(dat.get(SysDefine.MESSAGETYPE));
 		//车辆 是否达到 闲置或者停机 超时的标准
 		//判断标准就是当前时间与缓存中的最后一帧报文时间差值是否大于阈值，
 		//需要注意的是，此时已经的下线车辆也是在全量数据或者活跃数据缓存中的。
@@ -317,6 +320,11 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 			}
 		} else {//不是闲置车辆
 			markAlive.add(vid);
+			//如果是登入报文，则返回null。针对吉利自动唤醒报文
+			if(isLogin){
+				return null;
+			}
+
 			if (vidIdleNotice.containsKey(vid)) {
 				int lastSoc = -1;
 				int lastSpeed = -1;

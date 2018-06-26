@@ -1257,17 +1257,23 @@ public class CarRuleHandler implements InfoNotice {
                     if (cnts >= hasgpsJudgeNum || (cnts > 3 && null != dat.get(SUBMIT_LOGIN.LOGOUT_TIME))) {
 
                         vidNormalGps.remove(vid);
+                        IsSendNoticeCache cache=vidIsSendNoticeCache.get(vid);
                         //如果未定位开始通知没有发送，则不会发送结束通知，只会把各个缓存清空
-                        if (!vidIsSendNoticeCache.get(vid).gpsIsSend) {
+                        if (null != cache && !cache.gpsIsSend) {
                             vidNoGps.remove(vid);
                             vidgpsNotice.remove(vid);
                             return null;
                         }
 
+                        if(null == cache){
+                            cache = new IsSendNoticeCache();
+                            vidIsSendNoticeCache.put(vid,cache);
+                        }
+
                         Map<String, Object> notice = vidgpsNotice.get(vid);
                         vidNoGps.remove(vid);
                         vidgpsNotice.remove(vid);
-                        vidIsSendNoticeCache.get(vid).gpsIsSend = false;
+                        cache.gpsIsSend = false;
                         if (null != notice) {
                             String location = longi + "," + latit;
                             notice.put("status", 3);
