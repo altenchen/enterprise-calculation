@@ -102,7 +102,7 @@ public class VehicleModelCache {
             synchronized (refreshCacheLock) {
                 if(now - lastUpdateTime > veh_model_cache_refresh_millisecond) {
                     final Map<String, String> vmd = conn.getVehicleModel();
-                    cache.putAll(vmd);
+                    vmd.forEach((k,v) -> cache.put(k, v));
                     mid = vmd.getOrDefault(vid, "");
                     lastUpdateTime = now;
                 } else {
