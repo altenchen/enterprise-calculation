@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
 import storm.handler.FaultCodeHandler;
 import storm.handler.cusmade.*;
+import storm.protocol.CommandType;
 import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
@@ -257,7 +258,10 @@ public final class CarNoticelBolt extends BaseRichBolt {
             }
             
             try {
-				SysRealDataCache.updateCache(data, now);
+            	String type = data.get(SysDefine.MESSAGETYPE);
+            	if(!CommandType.SUBMIT_LINKSTATUS.equals(type)){
+					SysRealDataCache.updateCache(data, now);
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

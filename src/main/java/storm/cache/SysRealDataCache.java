@@ -20,13 +20,11 @@ import com.google.common.cache.CacheBuilder;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.handler.cal.RedisClusterLoaderUseCtfo;
+import storm.protocol.CommandType;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.SysDefine;
-import storm.util.ConfigUtils;
-import storm.util.NumberUtils;
-import storm.util.ObjectUtils;
-import storm.util.ParamsRedisUtil;
+import storm.util.*;
 
 /**
  * 系统实时数据缓存
@@ -102,6 +100,7 @@ public class SysRealDataCache {
 			if (!ObjectUtils.isNullOrEmpty(outbyconf)) {
 				timeouttime=1000*(int)outbyconf;
 			}
+			timeouttime+=1000000;
 			if (null != ConfigUtils.sysParams) {
 				
 				String typeparams = ConfigUtils.sysParams.getProperty("charge.car.type.id");
@@ -261,17 +260,24 @@ public class SysRealDataCache {
 	 * @return
 	 */
 	private static boolean addLivelyCar(Map<String, String> dat,long now,long timeout){
-		if(null == dat)
-			return false;
+		if(null == dat){
+			return false;}
 		try {
 			String msgType = dat.get(SysDefine.MESSAGETYPE);
 			String vid = dat.get(DataKey.VEHICLE_ID);
 			String time = dat.get(SysDefine.TIME);
 			if(ObjectUtils.isNullOrEmpty(msgType)
 					|| ObjectUtils.isNullOrEmpty(vid)
-					|| ObjectUtils.isNullOrEmpty(time))
+					|| ObjectUtils.isNullOrEmpty(time)) {
 				return false;
-			
+			}
+			//吉利厂商，当为实时报文且为自动唤醒报文时，忽略
+			if(CommandType.SUBMIT_REALTIME.equals(msgType)){
+				if(DataUtils.judgeAutoWake(dat)){
+					return false;
+				}
+			}
+
 			String utc = dat.get(SysDefine.ONLINEUTC);
 			long utctime = Long.valueOf(NumberUtils.stringNumber(utc));
 			long tertime = timeformat.stringTimeLong(time);

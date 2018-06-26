@@ -24,7 +24,7 @@ public class ObjectUtils {
      */
     @Contract("null -> true")
     public static boolean isNullOrWhiteSpace(String string){
-        return null == string || string.chars().noneMatch(c -> c != ' ');
+        return null == string || "".equals(string.trim());
     }
 
     /**
@@ -127,19 +127,6 @@ public class ObjectUtils {
 
 		return string;
 	}
-
-
-    /**
-     * 判断报文是否为自动唤醒报文,判断依据：总电压、总电流同时为空则为自动唤醒数据
-     * @param map 集合
-     * @return 是否为自动唤醒报文
-     */
-    public static boolean judgeAutoWake(@NotNull Map map){
-        String totalVoltage = (String)map.get(DataKey._2613_TOTAL_VOLTAGE);
-        String totalElectricity = (String)map.get(DataKey._2614_TOTAL_ELECTRICITY);
-        return isNullOrWhiteSpace(totalVoltage)
-                && isNullOrWhiteSpace(totalElectricity);
-    }
 
     public static void main(String[] args) {
         final boolean vid = isNullOrWhiteSpace("test0012");
