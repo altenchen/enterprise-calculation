@@ -13,6 +13,7 @@ import storm.util.dbconn.Conn;
 
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -74,7 +75,8 @@ public class VehicleModelCache {
 
         cache = CacheBuilder.newBuilder()
             .expireAfterWrite(60, TimeUnit.MINUTES)
-            .expireAfterAccess(30, TimeUnit.MINUTES)            .build();
+            .expireAfterAccess(30, TimeUnit.MINUTES)
+            .build();
     }
 
     /**
@@ -83,14 +85,12 @@ public class VehicleModelCache {
      */
     @NotNull
     public String getVehicleModel(@NotNull String vid) {
-        String value = null;
-        try {
-            value = cache.get(vid, ()-> refreshCache(vid));
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-            logger.warn("更新车辆车型缓存异常");
+        final ConcurrentMap<String, String> map = cache.asMap();
+        if(map.containsKey(vid)) {
+            return StringUtils.defaultString(map.get(vid), "");
+        } else {
+            return refreshCache(vid);
         }
-        return StringUtils.defaultString(value, "");
     }
 
     private final Object refreshCacheLock = new Object();
