@@ -277,4 +277,9 @@ public final class SysDefine {
      * soc过低阈值
      */
     public static final String LT_ALARM_SOC = "lt.alarm.soc";
+
+    /**
+     * 车辆车型刷新间隔(秒), 不应大于30分钟
+     */
+    public static final String VEH_MODEL_CACHE_REFRESH_SECOND = "veh.model.cache.refresh.second";
 }

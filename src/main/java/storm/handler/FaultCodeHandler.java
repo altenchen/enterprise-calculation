@@ -6,6 +6,9 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import storm.cache.VehicleModelCache;
 import storm.dto.*;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
@@ -22,6 +25,8 @@ import java.util.*;
  * @author wza
  */
 public class FaultCodeHandler {
+    private static final Logger logger = LoggerFactory.getLogger(FaultCodeHandler.class);
+
 	private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
 	private static final TimeFormatService TIME_FORMAT = TimeFormatService.getInstance();
@@ -230,9 +235,9 @@ public class FaultCodeHandler {
         final String codeValues = data.get(faultType);
         final @NotNull long[] values = parseFaultCodes(codeValues);
 
-        // 车型, 空字符串代表默认车型
-        final String vehModel = "";
-        String noticetime = TIME_FORMAT.toDateString(now);
+        // 车型, 空字符串代表没有配置, 只匹配默认规则
+        final String vehModel = VehicleModelCache.getInstance().getVehicleModel(vid);
+        String noticeTime = TIME_FORMAT.toDateString(now);
 
         boolean processByBit = false;
         if(bitRules.containsKey(faultType)) {
@@ -254,7 +259,7 @@ public class FaultCodeHandler {
                             bit.exceptionId,
                             bit.level,
                             code,
-                            noticetime);
+                            noticeTime);
                         alarms.put(bit.exceptionId, alarmMessage);
 
                         if(1 == (int)alarmMessage.get(NOTICE_STATUS)) {
@@ -265,7 +270,7 @@ public class FaultCodeHandler {
                             final Map<String, Object> alarmMessage = alarms.get(bit.exceptionId);
                             alarms.remove(bit.exceptionId);
 
-                            deleteNoticeMsg(alarmMessage, time, location, bit.exceptionId, noticetime);
+                            deleteNoticeMsg(alarmMessage, time, location, bit.exceptionId, noticeTime);
                             notices.add(alarmMessage);
                         }
                     }

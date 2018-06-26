@@ -8,7 +8,6 @@ import java.sql.Statement;
 import java.util.*;
 
 import com.alibaba.fastjson.JSON;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -110,10 +109,26 @@ public final class Conn {
      */
 	private static String alarm_code_bit_sql = "SELECT faultCode.id fault_id,faultCode.fault_type,faultCode.analyze_type,faultCode.param_length,GROUP_CONCAT(model.id) model_num,excep.start_point,excep.id exception_id,excep.exception_code,faultCode.threshold time_threshold,excep.response_level FROM sys_fault_code_exception excep LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id WHERE excep.is_delete='0' AND faultCode.is_delete='0' AND faultCode.analyze_type='2' GROUP BY excep.id";
 
-	//预警规则
+    /**
+     * 车辆车型表
+     * SELECT
+     *   veh.uuid vid,
+     *   model.id modelId
+     * FROM sys_vehicle veh
+     *   LEFT JOIN sys_veh_model model ON veh.veh_model_id=model.id
+     * WHERE model.id IS NOT NULL
+     */
+	private static String veh_model_sql = "SELECT veh.uuid vid,model.id mid FROM sys_vehicle veh LEFT JOIN sys_veh_model model ON veh.veh_model_id=model.id WHERE model.id IS NOT NULL";
+
+    /**
+     * 预警规则
+     */
 	static String early_warning_sql="SELECT ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL FROM SYS_DATA_CONST WHERE TYPE = 1 AND IS_VALID = 1 AND ID is not null AND R1_VAL is not null ";
-	//偏移系数自定义数据项
+    /**
+     * 偏移系数自定义数据项
+     */
 	static String item_coef_offset_sql="SELECT SEQ_NO,IS_ARRAY,FACTOR,OFFSET,IS_CUSTOM FROM SYS_DATA_ITEM WHERE IS_VALID = 1 AND SEQ_NO IS NOT NULL AND (OFFSET is not null OR FACTOR is not null)";
+
 	private Connection conn;
 	
 	static {
@@ -160,6 +175,9 @@ public final class Conn {
         alarm_code_bit_sql = sysParams.getProperty(
             SysParams.ALARM_CODE_BIT_SQL,
             alarm_code_bit_sql);
+        veh_model_sql = sysParams.getProperty(
+            SysParams.VEH_MODEL_SQL,
+            veh_model_sql);
     }
 	public Connection getConn(){
 		try {
@@ -206,8 +224,8 @@ public final class Conn {
 				return null;
 			}
 			for (String[] alarmlks :  faultLkAlarm) {
-				if (isNullOrEmpty(alarmlks[0]) 
-						|| isNullOrEmpty(alarmlks[1])) {
+                if (StringUtils.isBlank(alarmlks[0])
+						|| StringUtils.isBlank(alarmlks[1])) {
 					continue;
 				}
 				FaultRule faultRule = faultMaps.get(alarmlks[0]);
@@ -223,7 +241,7 @@ public final class Conn {
 				if(null != srs){
 					boolean isNull = false;
 					for (String string : srs) {
-						if(isNullOrEmpty(string)){
+                        if(StringUtils.isBlank(string)){
 							isNull = true;
 							break;
 						}
@@ -247,7 +265,7 @@ public final class Conn {
 			for (Map.Entry<String, FaultRule> entry : faultMaps.entrySet()) {
 				String faultId = entry.getKey();
 				FaultRule rule = entry.getValue();
-				if(!isNullOrEmpty(rule.dependId)){
+                if(!StringUtils.isBlank(rule.dependId)){
 					FaultRule dependRule = faultMaps.get(rule.dependId);
 					rule.addFaultRule(dependRule);
 				}
@@ -425,6 +443,58 @@ public final class Conn {
 		}
 		return rules;
 	}
+
+
+    /**
+     * 获取车辆车型关系
+     * @return Key-车辆Id, Value-车型Id
+     */
+    public Map<String, String> getVehicleModel() {
+
+        final Map<String, String> vmd = new TreeMap<>();
+
+        if (StringUtils.isBlank(veh_model_sql)) {
+            return vmd;
+        }
+
+        Connection connection = null;
+        Statement statement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = getConn();
+            if (null == connection) {
+                LOG.warn("创建数据库连接失败");
+                return vmd;
+            }
+
+            statement = connection.createStatement();
+            resultSet = statement.executeQuery(veh_model_sql);
+
+            while(resultSet.next()) {
+
+                // 车辆Id
+                final String vid = resultSet.getString(1);
+                if(StringUtils.isBlank(vid)) {
+                    continue;
+                }
+
+                final String mid = resultSet.getString(2);
+                if(StringUtils.isBlank(mid)) {
+                    continue;
+                }
+
+                vmd.put(vid, mid);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            close(resultSet, statement, connection);
+        }
+
+        return vmd;
+    }
 
     /**
      * @return 从数据库拉取数据构建完整的按位解析故障码规则
@@ -729,7 +799,7 @@ public final class Conn {
 			while(rs.next()){
 				// ID,TYPE,LEVELS,NEED_CONFIRD_FLAG,L1_SEQ_NO,L2_SEQ_NO,EXPR_LEFT,EXPR_MID,R1_VAL,R2_VAL,DEPEND_ID,ALL_HOURS,START_TIME,END_TIME
 				String ruleId = rs.getString(1);
-				if (! isNullOrEmpty(ruleId)) {
+                if (!StringUtils.isBlank(ruleId)) {
 					
 					storm.dto.fault.FaultAlarmRule rule = new storm.dto.fault.FaultAlarmRule();
 					rule.id = ruleId;
@@ -1201,13 +1271,6 @@ public final class Conn {
 		}
 		return list;
 	}
-	
-	boolean isNullOrEmpty(String string){
-		if(null == string || "".equals(string)) {
-			return true;
-		}
-		return "".equals(string.trim());
-	}
 
     /**
      * 释放系统资源
@@ -1231,12 +1294,16 @@ public final class Conn {
 
         Conn conn = new Conn();
 
-        final Map<String, FaultTypeSingleBit> faultRuleCodeBitObjects = conn.getFaultSingleBitRules();
-        for (FaultTypeSingleBit faultRuleCodeBitObject : faultRuleCodeBitObjects.values()) {
-            LOG.debug("------------");
-            final String json = JSON.toJSONString(faultRuleCodeBitObject, true);
-            LOG.debug(json);
-        }
+        final Map<String, String> vmd = conn.getVehicleModel();
+        System.out.println("vmd.size=" + vmd.size());
+        vmd.forEach((k, v) -> System.out.println(k + " -> " + v));
+
+//        final Map<String, FaultTypeSingleBit> faultRuleCodeBitObjects = conn.getFaultSingleBitRules();
+//        for (FaultTypeSingleBit faultRuleCodeBitObject : faultRuleCodeBitObjects.values()) {
+//            LOG.debug("------------");
+//            final String json = JSON.toJSONString(faultRuleCodeBitObject, true);
+//            LOG.debug(json);
+//        }
 
 //        Collection<FaultRule> faultRules = conn.getFaultAndDepends();
 //
