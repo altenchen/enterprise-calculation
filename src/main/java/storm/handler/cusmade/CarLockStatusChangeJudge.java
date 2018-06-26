@@ -21,8 +21,8 @@ import static storm.handler.cusmade.CarRuleHandler.timeformat;
 public class CarLockStatusChangeJudge {
 
     DataToRedis redis = new DataToRedis();
-    public static final int db = 4;
-    public static final String lockStatusRedisKeys = "vidLockStatus";
+    public static final int db = 6;
+    public static final String lockStatusRedisKeys = "vehCache.qy.lockStatus.notice";
     private Map<String, Map<String, Object>> vidLockStatus;
     private Recorder recorder = new RedisRecorder(redis);
 
