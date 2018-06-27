@@ -16,6 +16,7 @@ import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
+import storm.util.ParamsRedisUtil;
 import storm.util.dbconn.Conn;
 
 import java.util.*;
@@ -26,6 +27,7 @@ import java.util.*;
  */
 public class FaultCodeHandler {
     private static final Logger logger = LoggerFactory.getLogger(FaultCodeHandler.class);
+    private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
 	private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
@@ -264,6 +266,9 @@ public class FaultCodeHandler {
 
                         if(1 == (int)alarmMessage.get(NOTICE_STATUS)) {
                             notices.add(alarmMessage);
+                            paramsRedisUtil.autoLog(vid, v->{
+                                logger.info("VID[{}]按位解析FID[{}]触发", vid, bit.exceptionId);
+                            });
                         }
                     } else {
                         if(alarms.containsKey(bit.exceptionId)) {
@@ -272,6 +277,10 @@ public class FaultCodeHandler {
 
                             deleteNoticeMsg(alarmMessage, time, location, bit.exceptionId, noticeTime);
                             notices.add(alarmMessage);
+
+                            paramsRedisUtil.autoLog(vid, v->{
+                                logger.info("VID[{}]按位解析FID[{}]解除", vid, bit.exceptionId);
+                            });
                         }
                     }
                 }

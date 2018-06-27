@@ -448,7 +448,6 @@ public class CarRuleHandler implements InfoNotice {
             // 无CAN车辆
             canJudge = carNoCanJudge.processFrame(data);
             if (!MapUtils.isEmpty(canJudge)) {
-                logger.warn("收到无CAN告警通知:" + canJudge.get("status"));
                 list.add(canJudge);
             }
         }

@@ -228,6 +228,12 @@ public final class CarNoCanJudge {
             continueNormalIncrement(result, carNoCanItem, time, totalMileage, location);
         }
 
+        paramsRedisUtil.autoLog(vid, id -> {
+            if(result.containsKey(STATUS_KEY)) {
+                logger.info("VID[{}]收到无CAN告警通知, status[{}]", id, result.get(STATUS_KEY));
+            }
+        });
+
         return result;
     }
 
