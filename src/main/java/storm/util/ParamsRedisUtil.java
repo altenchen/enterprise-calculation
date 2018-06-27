@@ -2,14 +2,17 @@ package storm.util;
 
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.dao.DataToRedis;
 import storm.system.SysDefine;
 
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 
 /**
  * @author wza
@@ -226,6 +229,12 @@ public final class ParamsRedisUtil {
             return vehicleId.matches(traceVehicleId);
         }
         return false;
+    }
+
+    public void autoLog(@NotNull String vehicleId, Consumer<String> action) {
+	    if(null != action && isTraceVehicleId(vehicleId)) {
+	        action.accept(vehicleId);
+        }
     }
 
 	private void initParams(Map<String, String> paramCache) {
