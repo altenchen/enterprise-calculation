@@ -288,7 +288,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 					}
 				}
 			}
-        	
+        	//如果下线了，则发送上下线的里程值
         	Map<String, Object> map = carOnOffhandler.generateNotices(data, now, offlineTimeMillisecond);
         	if (null != map && map.size() > 0) {
 				String json=JSON.toJSONString(map);

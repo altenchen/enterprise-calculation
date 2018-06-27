@@ -62,6 +62,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 			Map<String,Map<String,String>> cluster = null;
 			//使用这个队列是为了防止在访问vids时，发生修改，引发错误。
 			LinkedBlockingQueue<String> vids = null;
+			//1、先从队列中把数据拿出来，进行是否为闲置的判断。缓存的是整条车辆报文
 			if (ScanRange.AllData == status) {
 				cluster=SysRealDataCache.getDataCache().asMap();
 				vids = SysRealDataCache.lasts;
@@ -79,7 +80,6 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				//循环访问队列中的vid，并清空队列
 				String vid = vids.poll();
 				while(null != vid){
-					//全量数据为什么要全清空，然后在全加载回来？
 					if (ScanRange.AllData == status){
 						SysRealDataCache.removeLastQueue(vid);
 						allCars.add(vid);
@@ -94,12 +94,14 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 					}
 					vid = vids.poll();
 				}
+
+				//2、根据上面的判断，把闲置的车辆从活跃车辆列表中剔除，活跃车辆再次放入队列
+
 				/**
 				 * remove cache 
 				 */
 				if (markDel.size() > 0) {
 					for (String key : markDel) {
-						//cluster.remove(key);是不是没什么用？
 						cluster.remove(key);
 						SysRealDataCache.removeAliveQueue(key);
 					}
@@ -114,6 +116,9 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 						SysRealDataCache.addAliveQueue(key);
 					}
 				}
+
+				//3、在把所有的数据放回实时数据缓存，当然也包括已经闲置的车辆。
+
 				/**
 				 * 最后一帧车辆再次加入队列
 				 */
@@ -445,6 +450,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		}
 		boolean isoff = isOffline(dat);
 		boolean isout = istimeout(time, lastUtc, now, timeout);
+		//根据报文判断离线了，或者，很长时间没发报文了，判断为离线
 		if (isoff || isout) {
 			TimeMileage timeMileage = vidLastTimeMile.get(vid);
 			if (null != timeMileage
@@ -500,7 +506,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 	}
 
 	/**
-	 * 判断车辆是否离线
+	 * 判断车辆是否离线，最本质的判断离线方法，根据报文不同类型采用不同方法判断
 	 * @param dat
 	 * @return 是否离线
 	 */
