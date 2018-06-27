@@ -648,15 +648,21 @@ public class CarRuleHandler implements InfoNotice {
                         if (cnts >= lowsocJudgeNum) {
 
                             vidlowsoc.remove(vid);
-                            if(!vidIsSendNoticeCache.get(vid).socIsSend){
+                            IsSendNoticeCache cache = vidIsSendNoticeCache.get(vid);
+                            if(null != cache && cache.socIsSend){
                                 //此时是，虽然lowsoc条数阈值达到了，但是时间阈值没达到就满足正常soc了。
                                 vidsocNotice.remove(vid);
                                 return null;
                             }
 
+                            if(null == cache){
+                                cache = new IsSendNoticeCache();
+                                vidIsSendNoticeCache.put(vid,cache);
+                            }
+
                             Map<String, Object> notice = vidsocNotice.get(vid);
                             vidsocNotice.remove(vid);
-                            vidIsSendNoticeCache.get(vid).socIsSend = false;
+                            cache.socIsSend = false;
 
                             if (null != notice) {
                                 //删除redis中的soc过低缓存
