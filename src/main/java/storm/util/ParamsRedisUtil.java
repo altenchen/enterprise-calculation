@@ -1,6 +1,7 @@
 package storm.util;
 
 import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.dao.DataToRedis;
@@ -9,6 +10,7 @@ import storm.system.SysDefine;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 
 /**
  * @author wza
@@ -225,7 +227,13 @@ public final class ParamsRedisUtil {
         return false;
     }
 
-	private void initParams(Map<String, String> paramCache) {
+    public void autoLog(@NotNull String vehicleId, Consumer<String> action) {
+        if(null != action && isTraceVehicleId(vehicleId)) {
+            action.accept(vehicleId);
+        }
+    }
+
+    private void initParams(Map<String, String> paramCache) {
         for (Map.Entry<String, String> entry : paramCache.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
