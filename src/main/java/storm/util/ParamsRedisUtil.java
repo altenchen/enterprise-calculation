@@ -232,12 +232,12 @@ public final class ParamsRedisUtil {
     }
 
     public void autoLog(@NotNull String vehicleId, Consumer<String> action) {
-	    if(null != action && isTraceVehicleId(vehicleId)) {
-	        action.accept(vehicleId);
+        if(null != action && isTraceVehicleId(vehicleId)) {
+            action.accept(vehicleId);
         }
     }
 
-	private void initParams(Map<String, String> paramCache) {
+    private void initParams(Map<String, String> paramCache) {
         for (Map.Entry<String, String> entry : paramCache.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();

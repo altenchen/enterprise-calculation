@@ -265,7 +265,9 @@ public final class CarNoCanJudge {
 
             item.lastFrameEnterFault(delayMillisecond);
 
-            if(item.getAlarmStatus() == AlarmStatus.Init) {
+            if(item.getAlarmStatus() == AlarmStatus.End
+                || item.getAlarmStatus() == AlarmStatus.Init) {
+
                 item.setAlarmStatus(AlarmStatus.Start);
 
                 if(traceVehicle) {
@@ -314,6 +316,7 @@ public final class CarNoCanJudge {
 
             if(item.getAlarmStatus() == AlarmStatus.Start
                 || item.getAlarmStatus() == AlarmStatus.Continue) {
+
                 item.setAlarmStatus(AlarmStatus.End);
 
                 if(traceVehicle) {
@@ -349,6 +352,8 @@ public final class CarNoCanJudge {
      * 无CAN车辆被审计项
      */
     private static final class CarNoCanItem {
+
+        private static final Logger logger = LoggerFactory.getLogger(CarNoCanItem.class);
 
         /**
          * 连续CAN计数, 0无效, 正数为正常计数, 负数为故障计数
@@ -387,7 +392,6 @@ public final class CarNoCanJudge {
         public CarNoCanItem(String vid){
             this.vid = vid;
             this.properties = new TreeMap<>();
-            this.setAlarmStatus(AlarmStatus.Init);
 
             // 车辆Id
             this.properties.put("vid", vid);
@@ -395,6 +399,10 @@ public final class CarNoCanJudge {
             this.properties.put("msgType", AlarmMessageType.NO_CAN_VEH);
             // 消息唯一ID
             this.properties.put("msgId", msgId);
+            // 消息状态
+            this.properties.put(STATUS_KEY, AlarmStatus.Init.value);
+
+            this.setAlarmStatus(AlarmStatus.Init);
         }
 
         /**
@@ -406,6 +414,11 @@ public final class CarNoCanJudge {
         public CarNoCanItem(String vid, Map<String, Object> properties, AlarmStatus alarmStatus) {
             this.vid = vid;
             this.properties = properties;
+
+            // 车辆Id
+            this.properties.put("vid", vid);
+            // 消息状态
+            this.properties.put(STATUS_KEY, alarmStatus.value);
             this.setAlarmStatus(alarmStatus);
         }
 
@@ -493,6 +506,14 @@ public final class CarNoCanJudge {
          * 设置告警状态
          */
         public void setAlarmStatus(AlarmStatus alarmStatus) {
+            if(this.alarmStatus == alarmStatus) {
+                return;
+            }
+
+            paramsRedisUtil.autoLog(vid, vid->{
+                    logger.info("VID[{}]无CAN状态从[{}]切换到[{}]", vid, this.alarmStatus, alarmStatus);
+            });
+
             this.alarmStatus = alarmStatus;
             properties.put(STATUS_KEY, alarmStatus.value);
         }
