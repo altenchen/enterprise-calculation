@@ -40,8 +40,8 @@ public final class TimeOutOfRangeNotice {
      * @return 如果有异常, 则设置vid, exception
      */
     @NotNull
-    public Map<String, Object> process(@NotNull Map<String, String> data) {
-        final Map<String, Object> result = new TreeMap<>();
+    public Map<String, String> process(@NotNull Map<String, String> data) {
+        final Map<String, String> result = new TreeMap<>();
 
         final String vid = data.get(DataKey.VEHICLE_ID);
         if(StringUtils.isBlank(vid)) {
@@ -56,9 +56,7 @@ public final class TimeOutOfRangeNotice {
 
         // 时间有效性异常
         if(StringUtils.isBlank(terminalTimeString)) {
-            final Map<String, Object> notice = generateNotice(data, 1);
-            result.put(vid, notice);
-            return result;
+            return generateNotice(data, 1);
         }
 
         final TimeFormatService timeFormatService = TimeFormatService.getInstance();
@@ -76,9 +74,7 @@ public final class TimeOutOfRangeNotice {
 
         // 数值异常
         if(Math.abs(platformTime - terminalTime) > getTimeRangeMillisecond()) {
-            final Map<String, Object> notice = generateNotice(data, 2);
-            result.put(vid, notice);
-            return result;
+            return generateNotice(data, 2);
         }
 
         return result;
@@ -90,7 +86,7 @@ public final class TimeOutOfRangeNotice {
      * @return 异常通知
      */
     @NotNull
-    private Map<String, Object> generateNotice(@NotNull Map<String, String> data, int exceptionType) {
+    private Map<String, String> generateNotice(@NotNull Map<String, String> data, int exceptionType) {
         // 车辆ID
         final String vid = data.get(DataKey.VEHICLE_ID);
         // 终端时间
@@ -104,11 +100,11 @@ public final class TimeOutOfRangeNotice {
         // 经纬度坐标
         final String location = DataUtils.buildLocation(longitude, latitude);
 
-        final Map<String, Object> notice = new TreeMap<>();
+        final Map<String, String> notice = new TreeMap<>();
         notice.put("vid", vid);
         notice.put("msgType", "TIME_EXCEPTION_VEH");
         notice.put("msgId", UUID.randomUUID().toString());
-        notice.put("exceptionType", exceptionType);
+        notice.put("exceptionType", String.valueOf(exceptionType));
         notice.put("ttime", terminalTimeString);
         notice.put("ptime", platformTimeString);
         notice.put("location", location);

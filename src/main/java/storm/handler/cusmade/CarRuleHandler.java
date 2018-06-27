@@ -480,9 +480,9 @@ public class CarRuleHandler implements InfoNotice {
             mileHopJudge = mileHopHandle(data);
         }
         if(1 == enableTimeRule) {
-            final Map<String, Object> timeRangeJudge = timeOutOfRangeNotice.process(data);
+            final Map<String, String> timeRangeJudge = timeOutOfRangeNotice.process(data);
             if (!MapUtils.isEmpty(timeRangeJudge)) {
-                list.add(timeRangeJudge);
+                list.add(new TreeMap<>(timeRangeJudge));
             }
         }
         if (!MapUtils.isEmpty(gpsJudge)) {
