@@ -226,12 +226,6 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 		try {
 			if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 
-//				//过滤掉自动唤醒的数据，判断依据：总电压、总电流同时为空则为自动唤醒数据
-//				//6.26号，修复闲置车辆bug
-//				if (ObjectUtils.judgeAutoWake(dat)) {
-//					return null;
-//				}
-
 				String speed = dat.get(DataKey._2201_SPEED);
 				String soc = dat.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
 				String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
@@ -244,10 +238,15 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 						speed = "".equals(speed)?"0":speed;
 					}
 					if (! "0".equals(speed)) {
-
 						numSpeed = Integer.parseInt(speed);
 						vidLastSpeed.put(vid, numSpeed);
+					}else{
+						if(null != vidLastSpeed.get(vid)){
+							numSpeed = vidLastSpeed.get(vid);
+							vidLastSpeed.put(vid, numSpeed);
+						}
 					}
+
 				}
 
 				if (null !=soc && !"".equals(soc)) {
@@ -258,9 +257,13 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 						soc = "".equals(soc)?"0":soc;
 					}
 					if (! "0".equals(soc)) {
-
 						numSoc = Integer.parseInt(soc);
 						vidLastSoc.put(vid, numSoc);
+					}else{
+						if(null != vidLastSoc.get(vid)){
+							numSoc = vidLastSoc.get(vid);
+							vidLastSoc.put(vid, numSoc);
+						}
 					}
 				}
 				if (null !=mileage && !"".equals(mileage)) {
@@ -268,12 +271,19 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 					int posidx = mileage.indexOf(".");
 					if (posidx != -1) {
 						mileage = mileage.substring(0, posidx);
-						mileage = "".equals(mileage)?"0":speed;
+						mileage = "".equals(mileage)?"0":mileage;
 					}
+					//当报文中的mileage值无效时，经过上面的处理，此处mileage为0
 					if (! "0".equals(mileage)) {
-
+						//mileage有效
 						numMileage = Integer.parseInt(mileage);
 						vidLastMileage.put(vid, numMileage);
+					}else{
+						//mileage无效，无效则取最后一帧有效的值，如果没有缓存最后一帧有效值，则置为-1，由前端处理展示
+						if(null != vidLastMileage.get(vid)){
+							numMileage = vidLastMileage.get(vid);
+							vidLastMileage.put(vid, numMileage);
+						}
 					}
 				}
 			}
