@@ -239,14 +239,22 @@ public class FaultCodeHandler {
 
         // 车型, 空字符串代表没有配置, 只匹配默认规则
         final String vehModel = VehicleModelCache.getInstance().getVehicleModel(vid);
+        paramsRedisUtil.autoLog(vid, v->{
+            logger.info("VID[{}]解析车型为[{}], 故障类型[{}]", vid, vehModel, faultType);
+        });
         String noticeTime = TIME_FORMAT.toDateString(now);
 
         boolean processByBit = false;
         if(bitRules.containsKey(faultType)) {
             final FaultTypeSingleBit faultTypeRule = bitRules.get(faultType);
             final Map<String, ExceptionSingleBit> exceptions = getVehicleExceptions(vehModel, faultTypeRule);
+
             if(MapUtils.isNotEmpty(exceptions)) {
                 processByBit = true;
+
+                paramsRedisUtil.autoLog(vid, v->{
+                    logger.info("VID[{}]故障类型[{}]按位解析, 一共[{}]条异常码.", vid, faultType, exceptions.size());
+                });
 
                 final Map<String,Map<String,Object>> alarms = ensureVehicleBitRuleMsg(vid);
                 for (ExceptionSingleBit bit : exceptions.values()) {
@@ -289,6 +297,10 @@ public class FaultCodeHandler {
 
         // 没有匹配按位处理规则, 转为按字节处理
         if(!processByBit) {
+
+            paramsRedisUtil.autoLog(vid, v->{
+                logger.info("VID[{}]故障类型[{}]按字节解析, 一共[{}]条异常码.", vid, faultType, byteRules.size());
+            });
 
             for (FaultCodeByteRule ruleCode: byteRules.stream()
                 .filter(r -> r.faultType == faultType)
