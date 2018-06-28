@@ -1215,27 +1215,25 @@ public class CarRuleHandler implements InfoNotice {
                     || StringUtils.isEmpty(time)) {
                 return null;
             }
-            String latit = dat.get(DataKey._2503_LATITUDE);
-            String longi = dat.get(DataKey._2502_LONGITUDE);
+            String longitude = dat.get(DataKey._2502_LONGITUDE);
+            String latitude = dat.get(DataKey._2503_LATITUDE);
             //noticetime为当前时间
             Date date = new Date();
             String noticetime = timeformat.toDateString(date);
 
             boolean isValid = true;
-            if (!StringUtils.isEmpty(latit)
-                    && !StringUtils.isEmpty(longi)) {
-                latit = NumberUtils.stringNumber(latit);
-                longi = NumberUtils.stringNumber(longi);
-                double latitd = Double.parseDouble(latit);
-                double longid = Double.parseDouble(longi);
-                if (latitd < 0 && latitd > 180000000
-                        || longid < 0 && longid > 180000000) {
+            if (!StringUtils.isEmpty(latitude)
+                    && !StringUtils.isEmpty(longitude)) {
+                latitude = NumberUtils.stringNumber(latitude);
+                longitude = NumberUtils.stringNumber(longitude);
+                double latitd = Double.parseDouble(latitude);
+                double longid = Double.parseDouble(longitude);
+                if (latitd < 0 || latitd > 180000000
+                        || longid < 0 || longid > 180000000) {
                     isValid = false;
                 }
             }
-            if (!isValid
-                    || StringUtils.isEmpty(latit)
-                    || StringUtils.isEmpty(longi)) {
+            if (!isValid) {
 
                 int cnts = 0;
                 //vidnogps缓存无gps车辆的vid和报文帧数
@@ -1307,7 +1305,7 @@ public class CarRuleHandler implements InfoNotice {
                         vidgpsNotice.remove(vid);
                         cache.gpsIsSend = false;
                         if (null != notice) {
-                            String location = longi + "," + latit;
+                            String location = longitude + "," + latitude;
                             notice.put("status", 3);
                             notice.put("location", location);
                             notice.put("etime", time);
