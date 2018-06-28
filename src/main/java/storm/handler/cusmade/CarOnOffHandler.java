@@ -212,7 +212,6 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 			return null;
 		}
 
-
 		String vid = dat.get(DataKey.VEHICLE_ID);
 		String time = dat.get(DataKey.TIME);
 		String msgType = dat.get(SysDefine.MESSAGETYPE);
@@ -220,6 +219,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 				|| ObjectUtils.isNullOrEmpty(time)) {
 			return null;
 		}
+		//速度和soc为预留字段，当前没有用到
 		int numSpeed = -1;
 		int numSoc = -1;
 		int numMileage = -1;
@@ -240,13 +240,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 					if (! "0".equals(speed)) {
 						numSpeed = Integer.parseInt(speed);
 						vidLastSpeed.put(vid, numSpeed);
-					}else{
-						if(null != vidLastSpeed.get(vid)){
-							numSpeed = vidLastSpeed.get(vid);
-							vidLastSpeed.put(vid, numSpeed);
-						}
 					}
-
 				}
 
 				if (null !=soc && !"".equals(soc)) {
@@ -259,11 +253,6 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 					if (! "0".equals(soc)) {
 						numSoc = Integer.parseInt(soc);
 						vidLastSoc.put(vid, numSoc);
-					}else{
-						if(null != vidLastSoc.get(vid)){
-							numSoc = vidLastSoc.get(vid);
-							vidLastSoc.put(vid, numSoc);
-						}
 					}
 				}
 				if (null !=mileage && !"".equals(mileage)) {
