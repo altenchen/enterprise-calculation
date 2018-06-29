@@ -74,7 +74,7 @@ public class CarLockStatusChangeJudge {
                     notice.put("vid", vid);
                     notice.put("noticetime", noticetime);
                     notice.put("lockFunctionStatusChange", lockFunctionStatusNow);
-                    notice.put("LockStatusChange", carLockStatusNow);
+                    notice.put("lockStatusChange", carLockStatusNow);
                     //把当前的锁止状态缓存起来
                     setLockStatus(dat,vidLockStatus);
                 }
