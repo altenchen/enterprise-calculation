@@ -6,6 +6,4 @@ package storm.dto;
 public class IsSendNoticeCache {
 
 	public boolean gpsIsSend;
-	public boolean canIsSend;
-	public boolean socIsSend;
 }

@@ -20,6 +20,7 @@ import storm.service.TimeFormatService;
 import storm.system.*;
 import storm.util.*;
 
+import java.text.ParseException;
 import java.util.*;
 
 /**
@@ -41,7 +42,6 @@ public class CarRuleHandler implements InfoNotice {
 
     private Map<String, Integer> vidNoGps;
     private Map<String, Integer> vidNormalGps;
-
     /**
      * 无CAN计数器
      */
@@ -58,23 +58,35 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Double> lastMile;
 
     /**
+     * SOC过低阈值, 默认 10%
+     */
+    private static int socAlarm = 10;
+    /**
+     * SOC过低确认帧数
+     */
+    private static int lowSocJudgeNum = 3;
+    /**
+     * SOC过低确认延时, 默认1分钟.
+     */
+    private static Long lowsocIntervalMillisecond = (long) 60000;
+    /**
      * SOC 过低计数器
      */
-    private Map<String, Integer> vidlowsoc;
+    private Map<String, Integer> vidLowSocCount = new HashMap<>();
     /**
      * SOC 正常计数器
      */
-    private Map<String, Integer> vidnormsoc;
+    private Map<String, Integer> vidNormSoc = new HashMap<>();
+    /**
+     * SOC过低通知开始到结束信息, 第一帧数据更新
+     */
+    private Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
 
     private Map<String, Integer> vidSpeedGtZero;
     private Map<String, Integer> vidSpeedZero;
 
     private Map<String, Integer> vidFlySt;
     private Map<String, Integer> vidFlyEd;
-
-    //当报文条数阈值临时用来缓存soc过低开始报文的，如果时间阈值也达到了，将这里面的缓存放到vidsocNotice
-    private Map<String, Map<String, Object>> vidlowsocStartNotice;
-    private Map<String, Map<String, Object>> vidsocNotice;
     private Map<String, Map<String, Object>> vidcanNotice;
     private Map<String, Map<String, Object>> vidIgniteShutNotice;
     private Map<String, Map<String, Object>> vidgpsNotice;
@@ -97,16 +109,13 @@ public class CarRuleHandler implements InfoNotice {
     static TimeFormatService timeformat;
     static int topn;
     static long offlinetime = 600000;//600秒
-    static int socAlarm = 10;//低于10%
     static int nogpsJudgeNum = 5;//5次
     static int hasgpsJudgeNum = 10;//10次
     static int nocanJudgeNum = 5;//5次
     static int hascanJudgeNum = 10;//10次
-    static int lowsocJudgeNum = 10;//10次
     static int mileHop = 20;//2公里 ，单位是0.1km
     static Long nogpsIntervalTime = (long) 10800000;//10800秒,1天
     static Long nocanIntervalTime = (long) 10800000;//10800秒，1天
-    static Long lowsocIntervalMillisecond = (long) 60000;//1分钟
 
     static int db = 6;
     static int socRule = 0;//1代表规则启用
@@ -202,7 +211,7 @@ public class CarRuleHandler implements InfoNotice {
 
             value = configUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_NO);
             if (!StringUtils.isEmpty(value)) {
-                lowsocJudgeNum = Integer.parseInt(value);
+                lowSocJudgeNum = Integer.parseInt(value);
                 value = null;
             }
 
@@ -230,7 +239,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         Object lowsocNum = paramsRedisUtil.PARAMS.get("soc.judge.no");
         if (null != lowsocNum) {
-            lowsocJudgeNum = (int) lowsocNum;
+            lowSocJudgeNum = (int) lowsocNum;
         }
         Object socJudgeTime = paramsRedisUtil.PARAMS.get("soc.judge.time");
         if (null != socJudgeTime) {
@@ -355,11 +364,6 @@ public class CarRuleHandler implements InfoNotice {
         igniteShutMaxSpeed = new HashMap<String, Double>();
         lastMile = new HashMap<String, Double>();
         lastSoc = new HashMap<String, Double>();
-        vidlowsoc = new HashMap<String, Integer>();
-        vidnormsoc = new HashMap<String, Integer>();
-        //soc临时缓存
-        vidlowsocStartNotice = new HashMap<String, Map<String, Object>>();
-        vidsocNotice = new HashMap<String, Map<String, Object>>();
         vidcanNotice = new HashMap<String, Map<String, Object>>();
         vidIgniteShutNotice = new HashMap<String, Map<String, Object>>();
         vidgpsNotice = new HashMap<String, Map<String, Object>>();
@@ -510,183 +514,183 @@ public class CarRuleHandler implements InfoNotice {
         if (MapUtils.isEmpty(dat)) {
             return null;
         }
-        try {
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(DataKey.TIME);
-            if (StringUtils.isEmpty(vid)
-                    || StringUtils.isEmpty(time)) {
+
+        String vid = dat.get(DataKey.VEHICLE_ID);
+        String timeString = dat.get(DataKey.TIME);
+        if (StringUtils.isBlank(vid)
+                || !StringUtils.isNumeric(timeString)) {
+            return null;
+        }
+
+        final String socString = dat.get(DataKey._7615_STATE_OF_CHARGE);
+        if (!StringUtils.isNumeric(socString)) {
+            return null;
+        }
+
+        final String longitudeString = dat.get(DataKey._2502_LONGITUDE);
+        final String latitudeString = dat.get(DataKey._2503_LATITUDE);
+        final String location = DataUtils.buildLocation(longitudeString, latitudeString);
+
+        final Date date = new Date();
+        String noticeTime = timeformat.toDateString(date);
+
+        // 返回的通知消息
+        final List<Map<String, Object>> result = new LinkedList<>();
+
+        double socNum = Double.parseDouble(socString);
+
+        // 想判断是一个车辆是否为低电量，不能根据一个报文就下结论，而是要连续多个报文都是报低电量才行。
+        // 其他的判断也都是类似的。
+        if (socNum < socAlarm) {
+
+            vidNormSoc.remove(vid);
+
+            final int lowSocCount = vidLowSocCount.getOrDefault(vid, 0) + 1;
+            vidLowSocCount.put(vid, lowSocCount);
+
+            paramsRedisUtil.autoLog(vid, v->{
+                logger.info("VID[{}]判定为SOC过低第[{}]次", v, lowSocCount);
+            });
+
+            final Map<String, Object> lowSocNotice = vidSocNotice.getOrDefault(vid, new TreeMap<>());
+            if(MapUtils.isEmpty(lowSocNotice)) {
+                lowSocNotice.put("msgType", "SOC_ALARM");
+                lowSocNotice.put("msgId", UUID.randomUUID().toString());
+                lowSocNotice.put("vid", vid);
+                vidSocNotice.put(vid, lowSocNotice);
+
+                paramsRedisUtil.autoLog(vid, v->{
+                    logger.info("VID[{}]SOC首帧缓存初始化", v);
+                });
+            }
+
+            // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
+            int status = (int)lowSocNotice.getOrDefault("status", 0);
+            if (status != 0 && status != 3) {
                 return null;
             }
 
-            Date date = new Date();
+            if(1 == lowSocCount) {
+                lowSocNotice.put("stime", timeString);
+                lowSocNotice.put("slocation", location);
+                lowSocNotice.put("sthreshold", socAlarm);
+                lowSocNotice.put("ssoc", socNum);
+                // 兼容性处理, 暂留
+                lowSocNotice.put("lowSocThreshold", socAlarm);
 
-            String soc = dat.get(DataKey._7615_STATE_OF_CHARGE);
-            String latitude = dat.get(DataKey._2503_LATITUDE);
-            String longitude = dat.get(DataKey._2502_LONGITUDE);
-            String location = DataUtils.buildLocation(longitude, latitude);
-            String noticeTime = timeformat.toDateString(date);
-
-            List<Map<String, Object>> noticeMsgs = new LinkedList<>();
-            if (!StringUtils.isEmpty(soc)) {
-                double socNum = Double.parseDouble(NumberUtils.stringNumber(soc));
-
-                //想判断是一个车辆是否为低电量，不能根据一个报文就下结论，而是要连续多个报文都是报低电量才行。
-                //其他的判断也都是类似的。
-                if (socNum < socAlarm) {
-                    vidnormsoc.remove(vid);
-                    int cnts = 0;
-                    if (vidlowsoc.containsKey(vid)) {
-                        cnts = vidlowsoc.get(vid);
-                    }
-                    cnts++;
-                    vidlowsoc.put(vid, cnts);
-
-                    if(cnts >= 1 && cnts < lowsocJudgeNum){
-                        Map<String, Object> notice = vidsocNotice.get(vid);
-                        if (null == notice) {
-                            notice = new TreeMap<String, Object>();
-                            notice.put("msgType", "SOC_ALARM");
-                            notice.put("msgId", UUID.randomUUID().toString());
-                            notice.put("vid", vid);
-                            notice.put("stime", time);
-                            notice.put("ssoc", socNum);
-                            notice.put("lowSocThreshold", socAlarm);
-                            notice.put("confirmLazyMillisecond", lowsocIntervalMillisecond);
-                            notice.put("status", 1);
-                            notice.put("count", cnts);
-                            notice.put("location", location);
-                            notice.put("noticeTime", noticeTime);
-                        } else {
-                            //如果有了，则重新插入以下信息，覆盖之前的。
-                            notice.put("count", cnts);
-                            notice.put("location", location);
-                            notice.put("noticeTime", noticeTime);
-                        }
-                        vidsocNotice.put(vid, notice);
-                        return null;
-                    }
-
-                    if (cnts >= lowsocJudgeNum) {
-                        //当计数器大于10以后，就去检查一下低电量开始列表中有没有这辆车，没有的话，就构造一条信息，放到这个列表中。
-                        Map<String, Object> notice = vidsocNotice.get(vid);
-                        if (null == notice) {
-                            notice = new TreeMap<String, Object>();
-                            notice.put("msgType", "SOC_ALARM");
-                            notice.put("msgId", UUID.randomUUID().toString());
-                            notice.put("vid", vid);
-                            notice.put("stime", time);
-                            notice.put("ssoc", socNum);
-                            notice.put("lowSocThreshold", socAlarm);
-                            notice.put("confirmLazyMillisecond", lowsocIntervalMillisecond);
-                            notice.put("status", 1);
-                            notice.put("count", cnts);
-                            notice.put("location", location);
-                            notice.put("noticeTime", noticeTime);
-                        } else {
-                            //如果有了，则重新插入以下信息，覆盖之前的。
-                            notice.put("count", cnts);
-                            notice.put("location", location);
-                            notice.put("noticeTime", noticeTime);
-                        }
-                        vidsocNotice.put(vid, notice);
-
-                        //条数阈值满足后，还要进行下面的时间阈值判断，满足后才把它放入vidsocNotice（这里面为已经发送的soc通知）缓存中
-                        Long nowTime = date.getTime();
-                        try {
-                            Long firstLowSocTime = timeformat.stringTimeLong(notice.get("stime").toString());
-
-                            if (1 == (int) notice.get("status") && nowTime - firstLowSocTime > lowsocIntervalMillisecond) {
-                                IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
-
-                                if (null == judgeIsSendNotice) {
-                                    judgeIsSendNotice = new IsSendNoticeCache();
-                                    judgeIsSendNotice.socIsSend = true;
-                                    vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
-                                }else if(true == judgeIsSendNotice.socIsSend){
-                                    return null;
-                                }
-                                judgeIsSendNotice.socIsSend = true;
-                                vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
-                                noticeMsgs.add(vidsocNotice.get(vid));
-                            }else{
-                                return null;
-                            }
-                            //把soc过低开始通知存储到redis中
-                            recorder.save(db, socRedisKeys,vid,vidsocNotice.get(vid));
-
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-
-                        vidsocNotice.put(vid, notice);
-                        //查找附近补电车
-                        try {
-                            double longitude = Double.parseDouble(NumberUtils.stringNumber(longitude));
-                            double latitude = Double.parseDouble(NumberUtils.stringNumber(latitude));
-                            longitude = longitude / 1000000.0;
-                            latitude = latitude / 1000000.0;
-                            Map<String, Object> chargeMap = chargeCarNotice(vid, longitude, latitude);
-                            if (null != chargeMap && chargeMap.size() > 0) {
-                                noticeMsgs.add(chargeMap);
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    return noticeMsgs;
-                } else {
-                    if (vidlowsoc.containsKey(vid)) {
-                        //将lowsoc计数置0
-                        vidlowsoc.put(vid, 0);
-                        int cnts = 0;
-                        if (vidnormsoc.containsKey(vid)) {
-                            cnts = vidnormsoc.get(vid);
-                        }
-                        cnts++;
-                        vidnormsoc.put(vid, cnts);
-
-                        // SOC正常达到10次则触发, 清空正常soc计数缓存、低电量soc计数、低电量通知缓存，发送结束通知
-                        if (cnts >= lowsocJudgeNum) {
-
-                            vidlowsoc.remove(vid);
-                            IsSendNoticeCache cache = vidIsSendNoticeCache.get(vid);
-                            if(null != cache && cache.socIsSend){
-                                //此时是，虽然lowsoc条数阈值达到了，但是时间阈值没达到就满足正常soc了。
-                                vidsocNotice.remove(vid);
-                                return null;
-                            }
-
-                            if(null == cache){
-                                cache = new IsSendNoticeCache();
-                                vidIsSendNoticeCache.put(vid,cache);
-                            }
-
-                            Map<String, Object> notice = vidsocNotice.get(vid);
-                            vidsocNotice.remove(vid);
-                            cache.socIsSend = false;
-
-                            if (null != notice) {
-                                //删除redis中的soc过低缓存
-                                recorder.del(db, socRedisKeys, vid);
-                                notice.put("status", 3);
-                                notice.put("location", location);
-                                notice.put("etime", time);
-                                notice.put("esoc", socNum);
-                                notice.put("noticeTime", noticeTime);
-                                noticeMsgs.add(notice);
-                                return noticeMsgs;
-                            }
-                        }
-
-                    }
-                }
+                paramsRedisUtil.autoLog(vid, v->{
+                    logger.info("VID[{}]SOC过低首帧初始化", v);
+                });
             }
 
-    } catch(Exception e) {
-        e.printStackTrace();
+            if(lowSocCount < lowSocJudgeNum) {
+                return null;
+            }
+
+            final Long firstLowSocTime;
+            try {
+                firstLowSocTime = timeformat.stringTimeLong(lowSocNotice.get("stime").toString());
+            } catch (ParseException e) {
+                e.printStackTrace();
+                return null;
+            }
+
+            final Long nowTime = date.getTime();
+            if (nowTime - firstLowSocTime <= lowsocIntervalMillisecond) {
+                return null;
+            }
+
+            lowSocNotice.put("status", 1);
+            lowSocNotice.put("slazy", lowsocIntervalMillisecond);
+            lowSocNotice.put("noticeTime", noticeTime);
+
+            //把soc过低开始通知存储到redis中
+            recorder.save(db, socRedisKeys, vid, lowSocNotice);
+
+            result.add(lowSocNotice);
+
+            paramsRedisUtil.autoLog(vid, v->{
+                logger.info("VID[{}]SOC异常通知发送[{}]", v, lowSocNotice.get("msgId"));
+            });
+
+            //查找附近补电车
+            try {
+                final double longitude = Double.parseDouble(NumberUtils.stringNumber(longitudeString)) / 1000000.0;
+                final double latitude = Double.parseDouble(NumberUtils.stringNumber(latitudeString)) / 1000000.0;
+                Map<String, Object> chargeMap = chargeCarNotice(vid, longitude, latitude);
+                if (MapUtils.isNotEmpty(chargeMap)) {
+                    result.add(chargeMap);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return result;
+        } else {
+            vidLowSocCount.remove(vid);
+
+            final Map<String, Object> normalSocNotice = vidSocNotice.get(vid);
+            if(null == normalSocNotice) {
+                return null;
+            }
+
+            final int normalSocCount = vidNormSoc.getOrDefault(vid, 0) + 1;
+            vidNormSoc.put(vid, normalSocCount);
+
+            paramsRedisUtil.autoLog(vid, v->{
+                logger.info("VID[{}]判定为SOC正常第[{}]次", v, normalSocCount);
+            });
+
+            // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
+            int status = (int)normalSocNotice.getOrDefault("status", 0);
+            if (status != 1 && status != 2) {
+                return null;
+            }
+
+            if(1 == normalSocCount) {
+                normalSocNotice.put("etime", timeString);
+                normalSocNotice.put("elocation", location);
+                normalSocNotice.put("ethreshold", socAlarm);
+                normalSocNotice.put("esoc", socNum);
+
+                paramsRedisUtil.autoLog(vid, v->{
+                    logger.info("VID[{}]SOC正常首帧初始化", v);
+                });
+            }
+
+            if(normalSocCount < lowSocJudgeNum) {
+                return null;
+            }
+
+            final Long firstNormalSocTime;
+            try {
+                firstNormalSocTime = timeformat.stringTimeLong(normalSocNotice.get("etime").toString());
+            } catch (ParseException e) {
+                e.printStackTrace();
+                return result;
+            }
+
+            final Long nowTime = date.getTime();
+            if (nowTime - firstNormalSocTime <= lowsocIntervalMillisecond) {
+                return result;
+            }
+
+            normalSocNotice.put("status", 3);
+            normalSocNotice.put("elazy", lowsocIntervalMillisecond);
+            normalSocNotice.put("noticeTime", noticeTime);
+
+            vidSocNotice.remove(vid);
+            recorder.del(db, socRedisKeys, vid);
+
+            result.add(normalSocNotice);
+
+            paramsRedisUtil.autoLog(vid, v->{
+                logger.info("VID[{}]SOC正常通知发送", v, normalSocNotice.get("msgId"));
+            });
+
+            return result;
+        }
     }
-		return null;
-}
 
     /**
      * 查找附近补电车 保存到 redis 中
@@ -774,7 +778,7 @@ public class CarRuleHandler implements InfoNotice {
          * 出现的 概率极低，暂时忽略
          */
 
-        Map<Double, FillChargeCar> carSortMap = new TreeMap<Double, FillChargeCar>();
+        Map<Double, FillChargeCar> carSortMap = new TreeMap<>();
 
         for (Map.Entry<String, FillChargeCar> entry : fillvidgps.entrySet()) {
 //			String fillvid = entry.getKey();
@@ -1480,7 +1484,7 @@ public class CarRuleHandler implements InfoNotice {
                         notices.add(msg);
                     }
                 }
-                msg = vidsocNotice.get(vid);
+                msg = vidSocNotice.get(vid);
                 if (null != msg) {
 
                     getOffline(msg, noticetime);
@@ -1534,7 +1538,7 @@ public class CarRuleHandler implements InfoNotice {
         for (String vid : needRemoves) {
             lastTime.remove(vid);
             vidFlyNotice.remove(vid);
-            vidsocNotice.remove(vid);
+            vidSocNotice.remove(vid);
             vidcanNotice.remove(vid);
             vidgpsNotice.remove(vid);
             vidSpeedGtZeroNotice.remove(vid);
@@ -1547,8 +1551,8 @@ public class CarRuleHandler implements InfoNotice {
             vidIgnite.remove(vid);
             vidSpeedGtZero.remove(vid);
             vidSpeedZero.remove(vid);
-            vidlowsoc.remove(vid);
-            vidnormsoc.remove(vid);
+            vidLowSocCount.remove(vid);
+            vidNormSoc.remove(vid);
             vidNoCanCount.remove(vid);
             vidNormalCanCount.remove(vid);
             vidNoGps.remove(vid);
@@ -1574,7 +1578,7 @@ public class CarRuleHandler implements InfoNotice {
     void restartInit(boolean isRestart) {
         if (isRestart) {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
-            recorder.rebootInit(db, socRedisKeys, vidsocNotice);
+            recorder.rebootInit(db, socRedisKeys, vidSocNotice);
             recorder.rebootInit(CarLockStatusChangeJudge.db, CarLockStatusChangeJudge.lockStatusRedisKeys, vidLockStatus);
         }
     }
