@@ -24,7 +24,7 @@ public class CarNoCanDecideDefault implements ICarNoCanDecide {
         // 车辆状态
         String carStatus = data.get(DataKey._3201_CAR_STATUS);
         // 车辆SOC
-        String soc = data.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
+        String soc = data.get(DataKey._7615_STATE_OF_CHARGE);
         if(!StringUtils.isBlank(carStatus)
             && !StringUtils.isBlank(soc)) {
             return true;

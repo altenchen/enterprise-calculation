@@ -418,7 +418,6 @@ public class CarRuleHandler implements InfoNotice {
             logger.trace("VID[" + vid + "]进入车辆规则处理");
         }
 
-        List<Map<String, Object>> socJudges = null;
         Map<String, Object> canJudge = null;
         Map<String, Object> igniteJudge = null;
         Map<String, Object> gpsJudge = null;
@@ -439,7 +438,7 @@ public class CarRuleHandler implements InfoNotice {
         if (1 == socRule) {
             //lowsoc(data)返回一个map，里面有vid和通知消息（treeMap）
             // SOC 过低
-            socJudges = lowSoc(data);
+            final List<Map<String, Object>> socJudges = lowSoc(data);
             if (!CollectionUtils.isEmpty(socJudges)) {
                 list.addAll(socJudges);
             }
@@ -514,17 +513,20 @@ public class CarRuleHandler implements InfoNotice {
         try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             String time = dat.get(DataKey.TIME);
-            Date date = new Date();
             if (StringUtils.isEmpty(vid)
                     || StringUtils.isEmpty(time)) {
                 return null;
             }
-            String soc = dat.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
-            String latit = dat.get(DataKey._2503_LATITUDE);
-            String longi = dat.get(DataKey._2502_LONGITUDE);
-            String location = longi + "," + latit;
-            String noticetime = timeformat.toDateString(date);
-            List<Map<String, Object>> noticeMsgs = new LinkedList<Map<String, Object>>();
+
+            Date date = new Date();
+
+            String soc = dat.get(DataKey._7615_STATE_OF_CHARGE);
+            String latitude = dat.get(DataKey._2503_LATITUDE);
+            String longitude = dat.get(DataKey._2502_LONGITUDE);
+            String location = DataUtils.buildLocation(longitude, latitude);
+            String noticeTime = timeformat.toDateString(date);
+
+            List<Map<String, Object>> noticeMsgs = new LinkedList<>();
             if (!StringUtils.isEmpty(soc)) {
                 double socNum = Double.parseDouble(NumberUtils.stringNumber(soc));
 
@@ -553,12 +555,12 @@ public class CarRuleHandler implements InfoNotice {
                             notice.put("status", 1);
                             notice.put("count", cnts);
                             notice.put("location", location);
-                            notice.put("noticetime", noticetime);
+                            notice.put("noticeTime", noticeTime);
                         } else {
                             //如果有了，则重新插入以下信息，覆盖之前的。
                             notice.put("count", cnts);
                             notice.put("location", location);
-                            notice.put("noticetime", noticetime);
+                            notice.put("noticeTime", noticeTime);
                         }
                         vidsocNotice.put(vid, notice);
                         return null;
@@ -579,12 +581,12 @@ public class CarRuleHandler implements InfoNotice {
                             notice.put("status", 1);
                             notice.put("count", cnts);
                             notice.put("location", location);
-                            notice.put("noticetime", noticetime);
+                            notice.put("noticeTime", noticeTime);
                         } else {
                             //如果有了，则重新插入以下信息，覆盖之前的。
                             notice.put("count", cnts);
                             notice.put("location", location);
-                            notice.put("noticetime", noticetime);
+                            notice.put("noticeTime", noticeTime);
                         }
                         vidsocNotice.put(vid, notice);
 
@@ -619,8 +621,8 @@ public class CarRuleHandler implements InfoNotice {
                         vidsocNotice.put(vid, notice);
                         //查找附近补电车
                         try {
-                            double longitude = Double.parseDouble(NumberUtils.stringNumber(longi));
-                            double latitude = Double.parseDouble(NumberUtils.stringNumber(latit));
+                            double longitude = Double.parseDouble(NumberUtils.stringNumber(longitude));
+                            double latitude = Double.parseDouble(NumberUtils.stringNumber(latitude));
                             longitude = longitude / 1000000.0;
                             latitude = latitude / 1000000.0;
                             Map<String, Object> chargeMap = chargeCarNotice(vid, longitude, latitude);
@@ -670,7 +672,7 @@ public class CarRuleHandler implements InfoNotice {
                                 notice.put("location", location);
                                 notice.put("etime", time);
                                 notice.put("esoc", socNum);
-                                notice.put("noticetime", noticetime);
+                                notice.put("noticeTime", noticeTime);
                                 noticeMsgs.add(notice);
                                 return noticeMsgs;
                             }
@@ -888,7 +890,7 @@ public class CarRuleHandler implements InfoNotice {
             String location = longi + "," + latit;
             String noticetime = timeformat.toDateString(new Date());
             String speed = dat.get(DataKey._2201_SPEED);
-            String socStr = dat.get(DataKey._2615_STATE_OF_CHARGE_BEI_JIN);
+            String socStr = dat.get(DataKey._7615_STATE_OF_CHARGE);
             String mileageStr = dat.get(DataKey._2202_TOTAL_MILEAGE);
 
             double soc = -1;

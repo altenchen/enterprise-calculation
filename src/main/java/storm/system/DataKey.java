@@ -400,10 +400,11 @@ public final class DataKey {
     public static final short MAX_2614_TOTAL_ELECTRICITY = 20000;
 
     /**
-     * SOC 电池剩余电量百分比
+     * SOC 电池剩余电量百分比, 已弃用
      * State of Charge, 荷电状态
      * #地标, 步进0.4%
      */
+    @Deprecated
     public static final String _2615_STATE_OF_CHARGE_BEI_JIN = "2615";
 
     /**
