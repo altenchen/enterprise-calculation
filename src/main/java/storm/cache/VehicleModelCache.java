@@ -40,7 +40,7 @@ public class VehicleModelCache {
         final Properties sysDefine = config.sysDefine;
         if(sysDefine.containsKey(SysDefine.VEH_MODEL_CACHE_REFRESH_SECOND)) {
             final String property = sysDefine.getProperty(SysDefine.VEH_MODEL_CACHE_REFRESH_SECOND);
-            if(StringUtils.isNumeric(property)) {
+            if(StringUtils.isNotEmpty(property) && StringUtils.isNumeric(property)) {
                 try {
                     final long second = Long.parseUnsignedLong(property);
                     veh_model_cache_refresh_millisecond = second * 1000;

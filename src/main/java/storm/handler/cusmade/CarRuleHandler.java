@@ -518,12 +518,14 @@ public class CarRuleHandler implements InfoNotice {
         String vid = dat.get(DataKey.VEHICLE_ID);
         String timeString = dat.get(DataKey.TIME);
         if (StringUtils.isBlank(vid)
-                || !StringUtils.isNumeric(timeString)) {
+            || StringUtils.isEmpty(timeString)
+            || !StringUtils.isNumeric(timeString)) {
             return null;
         }
 
         final String socString = dat.get(DataKey._7615_STATE_OF_CHARGE);
-        if (!StringUtils.isNumeric(socString)) {
+        if (StringUtils.isEmpty(socString)
+            || !StringUtils.isNumeric(socString)) {
             return null;
         }
 

@@ -46,12 +46,12 @@ public class FaultCodeHandler {
 	static {
 
         String dbFlushTimeSpanSecond = CONFIG_UTILS.sysDefine.getProperty(SysDefine.DB_CACHE_FLUSH_TIME_SECOND);
-        if (StringUtils.isNumeric(dbFlushTimeSpanSecond)) {
+        if (StringUtils.isNotEmpty(dbFlushTimeSpanSecond) && StringUtils.isNumeric(dbFlushTimeSpanSecond)) {
             dbFlushTimeSpanMillisecond = Long.parseLong(dbFlushTimeSpanSecond)*1000;
         }
 
         String offlineSecond = CONFIG_UTILS.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-        if (StringUtils.isNumeric(offlineSecond)) {
+        if (StringUtils.isNotEmpty(offlineSecond) && StringUtils.isNumeric(offlineSecond)) {
             offlineTimeMillisecond = Long.parseLong(offlineSecond)*1000;
         }
 	}

@@ -26,6 +26,7 @@ import storm.handler.fence.input.SpeedAlarmRule;
 import storm.handler.fence.input.StopAlarmRule;
 import storm.system.SysParams;
 import storm.util.ConfigUtils;
+import storm.util.NumberUtils;
 
 /**
  * @author wza
@@ -550,7 +551,7 @@ public final class Conn {
 
                 // 解析方式 1-按字节, 2-按位
                 final String analyze_type = analyzeBitResult.getString(3);
-                if (!StringUtils.isNumeric(analyze_type)) {
+                if (StringUtils.isEmpty(analyze_type) || !StringUtils.isNumeric(analyze_type)) {
                     LOG.trace("故障码[{}]: 无效的解析方式[{}].", fault_id, analyze_type);
                     continue;
                 }
@@ -562,7 +563,7 @@ public final class Conn {
 
                     // 位长, 目前固定为1
                     final String param_length = analyzeBitResult.getString(4);
-                    if (!StringUtils.isNumeric(param_length)) {
+                    if (StringUtils.isEmpty(param_length) || !StringUtils.isNumeric(param_length)) {
                         LOG.trace("故障码[{}]: 按位解析方式下, 空白的位长类型.", fault_id);
                         continue;
                     }
@@ -584,7 +585,7 @@ public final class Conn {
 
                     // 起始位偏移量
                     final String start_point = analyzeBitResult.getString(6);
-                    if (!StringUtils.isNumeric(start_point)) {
+                    if (StringUtils.isEmpty(start_point) || !StringUtils.isNumeric(start_point)) {
                         LOG.trace("故障码[{}]: 按位解析方式下, 空白的起始位偏移量.", fault_id);
                         continue;
                     }
@@ -611,14 +612,14 @@ public final class Conn {
 
                     // 异常码码值, 应为目前固定位长为1, 所以码值也只有1了
                     final String exception_code = analyzeBitResult.getString(8);
-                    if (!StringUtils.isNumeric(exception_code)) {
+                    if (StringUtils.isEmpty(exception_code) || !StringUtils.isNumeric(exception_code)) {
                         LOG.trace("故障码[{}]: 按位解析方式下, 空白的异常码码值.", fault_id);
                         continue;
                     }
 
                     // 时间阈值
                     final String time_threshold = analyzeBitResult.getString(9);
-                    if (!StringUtils.isNumeric(time_threshold)) {
+                    if (StringUtils.isEmpty(time_threshold) || !StringUtils.isNumeric(time_threshold)) {
                         LOG.trace("故障码[{}]: 按位解析方式下, 空白的时间阈值.", fault_id);
                         continue;
                     }
@@ -638,7 +639,7 @@ public final class Conn {
 
                     // 告警等级
                     final String response_level = analyzeBitResult.getString(10);
-                    if (!StringUtils.isNumeric(response_level)) {
+                    if (StringUtils.isEmpty(response_level) || !StringUtils.isNumeric(response_level)) {
                         LOG.trace("故障码[{}]: 按位解析方式下, 空白的告警等级.", fault_id);
                         continue;
                     }
