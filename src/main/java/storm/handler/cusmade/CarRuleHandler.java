@@ -40,6 +40,8 @@ public class CarRuleHandler implements InfoNotice {
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
+    
+
     private Map<String, Integer> vidNoGps;
     private Map<String, Integer> vidNormalGps;
     /**
@@ -523,12 +525,6 @@ public class CarRuleHandler implements InfoNotice {
             return null;
         }
 
-        final String socString = dat.get(DataKey._7615_STATE_OF_CHARGE);
-        if (StringUtils.isEmpty(socString)
-            || !StringUtils.isNumeric(socString)) {
-            return null;
-        }
-
         final String longitudeString = dat.get(DataKey._2502_LONGITUDE);
         final String latitudeString = dat.get(DataKey._2503_LATITUDE);
         final String location = DataUtils.buildLocation(longitudeString, latitudeString);
@@ -539,13 +535,12 @@ public class CarRuleHandler implements InfoNotice {
         // 返回的通知消息
         final List<Map<String, Object>> result = new LinkedList<>();
 
-        final double socNum;
-        try {
-            socNum = Double.parseDouble(socString);
-        } catch (NumberFormatException e) {
-            e.printStackTrace();
+        final String socString = dat.get(DataKey._7615_STATE_OF_CHARGE);
+        if (StringUtils.isEmpty(socString)
+            || !StringUtils.isNumeric(socString)) {
             return null;
         }
+        final int socNum = Integer.parseInt(socString);
 
         // 想判断是一个车辆是否为低电量，不能根据一个报文就下结论，而是要连续多个报文都是报低电量才行。
         // 其他的判断也都是类似的。
