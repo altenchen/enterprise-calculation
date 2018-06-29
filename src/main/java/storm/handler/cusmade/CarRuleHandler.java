@@ -537,7 +537,13 @@ public class CarRuleHandler implements InfoNotice {
         // 返回的通知消息
         final List<Map<String, Object>> result = new LinkedList<>();
 
-        double socNum = Double.parseDouble(socString);
+        final double socNum;
+        try {
+            socNum = Double.parseDouble(socString);
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+            return null;
+        }
 
         // 想判断是一个车辆是否为低电量，不能根据一个报文就下结论，而是要连续多个报文都是报低电量才行。
         // 其他的判断也都是类似的。
