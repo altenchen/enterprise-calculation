@@ -264,6 +264,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
             try {
             	String type = data.get(SysDefine.MESSAGETYPE);
             	if(!CommandType.SUBMIT_LINKSTATUS.equals(type)){
+            		// 更新实时缓存
 					SysRealDataCache.updateCache(data, now);
 				}
 			} catch (Exception e) {

@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.cache.SysRealDataCache;
 import storm.dao.DataToRedis;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
@@ -254,7 +255,14 @@ public final class CarNoCanJudge {
         }
 
         if(item.continueCount == FIRST_FAULT_FRAME) {
-            item.firstFrameEnterFault(time, totalMileage, location);
+            final String totalMileageString;
+            if (StringUtils.isNotEmpty(totalMileage) && StringUtils.isNumeric(totalMileage)) {
+                totalMileageString = totalMileage;
+            } else {
+                // TODO XZP: 从缓存里取值
+                totalMileageString = "";
+            }
+            item.firstFrameEnterFault(time, totalMileageString, location);
         }
 
         if(traceVehicle) {

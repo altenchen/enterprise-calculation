@@ -2,19 +2,28 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>cn.bitnei</groupId>
-    <artifactId>qy.cal</artifactId>
+    <!-- 企业域名 -->
+    <groupId>com.bitnei</groupId>
+    <!-- 项目名称 -->
+    <artifactId>ent.calc</artifactId>
+    <!-- 语义化版本 -->
+    <!-- https://semver.org/lang/zh-CN/ -->
     <version>0.4.x-alpha</version>
+    <!-- 打包方式 -->
     <packaging>jar</packaging>
 
-    <name>qy.cal</name>
+    <name>enterprise.calculation</name>
     <url>http://maven.apache.org</url>
 
+    <!-- 公共属性 -->
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Storm Version -->
+        <version.storm>1.0.3</version.storm>
+        <!-- Simple Logging Facade for Java Version -->
+        <version.slf4j>1.7.7</version.slf4j>
     </properties>
 
-    <!-- Maven 远程仓库 -->
+    <!-- 远程仓库 -->
     <repositories>
 		<repository>
 			<id>clojars.org</id>
@@ -27,6 +36,7 @@
         <!--</repository>-->
 	</repositories>
 
+    <!-- 项目依赖 -->
 	<dependencies>
 
         <!-- 北理大数据依赖开始 -->
@@ -47,8 +57,9 @@
         <dependency>
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-core</artifactId>
-            <version>1.0.3</version>
+            <version>${version.storm}</version>
             <scope>provided</scope>
+            <!-- 排除传递性依赖 -->
             <exclusions>
                 <exclusion>
                     <artifactId>slf4j-api</artifactId>
@@ -83,7 +94,7 @@
         <dependency>
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-starter</artifactId>
-            <version>1.0.3</version>
+            <version>${version.storm}</version>
         </dependency>
 
         <!-- Storm 依赖结束 -->
@@ -146,7 +157,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.7</version>
+            <version>${version.slf4j}</version>
         </dependency>
 
         <!-- 日志组件简单实现, 用于开发时就地执行main函数 -->
@@ -154,7 +165,8 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>1.7.7</version>
+            <version>${version.slf4j}</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.yammer.metrics/metrics-core -->
@@ -196,6 +208,7 @@
         <!-- 测试组件依赖结束 -->
 
     </dependencies>
+
 	<build>
 		<pluginManagement>
 			<plugins>
@@ -211,31 +224,6 @@
 	                    </compilerArguments>
 	                </configuration>
 	            </plugin>
-	            <plugin>
-                    <artifactId>maven-resources-plugin</artifactId>
-                    <version>2.5</version>
-                    <executions>
-                    <execution>
-                        <id>copy-xmls</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${basedir}/target/classes</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${basedir}/resources</directory>
-                                    <includes>
-                                        <include>**/*.xml</include>
-                                        <include>**/*.properties</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-                </plugin>
 			</plugins>
 		</pluginManagement>
     </build>

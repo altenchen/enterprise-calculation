@@ -31,12 +31,12 @@ public final class DataUtils {
 
     /**
      * 判断报文是否为自动唤醒报文,判断依据：总电压、总电流同时为空则为自动唤醒数据
-     * @param map 集合
+     * @param data 集合
      * @return 是否为自动唤醒报文
      */
-    public static boolean judgeAutoWake(@NotNull Map<String,String> map){
-        String totalVoltage = map.get(DataKey._2613_TOTAL_VOLTAGE);
-        String totalElectricity = map.get(DataKey._2614_TOTAL_ELECTRICITY);
+    public static boolean judgeAutoWake(@NotNull Map<String,String> data){
+        String totalVoltage = data.get(DataKey._2613_TOTAL_VOLTAGE);
+        String totalElectricity = data.get(DataKey._2614_TOTAL_ELECTRICITY);
         return StringUtils.isBlank(totalVoltage)
                 && StringUtils.isBlank(totalElectricity);
     }

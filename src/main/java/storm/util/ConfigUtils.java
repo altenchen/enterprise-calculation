@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.util.Properties;
 
 /**
@@ -26,9 +25,15 @@ public final class ConfigUtils {
 	    return INSTANCE;
 	}
 
+    /**
+     * 运维配置参数
+     */
 	@NotNull
 	public final Properties sysDefine = new Properties();
 
+    /**
+     * 研发配置参数
+     */
 	@NotNull
 	public final Properties sysParams = new Properties();
 
@@ -39,12 +44,14 @@ public final class ConfigUtils {
         }
 
         try {
+	        // 加载研发配置文件
             loadFromResource("sysDefine.properties", sysDefine);
+            // 加载运维配置文件
             loadFromResource("parms.properties", sysParams);
         } catch (IOException e) {
             e.printStackTrace();
             if(logger.isWarnEnabled()) {
-                logger.error("[" + ConfigUtils.class.getName() + "]初始化失败.");
+                logger.error("[{}]初始化失败.", ConfigUtils.class.getName());
             }
         }
 	}
@@ -52,25 +59,19 @@ public final class ConfigUtils {
     private void loadFromResource(@NotNull String resourceName, @NotNull Properties properties)
         throws IOException {
 
-        InputStream stream = ConfigUtils.class.getClassLoader().getResourceAsStream(resourceName);
+        final InputStream stream = ConfigUtils.class.getClassLoader().getResourceAsStream(resourceName);
 
         if(null == stream) {
-            if (logger.isInfoEnabled()) {
-                logger.info("从资源文件初始化配置失败[" + resourceName + "]");
-            }
+            logger.info("从资源文件初始化配置失败[{}]", resourceName);
             return;
         }
 
-        if (logger.isInfoEnabled()) {
-            logger.info("从资源文件初始化配置开始[" + resourceName + "]");
-        }
+        logger.info("从资源文件初始化配置开始[{}]", resourceName);
 
         final InputStreamReader reader = new InputStreamReader(stream, "UTF-8");
         properties.load(reader);
 
-        if (logger.isInfoEnabled()) {
-            logger.info("从资源文件初始化配置完毕[" + resourceName + "]");
-        }
+        logger.info("从资源文件初始化配置完毕[{}]", resourceName);
 
         stream.close();
     }

@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,15 +41,16 @@ public class SysRealDataCache {
 	private static Logger logger = LoggerFactory.getLogger(SysRealDataCache.class);
 	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	public static final String unknow="UNKNOW";
+
 	/**
-	 * 缓存666天, 最多1500万条
+	 * 缓存666天, 最多1500万条, 车辆最近一帧数据<vid, <key, value>>
 	 */
 	private static Cache<String,Map<String,String>> carlastrecord = CacheBuilder.newBuilder()
 			.expireAfterAccess(666,TimeUnit.DAYS)
 			.maximumSize(15000000)
 			.build();
 	/**
-	 * 缓存60分钟, 最多1500万条
+	 * 缓存60分钟, 最多1500万条, 格式是???
 	 */
 	private static Cache<String, String[]>carInfoCache = CacheBuilder.newBuilder()
 			.expireAfterAccess(60,TimeUnit.MINUTES)
@@ -84,11 +86,11 @@ public class SysRealDataCache {
 	static Set<String> aliveSet = new HashSet<>(buffsize/5);
 
     /**
-     *
+     * ???
      */
 	public static LinkedBlockingQueue<String> lasts = new LinkedBlockingQueue<>(buffsize);
     /**
-     *
+     * ???
      */
 	static Set<String> lastSet = new HashSet<>(buffsize/5);
 
@@ -141,8 +143,13 @@ public class SysRealDataCache {
 		}
 		
 	}
-	
-	public static String[] carInfoByVin(final String vin){
+
+    /**
+     * 通过VIN查询车辆信息
+     * @param vin
+     * @return
+     */
+	private static String[] carInfoByVin(final String vin){
 		String []carArr=unknowArray;
 		try {
 			carArr=getCarinfoCache().get(vin, new Callable<String[]>() {
@@ -159,7 +166,12 @@ public class SysRealDataCache {
 		}
 		return carArr;
 	}
-	public static Cache<String, String[]> getCarinfoCache(){
+
+    /**
+     * 获取车辆信息缓存, 并触发自动重置车辆信息.
+     * @return
+     */
+	private static Cache<String, String[]> getCarinfoCache(){
 		long now = System.currentTimeMillis();
 		if (now -lasttime > flushtime) {
 			lasttime = now;
@@ -181,10 +193,20 @@ public class SysRealDataCache {
 	public static Map<String,FillChargeCar> chargeCars(){
 		return chargeCarCache;
 	}
-	
+
+    /**
+     * 更新缓存
+     * @param dat 数据
+     * @param now CarNoticelBolt收到数据的时间
+     */
 	public static void updateCache(Map<String, String> dat, long now){
+	    // 更新充电车信息
 		addChargeCar(dat);
+
+		// 缓存收到最后一帧数据, 不管时间如何
 		addCarCache(dat);
+
+		// 缓存收到最后一帧数据, 对报文上传时间和处理时间有时间范围要求.
 		addLivelyCar(dat, now, timeouttime);
 	}
 	private static void addChargeCar(Map<String, String> dat){
@@ -224,34 +246,44 @@ public class SysRealDataCache {
 	}
 	
 	private static void addCarCache(Map<String, String> dat){
-		if (null == dat || dat.size() ==0) {
+		if (MapUtils.isEmpty(dat)) {
 			return;
 		}
 		if (!dat.containsKey(DataKey.VEHICLE_ID)) {
 			return;
 		}
 		try {
-			Map<String, String> newmap =  new TreeMap<String, String>();
+			Map<String, String> newmap =  new TreeMap<>();
 			//不缓存无用的数据项，减小缓存大小
 			for (Map.Entry<String, String> entry : dat.entrySet()) {
-				String mapkey=entry.getKey();
-				String value=entry.getValue();
-				if (null!= mapkey && null !=value 
-						&& !mapkey.startsWith("useful")
-						&& !mapkey.startsWith("newest")
-						&& !"2001".equals(mapkey)
-						&& !"2002".equals(mapkey)
-						&& !"2003".equals(mapkey)
-						&& !"2101".equals(mapkey)
-						&& !"2103".equals(mapkey)
-						&& !"7001".equals(mapkey)
-						&& !"7003".equals(mapkey)
-						&& !"7101".equals(mapkey)
-						&& !"7103".equals(mapkey)) {
+				final String mapkey = entry.getKey();
+				final String value = entry.getValue();
+
+				if (null != mapkey && null != value
+                    && !mapkey.startsWith("useful")
+                    && !mapkey.startsWith("newest")
+                    // 单体蓄电池总数
+                    && !"2001".equals(mapkey)
+                    // 动力蓄电池包总数
+                    && !"2002".equals(mapkey)
+                    // 单体蓄电池电压值列表
+                    && !"2003".equals(mapkey)
+                    // 蓄电池包温度探针总数
+                    && !"2101".equals(mapkey)
+                    // 单体温度值列表
+                    && !"2103".equals(mapkey)
+                    //
+                    && !"7001".equals(mapkey)
+                    // 单体电压原始报文
+                    && !"7003".equals(mapkey)
+                    && !"7101".equals(mapkey)
+                    // 单体文档原始报文
+                    && !"7103".equals(mapkey)) {
+
 					newmap.put(mapkey, value);
 				}
 			}
-			String vid = newmap.get(DataKey.VEHICLE_ID);
+			final String vid = newmap.get(DataKey.VEHICLE_ID);
 			carlastrecord.put(vid, newmap);
 			addLastQueue(vid);
 		} catch (Exception e) {
@@ -265,7 +297,7 @@ public class SysRealDataCache {
 	 * @param now
 	 * @return
 	 */
-	private static boolean addLivelyCar(Map<String, String> dat,long now,long timeout){
+	private static boolean addLivelyCar(Map<String, String> dat, long now, long timeout){
 		if(null == dat) {
 			return false;
 		}
@@ -366,6 +398,7 @@ public class SysRealDataCache {
 		}
 		return false;
 	}
+
 	private static void resetCarCache(){
 		if (null != carInfoCache) {
 			carInfoCache.cleanUp();
@@ -373,6 +406,7 @@ public class SysRealDataCache {
 		Map<String, String> map = redis.hgetallMapByKeyAndDb("XNY.CARINFO", 0);
 		for (Map.Entry<String, String> entry : map.entrySet()) {
 			try {
+			    // VIN
 				String key = entry.getKey();
 				String value = entry.getValue();
 
