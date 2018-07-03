@@ -11,7 +11,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.exceptions.JedisException;
-import storm.util.ConfigUtils;
+import ent.calc.util.ConfigUtils;
 
 public class RedisClusterOldPool {
 	private static Logger logg = LoggerFactory.getLogger(RedisClusterOldPool.class);

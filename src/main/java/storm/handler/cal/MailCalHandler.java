@@ -30,7 +30,7 @@ import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
-import storm.util.ConfigUtils;
+import ent.calc.util.ConfigUtils;
 import storm.util.NumberUtils;
 
 /**

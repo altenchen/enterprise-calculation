@@ -11,10 +11,10 @@ import storm.handler.fence.input.Rule;
 import storm.handler.fence.input.StopAlarmRule;
 import storm.system.DataKey;
 import storm.system.SysDefine;
-import storm.util.ConfigUtils;
+import ent.calc.util.ConfigUtils;
 
 public class InvokeCtxMtd extends InvokeMtd implements Invoke {
-	private static final ConfigUtils configUtils = storm.util.ConfigUtils.getInstance();
+	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 
 	Map<String, List<Map<String, String>>> ctxData;//vid ,map data
 	Map<String, Long> lastZeroSpeedTime;//vid time

@@ -29,6 +29,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <dagger.version>2.16</dagger.version>
         <!-- 编译套件结束-->
 
         <!-- 测试套件开始 -->
@@ -36,32 +37,33 @@
         <junit.platform.version>1.2.0</junit.platform.version>
         <junit.jupiter.version>5.2.0</junit.jupiter.version>
         <!-- 测试套件结束-->
+
     </properties>
 
     <!-- 远程仓库 -->
     <repositories>
-		<repository>
-			<id>clojars.org</id>
-			<url>http://clojars.org/repo</url>
-		</repository>
+        <repository>
+            <id>clojars.org</id>
+            <url>http://clojars.org/repo</url>
+        </repository>
         <!--<repository>-->
-            <!--<id>nexus</id>-->
-            <!--<name>Team Nexus Repository</name>-->
-            <!--<url>http://218.205.184.127:8081/nexus/content/groups/public</url>-->
+        <!--<id>nexus</id>-->
+        <!--<name>Team Nexus Repository</name>-->
+        <!--<url>http://218.205.184.127:8081/nexus/content/groups/public</url>-->
         <!--</repository>-->
-	</repositories>
+    </repositories>
 
     <!-- 项目依赖 -->
-	<dependencies>
+    <dependencies>
 
         <!-- 北理大数据依赖开始 -->
 
         <!-- 主要使用了CTFO组件 -->
         <!-- http://218.205.184.127:8081/nexus/#nexus-search;gav~com.bitnei.bigdata~datacenter -->
         <!--<dependency>-->
-            <!--<groupId>com.bitnei.bigdata</groupId>-->
-            <!--<artifactId>datacenter</artifactId>-->
-            <!--<version>2.4.2</version>-->
+        <!--<groupId>com.bitnei.bigdata</groupId>-->
+        <!--<artifactId>datacenter</artifactId>-->
+        <!--<version>2.4.2</version>-->
         <!--</dependency>-->
 
         <!-- 北理大数据依赖结束 -->
@@ -201,6 +203,18 @@
 
         <!-- IDEA注解结束 -->
 
+        <!-- 编译组件依赖开始 -->
+
+        <!-- https://mvnrepository.com/artifact/com.google.dagger/dagger -->
+        <dependency>
+            <groupId>com.google.dagger</groupId>
+            <artifactId>dagger</artifactId>
+            <version>${dagger.version}</version>
+        </dependency>
+
+
+        <!-- 编译组件依赖结束 -->
+
         <!-- 测试组件依赖开始 -->
 
         <!-- https://mvnrepository.com/artifact/org.junit.platform/junit-platform-surefire-provider -->
@@ -219,36 +233,40 @@
             <scope>test</scope>
         </dependency>
 
-
-
         <!-- 测试组件依赖结束 -->
 
     </dependencies>
 
-	<build>
-		<pluginManagement>
-			<plugins>
-                <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-compiler-plugin -->
-				<plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>${maven.compiler.plugin.version}</version>
-	                <configuration>
-	                    <source>${maven.compiler.source}</source>
-	                    <target>${maven.compiler.target}</target>
-	                    <encoding>${project.build.sourceEncoding}</encoding>
-	                    <compilerArguments>
-	                        <extdirs>${basedir}/lib</extdirs>
-	                    </compilerArguments>
-	                </configuration>
-	            </plugin>
-                <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-surefire-plugin -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>${maven.surefire.plugin.version}</version>
-                </plugin>
-			</plugins>
-		</pluginManagement>
+    <build>
+        <plugins>
+            <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-compiler-plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin.version}</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <annotationProcessorPaths>
+                        <path>
+                            <!-- https://mvnrepository.com/artifact/com.google.dagger/dagger-compiler -->
+                            <groupId>com.google.dagger</groupId>
+                            <artifactId>dagger-compiler</artifactId>
+                            <version>${dagger.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArguments>
+                        <extdirs>${basedir}/lib</extdirs>
+                    </compilerArguments>
+                </configuration>
+            </plugin>
+            <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-surefire-plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin.version}</version>
+            </plugin>
+        </plugins>
     </build>
 </project>

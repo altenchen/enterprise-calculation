@@ -26,7 +26,7 @@ import storm.protocol.CommandType;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.SysDefine;
-import storm.util.ConfigUtils;
+import ent.calc.util.ConfigUtils;
 import storm.util.DataUtils;
 import storm.util.NumberUtils;
 import storm.util.ParamsRedisUtil;

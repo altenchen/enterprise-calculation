@@ -1,6 +1,5 @@
-package storm.util;
+package ent.calc.util;
 
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.Contract;
@@ -33,14 +32,14 @@ public final class JedisPoolUtils {
     }
 
     @NotNull
-	private final JedisPool JEDIS_POOL = buildJedisPool(ConfigUtils.getInstance().sysDefine);
+	private final JedisPool JEDIS_POOL;
 
     @NotNull
-    private JedisPool buildJedisPool(final Properties sysDefine) {
+    private JedisPool buildJedisPool(@NotNull final Properties sysDefine) {
 
         logger.info("JedisPool 初始化开始");
 
-		final JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
+        final JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
 
         final String maxTotalString = sysDefine.getProperty(SysDefine.Redis.JEDIS_POOL_MAX_TOTAL);
         if(NumberUtils.isNumber(maxTotalString)) {
@@ -113,7 +112,14 @@ public final class JedisPoolUtils {
         logger.info("JedisPool 初始化完毕");
 
         return jedisPool;
-	}
+    }
+
+    {
+        final ConfigUtils configUtils = ConfigUtils.getInstance();
+        JEDIS_POOL = buildJedisPool(configUtils.sysDefine);
+    }
+
+    private JedisPoolUtils() {}
 
     /**
      * 建议使用 useResource 方法
@@ -129,7 +135,7 @@ public final class JedisPoolUtils {
             try {
                 action.accept(jedis);
             } finally {
-                jedis.close();
+                JEDIS_POOL.returnResource(jedis);
             }
         }
     }

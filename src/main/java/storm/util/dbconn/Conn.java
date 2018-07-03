@@ -7,7 +7,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 
-import com.alibaba.fastjson.JSON;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -25,8 +24,7 @@ import storm.handler.fence.input.Rule;
 import storm.handler.fence.input.SpeedAlarmRule;
 import storm.handler.fence.input.StopAlarmRule;
 import storm.system.SysParams;
-import storm.util.ConfigUtils;
-import storm.util.NumberUtils;
+import ent.calc.util.ConfigUtils;
 
 /**
  * @author wza

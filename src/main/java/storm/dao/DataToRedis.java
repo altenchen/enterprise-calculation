@@ -14,7 +14,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
 import storm.system.DataKey;
-import storm.util.JedisPoolUtils;
+import ent.calc.util.JedisPoolUtils;
 
 /**
  * Redis 数据访问对象

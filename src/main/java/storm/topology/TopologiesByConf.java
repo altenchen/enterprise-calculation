@@ -14,14 +14,14 @@ import storm.bolt.deal.norm.SynEsculBolt;
 
 import java.util.Properties;
 
-import storm.kafka.scheme.PacketScheme;
-import storm.kafka.scheme.RegistScheme;
+import ent.calc.storm.spout.kafka.scheme.PacketScheme;
+import ent.calc.storm.spout.kafka.scheme.RegistScheme;
 import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
-import storm.util.ConfigUtils;
-import storm.kafka.scheme.GeneralScheme;
-import storm.kafka.KafkaConfig;
+import ent.calc.util.ConfigUtils;
+import ent.calc.storm.spout.kafka.scheme.GeneralScheme;
+import ent.calc.storm.spout.kafka.KafkaConfig;
 import storm.system.SysDefine;
 
 import org.apache.storm.Config;

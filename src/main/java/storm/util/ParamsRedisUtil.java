@@ -1,5 +1,6 @@
 package storm.util;
 
+import ent.calc.util.ConfigUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -8,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import storm.dao.DataToRedis;
 import storm.system.SysDefine;
 
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;

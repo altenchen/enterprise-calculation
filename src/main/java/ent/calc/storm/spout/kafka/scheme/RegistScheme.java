@@ -1,4 +1,4 @@
-package storm.kafka.scheme;
+package ent.calc.storm.spout.kafka.scheme;
 
 import java.nio.ByteBuffer;
 import java.util.List;

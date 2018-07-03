@@ -1,4 +1,4 @@
-package storm.util;
+package ent.calc.util;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -55,6 +55,8 @@ public final class ConfigUtils {
             }
         }
 	}
+
+	private ConfigUtils() {}
 
     private void loadFromResource(@NotNull String resourceName, @NotNull Properties properties)
         throws IOException {

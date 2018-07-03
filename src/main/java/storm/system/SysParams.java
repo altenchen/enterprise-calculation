@@ -1,7 +1,7 @@
 package storm.system;
 
 import org.jetbrains.annotations.Contract;
-import storm.util.ConfigUtils;
+import ent.calc.util.ConfigUtils;
 
 import java.util.Properties;
 

@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
-import storm.util.JedisPoolUtils;
+import ent.calc.util.JedisPoolUtils;
 
 public class RedisClusterOldUtil {
 

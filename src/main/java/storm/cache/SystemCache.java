@@ -15,7 +15,7 @@ import org.apache.commons.lang.StringUtils;
 import storm.dao.DataToRedis;
 import storm.system.DataKey;
 import storm.util.CTFOUtils;
-import storm.util.ConfigUtils;
+import ent.calc.util.ConfigUtils;
 import storm.util.NumberUtils;
 import storm.system.SysDefine;
 

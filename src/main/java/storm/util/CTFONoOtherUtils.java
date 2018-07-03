@@ -7,6 +7,7 @@ import com.ctfo.datacenter.cache.handle.CTFOCacheDB;
 import com.ctfo.datacenter.cache.handle.CTFOCacheTable;
 import com.ctfo.datacenter.cache.handle.CTFODBManager;
 import com.ctfo.datacenter.cache.handle.DataCenter;
+import ent.calc.util.ConfigUtils;
 
 public class CTFONoOtherUtils {
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
