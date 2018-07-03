@@ -167,7 +167,7 @@ public final class SysDefine {
     public static final String ISCHARGE = "10003";
     /** 定时任务关键字 */
     public static final String MILEAGE = "10004";
-  /** 定时任务关键字 */
+    /** 定时任务关键字 */
     public static final String ONLINEUTC = "10005";
     /** 定时任务关键字 */
     public static final String ALARMUTC = "ALARMUTC";
@@ -282,4 +282,36 @@ public final class SysDefine {
      * 车辆车型刷新间隔(秒), 不应大于30分钟
      */
     public static final String VEH_MODEL_CACHE_REFRESH_SECOND = "veh.model.cache.refresh.second";
+
+    public static class Redis {
+        /**
+         * Redis 地址
+         */
+        public static final String HOST = "redis.host";
+        /**
+         * Redis 端口
+         */
+        public static final String PORT = "redis.port";
+        /**
+         * Redis 密码
+         */
+        public static final String PASSWORD = "redis.pass";
+        /**
+         * Redis 最大连接数
+         */
+        public static final String JEDIS_POOL_MAX_TOTAL = "redis.maxActive";
+        /**
+         * Redis 最大空闲数
+         */
+        public static final String JEDIS_POOL_MAX_IDLE = "redis.maxIdle";
+        /**
+         * Redis 最长等待时间(毫秒)
+         */
+        public static final String JEDIS_POOL_MAX_WAIT_MILLISECOND = "redis.maxWait";
+        /**
+         * Redis 超时时间(毫秒)
+         */
+        public static final String TIMEOUT = "redis.timeOut";
+
+    }
 }

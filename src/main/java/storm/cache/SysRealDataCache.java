@@ -43,21 +43,22 @@ public class SysRealDataCache {
 	public static final String unknow="UNKNOW";
 
 	/**
-	 * 缓存666天, 最多1500万条, 车辆最近一帧数据<vid, <key, value>>
+	 * 缓存666天, 最多1500万条, 所有车辆最近一帧数据<vid, <key, value>>
 	 */
 	private static Cache<String,Map<String,String>> carlastrecord = CacheBuilder.newBuilder()
 			.expireAfterAccess(666,TimeUnit.DAYS)
 			.maximumSize(15000000)
 			.build();
 	/**
-	 * 缓存60分钟, 最多1500万条, 格式是???
+	 * 缓存60分钟, 最多1500万条, 车辆鉴权信息, 目前只使用了其中的"车辆类别"属性, 用于区分充电车.
 	 */
 	private static Cache<String, String[]>carInfoCache = CacheBuilder.newBuilder()
 			.expireAfterAccess(60,TimeUnit.MINUTES)
 			.maximumSize(15000000)
 			.build();
 	/**
-	 * 缓存30天, 最多1000万条
+	 * 缓存30天, 最多1000万条, 活跃车辆最近一帧数据<vid, <key, value>>
+     * 活跃车辆是指最近30秒(可配置)内有实时数据传过来的车辆
 	 */
 	public static Cache<String,Map<String,String>> livelyCarCache = CacheBuilder.newBuilder()
 			.expireAfterAccess(30,TimeUnit.DAYS)
@@ -223,6 +224,7 @@ public class SysRealDataCache {
 		if(null ==strings || strings.length != 15) {
 			return ;
 		}
+		// 车辆类别
 		String cartypeId = strings[10];
 		if (null == cartypeId || unknow.equals(cartypeId)) {
 			return;

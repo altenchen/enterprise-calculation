@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
-import storm.util.RedisPoolUtils;
+import storm.util.JedisPoolUtils;
 
 public class RedisClusterOldUtil {
 
@@ -33,7 +33,7 @@ public class RedisClusterOldUtil {
 	
 	private static Map<String, String> getRedisClusterInfo(){
 		Map<String, String> redisclus = null;
-		JedisPool jedisPool = RedisPoolUtils.getJedisPool();
+		JedisPool jedisPool = JedisPoolUtils.getJedisPool();
 		Jedis jedis=null;
 		try{
 			jedis=jedisPool.getResource();

@@ -1,5 +1,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
 
     <!-- 企业域名 -->
@@ -17,10 +18,24 @@
 
     <!-- 公共属性 -->
     <properties>
-        <!-- Storm Version -->
-        <version.storm>1.0.3</version.storm>
-        <!-- Simple Logging Facade for Java Version -->
-        <version.slf4j>1.7.7</version.slf4j>
+
+        <!-- 依赖组件开始 -->
+        <storm.version>1.0.3</storm.version>
+        <slf4j.version>1.7.7</slf4j.version>
+        <!-- 依赖组件结束 -->
+
+        <!-- 编译套件开始 -->
+        <maven.compiler.plugin.version>3.7.0</maven.compiler.plugin.version>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- 编译套件结束-->
+
+        <!-- 测试套件开始 -->
+        <maven.surefire.plugin.version>2.22.0</maven.surefire.plugin.version>
+        <junit.platform.version>1.2.0</junit.platform.version>
+        <junit.jupiter.version>5.2.0</junit.jupiter.version>
+        <!-- 测试套件结束-->
     </properties>
 
     <!-- 远程仓库 -->
@@ -57,7 +72,7 @@
         <dependency>
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-core</artifactId>
-            <version>${version.storm}</version>
+            <version>${storm.version}</version>
             <scope>provided</scope>
             <!-- 排除传递性依赖 -->
             <exclusions>
@@ -94,7 +109,7 @@
         <dependency>
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-starter</artifactId>
-            <version>${version.storm}</version>
+            <version>${storm.version}</version>
         </dependency>
 
         <!-- Storm 依赖结束 -->
@@ -157,16 +172,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>${version.slf4j}</version>
-        </dependency>
-
-        <!-- 日志组件简单实现, 用于开发时就地执行main函数 -->
-        <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-simple -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${version.slf4j}</version>
-            <scope>test</scope>
+            <version>${slf4j.version}</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.yammer.metrics/metrics-core -->
@@ -197,13 +203,23 @@
 
         <!-- 测试组件依赖开始 -->
 
-        <!-- https://mvnrepository.com/artifact/junit/junit -->
+        <!-- https://mvnrepository.com/artifact/org.junit.platform/junit-platform-surefire-provider -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-surefire-provider</artifactId>
+            <version>${junit.platform.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-engine -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+
 
         <!-- 测试组件依赖结束 -->
 
@@ -212,18 +228,26 @@
 	<build>
 		<pluginManagement>
 			<plugins>
+                <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-compiler-plugin -->
 				<plugin>
-	                <artifactId>maven-compiler-plugin</artifactId>
-	                <version>2.3.2</version>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven.compiler.plugin.version}</version>
 	                <configuration>
-	                    <source>1.8</source>
-	                    <target>1.8</target>
-	                    <encoding>UTF-8</encoding>
+	                    <source>${maven.compiler.source}</source>
+	                    <target>${maven.compiler.target}</target>
+	                    <encoding>${project.build.sourceEncoding}</encoding>
 	                    <compilerArguments>
 	                        <extdirs>${basedir}/lib</extdirs>
 	                    </compilerArguments>
 	                </configuration>
 	            </plugin>
+                <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-surefire-plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven.surefire.plugin.version}</version>
+                </plugin>
 			</plugins>
 		</pluginManagement>
     </build>
