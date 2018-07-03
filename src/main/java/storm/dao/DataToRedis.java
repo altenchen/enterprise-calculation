@@ -25,7 +25,7 @@ public final class DataToRedis {
 	private static Logger logger = LoggerFactory.getLogger(DataToRedis.class);
 
 	public void saveVehData(String VID, Object obj){
-		saveVehData(JedisPoolUtils.getJedisPool(),VID,obj);
+		saveVehData(JedisPoolUtils.getInstance().getJedisPool(),VID,obj);
 	}
 
 	public void saveVehData(JedisPool jedisPool,String VID, Object obj) {
@@ -46,7 +46,7 @@ public final class DataToRedis {
 	}
 
 	public Object getVehData(String VID){
-		return getVehData(JedisPoolUtils.getJedisPool(), VID);
+		return getVehData(JedisPoolUtils.getInstance().getJedisPool(), VID);
 	}
 	public Object getVehData(JedisPool jedisPool,String VID) {
         Object obj = null;
@@ -69,7 +69,7 @@ public final class DataToRedis {
         return obj;
     }
     public void saveVehCmd(String VID, Map<String, String> obj){
-    	saveVehCmd(JedisPoolUtils.getJedisPool(),VID, obj);
+		saveVehCmd(JedisPoolUtils.getInstance().getJedisPool(),VID, obj);
     }
     public void saveVehCmd(JedisPool jedisPool,String VID, Map<String, String> obj) {
     	Jedis jedis=null;
@@ -88,7 +88,7 @@ public final class DataToRedis {
         }
     }
     public Map<String, Map<String, String>> getAllVehCMD(){
-    	return getAllVehCMD(JedisPoolUtils.getJedisPool());
+		return getAllVehCMD(JedisPoolUtils.getInstance().getJedisPool());
     }
     public Map<String, Map<String, String>> getAllVehCMD(JedisPool jedisPool) {
         Map<String, Map<String, String>> appCmd = new HashMap<String, Map<String, String>>();
@@ -120,7 +120,7 @@ public final class DataToRedis {
     }
 
     public Map<String, Object> getAllVehData(){
-    	return getAllVehData(JedisPoolUtils.getJedisPool());
+		return getAllVehData(JedisPoolUtils.getInstance().getJedisPool());
     }
     public Map<String, Object> getAllVehData(JedisPool jedisPool) {
         Map<String, Object> ObjectMap = new HashMap<String, Object>();
@@ -152,7 +152,7 @@ public final class DataToRedis {
         return ObjectMap;
     }
     public void delTestVehInfo(String VID) {
-    	delTestVehInfo(JedisPoolUtils.getJedisPool(),VID);
+		delTestVehInfo(JedisPoolUtils.getInstance().getJedisPool(),VID);
     }
     public void delTestVehInfo(JedisPool jedisPool,String VID) {
     	try {
@@ -169,7 +169,7 @@ public final class DataToRedis {
     }
 
     public void delAllTestVeh(){
-    	delAllTestVeh(JedisPoolUtils.getJedisPool());
+		delAllTestVeh(JedisPoolUtils.getInstance().getJedisPool());
     }
     public void delAllTestVeh(JedisPool jedisPool) {
     	try {
@@ -189,7 +189,7 @@ public final class DataToRedis {
     }
     
     public void saveRealtimeMessage(Map<String,String> map){
-    	saveRealtimeMessage(map, JedisPoolUtils.getJedisPool());
+		saveRealtimeMessage(map, JedisPoolUtils.getInstance().getJedisPool());
     }
     /**
 	 * 存储实时数据缓存
@@ -218,7 +218,7 @@ public final class DataToRedis {
 	}
 	
 	public void saveChargeMessage(Map<String,String> map){
-		saveChargeMessage(map, JedisPoolUtils.getJedisPool());
+		saveChargeMessage(map, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	/**
 	 * 存储充电缓存
@@ -246,7 +246,7 @@ public final class DataToRedis {
 	}
 	
 	public void saveRentcarMessage(Map<String,String> map){
-		saveRentcarMessage(map,JedisPoolUtils.getJedisPool());
+		saveRentcarMessage(map, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	
 	/**
@@ -275,7 +275,7 @@ public final class DataToRedis {
 	}
 	
 	public Map<String,String> getFilterMap(){
-		return getFilterMap(JedisPoolUtils.getJedisPool());
+		return getFilterMap(JedisPoolUtils.getInstance().getJedisPool());
 	}
 	/**
 	 * 
@@ -313,7 +313,7 @@ public final class DataToRedis {
 	}
 	
 	public Map<String,Set<String>> getAlarmMap(){
-		return getAlarmMap(JedisPoolUtils.getJedisPool());
+		return getAlarmMap(JedisPoolUtils.getInstance().getJedisPool());
 	}
 	/**
 	 * 
@@ -361,7 +361,7 @@ public final class DataToRedis {
 	
 	public Set<String> smembers(int db,String name){
 
-		return smembers(db,name,JedisPoolUtils.getJedisPool());
+		return smembers(db,name, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public Set<String> smembers(int db,String name,JedisPool jedisPool){
 		Jedis jedis = null ;
@@ -385,7 +385,7 @@ public final class DataToRedis {
 	
 	public void delKeys(Set<String> keys,int db){
 		if(null != keys && keys.size()>0)
-			delKeys(keys,db,JedisPoolUtils.getJedisPool());
+			delKeys(keys,db, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public void delKeys(Set<String> keys,int db,JedisPool jedisPool) {
 		if(null == keys || keys.size()<1)
@@ -412,7 +412,7 @@ public final class DataToRedis {
 	}
 	public void delKey(String key,int db){
 		if(null != key )
-			delKey(key,db,JedisPoolUtils.getJedisPool());
+			delKey(key,db, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public void delKey(String key,int db,JedisPool jedisPool) {
 		if(null == key)
@@ -435,7 +435,7 @@ public final class DataToRedis {
 	}
 	
 	public String getValueByDataId(String vid,String dataId){
-		return getValueByDataId(vid,dataId,JedisPoolUtils.getJedisPool());
+		return getValueByDataId(vid,dataId, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	/**
 	 * 
@@ -464,7 +464,7 @@ public final class DataToRedis {
 
 	
 	public void saveStatisticsMessage(Map<String,String> map){
-		saveStatisticsMessage(map,JedisPoolUtils.getJedisPool());
+		saveStatisticsMessage(map, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	/**
 	 * 存储特定数据项的实时数据
@@ -492,7 +492,7 @@ public final class DataToRedis {
 
 	
 	public List<String> getVehicleStatusList(String dataId,String utcId){
-		return getVehicleStatusList(dataId,utcId,JedisPoolUtils.getJedisPool());
+		return getVehicleStatusList(dataId,utcId, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	/**
 	 * 定时任务获取车辆在线/故障状态
@@ -527,7 +527,7 @@ public final class DataToRedis {
 	}
 	
 	public void updateStatusByDataId(List<String> vidList,String dataId){
-		updateStatusByDataId(vidList,dataId,JedisPoolUtils.getJedisPool());
+		updateStatusByDataId(vidList,dataId, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	/**
 	 * 定时任务更新车辆[在线]/[故障]状态
@@ -554,7 +554,7 @@ public final class DataToRedis {
 		}
 	}
 	public void saveTotalMessage(Map<String,String> map){
-		saveTotalMessage(map,JedisPoolUtils.getJedisPool());
+		saveTotalMessage(map, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public void saveTotalMessage(Map<String,String> map,JedisPool jedisPool) {
 		Jedis jedis = null ;
@@ -575,7 +575,7 @@ public final class DataToRedis {
 		
 	}
 	public void saveMap(Map<String,String> map,int db,String table){
-		saveMap(map,db,table,JedisPoolUtils.getJedisPool());
+		saveMap(map,db,table, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public void saveMap(Map<String,String> map,int db,String table,JedisPool jedisPool) {
 		Jedis jedis = null ;
@@ -597,7 +597,7 @@ public final class DataToRedis {
 	}
 	
 	public String hgetBykeyAndFiled(String key,String filed,int db){
-		return hgetBykeyAndFiled(key,filed,db,JedisPoolUtils.getJedisPool());
+		return hgetBykeyAndFiled(key,filed,db, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	/**
 	 * 
@@ -627,7 +627,7 @@ public final class DataToRedis {
 	}
 	
 	public Map<String,String> hgetallMapByKeyAndDb(String key,int db){
-		return hgetallMapByKeyAndDb(key, db,JedisPoolUtils.getJedisPool());
+		return hgetallMapByKeyAndDb(key, db, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public Map<String,String> hgetallMapByKeyAndDb(String key,int db,JedisPool jedisPool){
 		Map<String,String> map  =null;
@@ -653,7 +653,7 @@ public final class DataToRedis {
 	}
 	
 	public void flushDB(int db){
-		flushDB(db,JedisPoolUtils.getJedisPool());
+		flushDB(db, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public void flushDB(int db,JedisPool jedisPool) {
 		Jedis jedis = null ;
@@ -673,7 +673,7 @@ public final class DataToRedis {
 	}
 
 	public Map<String,String> getMap(int db,String name){
-		return getMap(db,name,JedisPoolUtils.getJedisPool());
+		return getMap(db,name, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	/**
 	 * 
@@ -712,7 +712,7 @@ public final class DataToRedis {
 
 	public Set<String> getSmembersSet(int db,String name){
 
-		return getSmembersSet(db,name,JedisPoolUtils.getJedisPool());
+		return getSmembersSet(db,name, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public Set<String> getSmembersSet(int db,String name,JedisPool jedisPool){
 		Jedis jedis = null ;
@@ -734,8 +734,8 @@ public final class DataToRedis {
 		return smembers;
 	}
 	public Set<String> getKeysSet(int db,String name){
-		
-		return getKeysSet(db,name,JedisPoolUtils.getJedisPool());
+
+		return getKeysSet(db,name, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	
 	public Set<String> getKeysSet(int db,String name,JedisPool jedisPool){
@@ -758,8 +758,8 @@ public final class DataToRedis {
 	}
 	
 public String getString(int db,String name){
-		
-		return getString(db,name,JedisPoolUtils.getJedisPool());
+
+	return getString(db,name, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	
 	public String getString(int db,String name,JedisPool jedisPool){
@@ -782,8 +782,8 @@ public String getString(int db,String name){
 	}
 	
 	public void setString(int db,String key,String value){
-		
-		setString(db,key,value,JedisPoolUtils.getJedisPool());
+
+		setString(db,key,value, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	
 	public String setString(int db,String key,String value,JedisPool jedisPool){
@@ -806,7 +806,7 @@ public String getString(int db,String name){
 	}
 	
 	public Set<String> subhkeys(int db,String key){
-		return subhkeys(db, key, JedisPoolUtils.getJedisPool());
+		return subhkeys(db, key, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	
 	public Set<String> subhkeys(int db,String key,JedisPool jedisPool){
@@ -829,7 +829,7 @@ public String getString(int db,String name){
 	}
 	
 	public void incrKey(int db,String key){
-		incrKey(db,key,JedisPoolUtils.getJedisPool());
+		incrKey(db,key, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public void incrKey(int db,String key,JedisPool jedisPool) {
 		Jedis jedis = null ;
@@ -849,7 +849,7 @@ public String getString(int db,String name){
 	}
 	
 	public void incrByKey(int db,String key,long value){
-		incrByKey(db,key,value,JedisPoolUtils.getJedisPool());
+		incrByKey(db,key,value, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public void incrByKey(int db,String key,long value,JedisPool jedisPool) {
 		Jedis jedis = null ;
@@ -869,7 +869,7 @@ public String getString(int db,String name){
 	}
 	
 	public void hset(int db,String key,String field,String value){
-		hset(db, key, field, value,JedisPoolUtils.getJedisPool());
+		hset(db, key, field, value, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public void hset(int db,String key,String field,String value,JedisPool jedisPool) {
 		Jedis jedis = null ;
@@ -888,7 +888,7 @@ public String getString(int db,String name){
 		}
 	}
 	public void hset(int db,String key,List<String[]>fieldValues){
-		hset(db, key, fieldValues,JedisPoolUtils.getJedisPool());
+		hset(db, key, fieldValues, JedisPoolUtils.getInstance().getJedisPool());
 	}
 	public void hset(int db,String key,List<String[]>fieldValues,JedisPool jedisPool) {
 		Jedis jedis = null ;
@@ -915,7 +915,7 @@ public String getString(int db,String name){
 	}
 	
 	public void hdel(int db,String key,String ... field){
-		hdel(db, key, JedisPoolUtils.getJedisPool(), field);
+		hdel(db, key, JedisPoolUtils.getInstance().getJedisPool(), field);
 	}
 	public void hdel(int db,String key,JedisPool jedisPool,String ... field) {
 		Jedis jedis = null ;

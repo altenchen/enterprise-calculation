@@ -6,6 +6,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.jetbrains.annotations.NotNull;
 import storm.util.ConfigUtils;
+import storm.util.JedisPoolUtils;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;

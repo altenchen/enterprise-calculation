@@ -33,7 +33,7 @@ public class RedisClusterOldUtil {
 	
 	private static Map<String, String> getRedisClusterInfo(){
 		Map<String, String> redisclus = null;
-		JedisPool jedisPool = JedisPoolUtils.getJedisPool();
+        JedisPool jedisPool = JedisPoolUtils.getInstance().getJedisPool();
 		Jedis jedis=null;
 		try{
 			jedis=jedisPool.getResource();

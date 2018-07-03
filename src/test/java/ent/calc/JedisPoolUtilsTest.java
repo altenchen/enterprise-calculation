@@ -4,14 +4,11 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnJre;
-import org.junit.jupiter.api.condition.EnabledOnJre;
 import org.junit.jupiter.api.condition.JRE;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import storm.util.JedisPoolUtils;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -28,7 +25,7 @@ public class JedisPoolUtilsTest {
     public void testGetJedisPool() {
         final JedisPool jedisPool;
         try {
-            jedisPool = JedisPoolUtils.getJedisPool();
+            jedisPool = JedisPoolUtils.getInstance().getJedisPool();
         } catch (Exception e) {
             Assertions.fail("获取连接池异常", e);
             return;
@@ -53,7 +50,7 @@ public class JedisPoolUtilsTest {
     public void testUseResource() {
         try {
             final List<Object> flag = new LinkedList<>();
-            JedisPoolUtils.useResource(jedis -> {
+            JedisPoolUtils.getInstance().useResource(jedis -> {
                 Assertions.assertNotNull(jedis, "使用连接失败");
                 flag.add(new Object());
             });

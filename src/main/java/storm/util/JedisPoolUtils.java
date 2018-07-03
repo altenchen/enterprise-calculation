@@ -24,18 +24,21 @@ public final class JedisPoolUtils {
     @NotNull
 	private static final Logger logger = LoggerFactory.getLogger(JedisPoolUtils.class);
 
-    /**
-     * Redis 连接池
-     */
-    @NotNull
-	private static final JedisPool JEDIS_POOL = buildJedisPool();
+
+    private static final JedisPoolUtils INSTANCE = new JedisPoolUtils();
+
+    @Contract(pure = true)
+    public static JedisPoolUtils getInstance() {
+        return INSTANCE;
+    }
 
     @NotNull
-    private static JedisPool buildJedisPool() {
+	private final JedisPool JEDIS_POOL = buildJedisPool(ConfigUtils.getInstance().sysDefine);
+
+    @NotNull
+    private JedisPool buildJedisPool(final Properties sysDefine) {
 
         logger.info("JedisPool 初始化开始");
-
-        final Properties sysDefine = ConfigUtils.getInstance().sysDefine;
 
 		final JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
 
@@ -116,11 +119,11 @@ public final class JedisPoolUtils {
      * 建议使用 useResource 方法
      */
     @Contract(pure = true)
-    public static final JedisPool getJedisPool(){
+    public final JedisPool getJedisPool(){
 		return JEDIS_POOL;
 	}
 
-	public static final void useResource(Consumer<Jedis> action) {
+    public final void useResource(Consumer<Jedis> action) {
         if(null != action) {
             final Jedis jedis = JEDIS_POOL.getResource();
             try {
