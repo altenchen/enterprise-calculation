@@ -100,10 +100,12 @@ public class VehicleModelCache {
         if(now - lastUpdateTime > veh_model_cache_refresh_millisecond) {
             synchronized (refreshCacheLock) {
                 if(now - lastUpdateTime > veh_model_cache_refresh_millisecond) {
+                    logger.info("开始更新车辆车型信息");
                     final Map<String, String> vmd = conn.getVehicleModel();
                     vmd.forEach((k,v) -> cache.put(k, v));
                     mid = vmd.getOrDefault(vid, "");
                     lastUpdateTime = now;
+                    logger.info("更新车辆车型信息完毕, 共获取到[{}]条数据", vmd.size());
                 } else {
                     mid = cache.asMap().getOrDefault(vid, "");
                 }

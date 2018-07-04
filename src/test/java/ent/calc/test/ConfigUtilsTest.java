@@ -1,8 +1,8 @@
-package ent.calc;
+package ent.calc.test;
 
+import ent.calc.util.ConfigUtils;
 import org.apache.commons.collections.MapUtils;
 import org.junit.jupiter.api.*;
-import ent.calc.util.ConfigUtils;
 
 /**
  * @author: xzp

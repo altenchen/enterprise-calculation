@@ -31,7 +31,7 @@ import ent.calc.util.ConfigUtils;
  * 数据库操作工具类
  */
 public final class Conn {
-	private static final Logger LOG = LoggerFactory.getLogger(Conn.class);
+	private static final Logger logger = LoggerFactory.getLogger(Conn.class);
 
 	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 	private static final SysParams sysParams = SysParams.getInstance();
@@ -303,13 +303,13 @@ public final class Conn {
 
             final String faultType = objs[fault_type];
             if(StringUtils.isBlank(faultType)) {
-                LOG.trace("故障码[{}]: 空白的故障码类型.", faultType);
+                logger.trace("故障码[{}]: 空白的故障码类型.", faultType);
                 continue;
             }
 
             final String analyzeType = objs[analyze_type];
             if(StringUtils.isBlank(analyzeType)) {
-                LOG.trace("故障码[{}]: 无效的解析方式[{}].", faultType, analyzeType);
+                logger.trace("故障码[{}]: 无效的解析方式[{}].", faultType, analyzeType);
                 continue;
             }
             // 解析方式 1-按字节, 2-按位; 这里只处理按字节解析的情况
@@ -334,23 +334,23 @@ public final class Conn {
                 exceptionType = Integer.parseInt(objs[exception_type]);
             } catch (NumberFormatException ex) {
                 ex.printStackTrace();
-                LOG.error("故障码[{}]: 无效的异常类型[{}].", faultType, objs[exception_type]);
+                logger.error("故障码[{}]: 无效的异常类型[{}].", faultType, objs[exception_type]);
                 continue;
             }
             if(exceptionType != 0 && exceptionType != 1) {
-                LOG.error("故障码[{}]: 错误的异常类型[{}].", faultType, exceptionType);
+                logger.error("故障码[{}]: 错误的异常类型[{}].", faultType, exceptionType);
                 continue;
             }
 
             String exceptionId = objs[exception_id];
             if(StringUtils.isBlank(exceptionId)) {
-                LOG.error("故障码[{}]: 空白的异常码Id.", faultType);
+                logger.error("故障码[{}]: 空白的异常码Id.", faultType);
                 continue;
             }
 
             String exceptionCode = objs[exception_code];
             if(StringUtils.isBlank(exceptionCode)) {
-                LOG.error("故障码[{}]异常码[{}]: 空白的异常码值.", faultType, exceptionId);
+                logger.error("故障码[{}]异常码[{}]: 空白的异常码值.", faultType, exceptionId);
                 continue;
             }
 
@@ -359,7 +359,7 @@ public final class Conn {
                 responseLevel = Integer.parseInt(objs[response_level]);
             } catch (NumberFormatException e) {
                 e.printStackTrace();
-                LOG.error("故障码[{}]异常码[{}]: 错误的告警等级[{}].", faultType, exceptionId, objs[response_level]);
+                logger.error("故障码[{}]异常码[{}]: 错误的告警等级[{}].", faultType, exceptionId, objs[response_level]);
                 continue;
             }
 
@@ -463,7 +463,7 @@ public final class Conn {
         try {
             connection = getConn();
             if (null == connection) {
-                LOG.warn("创建数据库连接失败");
+                logger.warn("创建数据库连接失败");
                 return vmd;
             }
 
@@ -501,6 +501,7 @@ public final class Conn {
     @SuppressWarnings("Duplicates")
     @NotNull
     public Map<String, FaultTypeSingleBit> getFaultSingleBitRules() {
+        logger.info("开始更新按位解析故障码规则");
 
         // fault_type, fault
         final Map<String, FaultTypeSingleBit> faultTypes = new TreeMap<>();
@@ -521,7 +522,7 @@ public final class Conn {
         try {
             connection = getConn();
             if (null == connection) {
-                LOG.warn("创建数据库连接失败");
+                logger.warn("创建数据库连接失败");
                 return faultTypes;
             }
 
@@ -543,14 +544,14 @@ public final class Conn {
                 // 故障码类型(内部协议标号)
                 final String fault_type = analyzeBitResult.getString(2);
                 if (StringUtils.isBlank(fault_id)) {
-                    LOG.trace("故障码[{}]: 空白的故障码类型.", fault_id);
+                    logger.trace("故障码[{}]: 空白的故障码类型.", fault_id);
                     continue;
                 }
 
                 // 解析方式 1-按字节, 2-按位
                 final String analyze_type = analyzeBitResult.getString(3);
                 if (StringUtils.isEmpty(analyze_type) || !StringUtils.isNumeric(analyze_type)) {
-                    LOG.trace("故障码[{}]: 无效的解析方式[{}].", fault_id, analyze_type);
+                    logger.trace("故障码[{}]: 无效的解析方式[{}].", fault_id, analyze_type);
                     continue;
                 }
 
@@ -562,7 +563,7 @@ public final class Conn {
                     // 位长, 目前固定为1
                     final String param_length = analyzeBitResult.getString(4);
                     if (StringUtils.isEmpty(param_length) || !StringUtils.isNumeric(param_length)) {
-                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的位长类型.", fault_id);
+                        logger.trace("故障码[{}]: 按位解析方式下, 空白的位长类型.", fault_id);
                         continue;
                     }
 
@@ -584,14 +585,14 @@ public final class Conn {
                     // 起始位偏移量
                     final String start_point = analyzeBitResult.getString(6);
                     if (StringUtils.isEmpty(start_point) || !StringUtils.isNumeric(start_point)) {
-                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的起始位偏移量.", fault_id);
+                        logger.trace("故障码[{}]: 按位解析方式下, 空白的起始位偏移量.", fault_id);
                         continue;
                     }
 
                     // 异常码Id
                     final String exception_id = analyzeBitResult.getString(7);
                     if (StringUtils.isBlank(exception_id)) {
-                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的异常码Id.", fault_id);
+                        logger.trace("故障码[{}]: 按位解析方式下, 空白的异常码Id.", fault_id);
                         continue;
                     }
 
@@ -600,7 +601,7 @@ public final class Conn {
                         faultOffset = Short.decode(start_point);
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
-                        LOG.warn(
+                        logger.warn(
                             "故障码[{}]异常码[{}]: 起始位偏移量格式错误: {}",
                             fault_id,
                             exception_id,
@@ -611,14 +612,14 @@ public final class Conn {
                     // 异常码码值, 应为目前固定位长为1, 所以码值也只有1了
                     final String exception_code = analyzeBitResult.getString(8);
                     if (StringUtils.isEmpty(exception_code) || !StringUtils.isNumeric(exception_code)) {
-                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的异常码码值.", fault_id);
+                        logger.trace("故障码[{}]: 按位解析方式下, 空白的异常码码值.", fault_id);
                         continue;
                     }
 
                     // 时间阈值
                     final String time_threshold = analyzeBitResult.getString(9);
                     if (StringUtils.isEmpty(time_threshold) || !StringUtils.isNumeric(time_threshold)) {
-                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的时间阈值.", fault_id);
+                        logger.trace("故障码[{}]: 按位解析方式下, 空白的时间阈值.", fault_id);
                         continue;
                     }
 
@@ -627,7 +628,7 @@ public final class Conn {
                         lazy = Integer.decode(time_threshold);
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
-                        LOG.warn(
+                        logger.warn(
                             "故障码[{}]异常码[{}]: 时间阈值格式错误: {}",
                             fault_id,
                             exception_id,
@@ -638,7 +639,7 @@ public final class Conn {
                     // 告警等级
                     final String response_level = analyzeBitResult.getString(10);
                     if (StringUtils.isEmpty(response_level) || !StringUtils.isNumeric(response_level)) {
-                        LOG.trace("故障码[{}]: 按位解析方式下, 空白的告警等级.", fault_id);
+                        logger.trace("故障码[{}]: 按位解析方式下, 空白的告警等级.", fault_id);
                         continue;
                     }
 
@@ -647,7 +648,7 @@ public final class Conn {
                         level = Byte.decode(time_threshold);
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
-                        LOG.warn(
+                        logger.warn(
                             "故障码[{}]异常码[{}]: 告警等级格式错误: {}",
                             fault_id,
                             exception_id,
@@ -665,7 +666,7 @@ public final class Conn {
                     }
 
                     if (faultExceptionsCache.containsKey(exception_id)) {
-                        LOG.warn("重复的异常码[{}].", exception_id);
+                        logger.warn("重复的异常码[{}].", exception_id);
                         continue;
                     }
 
@@ -678,7 +679,7 @@ public final class Conn {
                         final Map<String, ExceptionSingleBit> exceptions =
                             faultTypeSingleBit.ensureVehExceptions(vehicleModel);
                         if(exceptions.containsKey(exception.exceptionId)) {
-                            LOG.warn(
+                            logger.warn(
                                 "故障码[{}]车型[{}]重复的异常码[{}].",
                                 faultTypeSingleBit.faultId,
                                 vehicleModel,
@@ -689,6 +690,7 @@ public final class Conn {
                     }
                 }
             }
+            logger.info("更新获取到[{}]条有效按位解析故障码规则", faultExceptionsCache.size());
 
 
 //            while(analyzeValueResult.next()) {

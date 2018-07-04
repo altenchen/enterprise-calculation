@@ -1,4 +1,4 @@
-package coffee;
+package ent.calc.test.coffee;
 
 import javax.inject.Inject;
 

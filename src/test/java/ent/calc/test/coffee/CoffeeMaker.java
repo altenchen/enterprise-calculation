@@ -1,4 +1,4 @@
-package coffee;
+package ent.calc.test.coffee;
 
 import dagger.Lazy;
 import javax.inject.Inject;

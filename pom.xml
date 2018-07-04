@@ -4,24 +4,28 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!-- 企业域名 -->
-    <groupId>com.bitnei</groupId>
+    <groupId>cn.bitnei</groupId>
     <!-- 项目名称 -->
-    <artifactId>ent.calc</artifactId>
+    <artifactId>qy.cal</artifactId>
     <!-- 语义化版本 -->
     <!-- https://semver.org/lang/zh-CN/ -->
     <version>0.4.x-alpha</version>
+
     <!-- 打包方式 -->
     <packaging>jar</packaging>
 
     <name>enterprise.calculation</name>
-    <url>http://maven.apache.org</url>
+    <url>http://bitnei.com</url>
 
     <!-- 公共属性 -->
     <properties>
 
         <!-- 依赖组件开始 -->
-        <storm.version>1.0.3</storm.version>
         <slf4j.version>1.7.7</slf4j.version>
+        <mysql.connector.version>8.0.11</mysql.connector.version>
+        <storm.version>1.0.3</storm.version>
+        <guava.version>25.1-jre</guava.version>
+        <fastjson.version>1.1.36</fastjson.version>
         <!-- 依赖组件结束 -->
 
         <!-- 编译套件开始 -->
@@ -38,6 +42,8 @@
         <junit.jupiter.version>5.2.0</junit.jupiter.version>
         <!-- 测试套件结束-->
 
+        <annotations.version>16.0.2</annotations.version>
+
     </properties>
 
     <!-- 远程仓库 -->
@@ -46,11 +52,12 @@
             <id>clojars.org</id>
             <url>http://clojars.org/repo</url>
         </repository>
-        <!--<repository>-->
-        <!--<id>nexus</id>-->
-        <!--<name>Team Nexus Repository</name>-->
-        <!--<url>http://218.205.184.127:8081/nexus/content/groups/public</url>-->
-        <!--</repository>-->
+        <!-- 北理私服 -->
+        <repository>
+        <id>nexus</id>
+            <name>Team Nexus Repository</name>
+            <url>http://218.205.184.127:8081/nexus/content/groups/public</url>
+        </repository>
     </repositories>
 
     <!-- 项目依赖 -->
@@ -58,13 +65,26 @@
 
         <!-- 北理大数据依赖开始 -->
 
-        <!-- 主要使用了CTFO组件 -->
+        <!-- 主要使用了CTFO组件, 只有jar包, 没有源码, 附加依赖绑定, 宝宝不开心只会说方法找不到, 感动不(ಥ _ ಥ) -->
         <!-- http://218.205.184.127:8081/nexus/#nexus-search;gav~com.bitnei.bigdata~datacenter -->
-        <!--<dependency>-->
-        <!--<groupId>com.bitnei.bigdata</groupId>-->
-        <!--<artifactId>datacenter</artifactId>-->
-        <!--<version>2.4.2</version>-->
-        <!--</dependency>-->
+        <dependency>
+            <groupId>com.bitnei.bigdata</groupId>
+            <artifactId>datacenter</artifactId>
+            <version>2.4.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>redis.clients</groupId>
+                    <artifactId>jedis</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>2.4.2</version>
+        </dependency>
 
         <!-- 北理大数据依赖结束 -->
 
@@ -76,7 +96,6 @@
             <artifactId>storm-core</artifactId>
             <version>${storm.version}</version>
             <scope>provided</scope>
-            <!-- 排除传递性依赖 -->
             <exclusions>
                 <exclusion>
                     <artifactId>slf4j-api</artifactId>
@@ -106,6 +125,19 @@
             </exclusions>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>1.1.0</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>slf4j-api</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- 目前里面有Base64编解码和其它一些组件继承, 暂时保持不变 -->
         <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-starter -->
         <dependency>
@@ -116,60 +148,21 @@
 
         <!-- Storm 依赖结束 -->
 
+
         <!-- 数据库依赖开始 -->
 
         <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>5.1.18</version>
-        </dependency>
-
-        <!-- 这个包请不要升级先, 这是测试过与datacenter-2.4.2.jar兼容的版本 -->
-        <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
-        <dependency>
-            <groupId>redis.clients</groupId>
-            <artifactId>jedis</artifactId>
-            <version>2.4.2</version>
+            <version>${mysql.connector.version}</version>
         </dependency>
 
         <!-- 数据库依赖结束 -->
 
+
         <!-- 工具组件依赖开始 -->
 
-        <!-- https://mvnrepository.com/artifact/com.alibaba/fastjson -->
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>fastjson</artifactId>
-            <version>1.1.36</version>
-        </dependency>
-
-        <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>25.1-jre</version>
-        </dependency>
-
-        <!-- 工具组件依赖结束 -->
-
-        <!-- 解决版本不一致依赖开始 -->
-
-        <!-- 0.8.2.2 版本是与 0.8.2.0 完全兼容的最高版本 -->
-        <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients -->
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
-            <version>0.8.2.0</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>slf4j-api</artifactId>
-                    <groupId>org.slf4j</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- 解决日志组件不一致的问题 -->
         <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -177,33 +170,31 @@
             <version>${slf4j.version}</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/com.yammer.metrics/metrics-core -->
+        <!-- https://mvnrepository.com/artifact/com.alibaba/fastjson -->
         <dependency>
-            <groupId>com.yammer.metrics</groupId>
-            <artifactId>metrics-core</artifactId>
-            <version>2.2.0</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>slf4j-api</artifactId>
-                    <groupId>org.slf4j</groupId>
-                </exclusion>
-            </exclusions>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>${fastjson.version}</version>
         </dependency>
 
-        <!-- 解决版本不一致依赖结束 -->
+        <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
 
-        <!-- IDEA注解开始 -->
+        <!-- 工具组件依赖结束 -->
+
+
+        <!-- 编译组件依赖开始 -->
 
         <!-- https://mvnrepository.com/artifact/org.jetbrains/annotations -->
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
-            <version>16.0.2</version>
+            <version>${annotations.version}</version>
         </dependency>
-
-        <!-- IDEA注解结束 -->
-
-        <!-- 编译组件依赖开始 -->
 
         <!-- https://mvnrepository.com/artifact/com.google.dagger/dagger -->
         <dependency>
@@ -212,8 +203,8 @@
             <version>${dagger.version}</version>
         </dependency>
 
-
         <!-- 编译组件依赖结束 -->
+
 
         <!-- 测试组件依赖开始 -->
 
