@@ -11,7 +11,7 @@ import storm.handler.fence.input.Rule;
 import storm.handler.fence.input.StopAlarmRule;
 import storm.system.DataKey;
 import storm.system.SysDefine;
-import ent.calc.util.ConfigUtils;
+import storm.util.ConfigUtils;
 
 public class InvokeCtxMtd extends InvokeMtd implements Invoke {
 	private static final ConfigUtils configUtils = ConfigUtils.getInstance();

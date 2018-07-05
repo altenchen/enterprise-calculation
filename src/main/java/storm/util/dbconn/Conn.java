@@ -24,7 +24,7 @@ import storm.handler.fence.input.Rule;
 import storm.handler.fence.input.SpeedAlarmRule;
 import storm.handler.fence.input.StopAlarmRule;
 import storm.system.SysParams;
-import ent.calc.util.ConfigUtils;
+import storm.util.ConfigUtils;
 
 /**
  * @author wza

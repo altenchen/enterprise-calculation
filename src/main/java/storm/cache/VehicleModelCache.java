@@ -8,7 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.system.SysDefine;
-import ent.calc.util.ConfigUtils;
+import storm.util.ConfigUtils;
 import storm.util.dbconn.Conn;
 
 import java.util.Map;

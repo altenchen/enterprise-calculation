@@ -1,4 +1,4 @@
-package ent.calc.storm.spout.kafka.scheme;
+package storm.kafka.scheme;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.storm.kafka.StringScheme;

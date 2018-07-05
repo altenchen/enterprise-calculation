@@ -1,4 +1,4 @@
-package ent.calc.storm.spout.kafka;
+package storm.kafka;
 
 import java.util.Arrays;
 

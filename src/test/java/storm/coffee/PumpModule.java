@@ -1,4 +1,4 @@
-package ent.calc.test.coffee;
+package storm.coffee;
 
 import dagger.Binds;
 import dagger.Module;

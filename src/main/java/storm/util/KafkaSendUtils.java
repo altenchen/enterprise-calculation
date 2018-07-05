@@ -5,7 +5,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import ent.calc.util.ConfigUtils;
 import kafka.javaapi.producer.Producer;
 import kafka.producer.ProducerConfig;
 import org.apache.commons.lang.StringUtils;

@@ -14,7 +14,7 @@ import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
-import ent.calc.util.ConfigUtils;
+import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 import storm.util.ParamsRedisUtil;
 import storm.util.dbconn.Conn;

@@ -1,4 +1,4 @@
-package ent.calc.test.coffee;
+package storm.coffee;
 
 import dagger.Component;
 import javax.inject.Singleton;

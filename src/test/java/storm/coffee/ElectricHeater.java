@@ -1,4 +1,4 @@
-package ent.calc.test.coffee;
+package storm.coffee;
 
 class ElectricHeater implements Heater {
   boolean heating;

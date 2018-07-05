@@ -1,4 +1,4 @@
-package ent.calc.test.coffee;
+package storm.coffee;
 
 import dagger.Module;
 import dagger.Provides;

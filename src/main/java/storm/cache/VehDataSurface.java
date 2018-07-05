@@ -7,25 +7,25 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ent.calc.util.JedisPoolUtils;
+import storm.util.JedisPoolUtils;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 车辆数据缓存, 缓存了车辆的部分数据的最后有效值.
+ * 车辆数据断面, 缓存了车辆的部分数据的最后有效值.
  * @author: xzp
  * @date: 2018-07-02
  * @description:
  */
-public final class VehDataStream {
+public final class VehDataSurface {
 
-    private static final Logger logger = LoggerFactory.getLogger(VehDataStream.class);
+    private static final Logger logger = LoggerFactory.getLogger(VehDataSurface.class);
 
-    private static final VehDataStream INSTANCE = new VehDataStream();
+    private static final VehDataSurface INSTANCE = new VehDataSurface();
 
     @Contract(pure = true)
-    public static VehDataStream getInstance() {
+    public static VehDataSurface getInstance() {
         return INSTANCE;
     }
 
@@ -35,7 +35,7 @@ public final class VehDataStream {
 
     @NotNull
     private static final String buildTable(@NotNull String vid) {
-        return "veh.data.stream." + vid;
+        return "veh.data.surface." + vid;
     }
 
     /**

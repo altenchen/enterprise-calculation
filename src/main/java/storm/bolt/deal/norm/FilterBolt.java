@@ -1,6 +1,6 @@
 package storm.bolt.deal.norm;
 
-import ent.calc.util.ConfigUtils;
+import storm.util.ConfigUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.storm.task.OutputCollector;

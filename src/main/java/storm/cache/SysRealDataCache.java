@@ -26,7 +26,7 @@ import storm.protocol.CommandType;
 import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.SysDefine;
-import ent.calc.util.ConfigUtils;
+import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 import storm.util.NumberUtils;
 import storm.util.ParamsRedisUtil;
@@ -52,7 +52,7 @@ public class SysRealDataCache {
 	/**
 	 * 缓存60分钟, 最多1500万条, 车辆鉴权信息, 目前只使用了其中的"车辆类别"属性, 用于区分充电车.
 	 */
-	private static Cache<String, String[]>carInfoCache = CacheBuilder.newBuilder()
+	private static Cache<String, String[]> carInfoCache = CacheBuilder.newBuilder()
 			.expireAfterAccess(60,TimeUnit.MINUTES)
 			.maximumSize(15000000)
 			.build();
