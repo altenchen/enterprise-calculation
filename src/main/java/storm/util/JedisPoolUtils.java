@@ -165,12 +165,12 @@ public final class JedisPoolUtils {
         return jedisPool -> {
             final Jedis jedis = jedisPool.getResource();
             try {
-                return action.apply(jedis);
+                final R result = action.apply(jedis);
+                jedisPool.returnResource(jedis);
+                return result;
             } catch (JedisException e) {
                 jedisPool.returnBrokenResource(jedis);
                 throw e;
-            } finally {
-                jedisPool.returnResource(jedis);
             }
         };
     }

@@ -1,7 +1,13 @@
 package storm.util;
 
 import com.alibaba.fastjson.JSON;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author: xzp
@@ -22,9 +28,22 @@ public final class JsonUtils implements IJson {
         }
     }
 
+    @Nullable
     @Override
-    public final String toJson(Object object) {
-        return JSON.toJSONString(object);
+    public final <T> String toJson(@Nullable final T object) {
+        final Gson gson = new Gson();
+        final String json = gson.toJson(object);
+        return json;
     }
 
+    @Nullable
+    @Override
+    public  <R> Map<String, R> parseMap(String json) {
+        final Gson gson = new Gson();
+        final Map<String, R> map = gson.fromJson(
+            json,
+            new TypeToken<Map<String, R>>() {
+            }.getType());
+        return map;
+    }
 }
