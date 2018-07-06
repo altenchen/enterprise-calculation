@@ -21,7 +21,7 @@
     <properties>
 
         <!-- 依赖组件开始 -->
-        <slf4j.version>1.7.7</slf4j.version>
+        <slf4j.version>1.7.25</slf4j.version>
         <mysql.connector.version>8.0.11</mysql.connector.version>
         <storm.version>1.0.3</storm.version>
         <guava.version>25.1-jre</guava.version>
@@ -98,6 +98,38 @@
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
+                    <artifactId>clojure</artifactId>
+                    <groupId>org.clojure</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>disruptor</artifactId>
+                    <groupId>com.lmax</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>kryo</artifactId>
+                    <groupId>com.esotericsoftware</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>log4j-api</artifactId>
+                    <groupId>org.apache.logging.log4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>log4j-core</artifactId>
+                    <groupId>org.apache.logging.log4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>log4j-over-slf4j</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>log4j-slf4j-impl</artifactId>
+                    <groupId>org.apache.logging.log4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>servlet-api</artifactId>
+                    <groupId>javax.servlet</groupId>
+                </exclusion>
+                <exclusion>
                     <artifactId>slf4j-api</artifactId>
                     <groupId>org.slf4j</groupId>
                 </exclusion>
@@ -138,14 +170,6 @@
             </exclusions>
         </dependency>
 
-        <!-- 目前里面有Base64编解码和其它一些组件继承, 暂时保持不变 -->
-        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-starter -->
-        <dependency>
-            <groupId>org.apache.storm</groupId>
-            <artifactId>storm-starter</artifactId>
-            <version>${storm.version}</version>
-        </dependency>
-
         <!-- Storm 依赖结束 -->
 
 
@@ -177,14 +201,39 @@
             <version>${fastjson.version}</version>
         </dependency>
 
+        <!-- org.apache.storm:storm-starter 嵌入 -->
         <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>com.google.guava</groupId>-->
+            <!--<artifactId>guava</artifactId>-->
+            <!--<version>${guava.version}</version>-->
+        <!--</dependency>-->
+
+        <!-- org.apache.storm:storm-starter 嵌入 -->
+        <!-- https://mvnrepository.com/artifact/commons-collections/commons-collections -->
+        <!--<dependency>-->
+            <!--<groupId>commons-collections</groupId>-->
+            <!--<artifactId>commons-collections</artifactId>-->
+            <!--<version>3.2.2</version>-->
+        <!--</dependency>-->
+
+        <!-- org.apache.storm:storm-starter 嵌入 -->
+        <!-- https://mvnrepository.com/artifact/com.sun.jersey/jersey-core -->
+        <!--<dependency>-->
+            <!--<groupId>com.sun.jersey</groupId>-->
+            <!--<artifactId>jersey-core</artifactId>-->
+            <!--<version>1.19.4</version>-->
+        <!--</dependency>-->
 
         <!-- 工具组件依赖结束 -->
+
+        <!-- 目前里面有Base64编解码和其它一些组件继承, 暂时保持不变 -->
+        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-starter -->
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-starter</artifactId>
+            <version>${storm.version}</version>
+        </dependency>
 
 
         <!-- 编译组件依赖开始 -->
@@ -207,6 +256,14 @@
 
 
         <!-- 测试组件依赖开始 -->
+
+        <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-simple -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.junit.platform/junit-platform-surefire-provider -->
         <dependency>

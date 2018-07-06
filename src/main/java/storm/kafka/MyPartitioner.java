@@ -4,8 +4,9 @@ import java.util.Random;
 
 import kafka.producer.Partitioner;
 import kafka.utils.VerifiableProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.apache.log4j.Logger;
 
 /** 
  * 类名: MyPartitioner
@@ -19,7 +20,7 @@ import org.apache.log4j.Logger;
  * 2015-7-10
  */  
 public class MyPartitioner implements Partitioner{
-	private static Logger logger = Logger.getLogger(MyPartitioner.class);
+	private static Logger logger = LoggerFactory.getLogger(MyPartitioner.class);
 	private Random random = new Random(); 
 	public MyPartitioner(VerifiableProperties props){
 		super();

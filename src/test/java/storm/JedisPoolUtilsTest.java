@@ -1,31 +1,58 @@
 package storm;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.DisabledOnJre;
 import org.junit.jupiter.api.condition.JRE;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import storm.util.JedisPoolUtils;
 
-import java.util.LinkedList;
-import java.util.List;
-
 /**
-* @author xzp
+ * @author xzp
  * @date: 2018-07-03
  * @description:
-*/
+ */
 @DisplayName("Redis连接池工具测试")
-public class JedisPoolUtilsTest {
+final class JedisPoolUtilsTest {
 
+    @SuppressWarnings("unused")
+    private static final Logger logger = LoggerFactory.getLogger(JedisPoolUtilsTest.class);
+
+    private JedisPoolUtilsTest() {}
+
+    @SuppressWarnings("unused")
+    @BeforeAll
+    private static void beforeAll() {
+        // 所有测试之前
+    }
+
+    @SuppressWarnings("unused")
+    @BeforeEach
+    private void beforeEach() {
+        // 每个测试之前
+    }
+
+    @DisplayName("测试获取连接池单例")
     @Test
-    @DisplayName("测试获取连接池实例")
-    public void testGetJedisPool() {
+    void getInstance() {
+        final JedisPoolUtils instance1 = JedisPoolUtils.getInstance();
+        Assertions.assertNotNull(instance1, () -> "获取" + JedisPool.class.getName() + "实例失败");
+
+        final JedisPoolUtils instance2 = JedisPoolUtils.getInstance();
+        Assertions.assertNotNull(instance2, () -> "获取" + JedisPool.class.getName() + "实例失败");
+
+        Assertions.assertSame(instance1, instance2, "获取的单例不同");
+    }
+
+    @DisplayName("测试获取连接池实例和连接实例")
+    @Test
+    void getJedisPool() {
+        final JedisPoolUtils instance = JedisPoolUtils.getInstance();
         final JedisPool jedisPool;
         try {
-            jedisPool = JedisPoolUtils.getInstance().getJedisPool();
+            jedisPool = instance.getJedisPool();
         } catch (Exception e) {
             Assertions.fail("获取连接池异常", e);
             return;
@@ -41,24 +68,58 @@ public class JedisPoolUtilsTest {
         }
 
         Assertions.assertNotNull(jedis, "获取连接失败");
-        jedis.close();
+        jedisPool.returnResourceObject(jedis);
     }
 
-    @Test
     @DisplayName("测试函数式调用")
     @DisabledOnJre(JRE.OTHER)
-    public void testUseResource() {
+    @Test
+    void useResource() {
+        final JedisPoolUtils instance = JedisPoolUtils.getInstance();
         try {
-            final List<Object> flag = new LinkedList<>();
-            JedisPoolUtils.getInstance().useResource(jedis -> {
-                Assertions.assertNotNull(jedis, "使用连接失败");
-                flag.add(new Object());
-            });
+            final Object object = instance.useResource(
+                jedis -> {
+                    Assertions.assertNotNull(jedis, "使用连接失败");
+                    return new Object();
+                });
 
-            Assertions.assertFalse(() -> flag.isEmpty(), "回调函数没有被调用");
+            Assertions.assertNotNull(object, "回调函数没有被调用");
 
         } catch (Exception e) {
             Assertions.fail("使用连接异常", e);
         }
+    }
+
+    @DisplayName("测试函数式调用")
+    @DisabledOnJre(JRE.OTHER)
+    @Test
+    void useResourceWithDefault() {
+        final JedisPoolUtils instance = JedisPoolUtils.getInstance();
+        try {
+
+            final Object object = instance.useResource(
+                new Object(),
+                (defaultValue, jedis) -> {
+                    Assertions.assertNotNull(jedis, "使用连接失败");
+                    return defaultValue;
+                });
+
+            Assertions.assertNotNull(object, "回调函数没有被调用");
+
+        } catch (Exception e) {
+            Assertions.fail("使用连接异常", e);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @AfterEach
+    private void afterEach() {
+        // 每个测试之后
+    }
+
+    @SuppressWarnings("unused")
+    @AfterAll
+    private static void afterAll() {
+        // 所有测试之后
     }
 }

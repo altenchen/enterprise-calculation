@@ -16,43 +16,49 @@ import java.util.Map;
  * @description:
  */
 @DisplayName("Json工具测试")
-public class JsonTest {
+final class JsonTest {
 
-    private static Logger logger;
+    @SuppressWarnings("unused")
+    private static final Logger logger = LoggerFactory.getLogger(JsonTest.class);
+
+    private JsonTest(){}
 
     private static IJson json;
 
+    @SuppressWarnings("unused")
     @BeforeAll
-    public static void beforeAll() {
-        logger = LoggerFactory.getLogger(JsonTest.class);
+    private static void beforeAll() {
         json = JsonUtils.getInstance();
     }
 
+    @SuppressWarnings("unused")
     @BeforeEach
-    public void beforeEach() {
+    private void beforeEach() {
         // 每个测试之前
     }
 
+    @DisplayName("测试序列化")
     @Test
-    public void testToJson() {
+    void toJson() {
         Map<String, String> dic = new HashMap<>();
         dic.put("k1", "v1");
         dic.put("k2", "v2");
         dic.put("k3", "v3");
         final String json = JsonTest.json.toJson(dic);
-        logger.info(json);
 
         Assertions.assertFalse(StringUtils.isBlank(json), "Json序列化不能为空白");
+        Assertions.assertEquals("{\"k1\":\"v1\",\"k2\":\"v2\",\"k3\":\"v3\"}", json, "Json序列化结果不对");
     }
 
+    @SuppressWarnings("unused")
     @AfterEach
-    public void afterEach() {
+    private void afterEach() {
         // 每个测试之后
     }
 
+    @SuppressWarnings("unused")
     @AfterAll
-    public static void afterAll() {
+    private static void afterAll() {
         json = null;
-        logger = null;
     }
 }
