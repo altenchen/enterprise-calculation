@@ -3,10 +3,15 @@ package storm.cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
+import com.google.gson.JsonIOException;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -15,13 +20,11 @@ import redis.clients.jedis.exceptions.JedisException;
 import storm.constant.RedisConstant;
 import storm.util.JedisPoolUtils;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * 车辆数据缓存, 缓存了车辆的部分数据的最后有效值.
@@ -46,98 +49,85 @@ public final class VehicleCache {
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
     @NotNull
-    private static final String buildKey(@NotNull final String vid) {
+    private static final String buildRedisKey(@NotNull final String vid) {
         return "vehCache." + vid;
     }
 
     /**
      * 缓存结构: <vid, <field, <key, value>>>
+     * -- table(vid)
+     * -- rowId(field)
+     * -- row(key, value)
      */
-    private final LoadingCache<String, LoadingCache<String, Map<String, String>>> cache =
+    private final LoadingCache<String, LoadingCache<String, ImmutableMap<String, String>>> cache =
         CacheBuilder
             .newBuilder()
             .expireAfterWrite(1, TimeUnit.DAYS)
             .expireAfterAccess(1, TimeUnit.HOURS)
-            .build(new CacheLoader<String, LoadingCache<String, Map<String, String>>>() {
+            .build(new CacheLoader<String, LoadingCache<String, ImmutableMap<String, String>>>() {
+
+                @Override
+                public Map<String, LoadingCache<String, ImmutableMap<String, String>>> loadAll(
+                    @NotNull final Iterable<? extends String> keys) {
+
+                    final Map<String, LoadingCache<String, ImmutableMap<String, String>>> result = new HashMap<>();
+
+                    for (String key : keys) {
+                        final String redisKey = buildRedisKey(key);
+                        final LoadingCache<String, ImmutableMap<String, String>> map = loadVehicleDatabase(redisKey);
+                        result.put(key, map);
+                    }
+
+                    return result;
+                }
+
                 @NotNull
                 @Override
-                public LoadingCache<String, Map<String, String>> load(@NotNull final String vid) {
-                    final String key = buildKey(vid);
-                    return loadVehicleCache(key);
+                public LoadingCache<String, ImmutableMap<String, String>> load(
+                    @NotNull final String key) {
+                    final String redisKey = buildRedisKey(key);
+                    return loadVehicleDatabase(redisKey);
                 }
             });
 
     // region 加载缓存
 
     @NotNull
-    private LoadingCache<String, Map<String, String>> loadVehicleCache(
-        @NotNull final String key) {
+    private LoadingCache<String, ImmutableMap<String, String>> loadVehicleDatabase(
+        @NotNull final String redisKey) {
 
         return CacheBuilder.newBuilder()
             .expireAfterWrite(1, TimeUnit.HOURS)
             .expireAfterAccess(1, TimeUnit.MINUTES)
-            .build(new CacheLoader<String, Map<String, String>>() {
+            .build(new CacheLoader<String, ImmutableMap<String, String>>() {
 
                 @NotNull
                 @Override
-                public Map<String, String> load(
-                    @NotNull final String field)
-                    throws JedisException {
-                    return loadVehicleCache(key, field);
+                public Map<String, ImmutableMap<String, String>> loadAll(
+                    @NotNull final Iterable<? extends String> fields)
+                    throws JedisException, JsonIOException {
+
+                    return loadVehicleTable(redisKey, fields);
                 }
 
                 @NotNull
                 @Override
-                public Map<String, Map<String, String>> loadAll(
-                    @NotNull final Iterable<? extends String> fields)
-                    throws JedisException {
-
-                    return loadVehicleCache(key, fields);
+                public ImmutableMap<String, String> load(
+                    @NotNull final String field)
+                    throws JedisException, JsonIOException {
+                    return loadVehicleRow(redisKey, field);
                 }
             });
     }
 
     @NotNull
-    private Map<String, String> loadVehicleCache(
-        @NotNull final String key,
-        @NotNull final String field)
-        throws JedisException {
-
-        return (Map<String, String>) ObjectUtils.defaultIfNull(JEDIS_POOL_UTILS.useResource(jedis -> {
-            final String select = jedis.select(REDIS_DB_INDEX);
-            if (!RedisConstant.Select.OK.name().equals(select)) {
-
-                logger.warn("切换车辆缓存库失败");
-            } else {
-
-                logger.trace("单独加载缓存[{}][{}]", key, field);
-
-                final String json = jedis.hget(key, field);
-                final Gson gson = new Gson();
-
-                try {
-                    final Map<String, String> map = gson.fromJson(
-                        json,
-                        new TypeToken<HashMap<String, String>>() {
-                        }.getType());
-
-                    return map;
-                } catch (JsonSyntaxException e) {
-                    logger.warn("错误的数据格式Redis[{}][{}][{}]->{}", REDIS_DB_INDEX, key, field, json);
-                }
-            }
-            return null;
-        }), new HashMap<>());
-    }
-
-    @NotNull
-    private Map<String, Map<String, String>> loadVehicleCache(
+    private Map<String, ImmutableMap<String, String>> loadVehicleTable(
         @NotNull final String key,
         @NotNull final Iterable<? extends String> fields)
         throws JedisException {
 
         return JEDIS_POOL_UTILS.useResource(jedis -> {
-            final Map<String, Map<String, String>> result = new HashMap<>();
+            final Map<String, ImmutableMap<String, String>> result = new HashMap<>();
 
             final String select = jedis.select(REDIS_DB_INDEX);
             if (!RedisConstant.Select.OK.name().equals(select)) {
@@ -155,27 +145,64 @@ public final class VehicleCache {
                     final String json = entry.getValue();
 
                     try {
-                        final Map<String, String> map = (Map<String, String>) ObjectUtils.defaultIfNull(
+                        final Map<String, String> map =
                             gson.fromJson(
                                 json,
                                 new TypeToken<HashMap<String, String>>() {
                                 }.getType()
-                            ),
-                            new HashMap<>()
-                        );
+                            );
 
-                        result.put(field, map);
+                        result.put(
+                            field,
+                            map == null ?
+                                ImmutableMap.of()
+                                : new ImmutableMap.Builder<String, String>().putAll(map).build());
                     } catch (JsonSyntaxException e) {
                         logger.warn("错误的数据格式Redis[{}][{}][{}]->{}", REDIS_DB_INDEX, key, field, json);
                     }
                 }
             }
             for (String field : fields) {
-                if(!result.containsKey(field)) {
-                    result.put(field, new HashMap<>());
+                if (!result.containsKey(field)) {
+                    result.put(field, ImmutableMap.of());
                 }
             }
             return result;
+        });
+    }
+
+    @NotNull
+    private ImmutableMap<String, String> loadVehicleRow(
+        @NotNull final String key,
+        @NotNull final String field)
+        throws JedisException {
+
+        return JEDIS_POOL_UTILS.useResource(jedis -> {
+            final String select = jedis.select(REDIS_DB_INDEX);
+            if (!RedisConstant.Select.OK.name().equals(select)) {
+
+                logger.warn("切换车辆缓存库失败");
+            } else {
+
+                logger.trace("单独加载缓存[{}][{}]", key, field);
+
+                final String json = jedis.hget(key, field);
+                final Gson gson = new Gson();
+
+                try {
+                    final Map<String, String> map = gson.fromJson(
+                        json,
+                        new TypeToken<HashMap<String, String>>() {
+                        }.getType());
+
+                    return null == map ?
+                        ImmutableMap.of()
+                        : new ImmutableMap.Builder<String, String>().putAll(map).build();
+                } catch (JsonSyntaxException e) {
+                    logger.warn("错误的数据格式Redis[{}][{}][{}]->{}", REDIS_DB_INDEX, key, field, json);
+                }
+            }
+            return ImmutableMap.of();
         });
     }
 
@@ -184,30 +211,49 @@ public final class VehicleCache {
     // region 获取缓存
 
     @NotNull
-    public Map<String, String> getVehicleCache(
+    public ImmutableMap<String, String> getField(
         @NotNull final String vid,
         @NotNull final String field)
         throws ExecutionException {
+
+        if (StringUtils.isBlank(vid) || StringUtils.isBlank(field)) {
+            return ImmutableMap.of();
+        }
 
         return cache.get(vid).get(field);
     }
 
     @NotNull
-    public Map<String, Map<String, String>> getVehicleCache(
+    public Map<String, ImmutableMap<String, String>> getFields(
         @NotNull final String vid,
         @NotNull final Iterable<String> fields)
         throws ExecutionException {
 
-        return cache.get(vid).getAll(fields);
+        if (StringUtils.isBlank(vid)) {
+            return ImmutableMap.of();
+        }
+
+        final Set<String> verifiedField = new HashSet<>();
+        for (String field : fields) {
+            if (StringUtils.isNotBlank(field)) {
+                verifiedField.add(field);
+            }
+        }
+
+        if (CollectionUtils.isEmpty(verifiedField)) {
+            return ImmutableMap.of();
+        }
+
+        return cache.get(vid).getAll(verifiedField);
     }
 
     @NotNull
-    public Map<String, Map<String, String>> getVehicleCache(
+    public Map<String, ImmutableMap<String, String>> getFields(
         @NotNull final String vid,
         @NotNull final String... fields)
         throws ExecutionException {
 
-        return cache.get(vid).getAll(Stream.of(fields).collect(Collectors.toSet()));
+        return getFields(vid, Arrays.asList(fields));
     }
 
     // endregion 获取缓存
@@ -255,4 +301,74 @@ public final class VehicleCache {
     }
 
     // endregion 清除缓存
+
+    // region 更新缓存
+
+    @NotNull
+    public void putField(
+        @NotNull final String vid,
+        @NotNull final String field,
+        @NotNull final ImmutableMap<String, String> dictionary)
+        throws JedisException, JsonParseException, ExecutionException {
+
+        if (StringUtils.isBlank(vid)) {
+            return;
+        }
+
+        JEDIS_POOL_UTILS.useResource(jedis -> {
+            final String select = jedis.select(REDIS_DB_INDEX);
+            if (!RedisConstant.Select.OK.name().equals(select)) {
+
+                logger.warn("切换车辆缓存库失败");
+            } else {
+
+                final String redisKey = buildRedisKey(vid);
+
+                logger.trace("单独更新缓存[{}][{}]", redisKey, field);
+
+                if (MapUtils.isEmpty(dictionary)) {
+                    jedis.hdel(redisKey, field);
+                    return;
+                }
+
+                final Gson gson = new Gson();
+                final String json = gson.toJson(dictionary);
+
+                jedis.hset(redisKey, field, json);
+            }
+        });
+
+        final LoadingCache<String, ImmutableMap<String, String>> table = cache.get(vid);
+        if (MapUtils.isEmpty(dictionary)) {
+            table.invalidate(field);
+        } else {
+            table.put(field, dictionary);
+        }
+    }
+
+    @NotNull
+    public void putFields(
+        @NotNull final String vid,
+        @NotNull final Map<String, String> fields)
+        throws JedisException, ExecutionException {
+
+        if (MapUtils.isEmpty(fields)) {
+            return;
+        }
+
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            final String field = entry.getKey();
+            final String dictionary = entry.getValue();
+        }
+    }
+
+    @NotNull
+    public void putFields(
+        @NotNull final String vid,
+        @NotNull final String... fields)
+        throws ExecutionException {
+
+    }
+
+    // endregion 更新缓存
 }

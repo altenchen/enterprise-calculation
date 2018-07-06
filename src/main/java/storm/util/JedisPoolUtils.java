@@ -16,6 +16,7 @@ import storm.system.SysDefine;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -136,7 +137,15 @@ public final class JedisPoolUtils {
         return JEDIS_POOL;
     }
 
-    @Nullable
+    public final void useResource(
+        @NotNull final Consumer<? super Jedis> action)
+        throws JedisException {
+
+        Objects.requireNonNull(action);
+
+        useResourceInternal(action).accept(JEDIS_POOL);
+    }
+
     public final <R> R useResource(
         @NotNull final Function<? super Jedis, ? extends R> action)
         throws JedisException {
@@ -146,14 +155,32 @@ public final class JedisPoolUtils {
         return useResourceInternal(action).apply(JEDIS_POOL);
     }
 
-    public final <R> R useResource(
-        @Nullable final R defaultValue,
-        @NotNull final BiFunction<R, Jedis, R> action)
+    public final <R, D extends R> R useResource(
+        @Nullable final D defaultValue,
+        @NotNull final BiFunction<? super R, ? super Jedis, D> action)
         throws JedisException {
 
         Objects.requireNonNull(action);
 
         return useResourceInternal(action).apply(defaultValue, JEDIS_POOL);
+    }
+
+    @NotNull
+    @Contract(pure = true)
+    private static Consumer<? super JedisPool> useResourceInternal(
+        @NotNull final Consumer<? super Jedis> action)
+        throws JedisException {
+
+        return jedisPool -> {
+            final Jedis jedis = jedisPool.getResource();
+            try {
+                action.accept(jedis);
+                jedisPool.returnResource(jedis);
+            } catch (JedisException e) {
+                jedisPool.returnBrokenResource(jedis);
+                throw e;
+            }
+        };
     }
 
     @NotNull
@@ -177,8 +204,8 @@ public final class JedisPoolUtils {
 
     @NotNull
     @Contract(pure = true)
-    private static <R> BiFunction<R, JedisPool, R> useResourceInternal(
-        @NotNull final BiFunction<R, Jedis, R> action)
+    private static <R> BiFunction<? super R, ? super JedisPool, ? extends R> useResourceInternal(
+        @NotNull final BiFunction<? super R, ? super Jedis, ? extends R> action)
         throws JedisException {
 
         return (defaultValue, jedisPool) -> {
