@@ -1,6 +1,5 @@
 package storm.handler.cusmade;
 
-import com.alibaba.fastjson.JSON;
 import storm.util.ConfigUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -40,6 +39,7 @@ public class CarRuleHandler implements InfoNotice {
     private static final Logger logger = LoggerFactory.getLogger(CarRuleHandler.class);
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
+    private static final GsonUtils gson = GsonUtils.getInstance();
 
     
 
@@ -728,7 +728,7 @@ public class CarRuleHandler implements InfoNotice {
                 jsonMap.put("lastOnline", chargeCar.lastOnline);
                 jsonMap.put("distance", distance);
 
-                String jsonString = JSON.toJSONString(jsonMap);
+                String jsonString = gson.toJson(jsonMap);
                 topnCars.put("" + cts, jsonString);
                 //send to kafka map
                 Map<String, Object> kMap = new TreeMap<String, Object>();

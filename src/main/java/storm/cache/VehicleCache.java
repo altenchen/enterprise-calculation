@@ -23,8 +23,6 @@ import storm.util.JedisPoolUtils;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * 车辆数据缓存, 缓存了车辆的部分数据的最后有效值.
@@ -33,6 +31,7 @@ import java.util.stream.Stream;
  * @date: 2018-07-02
  * @description:
  */
+@SuppressWarnings("unused")
 public final class VehicleCache {
 
     private static final Logger logger = LoggerFactory.getLogger(VehicleCache.class);
@@ -48,8 +47,9 @@ public final class VehicleCache {
 
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
+    @Contract(pure = true)
     @NotNull
-    private static final String buildRedisKey(@NotNull final String vid) {
+    private static String buildRedisKey(@NotNull final String vid) {
         return "vehCache." + vid;
     }
 
@@ -70,7 +70,7 @@ public final class VehicleCache {
                 public Map<String, LoadingCache<String, ImmutableMap<String, String>>> loadAll(
                     @NotNull final Iterable<? extends String> keys) {
 
-                    final Map<String, LoadingCache<String, ImmutableMap<String, String>>> result = new HashMap<>();
+                    final Map<String, LoadingCache<String, ImmutableMap<String, String>>> result = new TreeMap<>();
 
                     for (String key : keys) {
                         final String redisKey = buildRedisKey(key);
@@ -127,7 +127,7 @@ public final class VehicleCache {
         throws JedisException {
 
         return JEDIS_POOL_UTILS.useResource(jedis -> {
-            final Map<String, ImmutableMap<String, String>> result = new HashMap<>();
+            final Map<String, ImmutableMap<String, String>> result = new TreeMap<>();
 
             final String select = jedis.select(REDIS_DB_INDEX);
             if (!RedisConstant.Select.OK.name().equals(select)) {
@@ -148,7 +148,7 @@ public final class VehicleCache {
                         final Map<String, String> map =
                             gson.fromJson(
                                 json,
-                                new TypeToken<HashMap<String, String>>() {
+                                new TypeToken<TreeMap<String, String>>() {
                                 }.getType()
                             );
 
@@ -192,7 +192,7 @@ public final class VehicleCache {
                 try {
                     final Map<String, String> map = gson.fromJson(
                         json,
-                        new TypeToken<HashMap<String, String>>() {
+                        new TypeToken<TreeMap<String, String>>() {
                         }.getType());
 
                     return null == map ?
@@ -304,7 +304,6 @@ public final class VehicleCache {
 
     // region 更新缓存
 
-    @NotNull
     public void putField(
         @NotNull final String vid,
         @NotNull final String field,

@@ -8,8 +8,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import com.alibaba.fastjson.JSON;
-
 import storm.dto.fence.Coordinate;
 import storm.dto.fence.EleFence;
 import storm.handler.fence.input.Rule;
@@ -19,6 +17,7 @@ import storm.handler.fence.output.InvokeCtxMtd;
 import storm.handler.fence.output.InvokeSglMtd;
 import storm.system.DataKey;
 import storm.system.SysDefine;
+import storm.util.GsonUtils;
 import storm.util.dbconn.Conn;
 
 import java.util.Collection;
@@ -33,6 +32,7 @@ import java.util.concurrent.ScheduledExecutorService;
 public class EleFenceBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1700001L;
+	private static final GsonUtils gson = GsonUtils.getInstance();
 	private OutputCollector collector;
 	private Map<String, EleFence>fenceCache;//key:fenceId,value:EleFence
 	private Map<String, List<EleFence>>vidFenceCache;//key:vid,value:
@@ -98,8 +98,8 @@ public class EleFenceBolt extends BaseRichBolt {
             if(null != resuts && resuts.size()>0)
             	for (Map<String, Object> map : resuts) {
             		if(null != map && map.size()>0){
-            			
-            			String jsonString=JSON.toJSONString(map);
+
+						String jsonString= gson.toJson(map);
             			//kafka存储
             			sendAlarmKafka(SysDefine.FENCE_ALARM,fenceAlarmTopic,vid, jsonString);
             		}

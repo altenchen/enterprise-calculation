@@ -19,7 +19,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import com.alibaba.fastjson.JSON;
 import com.sun.jersey.core.util.Base64;
 
 import storm.protocol.CommandType;
@@ -27,6 +26,7 @@ import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
+import storm.util.GsonUtils;
 import storm.util.NumberUtils;
 import storm.dto.alarm.CoefOffset;
 import storm.dto.alarm.CoefOffsetGetter;
@@ -46,6 +46,7 @@ public class AlarmBolt extends BaseRichBolt {
      * 
      */
     private static final long serialVersionUID = 1720001L;
+    private static final GsonUtils gson = GsonUtils.getInstance();
 
     private OutputCollector collector;
 
@@ -212,7 +213,7 @@ public class AlarmBolt extends BaseRichBolt {
             String vid = input.getString(0);
             Map<String, String> dat = (TreeMap<String, String>) input.getValue(1);
             if (printLevel >= 5) {
-                System.out.println("Receive kafka message REALINFO-------------------------------MSG:" + JSON.toJSONString(dat));
+                System.out.println("Receive kafka message REALINFO-------------------------------MSG:" + gson.toJson(dat));
             }
 
             if (!dat.containsKey(SysDefine.TIME)
@@ -230,7 +231,7 @@ public class AlarmBolt extends BaseRichBolt {
                 try {
                     processAlarm(dat, type);
                 } catch (Exception e) {
-                    System.out.println("软报警分析出错！map:" + JSON.toJSONString(dat));
+                    System.out.println("软报警分析出错！map:" + gson.toJson(dat));
                     e.printStackTrace();
                 }
             }
@@ -253,7 +254,7 @@ public class AlarmBolt extends BaseRichBolt {
 //                    CTFOUtils.getDefaultCTFOCacheTable().addHash(vid, dat);
                     
                 } catch (Exception e) {
-                    System.out.println("实时数据redis存储出错！map:" + JSON.toJSONString(dat));
+                    System.out.println("实时数据redis存储出错！map:" + gson.toJson(dat));
                 }
             } else if (CommandType.SUBMIT_LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
                 Map<String, String> linkmap = new TreeMap<String, String>();
@@ -510,12 +511,12 @@ public class AlarmBolt extends BaseRichBolt {
                 sendMsg.put("STATUS", 3);
                 sendMsg.put("TIME", time);
                 sendMsg.put("CONST_ID", filterId);
-                String alarmEnd = JSON.toJSONString(sendMsg);
+                String alarmEnd = gson.toJson(sendMsg);
                         
                 sendMsg.put("ALARM_NAME", alarmName);
                 sendMsg.put("ALARM_LEVEL", alarmLevel);
                 sendMsg.put("LEFT1", left1);
-                String alarmhbase = JSON.toJSONString(sendMsg);
+                String alarmhbase = gson.toJson(sendMsg);
                 //kafka存储
                 sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic,vid, alarmEnd);
                 //hbase存储
@@ -840,14 +841,14 @@ public class AlarmBolt extends BaseRichBolt {
                             sendMsg.put("TIME", getTimeStr(lastAlarmUtc));
                             sendMsg.put("CONST_ID", filterId);
                             sendMsg.put("ALARM_LEVEL", alarmLevel);
-                            String alarmStart = JSON.toJSONString(sendMsg);
+                            String alarmStart = gson.toJson(sendMsg);
                             
                             sendMsg.put("ALARM_NAME", alarmName);
                             sendMsg.put("LEFT1", left1);
                             sendMsg.put("LEFT2", left2);
                             sendMsg.put("RIGHT1", right1);
                             sendMsg.put("RIGHT2", right2);
-                            String alarmHbase = JSON.toJSONString(sendMsg);
+                            String alarmHbase = gson.toJson(sendMsg);
                             //发送kafka提供数据库存储
                             sendAlarmKafka(SysDefine.VEH_ALARM,vehAlarmTopic,vid, alarmStart);
                             //hbase存储
@@ -900,7 +901,7 @@ public class AlarmBolt extends BaseRichBolt {
                         sendMsg.put("STATUS", 3);
                         sendMsg.put("TIME", ctArr[1]);
                         sendMsg.put("CONST_ID", filterId);
-                        String alarmEnd = JSON.toJSONString(sendMsg);
+                        String alarmEnd = gson.toJson(sendMsg);
                         
                         sendMsg.put("ALARM_NAME", alarmName);
                         sendMsg.put("ALARM_LEVEL", alarmLevel);
@@ -908,7 +909,7 @@ public class AlarmBolt extends BaseRichBolt {
                         sendMsg.put("LEFT2", left2);
                         sendMsg.put("RIGHT1", right1);
                         sendMsg.put("RIGHT2", right2);
-                        String alarmHbase = JSON.toJSONString(sendMsg);
+                        String alarmHbase = gson.toJson(sendMsg);
                         
                         //kafka存储
                         sendAlarmKafka(SysDefine.VEH_ALARM,vehAlarmTopic,vid, alarmEnd);

@@ -8,12 +8,11 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.fastjson.JSON;
-
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
 import storm.system.DataKey;
+import storm.util.GsonUtils;
 import storm.util.JedisPoolUtils;
 
 /**
@@ -23,6 +22,7 @@ import storm.util.JedisPoolUtils;
 public final class DataToRedis {
 
 	private static Logger logger = LoggerFactory.getLogger(DataToRedis.class);
+	private static final GsonUtils gson = GsonUtils.getInstance();
 
 	public void saveVehData(String VID, Object obj){
 		saveVehData(JedisPoolUtils.getInstance().getJedisPool(),VID,obj);
@@ -33,7 +33,7 @@ public final class DataToRedis {
 		try{
 			jedis=jedisPool.getResource();
 			jedis.select(6);
-			jedis.set("DATA_"+VID, JSON.toJSONString(obj));
+			jedis.set("DATA_"+VID, gson.toJson(obj));
 		}catch(JedisException e){
 			logger.error("存储测试车辆数据缓存Jedis异常:"+ e.getMessage() ,e);
 		}catch(Exception ex){
@@ -44,30 +44,6 @@ public final class DataToRedis {
 			}
 		}
 	}
-
-	public Object getVehData(String VID){
-		return getVehData(JedisPoolUtils.getInstance().getJedisPool(), VID);
-	}
-	public Object getVehData(JedisPool jedisPool,String VID) {
-        Object obj = null;
-        Jedis jedis=null;
-		try{
-			jedis=jedisPool.getResource();
-            jedis.select(6);
-            String jsonString = jedis.get("DATA_"+VID);
-            obj = JSON.parseObject(jsonString, Object.class);
-        }catch(JedisException e){
-            logger.error("获取测试车辆数据缓存Jedis异常:"+ e.getMessage(), e);
-        }catch(Exception ex){
-            logger.error("获取测试车辆数据缓存异常:"+ex.getMessage(), ex);
-        }finally{
-            if(jedis != null){
-                jedisPool.returnResourceObject(jedis);
-            }
-        }
-
-        return obj;
-    }
     public void saveVehCmd(String VID, Map<String, String> obj){
 		saveVehCmd(JedisPoolUtils.getInstance().getJedisPool(),VID, obj);
     }
@@ -76,7 +52,7 @@ public final class DataToRedis {
 		try{
 			jedis=jedisPool.getResource();
             jedis.select(6);
-            jedis.set("CMD_"+VID, JSON.toJSONString(obj));
+			jedis.set("CMD_"+VID, gson.toJson(obj));
         }catch(JedisException e){
             logger.error("存储测试车辆命令缓存Jedis异常:"+ e.getMessage() ,e);
         }catch(Exception ex){
@@ -87,71 +63,8 @@ public final class DataToRedis {
             }
         }
     }
-    public Map<String, Map<String, String>> getAllVehCMD(){
-		return getAllVehCMD(JedisPoolUtils.getInstance().getJedisPool());
-    }
-    public Map<String, Map<String, String>> getAllVehCMD(JedisPool jedisPool) {
-        Map<String, Map<String, String>> appCmd = new HashMap<String, Map<String, String>>();
-        Jedis jedis=null;
-		try{
-			jedis=jedisPool.getResource();
-            jedis.select(6);
-            Set<String> keys  = jedis.keys("CMD_*");
-            if (keys != null && keys.size() > 0) {
-                for(String key : keys){
-                    String jsonString = jedis.get(key);
-                    Map<String, String> obj = JSON.parseObject(jsonString, Map.class);
-                    appCmd.put(new String(key.split("_")[1]), obj);
-                    obj=null;
-                    key=null;
-                }
-            }
-        }catch(JedisException e){
-            logger.error("获取所有测试车辆命令缓存Jedis异常:"+ e.getMessage(), e);
-        }catch(Exception ex){
-            logger.error("获取所有测试车辆命令缓存异常:"+ex.getMessage(), ex);
-        }finally{
-            if(jedis != null){
-                jedisPool.returnResourceObject(jedis);
-            }
-        }
 
-        return appCmd;
-    }
-
-    public Map<String, Object> getAllVehData(){
-		return getAllVehData(JedisPoolUtils.getInstance().getJedisPool());
-    }
-    public Map<String, Object> getAllVehData(JedisPool jedisPool) {
-        Map<String, Object> ObjectMap = new HashMap<String, Object>();
-
-        Jedis jedis=null;
-		try{
-			jedis=jedisPool.getResource();
-            jedis.select(6);
-            Set<String> keys  = jedis.keys("DATA_*");
-            if (keys != null && keys.size() > 0) {
-                for(String key : keys){
-                    String jsonString = jedis.get(key);
-                    Object obj = JSON.parseObject(jsonString, Object.class);
-                    ObjectMap.put(new String(key.split("_")[1]), obj);
-                    obj=null;
-                    key=null;
-                }
-            }
-        }catch(JedisException e){
-            logger.error("获取所有测试车辆数据缓存Jedis异常:"+ e.getMessage(), e);
-        }catch(Exception ex){
-            logger.error("获取所有测试车辆数据缓存异常:"+ex.getMessage(), ex);
-        }finally{
-            if(jedis != null){
-            	jedisPool.returnResourceObject(jedis);
-            }
-        }
-
-        return ObjectMap;
-    }
-    public void delTestVehInfo(String VID) {
+	public void delTestVehInfo(String VID) {
 		delTestVehInfo(JedisPoolUtils.getInstance().getJedisPool(),VID);
     }
     public void delTestVehInfo(JedisPool jedisPool,String VID) {
@@ -289,14 +202,17 @@ public final class DataToRedis {
 			jedis = jedisPool.getResource();
 			jedis.select(4);
 			m = jedis.hgetAll("XNY.FILTER");
-			if (!MapUtils.isEmpty(m))
-				if(m.size()==1)
-					for (Map.Entry<String,String> entry : m.entrySet()) {
-						if(StringUtils.isEmpty(entry.getKey())
-								|| StringUtils.isEmpty(entry.getValue()))
-							m=null;
+			if (!MapUtils.isEmpty(m)) {
+				if(m.size()==1) {
+					for (Map.Entry<String, String> entry : m.entrySet()) {
+						if (StringUtils.isEmpty(entry.getKey())
+							|| StringUtils.isEmpty(entry.getValue())) {
+							m = null;
+						}
 						break;
 					}
+				}
+			}
 			
 		}catch(JedisException e){
 			logger.error("获取预处理缓存Jedis异常:"+ e.getMessage() ,e);
@@ -307,8 +223,9 @@ public final class DataToRedis {
 				jedisPool.returnResourceObject(jedis);
 			}
 		}
-		if (MapUtils.isEmpty(m))
+		if (MapUtils.isEmpty(m)) {
 			return null;
+		}
 		return m;
 	}
 	
@@ -336,8 +253,9 @@ public final class DataToRedis {
 						Set<String> value = jedis.smembers(key);
 
 						if (!CollectionUtils.isEmpty(value)) {
-							if(!CollectionUtils.isEmpty(defaultAlarm))
+							if(!CollectionUtils.isEmpty(defaultAlarm)) {
 								value.addAll(defaultAlarm);
+							}
 							s.put(key.split("_")[1],value);
 						}
 						
@@ -354,8 +272,9 @@ public final class DataToRedis {
 				jedisPool.returnResourceObject(jedis);
 			}
 		}
-		if (MapUtils.isEmpty(s))
+		if (MapUtils.isEmpty(s)) {
 			return null;
+		}
 		return s;
 	}
 	
@@ -375,8 +294,9 @@ public final class DataToRedis {
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 
 		}
 
@@ -384,19 +304,22 @@ public final class DataToRedis {
 	}
 	
 	public void delKeys(Set<String> keys,int db){
-		if(null != keys && keys.size()>0)
+		if(null != keys && keys.size()>0) {
 			delKeys(keys,db, JedisPoolUtils.getInstance().getJedisPool());
+		}
 	}
 	public void delKeys(Set<String> keys,int db,JedisPool jedisPool) {
-		if(null == keys || keys.size()<1)
+		if(null == keys || keys.size()<1) {
 			return;
+		}
 		Jedis jedis = null ;
 		try{
 			jedis = jedisPool.getResource();
 			jedis.select(db);
 			for (String key : keys) {
-				if(null !=key && !"".equals(key.trim()))
+				if(null !=key && !"".equals(key.trim())) {
 					jedis.del(key);
+				}
 			}
 			keys=null;
 		}catch(JedisException e){
@@ -411,12 +334,14 @@ public final class DataToRedis {
 		
 	}
 	public void delKey(String key,int db){
-		if(null != key )
+		if(null != key ) {
 			delKey(key,db, JedisPoolUtils.getInstance().getJedisPool());
+		}
 	}
 	public void delKey(String key,int db,JedisPool jedisPool) {
-		if(null == key)
+		if(null == key) {
 			return;
+		}
 		Jedis jedis = null ;
 		try{
 			jedis = jedisPool.getResource();
@@ -666,8 +591,9 @@ public final class DataToRedis {
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 
 		}
 	}
@@ -687,26 +613,31 @@ public final class DataToRedis {
 			jedis = jedisPool.getResource();
 			jedis.select(db);
 			m = jedis.hgetAll(name);
-			if (!MapUtils.isEmpty(m))
-				if(m.size()==1)
-					for (Map.Entry<String,String> entry : m.entrySet()) {
-						if(StringUtils.isEmpty(entry.getKey())
-								|| StringUtils.isEmpty(entry.getValue()))
-							m=null;
+			if (!MapUtils.isEmpty(m)) {
+				if(m.size()==1) {
+					for (Map.Entry<String, String> entry : m.entrySet()) {
+						if (StringUtils.isEmpty(entry.getKey())
+							|| StringUtils.isEmpty(entry.getValue())) {
+							m = null;
+						}
 						break;
 					}
+				}
+			}
 			
 		}catch(JedisException e){
 			logger.error("获取预处理缓存Jedis异常:"+ e.getMessage() ,e);
 		}catch(Exception ex){
 			logger.error("获取预处理缓存异常:"+ex.getMessage() ,ex);
 		} finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 
 		}
-		if (MapUtils.isEmpty(m))
+		if (MapUtils.isEmpty(m)) {
 			return null;
+		}
 		return m;
 	}
 
@@ -726,8 +657,9 @@ public final class DataToRedis {
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 
 		}
 
@@ -750,8 +682,9 @@ public final class DataToRedis {
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 
 		}
 		return keys;
@@ -774,8 +707,9 @@ public String getString(int db,String name){
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 
 		}
 		return string;
@@ -798,8 +732,9 @@ public String getString(int db,String name){
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 
 		}
 		return string;
@@ -821,8 +756,9 @@ public String getString(int db,String name){
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 
 		}
 		return keys;
@@ -842,8 +778,9 @@ public String getString(int db,String name){
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 
 		}
 	}
@@ -862,8 +799,9 @@ public String getString(int db,String name){
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 			
 		}
 	}
@@ -882,8 +820,9 @@ public String getString(int db,String name){
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 			
 		}
 	}
@@ -908,8 +847,9 @@ public String getString(int db,String name){
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 			
 		}
 	}
@@ -928,8 +868,9 @@ public String getString(int db,String name){
 		}catch(Exception ex){
 			logger.error("存储临时统计数据缓存异常:"+ex.getMessage() ,ex);
 		}finally{
-			if(jedis != null)
+			if(jedis != null) {
 				jedisPool.returnResourceObject(jedis);
+			}
 			
 		}
 	}

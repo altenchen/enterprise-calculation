@@ -1,5 +1,6 @@
 package storm.bolt.deal.norm;
 
+import com.google.gson.Gson;
 import org.apache.commons.lang.StringUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -9,12 +10,11 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import com.alibaba.fastjson.JSON;
-
 import storm.handler.cal.EsRealCalHandler;
 import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
+import storm.util.GsonUtils;
 import storm.util.NumberUtils;
 
 import java.util.List;
@@ -29,6 +29,7 @@ public class SynEsculBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1700001L;
 	private static final ConfigUtils configUtils = ConfigUtils.getInstance();
+	private static final GsonUtils gson = GsonUtils.getInstance();
 	private OutputCollector collector;
 	private static String statusEsTopic;
 	private long lastExeTime;
@@ -67,7 +68,7 @@ public class SynEsculBolt extends BaseRichBolt {
     				for (Map<String, Object> map : monitormsgs) {
     					if (null != map && map.size() > 0) {
     						Object vid = map.get(SysDefine.UUID);
-    						String json=JSON.toJSONString(map);
+							String json=gson.toJson(map);
     						sendToKafka(SysDefine.SYNES_NOTICE,statusEsTopic,vid, json);
     					}
     				}
@@ -80,7 +81,7 @@ public class SynEsculBolt extends BaseRichBolt {
     				for (Map<String, Object> map : msgs) {
     					if (null != map && map.size() > 0) {
     						Object vid = map.get(SysDefine.UUID);
-    						String json=JSON.toJSONString(map);
+    						String json=gson.toJson(map);
     						sendToKafka(SysDefine.SYNES_NOTICE,statusEsTopic,vid, json);
     					}
     				}
@@ -100,7 +101,7 @@ public class SynEsculBolt extends BaseRichBolt {
 							for (Map<String, Object> map : msgs) {
 								if (null != map && map.size() > 0) {
 									Object vid = map.get(SysDefine.UUID);
-									String json=JSON.toJSONString(map);
+									String json=gson.toJson(map);
 									sendToKafka(SysDefine.SYNES_NOTICE,statusEsTopic,vid, json);
 								}
 							}
@@ -131,7 +132,7 @@ public class SynEsculBolt extends BaseRichBolt {
             Map<String, Object> esMap = handler.getSendEsMsgAndSetAliveLast(data,now);
             if (null != esMap && esMap.size()>0) {
 				
-            	String json =JSON.toJSONString(esMap);
+            	String json =gson.toJson(esMap);
             	sendToKafka(SysDefine.SYNES_NOTICE,statusEsTopic,vid, json);
 			}
     	} else if(SysDefine.REG_STREAM_ID.equals(tuple.getSourceStreamId())){
@@ -157,7 +158,7 @@ public class SynEsculBolt extends BaseRichBolt {
 					 if (null != esMap && esMap.size()>0) {
 						 Object vid = esMap.get(SysDefine.UUID);
 						 
-				         String json =JSON.toJSONString(esMap);
+				         String json =gson.toJson(esMap);
 				         sendToKafka(SysDefine.SYNES_NOTICE,statusEsTopic,vid, json);
 					 }
 				}

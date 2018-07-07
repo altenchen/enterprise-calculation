@@ -18,13 +18,13 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import com.alibaba.fastjson.JSON;
 import com.sun.jersey.core.util.Base64;
 
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
+import storm.util.GsonUtils;
 import storm.util.NumberUtils;
 import storm.dto.alarm.CoefOffset;
 import storm.dto.alarm.CoefOffsetGetter;
@@ -38,6 +38,7 @@ public class AlarmBoltBak extends BaseRichBolt {
 	 * 
 	 */
 	private static final long serialVersionUID = 1720001L;
+	private static final GsonUtils gson = GsonUtils.getInstance();
 
 	private OutputCollector collector;
 
@@ -170,7 +171,7 @@ public class AlarmBoltBak extends BaseRichBolt {
             String vid = input.getString(0);
             Map<String, String> dat = (TreeMap<String, String>) input.getValue(1);
             if (printLevel >= 5) {
-                System.out.println("Receive kafka message REALINFO-------------------------------MSG:" + JSON.toJSONString(dat));
+				System.out.println("Receive kafka message REALINFO-------------------------------MSG:" + gson.toJson(dat));
             }
 
 			if (!dat.containsKey(SysDefine.TIME)
@@ -188,7 +189,7 @@ public class AlarmBoltBak extends BaseRichBolt {
                 try {
                     processAlarm(dat, type);
                 } catch (Exception e) {
-                    System.out.println("软报警分析出错！map:" + JSON.toJSONString(dat));
+					System.out.println("软报警分析出错！map:" + gson.toJson(dat));
                     e.printStackTrace();
                 }
             }
@@ -213,7 +214,7 @@ public class AlarmBoltBak extends BaseRichBolt {
                 	//实时发送(不缓存)到 实时含告警的报文信息 到es同步服务
                     sendToNext(SysDefine.SYNES_GROUP,vid, dat);
                 } catch (Exception e) {
-                    System.out.println("实时数据redis存储出错！map:" + JSON.toJSONString(dat));
+					System.out.println("实时数据redis存储出错！map:" + gson.toJson(dat));
                 }
             } else if (CommandType.SUBMIT_LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
                 Map<String, String> linkmap = new TreeMap<String, String>();
@@ -363,7 +364,7 @@ public class AlarmBoltBak extends BaseRichBolt {
                 hbaseMap.put("TIME", time);
                 hbaseMap.put("CONST_ID", filterId);
                 hbaseMap.put("LEFT1", left1);
-                String alarmEnd_hbase = JSON.toJSONString(hbaseMap);
+				String alarmEnd_hbase = gson.toJson(hbaseMap);
                 //hbase存储
                 sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehAlarmStoreTopic, vid, alarmEnd_hbase);
                 //kafka存储
@@ -659,7 +660,7 @@ public class AlarmBoltBak extends BaseRichBolt {
                             hbaseMap.put("LEFT2", left2);
                             hbaseMap.put("RIGHT1", right1+"");
                             hbaseMap.put("RIGHT2", right2+"");
-                            String alarmStart_hbase = JSON.toJSONString(hbaseMap);
+							String alarmStart_hbase = gson.toJson(hbaseMap);
                             dataMap.put("ALARM_ID", alarmId);
                             dataMap.put("ALARM_NAME", alarmName);
                             dataMap.put("STATUS", "1");
@@ -716,7 +717,7 @@ public class AlarmBoltBak extends BaseRichBolt {
                         hbaseMap.put("LEFT2", left2);
                         hbaseMap.put("RIGHT1", right1+"");
                         hbaseMap.put("RIGHT2", right2+"");
-                        String alarmEnd_hbase = JSON.toJSONString(hbaseMap);
+						String alarmEnd_hbase = gson.toJson(hbaseMap);
                         //hbase存储
                         sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehAlarmStoreTopic, vid, alarmEnd_hbase);
                         //kafka存储

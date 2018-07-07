@@ -95,6 +95,16 @@ public class VehicleCacheTest {
         logger.trace("values=[{}]", values);
     }
 
+    @Test
+    void testGetVehicleCache4()
+        throws ExecutionException {
+
+        final String vid = "a03edac3-2720-4455-a755-529fe1b3e728";
+
+        final VehicleCache cache = VehicleCache.getInstance();
+
+    }
+
     @SuppressWarnings("unused")
     @AfterEach
     private void afterEach() {
