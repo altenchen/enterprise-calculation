@@ -27,12 +27,19 @@ public final class GsonUtils {
         return INSTANCE;
     }
 
-    private final Gson gson = new GsonBuilder().create();
+    private final Gson gson = new GsonBuilder()
+        .setDateFormat("yyyyMMddHHmmss")
+        .create();
 
     private GsonUtils() {
         if (INSTANCE != null) {
             throw new IllegalStateException();
         }
+    }
+
+    @Contract(pure = true)
+    public final Gson getGson() {
+        return gson;
     }
 
     @Contract("null, _ -> null")

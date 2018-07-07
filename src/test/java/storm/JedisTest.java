@@ -39,7 +39,7 @@ final class JedisTest {
         final String select = jedisPoolUtils.useResource(jedis -> {
             return jedis.select(0);
         });
-        Assertions.assertEquals(RedisConstant.Select.OK.name(), select);
+        Assertions.assertEquals(RedisConstant.Select.OK, select);
 
         final JedisDataException exception = jedisPoolUtils.useResource(jedis -> {
             try {

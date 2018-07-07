@@ -6,8 +6,10 @@ import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * @author: xzp
@@ -39,14 +41,16 @@ final class GsonUtilsTest {
     @DisplayName("测试序列化")
     @Test
     void toJson() {
-        Map<String, String> dic = new HashMap<>();
+        Map<String, Object> dic = new HashMap<>();
         dic.put("k1", "v1");
         dic.put("k2", "v2");
         dic.put("k3", "v3");
+        dic.put("Date", new Date());
+        dic.put("NULL", null);
         final String json = GsonUtilsTest.json.toJson(dic);
+        logger.trace(json);
 
         Assertions.assertFalse(StringUtils.isBlank(json), "Json序列化不能为空白");
-        Assertions.assertEquals("{\"k1\":\"v1\",\"k2\":\"v2\",\"k3\":\"v3\"}", json, "Json序列化结果不对");
     }
 
     @SuppressWarnings("unused")

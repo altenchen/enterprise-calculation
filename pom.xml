@@ -21,7 +21,8 @@
     <properties>
 
         <!-- 依赖组件开始 -->
-        <slf4j.version>1.7.25</slf4j.version>
+        <!-- 配合 storm v1.0.3 一起使用 -->
+        <slf4j.version>1.7.7</slf4j.version>
         <mysql.connector.version>8.0.11</mysql.connector.version>
         <storm.version>1.0.3</storm.version>
         <guava.version>25.1-jre</guava.version>
@@ -79,7 +80,7 @@
             </exclusions>
         </dependency>
 
-        <!-- org.apache.storm:storm-starter 嵌入 -->
+        <!-- org.apache.storm:storm-starter 嵌入2.7.0 兼容性风险. -->
         <!-- 小心 CTFO 组件内部的兼容性 -->
         <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
         <dependency>
@@ -100,40 +101,12 @@
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
-                    <artifactId>clojure</artifactId>
-                    <groupId>org.clojure</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>disruptor</artifactId>
-                    <groupId>com.lmax</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>kryo</artifactId>
-                    <groupId>com.esotericsoftware</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>log4j-api</artifactId>
-                    <groupId>org.apache.logging.log4j</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>log4j-core</artifactId>
-                    <groupId>org.apache.logging.log4j</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>log4j-over-slf4j</artifactId>
+                    <artifactId>slf4j-api</artifactId>
                     <groupId>org.slf4j</groupId>
                 </exclusion>
                 <exclusion>
                     <artifactId>log4j-slf4j-impl</artifactId>
                     <groupId>org.apache.logging.log4j</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>servlet-api</artifactId>
-                    <groupId>javax.servlet</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>slf4j-api</artifactId>
-                    <groupId>org.slf4j</groupId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -145,32 +118,25 @@
             <version>1.0.3</version>
             <exclusions>
                 <exclusion>
-                    <artifactId>kafka-clients</artifactId>
-                    <groupId>org.apache.kafka</groupId>
-                </exclusion>
-                <exclusion>
                     <artifactId>slf4j-api</artifactId>
                     <groupId>org.slf4j</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>guava</artifactId>
-                    <groupId>com.google.guava</groupId>
                 </exclusion>
             </exclusions>
         </dependency>
 
+        <!-- org.apache.storm:storm-starter 嵌入 -->
         <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients -->
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
-            <version>1.1.0</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>slf4j-api</artifactId>
-                    <groupId>org.slf4j</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>org.apache.kafka</groupId>-->
+            <!--<artifactId>kafka-clients</artifactId>-->
+            <!--<version>1.1.0</version>-->
+            <!--<exclusions>-->
+                <!--<exclusion>-->
+                    <!--<artifactId>slf4j-api</artifactId>-->
+                    <!--<groupId>org.slf4j</groupId>-->
+                <!--</exclusion>-->
+            <!--</exclusions>-->
+        <!--</dependency>-->
 
         <!-- Storm 依赖结束 -->
 
@@ -178,11 +144,11 @@
         <!-- 数据库依赖开始 -->
 
         <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>${mysql.connector.version}</version>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>mysql</groupId>-->
+            <!--<artifactId>mysql-connector-java</artifactId>-->
+            <!--<version>${mysql.connector.version}</version>-->
+        <!--</dependency>-->
 
         <!-- 数据库依赖结束 -->
 
