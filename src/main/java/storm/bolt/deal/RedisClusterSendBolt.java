@@ -15,8 +15,8 @@ import org.apache.storm.tuple.Tuple;
 
 public class RedisClusterSendBolt extends BaseRichBolt {
 
-	private static final long serialVersionUID = 17100009L;
-	private OutputCollector collector;
+    private static final long serialVersionUID = 17100009L;
+    private OutputCollector collector;
     private static int batchNo=600;
     private long lastExeTime;
     private BlockingQueue<Object> saveMessageQueue;
@@ -31,24 +31,24 @@ public class RedisClusterSendBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         if (
-        		(tuple.getSourceStreamId().equals(SysDefine.TEST_VEH_ACK))
-        		||(tuple.getSourceStreamId().equals(SysDefine.VEH_ALARM))
-        		||(tuple.getSourceStreamId().equals(SysDefine.VEH_ALARM_REALINFO_STORE))
-        		||(tuple.getSourceStreamId().equals(SysDefine.FENCE_ALARM))
-        		||(tuple.getSourceStreamId().equals(SysDefine.YAACTION_NOTICE))
-        		){
-        	
+                (tuple.getSourceStreamId().equals(SysDefine.TEST_VEH_ACK))
+                ||(tuple.getSourceStreamId().equals(SysDefine.VEH_ALARM))
+                ||(tuple.getSourceStreamId().equals(SysDefine.VEH_ALARM_REALINFO_STORE))
+                ||(tuple.getSourceStreamId().equals(SysDefine.FENCE_ALARM))
+                ||(tuple.getSourceStreamId().equals(SysDefine.YAACTION_NOTICE))
+                ){
+
             
         } else if (   (tuple.getSourceStreamId().equals(SysDefine.HISTORY)) 
-        			||(tuple.getSourceStreamId().equals(SysDefine.SYNC_REALINFO_STORE))
-        		){
-        	
+                    ||(tuple.getSourceStreamId().equals(SysDefine.SYNC_REALINFO_STORE))
+                ){
+
         } 
         
     }
     void realtimeSend(String streamId,BlockingQueue<Object> messageQueue){
-    	if (messageQueue != null && messageQueue.size() > 0) {
-    		
+        if (messageQueue != null && messageQueue.size() > 0) {
+
         }
     }
     @Override

@@ -5,20 +5,20 @@ import org.apache.commons.lang.StringUtils;
 import java.util.Calendar;
 
 public class TimeUtils {
-	static Calendar cal;
-	static{
-		cal = Calendar.getInstance();
+    static Calendar cal;
+    static{
+        cal = Calendar.getInstance();
         cal.set(Calendar.HOUR_OF_DAY, 24);
         cal.set(Calendar.MINUTE, 0);
         cal.set(Calendar.SECOND, 0);
         cal.set(Calendar.MILLISECOND, 0);
-	}
-	public static String fillNBitBefore(String s, int length, String fillchar) {
+    }
+    public static String fillNBitBefore(String s, int length, String fillchar) {
         if (StringUtils.isEmpty(s)) {
-			s ="0";
-		}
-		StringBuilder builder=new StringBuilder();
-		int len = s.length();
+            s ="0";
+        }
+        StringBuilder builder=new StringBuilder();
+        int len = s.length();
         for (int i = 0; i < length-len; i++) {
             builder.append(fillchar);
         }
@@ -28,7 +28,7 @@ public class TimeUtils {
 
     
     public static String fillNBitAfter(String s, int length, String fillchar) {
-    	StringBuilder builder=new StringBuilder(s);
+        StringBuilder builder=new StringBuilder(s);
         for (int i = 0; i < length; i++) {
             if (builder.length() >= length) {
                 break;

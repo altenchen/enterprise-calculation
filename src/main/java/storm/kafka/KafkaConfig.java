@@ -10,7 +10,7 @@ import org.apache.storm.spout.Scheme;
 import org.apache.storm.spout.SchemeAsMultiScheme;
 
 public class KafkaConfig {
-	private String topic;
+    private String topic;
     private String zkRoot;
     private String spoutId;
     private BrokerHosts brokerHosts;
@@ -43,34 +43,34 @@ public class KafkaConfig {
     }
     
     public void setOutputStreamId(String streamId){
-    	spoutConfig.outputStreamId = streamId;
+        spoutConfig.outputStreamId = streamId;
     }
 
     public SpoutConfig getSpoutConfig(){
         return spoutConfig;
     }
 
-	public String getTopic() {
-		return topic;
-	}
+    public String getTopic() {
+        return topic;
+    }
 
-	public String getZkRoot() {
-		return zkRoot;
-	}
+    public String getZkRoot() {
+        return zkRoot;
+    }
 
-	public String getSpoutId() {
-		return spoutId;
-	}
+    public String getSpoutId() {
+        return spoutId;
+    }
 
-	public BrokerHosts getBrokerHosts() {
-		return brokerHosts;
-	}
+    public BrokerHosts getBrokerHosts() {
+        return brokerHosts;
+    }
 
-	public int getZkPort() {
-		return zkPort;
-	}
+    public int getZkPort() {
+        return zkPort;
+    }
 
-	public String[] getZkServers() {
-		return zkServers;
-	}
+    public String[] getZkServers() {
+        return zkServers;
+    }
 }

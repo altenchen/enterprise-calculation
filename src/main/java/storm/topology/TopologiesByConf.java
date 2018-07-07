@@ -34,7 +34,7 @@ public class TopologiesByConf {
 
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 
-	public static void main(String[] args) throws Exception{
+    public static void main(String[] args) throws Exception{
 
         Properties properties = configUtils.sysDefine;
 
@@ -410,7 +410,7 @@ public class TopologiesByConf {
      * @param properties 配置属性
      */
     private static void fillKafkaConf(@NotNull Properties properties){
-	    // TODO: 转为存储到单例类
+        // TODO: 转为存储到单例类
         SysDefine.BROKER_HOSTS = properties.getProperty("kafka.broker.hosts");
 
         SysDefine.ERROR_DATA_GROUPID = properties.getProperty("kafka.metadata.veh_error_groupid");

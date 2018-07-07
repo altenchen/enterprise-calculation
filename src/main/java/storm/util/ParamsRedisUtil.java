@@ -101,15 +101,15 @@ public final class ParamsRedisUtil {
     /**
      * 参数缓存
      */
-	public final Map<String, Object> PARAMS = new TreeMap<>();
+    public final Map<String, Object> PARAMS = new TreeMap<>();
 
     private final DataToRedis redis = new DataToRedis();
 
     // 实例初始化块
-	{
+    {
         resetToDefault();
         initParams();
-	}
+    }
 
     private ParamsRedisUtil() {
     }
@@ -117,24 +117,24 @@ public final class ParamsRedisUtil {
     /**
      * 设置默认值
      */
-	private void resetToDefault() {
-		PARAMS.put(LT_ALARM_SOC_PERCENT, 10);
-		PARAMS.put(GT_INIDLE_TIME_OUT_SECOND, 60 * 60 * 24);
-		PARAMS.put(GPS_NOVALUE_CONTINUE_NO, 5);
-		PARAMS.put(GPS_HASVALUE_CONTINUE_NO, 10);
-		PARAMS.put(CAN_NOVALUE_CONTINUE_NO, 5);
-		PARAMS.put(CAN_HASVALUE_CONTINUE_NO, 10);
-		PARAMS.put(MILE_HOP_NUM, 2);
-		PARAMS.put(GPS_JUDGE_SECOND, 10800);
-		PARAMS.put(CAN_JUDGE_SECOND, 10800);
+    private void resetToDefault() {
+        PARAMS.put(LT_ALARM_SOC_PERCENT, 10);
+        PARAMS.put(GT_INIDLE_TIME_OUT_SECOND, 60 * 60 * 24);
+        PARAMS.put(GPS_NOVALUE_CONTINUE_NO, 5);
+        PARAMS.put(GPS_HASVALUE_CONTINUE_NO, 10);
+        PARAMS.put(CAN_NOVALUE_CONTINUE_NO, 5);
+        PARAMS.put(CAN_HASVALUE_CONTINUE_NO, 10);
+        PARAMS.put(MILE_HOP_NUM, 2);
+        PARAMS.put(GPS_JUDGE_SECOND, 10800);
+        PARAMS.put(CAN_JUDGE_SECOND, 10800);
 
-		PARAMS.put(SysDefine.RULE_OVERRIDE, "default");
-		PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT, 3);
-		PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND, 0);
-		PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT, 3);
-		PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, 0);
-		PARAMS.put(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND, 1000 * 60 * 10);
-		PARAMS.put(TRACE_VEHICLE_ID, "test\\d+");
+        PARAMS.put(SysDefine.RULE_OVERRIDE, "default");
+        PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT, 3);
+        PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND, 0);
+        PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT, 3);
+        PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, 0);
+        PARAMS.put(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND, 1000 * 60 * 10);
+        PARAMS.put(TRACE_VEHICLE_ID, "test\\d+");
 
         final Properties properties = configUtils.sysDefine;
         if(properties != null) {
@@ -202,9 +202,9 @@ public final class ParamsRedisUtil {
             }
             // endregion
         }
-	}
-	
-	private void initParams() {
+    }
+
+    private void initParams() {
         Map<String, String> paramCache = redis.getMap(DB_INDEX, CAL_QY_CONF);
         if (null != paramCache && paramCache.size() > 0) {
             initParams(paramCache);
@@ -216,11 +216,11 @@ public final class ParamsRedisUtil {
                 logger.info(message);
             }
         }
-	}
+    }
 
-	public boolean isTraceVehicleId(String vehicleId) {
-	    if(StringUtils.isBlank(vehicleId)) {
-	        return false;
+    public boolean isTraceVehicleId(String vehicleId) {
+        if(StringUtils.isBlank(vehicleId)) {
+            return false;
         }
 
         final String traceVehicleId = (String)PARAMS.get(TRACE_VEHICLE_ID);
@@ -271,11 +271,11 @@ public final class ParamsRedisUtil {
     /**
      * 重新从Redis读取数据构建参数
      */
-	public void rebulid(){
-		initParams();
-	}
+    public void rebulid(){
+        initParams();
+    }
 
-	public static void main(String[] args) {
+    public static void main(String[] args) {
         final Map<String, String> paramCache = new TreeMap<>();
         paramCache.put("lt.alarm.soc", "10");
         paramCache.put("gt.inidle.timeOut.time", "120");

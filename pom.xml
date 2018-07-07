@@ -79,6 +79,8 @@
             </exclusions>
         </dependency>
 
+        <!-- org.apache.storm:storm-starter 嵌入 -->
+        <!-- 小心 CTFO 组件内部的兼容性 -->
         <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
         <dependency>
             <groupId>redis.clients</groupId>
@@ -221,7 +223,7 @@
 
         <!-- 工具组件依赖结束 -->
 
-        <!-- 目前里面有Base64编解码和其它一些组件继承, 暂时保持不变 -->
+        <!-- 集成了大量工具类, 暂时保持不变 -->
         <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-starter -->
         <dependency>
             <groupId>org.apache.storm</groupId>

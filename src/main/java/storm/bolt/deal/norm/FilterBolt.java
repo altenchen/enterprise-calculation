@@ -35,12 +35,12 @@ import java.util.TreeMap;
  * Question: 最小里程数是不稳定的, 算出的里程数是指什么? 目前Storm内部没有使用, 前端是否还有使用?
  */
 public class FilterBolt extends BaseRichBolt {
-	private static final long serialVersionUID = 1700001L;
-	private static final Logger logger = LoggerFactory.getLogger(FilterBolt.class);
+    private static final long serialVersionUID = 1700001L;
+    private static final Logger logger = LoggerFactory.getLogger(FilterBolt.class);
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
-	private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
-	private OutputCollector collector;
-	private CUS_NOTICE_GROUP _cus_notice_group;
+    private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
+    private OutputCollector collector;
+    private CUS_NOTICE_GROUP _cus_notice_group;
 //    public static long redisUpdateTime = 0L;
     
 //    public static ScheduledExecutorService service;
@@ -80,8 +80,8 @@ public class FilterBolt extends BaseRichBolt {
         rebootTime = System.currentTimeMillis();
         String nocheckObj = configUtils.sysDefine.getProperty("sys.reboot.nocheck");
         if (!StringUtils.isEmpty(nocheckObj)) {
-        	againNoproTime=Long.parseLong(nocheckObj)*1000;
-		}
+            againNoproTime=Long.parseLong(nocheckObj)*1000;
+        }
 //        areaHandler = new AreaFenceHandler();
     }
 
@@ -90,11 +90,11 @@ public class FilterBolt extends BaseRichBolt {
 
         // region Blot启动后againNoproTime的时长内, 忽略任何收到的数据
         // 启动Storm计算时, kafka会从topic开始处消费, 所以需要一定的时间来扔掉这些数据.
-    	long now = System.currentTimeMillis();
-    	if (now - rebootTime < againNoproTime) {
-			return;
-		}
-		// endregion
+        long now = System.currentTimeMillis();
+        if (now - rebootTime < againNoproTime) {
+            return;
+        }
+        // endregion
 
         // tuple 结构是 (vid, message)
         if (tuple.size() == 2) {//实时数据  消息前缀 序列号 VIN码 命令标识 参数集 SUBMIT 1 LVBV4J0B2AJ063987 SUBMIT_LOGIN {1001:20150623120000,1002:京A12345}
@@ -111,8 +111,8 @@ public class FilterBolt extends BaseRichBolt {
             // 命令标识
             String type = message[ProtocolSeparator.COMMAND_TYPE];
             if (CommandType.SUBMIT_PACKET.equals(type)
-            		|| SysDefine.RENTALSTATION.equals(type)
-            		|| SysDefine.CHARGESTATION.equals(type)) {
+                    || SysDefine.RENTALSTATION.equals(type)
+                    || SysDefine.CHARGESTATION.equals(type)) {
                 return;
             }
 
@@ -152,10 +152,10 @@ public class FilterBolt extends BaseRichBolt {
                 || CommandType.SUBMIT_CARSTATUS.equals(type)) {
 
                 // 设置在线状态(10002)为"1"
-            	stateKV.put(SysDefine.ISONLINE, "1");
+                stateKV.put(SysDefine.ISONLINE, "1");
 
-            	// 如果是终端注册报文
-            	if (CommandType.SUBMIT_LOGIN.equals(type) ) {
+                // 如果是终端注册报文
+                if (CommandType.SUBMIT_LOGIN.equals(type) ) {
                     // 如果stateKV包含登出流水号或者登出时间, 则设置在线状态(10002)为"0"
                     // 并且将`平台注册通知类型`设置为`车机离线`
                     // 否则将`平台注册通知类型`设置为`车机终端上线`
@@ -169,7 +169,7 @@ public class FilterBolt extends BaseRichBolt {
                     }
                     // TODO WARN: 上面的REG_TYPE值为TYPE, 这可能与SUBMIT_LINKSTATUS命令中的TYPE重叠了
                     // 注意进入此处说明不是SUBMIT_LINKSTATUS报文, 所以要看stateKV作用于是否仅限于当前报文
-				}
+                }
             }
             // endregion
 
@@ -177,7 +177,7 @@ public class FilterBolt extends BaseRichBolt {
 //            if (CommandType.SUBMIT_LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
 //                Map<String, String> linkmap = new TreeMap<String, String>();
 //                if (SUBMIT_LINKSTATUS.isOnlineNotice(stateKV.get(SUBMIT_LINKSTATUS.LINK_TYPE))
-//                		|| SUBMIT_LINKSTATUS.isHeartbeatNotice(stateKV.get(SUBMIT_LINKSTATUS.LINK_TYPE))) {
+//                        || SUBMIT_LINKSTATUS.isHeartbeatNotice(stateKV.get(SUBMIT_LINKSTATUS.LINK_TYPE))) {
 //                    linkmap.put(SysDefine.ISONLINE, "1");
 //                } else if (SUBMIT_LINKSTATUS.isOfflineNotice(stateKV.get(SUBMIT_LINKSTATUS.LINK_TYPE))) {
 //                    linkmap.put(SysDefine.ISONLINE, "0");
@@ -189,8 +189,8 @@ public class FilterBolt extends BaseRichBolt {
 
             // region 如果是补发数据直接忽略
             if (CommandType.SUBMIT_HISTORY.equals(type)) {//补发历史原始数据存储
-//            	sendMessages(SysDefine.SUPPLY_GROUP,null,vid,stateKV,true);
-            	return;
+//                sendMessages(SysDefine.SUPPLY_GROUP,null,vid,stateKV,true);
+                return;
             }
             // endregion
             
@@ -200,16 +200,16 @@ public class FilterBolt extends BaseRichBolt {
                 stateKV.put(SysDefine.TIME, stateKV.get(DataKey._2000_COLLECT_TIME));
             } else if (CommandType.SUBMIT_LOGIN.equals(type)) {
                 // 如果是注册报文, 则将TIME设置为登入时间或者登出时间或者注册时间
-            	if (stateKV.containsKey(SUBMIT_LOGIN.LOGIN_TIME)) {
+                if (stateKV.containsKey(SUBMIT_LOGIN.LOGIN_TIME)) {
                     // 将TIME设置为登入时间
-					stateKV.put(SysDefine.TIME, stateKV.get(SUBMIT_LOGIN.LOGIN_TIME));
-				} else if (stateKV.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)){
+                    stateKV.put(SysDefine.TIME, stateKV.get(SUBMIT_LOGIN.LOGIN_TIME));
+                } else if (stateKV.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)){
                     // 将TIME设置为登出时间
-					stateKV.put(SysDefine.TIME, stateKV.get(SUBMIT_LOGIN.LOGOUT_TIME));
-				} else {
+                    stateKV.put(SysDefine.TIME, stateKV.get(SUBMIT_LOGIN.LOGOUT_TIME));
+                } else {
                     // 将TIME设置为注册时间
-					stateKV.put(SysDefine.TIME, stateKV.get(SUBMIT_LOGIN.REGIST_TIME));
-				}
+                    stateKV.put(SysDefine.TIME, stateKV.get(SUBMIT_LOGIN.REGIST_TIME));
+                }
             } else if (CommandType.SUBMIT_TERMSTATUS.equals(type)) {
                 // 如果是状态信息上报, 则将TIME设置为采集时间
                 stateKV.put(SysDefine.TIME, stateKV.get("3101"));
@@ -226,21 +226,21 @@ public class FilterBolt extends BaseRichBolt {
 
             stateKV.put(SysDefine.ONLINEUTC, now + ""); // 增加utc字段，插入系统时间
             try {
-            	if (CommandType.SUBMIT_REALTIME.equals(type)
-            			|| CommandType.SUBMIT_HISTORY.equals(type)) {
+                if (CommandType.SUBMIT_REALTIME.equals(type)
+                        || CommandType.SUBMIT_HISTORY.equals(type)) {
                     processValid(stateKV);
                 }
-			} catch (Exception e1) {
-				e1.printStackTrace();
-			}
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
             Map<String, String> stateNewKV = stateKV; // 状态键值
             if (CommandType.SUBMIT_LINKSTATUS.equals(type)
-        			|| CommandType.SUBMIT_LOGIN.equals(type)
-        			|| CommandType.SUBMIT_REALTIME.equals(type)
-        			|| CommandType.SUBMIT_TERMSTATUS.equals(type)){
+                    || CommandType.SUBMIT_LOGIN.equals(type)
+                    || CommandType.SUBMIT_REALTIME.equals(type)
+                    || CommandType.SUBMIT_TERMSTATUS.equals(type)){
                 // 克隆一份?
-            	stateNewKV = new TreeMap<String, String>();
-            	stateNewKV.putAll(stateKV);
+                stateNewKV = new TreeMap<String, String>();
+                stateNewKV.putAll(stateKV);
             }
 
             String vid = stateKV.get(DataKey.VEHICLE_ID);
@@ -248,33 +248,33 @@ public class FilterBolt extends BaseRichBolt {
                 logger.warn("VID[" + vid + "]数据预处理完成");
             }
             try {
-            	if (CommandType.SUBMIT_LINKSTATUS.equals(type)
-            			|| CommandType.SUBMIT_LOGIN.equals(type)
-            			|| CommandType.SUBMIT_TERMSTATUS.equals(type)
-            			|| CommandType.SUBMIT_CARSTATUS.equals(type)) {
-            	    // consumer: ES数据同步处理
-            		sendMessages(SysDefine.SYNES_GROUP,null,vid,stateNewKV,true);
-            	}
-            	if (CommandType.SUBMIT_REALTIME.equals(type)){
-            	    // consumer: 电子围栏告警处理
-            		sendMessages(SysDefine.FENCE_GROUP,null,vid,stateNewKV,true);
-            		// consumer: 雅安用户行为处理
-//            		sendMessages(SysDefine.YAACTION_GROUP,null,vid,stateKV,true);
-            	}
-            	if (CommandType.SUBMIT_REALTIME.equals(type)
-            			|| CommandType.SUBMIT_LINKSTATUS.equals(type)
-            			|| CommandType.SUBMIT_LOGIN.equals(type)
-            			|| CommandType.SUBMIT_TERMSTATUS.equals(type)
-            			|| CommandType.SUBMIT_CARSTATUS.equals(type)){
-            	    // consumer: SOC与超时处理
+                if (CommandType.SUBMIT_LINKSTATUS.equals(type)
+                        || CommandType.SUBMIT_LOGIN.equals(type)
+                        || CommandType.SUBMIT_TERMSTATUS.equals(type)
+                        || CommandType.SUBMIT_CARSTATUS.equals(type)) {
+                    // consumer: ES数据同步处理
+                    sendMessages(SysDefine.SYNES_GROUP,null,vid,stateNewKV,true);
+                }
+                if (CommandType.SUBMIT_REALTIME.equals(type)){
+                    // consumer: 电子围栏告警处理
+                    sendMessages(SysDefine.FENCE_GROUP,null,vid,stateNewKV,true);
+                    // consumer: 雅安用户行为处理
+//                    sendMessages(SysDefine.YAACTION_GROUP,null,vid,stateKV,true);
+                }
+                if (CommandType.SUBMIT_REALTIME.equals(type)
+                        || CommandType.SUBMIT_LINKSTATUS.equals(type)
+                        || CommandType.SUBMIT_LOGIN.equals(type)
+                        || CommandType.SUBMIT_TERMSTATUS.equals(type)
+                        || CommandType.SUBMIT_CARSTATUS.equals(type)){
+                    // consumer: SOC与超时处理
                     _cus_notice_group.emit(vid, stateNewKV);
-            	}
-            	if (CommandType.SUBMIT_REALTIME.equals(type)
-            			|| CommandType.SUBMIT_LINKSTATUS.equals(type)
-            			|| CommandType.SUBMIT_LOGIN.equals(type)){
-            	    // 预警处理
-            		sendMessages(SysDefine.SPLIT_GROUP,null,vid,stateKV,true);
-            	}
+                }
+                if (CommandType.SUBMIT_REALTIME.equals(type)
+                        || CommandType.SUBMIT_LINKSTATUS.equals(type)
+                        || CommandType.SUBMIT_LOGIN.equals(type)){
+                    // 预警处理
+                    sendMessages(SysDefine.SPLIT_GROUP,null,vid,stateKV,true);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -284,10 +284,10 @@ public class FilterBolt extends BaseRichBolt {
 
     //synchronized
     private void sendMessages(String streamId, String topic, String vid, Object data, boolean isHistory) {
-    	if(isHistory) {
+        if(isHistory) {
             collector.emit(streamId, new Values(vid, data));
         } else
-    	    // SysDefine.HISTORY send to KafkaBlot
+            // SysDefine.HISTORY send to KafkaBlot
         {
             collector.emit(streamId, new Values(topic, vid, data));
         }
@@ -314,9 +314,9 @@ public class FilterBolt extends BaseRichBolt {
             return null;
         }
         
-    	String vid = dataMap.get(DataKey.VEHICLE_ID);
+        String vid = dataMap.get(DataKey.VEHICLE_ID);
 
-    	// region 更新所有车的最大里程数和最小里程数
+        // region 更新所有车的最大里程数和最小里程数
         try {
             // 判断处理实时里程数据
             if (dataMap.containsKey(DataKey._2202_TOTAL_MILEAGE)
@@ -336,19 +336,19 @@ public class FilterBolt extends BaseRichBolt {
 
                 if (mileage > maxCacheMileage) {
                     // redisService.saveRealtimeMessageByDataId(vid,"maxmileage",mileage+"",jedis);
-                	maxMileMap.put(vid, mileage); // 更新缓存最大里程
+                    maxMileMap.put(vid, mileage); // 更新缓存最大里程
                     maxMileage = mileage;
                 }
                 if (minCacheMileage == 0 || mileage < minCacheMileage) {
                     // redisService.saveRealtimeMessageByDataId(vid,"minmileage",mileage+"",jedis);
-                	minMileMap.put(vid, mileage);
+                    minMileMap.put(vid, mileage);
                     minMileage = mileage;
                 }
                 dataMap.put(SysDefine.MILEAGE, maxMileage - minMileage + "");
             }
         } catch (Exception e1) {
-        	e1.printStackTrace();
-        	System.out.println("预处理里程" + e1);
+            e1.printStackTrace();
+            System.out.println("预处理里程" + e1);
         }
         // endregion
 
@@ -369,7 +369,7 @@ public class FilterBolt extends BaseRichBolt {
                     if (charging.equals(status) &&
                         // 车速为0
                         "0".equals(NumberUtils.stringNumber(dataMap.get(DataKey._2201_SPEED)))) {
-                    	chargeMap.put(vid, cacheNum + 1);
+                        chargeMap.put(vid, cacheNum + 1);
                         if (cacheNum >= 10) {
                             dataMap.put(SysDefine.ISCHARGE, "1");
                         }
@@ -390,83 +390,83 @@ public class FilterBolt extends BaseRichBolt {
 
         // region [忽略] 向最后的数据中加入车辆当前所在行政区域id
         /*try {
-			if (dataMap.containsKey(DataKey._2502_LONGITUDE)
-					&& dataMap.containsKey(DataKey._2503_LATITUDE)) {
-				
-				String longit = dataMap.get(DataKey._2502_LONGITUDE);
-				String latit = dataMap.get(DataKey._2503_LATITUDE);
-				if (null != longit && null != latit) {
-					longit = NumberUtils.stringNumber(longit);
-					latit = NumberUtils.stringNumber(latit);
-					if (!"0".equals(longit)
-							&& !"0".equals(latit)) {
-						double x = Double.parseDouble(longit);
-						double y = Double.parseDouble(latit);
-						//是否要重新计算，flase为需要重新计算。
-						boolean isNotCal = false;
-						//当前里程
-						int mileagenow = Integer.parseInt(NumberUtils.stringNumber(dataMap.get("2202")));
-						if (lastgpsRegion.containsKey(vid)) {
-							String lastRegion = lastgpsRegion.get(vid);
-							
-							if (lastgpsDatMile.containsKey(vid)) {
-								int lastMileage = lastgpsDatMile.get(vid);
-								if (0!= mileagenow && Math.abs(mileagenow-lastMileage) < 50) {
-									isNotCal = true;
-								}
-							}
-							if (!isNotCal && lastgps.containsKey(vid)) {
-								double [] gpss = lastgps.get(vid);
-								double distance = GpsUtil.getDistance(x, y, gpss[0], gpss[1]);
-								//如果上次和这次gps之间的距离小于5公里，则不计算新的所属区域，默认还在上一帧的区域中。
-								if (distance < 5) {
-									isNotCal = true;
-								}
-							}
-							//如果不计算则把上一帧中的区域算作这次的。
-							if (isNotCal) {
-								dataMap.put(ProtocolItem.GPS_ADMIN_REGION, lastRegion);
-							} 
-						} 
-						
-						if (!isNotCal) {//需要重新计算
-							//获得（x,y）的区域id集合
-							List<String> areaIds = areaHandler.areaIds(x,y);
-							if (null != areaIds) {
-								String areas = null;
-								
-								if (areaIds.size() == 1) {
-									areas = areaIds.get(0);
-								} else {
-									StringBuilder sb = new StringBuilder();
-									for (String area : areaIds) {
-										sb.append(area).append("|");
-									}
-									areas = sb.substring(0, sb.length()-1);
-								}
-								//areas为所有的区域id拼接字符串
-								dataMap.put(ProtocolItem.GPS_ADMIN_REGION, areas);
-								lastgpsRegion.put(vid, areas);
-								lastgps.put(vid, new double[]{x,y});
-								lastgpsDatMile.put(vid, mileagenow);
-							} else {
-								dataMap.put(ProtocolItem.GPS_ADMIN_REGION, "UNKNOWN");
-							}
-						}
-	                	
-					}
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+            if (dataMap.containsKey(DataKey._2502_LONGITUDE)
+                    && dataMap.containsKey(DataKey._2503_LATITUDE)) {
+
+                String longit = dataMap.get(DataKey._2502_LONGITUDE);
+                String latit = dataMap.get(DataKey._2503_LATITUDE);
+                if (null != longit && null != latit) {
+                    longit = NumberUtils.stringNumber(longit);
+                    latit = NumberUtils.stringNumber(latit);
+                    if (!"0".equals(longit)
+                            && !"0".equals(latit)) {
+                        double x = Double.parseDouble(longit);
+                        double y = Double.parseDouble(latit);
+                        //是否要重新计算，flase为需要重新计算。
+                        boolean isNotCal = false;
+                        //当前里程
+                        int mileagenow = Integer.parseInt(NumberUtils.stringNumber(dataMap.get("2202")));
+                        if (lastgpsRegion.containsKey(vid)) {
+                            String lastRegion = lastgpsRegion.get(vid);
+
+                            if (lastgpsDatMile.containsKey(vid)) {
+                                int lastMileage = lastgpsDatMile.get(vid);
+                                if (0!= mileagenow && Math.abs(mileagenow-lastMileage) < 50) {
+                                    isNotCal = true;
+                                }
+                            }
+                            if (!isNotCal && lastgps.containsKey(vid)) {
+                                double [] gpss = lastgps.get(vid);
+                                double distance = GpsUtil.getDistance(x, y, gpss[0], gpss[1]);
+                                //如果上次和这次gps之间的距离小于5公里，则不计算新的所属区域，默认还在上一帧的区域中。
+                                if (distance < 5) {
+                                    isNotCal = true;
+                                }
+                            }
+                            //如果不计算则把上一帧中的区域算作这次的。
+                            if (isNotCal) {
+                                dataMap.put(ProtocolItem.GPS_ADMIN_REGION, lastRegion);
+                            }
+                        }
+
+                        if (!isNotCal) {//需要重新计算
+                            //获得（x,y）的区域id集合
+                            List<String> areaIds = areaHandler.areaIds(x,y);
+                            if (null != areaIds) {
+                                String areas = null;
+
+                                if (areaIds.size() == 1) {
+                                    areas = areaIds.get(0);
+                                } else {
+                                    StringBuilder sb = new StringBuilder();
+                                    for (String area : areaIds) {
+                                        sb.append(area).append("|");
+                                    }
+                                    areas = sb.substring(0, sb.length()-1);
+                                }
+                                //areas为所有的区域id拼接字符串
+                                dataMap.put(ProtocolItem.GPS_ADMIN_REGION, areas);
+                                lastgpsRegion.put(vid, areas);
+                                lastgps.put(vid, new double[]{x,y});
+                                lastgpsDatMile.put(vid, mileagenow);
+                            } else {
+                                dataMap.put(ProtocolItem.GPS_ADMIN_REGION, "UNKNOWN");
+                            }
+                        }
+
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         */
         // endregion
 
         // 动力蓄电池报警标志
-		/*
-		 * 1：温度差异报警；0：正常 1：电池极柱高温报警；0：正常 1：动力蓄电池包过压报警；0：正常 1：动力蓄电池包欠压报警；0：正常 1：SOC低报警；0：正常 1：单体蓄电池过压报警；0：正常 1：单体蓄电池欠压报警；0：正常 1：SOC太低报警；0：正常 1：SOC过高报警；0：正常 1：动力蓄电池包不匹配报警；0：正常 1：动力蓄电池一致性差报警；0：正常 1：绝缘故障；0：正常
-		 */
+        /*
+         * 1：温度差异报警；0：正常 1：电池极柱高温报警；0：正常 1：动力蓄电池包过压报警；0：正常 1：动力蓄电池包欠压报警；0：正常 1：SOC低报警；0：正常 1：单体蓄电池过压报警；0：正常 1：单体蓄电池欠压报警；0：正常 1：SOC太低报警；0：正常 1：SOC过高报警；0：正常 1：动力蓄电池包不匹配报警；0：正常 1：动力蓄电池一致性差报警；0：正常 1：绝缘故障；0：正常
+         */
         try {
             // region 北京地标: 动力蓄电池报警标志解析存储, 见表20
             if (dataMap.containsKey(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801)
@@ -551,9 +551,9 @@ public class FilterBolt extends BaseRichBolt {
 
         // region 北京地标: 车载终端状态解析存储
         // 车载终端状态3110
-		/*
-		 * 1：通电；0：断开 BIT 3102 1：电源正常；0：电源异常 BIT 3103 1：通信传输正常；0：通信传输异常 BIT 3104 其他异常，1：正常；0：异常 BIT 3105
-		 */
+        /*
+         * 1：通电；0：断开 BIT 3102 1：电源正常；0：电源异常 BIT 3103 1：通信传输正常；0：通信传输异常 BIT 3104 其他异常，1：正常；0：异常 BIT 3105
+         */
         try {
             if (dataMap.containsKey(DataKey._3110_STATUS_FLAGS) && !"".equals(dataMap.get(DataKey._3110_STATUS_FLAGS))) {
                 String binaryStr = TimeUtils.fillNBitBefore(
@@ -584,7 +584,7 @@ public class FilterBolt extends BaseRichBolt {
     private void generalAlarmToFaultCode(@NotNull Map<String, String> dataMap, @NotNull String binaryStr){
 
         // region 解析告警值
-    	String unit19 = new String(binaryStr.substring(12, 13));//第19位
+        String unit19 = new String(binaryStr.substring(12, 13));//第19位
         String unit20 = new String(binaryStr.substring(11, 12));//第20位
         String unit21 = new String(binaryStr.substring(10, 11));//第21位
         String unit22 = new String(binaryStr.substring(9, 10));//第22位
@@ -632,7 +632,7 @@ public class FilterBolt extends BaseRichBolt {
         
         String faultCode2809 = dataMap.get("2809");
         if (null != faultCode2809 && ! "".equals(faultCode2809.trim())) {
-        	sb.append("|").append(faultCode2809);
+            sb.append("|").append(faultCode2809);
         }
         dataMap.put("2809", sb.toString());
         // endregion

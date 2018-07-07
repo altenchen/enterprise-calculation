@@ -20,6 +20,7 @@ import redis.clients.jedis.exceptions.JedisException;
 import storm.constant.RedisConstant;
 import storm.util.JedisPoolUtils;
 
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +45,8 @@ public final class VehicleCache {
     }
 
     private static final int REDIS_DB_INDEX = 6;
+    private static final Type TREE_MAP_STRING_STRING_TYPE = new TypeToken<TreeMap<String, String>>() {
+    }.getType();
 
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
@@ -148,8 +151,7 @@ public final class VehicleCache {
                         final Map<String, String> map =
                             gson.fromJson(
                                 json,
-                                new TypeToken<TreeMap<String, String>>() {
-                                }.getType()
+                                TREE_MAP_STRING_STRING_TYPE
                             );
 
                         result.put(
@@ -192,8 +194,8 @@ public final class VehicleCache {
                 try {
                     final Map<String, String> map = gson.fromJson(
                         json,
-                        new TypeToken<TreeMap<String, String>>() {
-                        }.getType());
+                        TREE_MAP_STRING_STRING_TYPE
+                    );
 
                     return null == map ?
                         ImmutableMap.of()

@@ -1,6 +1,7 @@
 package storm.util;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.jetbrains.annotations.Contract;
 
 import org.slf4j.Logger;
@@ -26,7 +27,7 @@ public final class GsonUtils {
         return INSTANCE;
     }
 
-    private final Gson gson = new Gson();
+    private final Gson gson = new GsonBuilder().create();
 
     private GsonUtils() {
         if (INSTANCE != null) {
@@ -39,11 +40,23 @@ public final class GsonUtils {
         return gson.toJson(src);
     }
 
+    /**
+     * @param src
+     * @param typeOfSrc new TypeToken<T>() {}.getType()
+     * @param <T>
+     * @return
+     */
     @Contract("null, _ -> null")
     public final <T> String toJson(T src, Type typeOfSrc) {
         return gson.toJson(src, typeOfSrc);
     }
 
+    /**
+     * @param json
+     * @param typeOfT new TypeToken<T>() {}.getType()
+     * @param <T>
+     * @return
+     */
     @Contract("null, _ -> null")
     public final <T> T fromJson(String json, Type typeOfT) {
         return gson.fromJson(json, typeOfT);

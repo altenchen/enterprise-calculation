@@ -24,14 +24,14 @@ import java.util.regex.Pattern;
  */
 public final class GeneralScheme implements Scheme {
 
-	private static final long serialVersionUID = 18700005L;
-	private static Logger logger = LoggerFactory.getLogger(GeneralScheme.class);
-	private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
+    private static final long serialVersionUID = 18700005L;
+    private static Logger logger = LoggerFactory.getLogger(GeneralScheme.class);
+    private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
     @SuppressWarnings("Duplicates")
-	@Override
-	public List<Object> deserialize(ByteBuffer buffer) {
-	    try {
+    @Override
+    public List<Object> deserialize(ByteBuffer buffer) {
+        try {
             String message = StringScheme.deserializeString(buffer);
             final Values values = generateValues(message);
             if(!values.isEmpty()) {
@@ -72,7 +72,7 @@ public final class GeneralScheme implements Scheme {
         return new Values();
     }
 
-	public static void main(String[] args) {
+    public static void main(String[] args) {
         ImmutableList
             .of(
                 new Values("5e87d889-f029-4767-a9bc-3fdfecdb5a08", "SUBMIT 0 LKJTBKBY3HF012267 REALTIME {VID:5e87d889-f029-4767-a9bc-3fdfecdb5a08,VTYPE:ff8080816252c33a016260d31c1a04b0,CTYPE:2_1_1,2000:20180604224708,2501:0,2502:120243408,2503:31626550,9999:20180604224711}"),

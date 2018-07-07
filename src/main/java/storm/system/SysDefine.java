@@ -5,7 +5,7 @@ public final class SysDefine {
 
     public static final String DB_CACHE_FLUSH_TIME_SECOND = "db.cache.flushtime";
 
-	//接收实时数据TOPIC
+    //接收实时数据TOPIC
     public static String VEH_REALINFO_DATA_TOPIC ;
 
     //Zookeeper根目录
@@ -36,13 +36,13 @@ public final class SysDefine {
     public static String ERROR_DATA_TOPIC;
     
     //平台注册报文TOPIC
-	public static String PLAT_REG_TOPIC;
+    public static String PLAT_REG_TOPIC;
 
     //错误报文组名
     public static String ERROR_DATA_GROUPID;
     
     //错误报文组名
-	public static String PLAT_REG_GROUPID;
+    public static String PLAT_REG_GROUPID;
     //
     public static final String HISTORY = "history";
 
@@ -58,15 +58,15 @@ public final class SysDefine {
     public static final String VEH_ALARM = "vehalarm";
     
     //围栏告警
-	public static final String FENCE_ALARM = "fencealarm";
-	
-	//故障发送kafkaStream id
-	public static final String FAULT_STREAM = "faultstreamId";
-	//雅安发送
-	public static final String YAACTION_NOTICE = "yanotice";
-	 //同步 es消息发送
-	public static final String SYNES_NOTICE = "synesnotice";
-	//
+    public static final String FENCE_ALARM = "fencealarm";
+
+    //故障发送kafkaStream id
+    public static final String FAULT_STREAM = "faultstreamId";
+    //雅安发送
+    public static final String YAACTION_NOTICE = "yanotice";
+     //同步 es消息发送
+    public static final String SYNES_NOTICE = "synesnotice";
+    //
     public static final String VEH_ALARM_REALINFO_STORE = "vehalarmrealinfostore";
 
     //实时数据 kafka stream id
@@ -200,55 +200,55 @@ public final class SysDefine {
     
     public static final String QUICK_BOLT_ID = "quickboltid";
     public static final String SUPPLY_GROUP="supplyGroup";
-	public static final String FENCE_BOLT_ID = "fenceboltid";
-	public static final String FENCE_GROUP = "fenceGroup";
-	public static final String FAULT_BOLT_ID = "faultboltid";
-	public static final String FAULT_GROUP = "faultGroup";
-	/** 接收告警传送过来的同步es streamId分组 **/
-	public static final String SYNES_BOLT_ID = "synesboltid";
-	public static final String SYNES_GROUP = "synesGroup";
-	public static final String YAACTION_BOLT_ID = "yaactionboltid";
-	public static final String YAACTION_GROUP = "yaactionGroup";
+    public static final String FENCE_BOLT_ID = "fenceboltid";
+    public static final String FENCE_GROUP = "fenceGroup";
+    public static final String FAULT_BOLT_ID = "faultboltid";
+    public static final String FAULT_GROUP = "faultGroup";
+    /** 接收告警传送过来的同步es streamId分组 **/
+    public static final String SYNES_BOLT_ID = "synesboltid";
+    public static final String SYNES_GROUP = "synesGroup";
+    public static final String YAACTION_BOLT_ID = "yaactionboltid";
+    public static final String YAACTION_GROUP = "yaactionGroup";
     public static final String DIRECT="direct";//直连
     public static final String FORWARD="forward";//转发
-	public static final String CODE = "code";
-	public static final String REG_SPOUT_ID = "regpoutid";
-	public static final String REG_STREAM_ID = "regStreamId";
-	/** 接收传送过来的同步es streamId分组 **/
-	public static final String CUS_NOTICE_BOLT_ID = "cusnoticeboltid";
-	public static final String CUS_NOTICE = "cusnotice";
+    public static final String CODE = "code";
+    public static final String REG_SPOUT_ID = "regpoutid";
+    public static final String REG_STREAM_ID = "regStreamId";
+    /** 接收传送过来的同步es streamId分组 **/
+    public static final String CUS_NOTICE_BOLT_ID = "cusnoticeboltid";
+    public static final String CUS_NOTICE = "cusnotice";
 
     /**
      * 是否启用时间异常通知规则, 0-停用, 1-启用
      */
-	public static final String SYS_TIME_RULE = "sys.time.rule";
+    public static final String SYS_TIME_RULE = "sys.time.rule";
 
     /**
      * 告警消息kafka输出topic
      */
-	public static final String KAFKA_TOPIC_ALARM = "kafka.topic.alarm";
+    public static final String KAFKA_TOPIC_ALARM = "kafka.topic.alarm";
 
     /**
      * 触发CAN故障需要的连续帧数
      */
-	public static final String NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT = "notice.can.fault.trigger.continue.count";
+    public static final String NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT = "notice.can.fault.trigger.continue.count";
     /**
      * 触发CAN故障需要的持续时长
      */
-	public static final String NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND = "notice.can.fault.trigger.timeout.millisecond";
+    public static final String NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND = "notice.can.fault.trigger.timeout.millisecond";
     /**
      * 触发CAN正常需要的连续帧数
      */
-	public static final String NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT = "notice.can.normal.trigger.continue.count";
+    public static final String NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT = "notice.can.normal.trigger.continue.count";
     /**
      * 触发CAN正常需要的持续时长
      */
-	public static final String NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND = "notice.can.normal.trigger.timeout.millisecond";
+    public static final String NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND = "notice.can.normal.trigger.timeout.millisecond";
 
     /**
      * 时间数值异常范围
      */
-	public static final String NOTICE_TIME_RANGE_ABS_MILLISECOND = "notice.time.range.abs.millisecond";
+    public static final String NOTICE_TIME_RANGE_ABS_MILLISECOND = "notice.time.range.abs.millisecond";
 
     /**
      * 规则覆盖, 默认为default

@@ -6,30 +6,30 @@ import javax.script.ScriptEngineManager;
 
 public class ScriptInvoke extends InvokeMtd implements Invoke {
 
-	private ScriptEngine engine;
-	{
-		ScriptEngineManager manager=new ScriptEngineManager();
-		engine=manager.getEngineByName("js");//javascript or JavaScript
-	}
-	
-	@Override
-	public void invoke(String function, String funcName, Object... args) {
-		try {
-			engine.eval(function);
-			if (engine instanceof Invocable) {
-				Invocable able = (Invocable)engine;
-				double d=(double)able.invokeFunction(funcName, args);
-				System.out.println(d);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
-	public static void main(String[] args) {
-		String function="function speedEconomy(spx){if(null !=spx && spx>0){return 4+(spx-80)*(spx-80)/1521;}return 4;}";
-		new ScriptInvoke().invoke(function, "speedEconomy", 70);
-	}
+    private ScriptEngine engine;
+    {
+        ScriptEngineManager manager=new ScriptEngineManager();
+        engine=manager.getEngineByName("js");//javascript or JavaScript
+    }
+
+    @Override
+    public void invoke(String function, String funcName, Object... args) {
+        try {
+            engine.eval(function);
+            if (engine instanceof Invocable) {
+                Invocable able = (Invocable)engine;
+                double d=(double)able.invokeFunction(funcName, args);
+                System.out.println(d);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        String function="function speedEconomy(spx){if(null !=spx && spx>0){return 4+(spx-80)*(spx-80)/1521;}return 4;}";
+        new ScriptInvoke().invoke(function, "speedEconomy", 70);
+    }
 
 }
 

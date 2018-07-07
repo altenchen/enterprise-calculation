@@ -14,12 +14,12 @@ public final class FaultCodeByteRule {
     /**
      * 故障码ID
      */
-	public final String faultId;
+    public final String faultId;
 
     /**
      * 故障类型
      */
-	public final String faultType;
+    public final String faultType;
 
     /**
      * 异常码集合 + 正常码
@@ -27,15 +27,15 @@ public final class FaultCodeByteRule {
     private final List<FaultCodeByte> faultCodes = new LinkedList<>();
 
     public FaultCodeByteRule(String faultId, String faultType) {
-		this.faultId = faultId;
-		this.faultType = faultType;
-	}
+        this.faultId = faultId;
+        this.faultType = faultType;
+    }
 
     /**
      * 添加故障码
      * @param faultCode 故障码
      */
-	public void addFaultCode(@NotNull FaultCodeByte faultCode) {
+    public void addFaultCode(@NotNull FaultCodeByte faultCode) {
         faultCodes.add(faultCode);
     }
 

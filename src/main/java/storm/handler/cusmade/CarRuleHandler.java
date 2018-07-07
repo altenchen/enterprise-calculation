@@ -785,7 +785,7 @@ public class CarRuleHandler implements InfoNotice {
         Map<Double, FillChargeCar> carSortMap = new TreeMap<>();
 
         for (Map.Entry<String, FillChargeCar> entry : fillvidgps.entrySet()) {
-//			String fillvid = entry.getKey();
+//            String fillvid = entry.getKey();
             FillChargeCar chargeCar = entry.getValue();
             double distance = GpsUtil.getDistance(longitude, latitude, chargeCar.longitude, chargeCar.latitude);
             carSortMap.put(distance, chargeCar);
@@ -1178,8 +1178,8 @@ public class CarRuleHandler implements InfoNotice {
                     notice.put("noticetime", noticetime);
                     vidSpeedGtZeroNotice.put(vid, notice);
 
-//					if(1 == (int)notice.get("status"))
-//						return notice;
+//                    if(1 == (int)notice.get("status"))
+//                        return notice;
                 }
             } else {
                 if (vidSpeedGtZero.containsKey(vid)) {
@@ -1590,18 +1590,18 @@ public class CarRuleHandler implements InfoNotice {
 
 
     public static void main(String[] args) {
-		/*Map<Double, String> carSortMap = new TreeMap<Double, String>();
-		carSortMap.put(256.3, "tttttt");
-		carSortMap.put(122.3, "tttttt");
-		carSortMap.put(356.3, "tttttt");
-		carSortMap.put(299.3, "tttttt");
-		carSortMap.put(156.3, "tttttt");
-		carSortMap.put(756.3, "tttttt");
-		
-		for (Map.Entry<Double, String> entry : carSortMap.entrySet()) {
-			
-			System.out.println(entry.getKey()+":"+entry.getValue());
-		}*/
+        /*Map<Double, String> carSortMap = new TreeMap<Double, String>();
+        carSortMap.put(256.3, "tttttt");
+        carSortMap.put(122.3, "tttttt");
+        carSortMap.put(356.3, "tttttt");
+        carSortMap.put(299.3, "tttttt");
+        carSortMap.put(156.3, "tttttt");
+        carSortMap.put(756.3, "tttttt");
+
+        for (Map.Entry<Double, String> entry : carSortMap.entrySet()) {
+
+            System.out.println(entry.getKey()+":"+entry.getValue());
+        }*/
         String la = null;
         String lt = null;
         System.out.println(la + "," + lt);

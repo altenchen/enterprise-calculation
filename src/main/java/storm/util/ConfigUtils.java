@@ -16,35 +16,35 @@ import java.util.Properties;
  */
 public final class ConfigUtils {
 
-	private static final Logger logger = LoggerFactory.getLogger(ConfigUtils.class);
+    private static final Logger logger = LoggerFactory.getLogger(ConfigUtils.class);
 
     private static final ConfigUtils INSTANCE = new ConfigUtils();
 
-	@Contract(pure = true)
+    @Contract(pure = true)
     public static ConfigUtils getInstance() {
-	    return INSTANCE;
-	}
+        return INSTANCE;
+    }
 
     /**
      * 运维配置参数
      */
-	@NotNull
-	public final Properties sysDefine = new Properties();
+    @NotNull
+    public final Properties sysDefine = new Properties();
 
     /**
      * 研发配置参数
      */
-	@NotNull
-	public final Properties sysParams = new Properties();
+    @NotNull
+    public final Properties sysParams = new Properties();
 
-	{
+    {
 
-	    if(INSTANCE != null) {
-	        throw new IllegalStateException();
+        if(INSTANCE != null) {
+            throw new IllegalStateException();
         }
 
         try {
-	        // 加载研发配置文件
+            // 加载研发配置文件
             loadFromResource("sysDefine.properties", sysDefine);
             // 加载运维配置文件
             loadFromResource("parms.properties", sysParams);
@@ -54,9 +54,9 @@ public final class ConfigUtils {
                 logger.error("[{}]初始化失败.", ConfigUtils.class.getName());
             }
         }
-	}
+    }
 
-	private ConfigUtils() {}
+    private ConfigUtils() {}
 
     private void loadFromResource(@NotNull String resourceName, @NotNull Properties properties)
         throws IOException {

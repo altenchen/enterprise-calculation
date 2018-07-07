@@ -12,23 +12,23 @@ import org.slf4j.LoggerFactory;
 
 public final class RegistScheme implements Scheme {
 
-	private static final long serialVersionUID = 18700005L;
-	private static Logger logger = LoggerFactory.getLogger(RegistScheme.class);
+    private static final long serialVersionUID = 18700005L;
+    private static Logger logger = LoggerFactory.getLogger(RegistScheme.class);
 
-	@Override
-	public List<Object> deserialize(ByteBuffer buffer) {
-	    try {
+    @Override
+    public List<Object> deserialize(ByteBuffer buffer) {
+        try {
             String string= StringScheme.deserializeString(buffer);
             return new Values(string);
         }
         catch (Exception exception) {
             exception.printStackTrace();
-	        logger.error(exception.getMessage(), exception);
+            logger.error(exception.getMessage(), exception);
         }
         return new Values();
     }
-	@Override
-	public Fields getOutputFields() {
+    @Override
+    public Fields getOutputFields() {
         return new Fields("msg");
     }
 }

@@ -7,27 +7,27 @@ import java.io.Serializable;
  * 电子围栏处理: 线段类
  */
 public final class Segment implements Serializable {
-	private static final long serialVersionUID = 1655500003L;
+    private static final long serialVersionUID = 1655500003L;
 
     /**
      * 起点
      */
-	public Coordinate st;
+    public Coordinate st;
 
     /**
      * 终点
      */
-	public Coordinate ed;
+    public Coordinate ed;
 
     /**
      * 线段宽度
      */
-	public double width;
+    public double width;
 
-	public Segment(Coordinate st, Coordinate ed, double width) {
-		this.st = st;
-		this.ed = ed;
-		this.width = width;
-	}
+    public Segment(Coordinate st, Coordinate ed, double width) {
+        this.st = st;
+        this.ed = ed;
+        this.width = width;
+    }
 }
                                                   

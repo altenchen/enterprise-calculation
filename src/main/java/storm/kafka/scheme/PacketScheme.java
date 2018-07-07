@@ -21,23 +21,23 @@ import storm.system.DataKey;
 
 public final class PacketScheme implements Scheme {
 
-	private static final long serialVersionUID = 134009L;
+    private static final long serialVersionUID = 134009L;
     private static Logger logger = LoggerFactory.getLogger(PacketScheme.class);
 
     @SuppressWarnings("Duplicates")
     @Override
-	public List<Object> deserialize(ByteBuffer buffer) {
+    public List<Object> deserialize(ByteBuffer buffer) {
         try {
             String msg = StringScheme.deserializeString(buffer);
-        	return generateValues(msg);
+            return generateValues(msg);
         } catch (Exception exception) {
             exception.printStackTrace();
             logger.error(exception.getMessage(), exception);
         }
         return new Values();
     }
-	@Override
-	public Fields getOutputFields() {
+    @Override
+    public Fields getOutputFields() {
         return new Fields(DataKey.VEHICLE_ID, "msg", "flag");
     }
 

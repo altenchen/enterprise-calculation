@@ -10,26 +10,26 @@ import com.ctfo.datacenter.cache.handle.DataCenter;
 
 public class CTFONoOtherUtils {
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
-	private static CTFODBManager ctfoDBManager;
+    private static CTFODBManager ctfoDBManager;
     private static CTFOCacheDB ctfoCacheDB ;
     private static CTFOCacheTable ctfoCacheTable;
     
     static{
-    	initCTFO(configUtils.sysDefine);
+        initCTFO(configUtils.sysDefine);
     }
     private static void initCTFO(Properties conf){
-    	 try{
-    		 	System.out.println("------ CTFONoOtherUtils init start...");
-    		 	String string = conf.getProperty("ctfo.cacheHost") + ":" + conf.getProperty("ctfo.cachePort")+","+conf.getProperty("redis.timeOut");
-    		 	System.out.println(string);
-    	    	ctfoDBManager = DataCenter.newCTFOInstance("cache", conf.getProperty("ctfo.cacheHost") + ":" + conf.getProperty("ctfo.cachePort"),100);
-    	    	ctfoCacheDB = ctfoDBManager.openCacheDB( conf.getProperty("ctfo.cacheDB"));
-    	        ctfoCacheTable = ctfoCacheDB.getTable( conf.getProperty("ctfo.cacheTable"));
-    	       
-    	        System.out.println("------ CTFONoOtherUtils init end...");
-    	    } catch (Exception e) {
-    	    	System.out.println("ctfoCacheTable初始化异常");
-    	    }
+         try{
+                 System.out.println("------ CTFONoOtherUtils init start...");
+                 String string = conf.getProperty("ctfo.cacheHost") + ":" + conf.getProperty("ctfo.cachePort")+","+conf.getProperty("redis.timeOut");
+                 System.out.println(string);
+                ctfoDBManager = DataCenter.newCTFOInstance("cache", conf.getProperty("ctfo.cacheHost") + ":" + conf.getProperty("ctfo.cachePort"),100);
+                ctfoCacheDB = ctfoDBManager.openCacheDB( conf.getProperty("ctfo.cacheDB"));
+                ctfoCacheTable = ctfoCacheDB.getTable( conf.getProperty("ctfo.cacheTable"));
+
+                System.out.println("------ CTFONoOtherUtils init end...");
+            } catch (Exception e) {
+                System.out.println("ctfoCacheTable初始化异常");
+            }
     }
     
     private static void reconnectionDefaultRedis(Properties conf) {
@@ -49,13 +49,13 @@ public class CTFONoOtherUtils {
         }
     }
     public static final CTFOCacheTable getDefaultCTFOCacheTable(){
-    	if (null == ctfoCacheTable) {
+        if (null == ctfoCacheTable) {
             reconnectionDefaultRedis(configUtils.sysDefine);
         }
-    	return ctfoCacheTable;
+        return ctfoCacheTable;
     }
     
     public static void main(String[] args) {
-		System.out.println("...Main...");
-	}
+        System.out.println("...Main...");
+    }
 }

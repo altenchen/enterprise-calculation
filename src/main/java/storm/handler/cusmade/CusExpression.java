@@ -4,6 +4,6 @@ import java.util.Map;
 
 public interface CusExpression {
 
-	Map<String,Object> handle(String expre);
+    Map<String,Object> handle(String expre);
 }
                                                   
