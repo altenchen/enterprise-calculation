@@ -1,10 +1,11 @@
 package storm.handler.cusmade;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.service.TimeFormatService;
+import storm.constant.FormatConstant;
 import storm.system.DataKey;
 import storm.util.DataUtils;
 import storm.util.ParamsRedisUtil;
@@ -59,14 +60,13 @@ public final class TimeOutOfRangeNotice {
             return generateNotice(data, 1);
         }
 
-        final TimeFormatService timeFormatService = TimeFormatService.getInstance();
         final long terminalTime;
         final long platformTime;
 
         final String platformTimeString = data.get(DataKey._9999_SERVER_RECEIVE_TIME);
         try {
-            terminalTime = timeFormatService.stringTimeLong(terminalTimeString);
-            platformTime = timeFormatService.stringTimeLong(platformTimeString);
+            terminalTime = DateUtils.parseDate(terminalTimeString, new String[]{FormatConstant.DATE_FORMAT}).getTime();
+            platformTime = DateUtils.parseDate(platformTimeString, new String[]{FormatConstant.DATE_FORMAT}).getTime();
         } catch (ParseException e) {
             e.printStackTrace();
             return result;

@@ -1,22 +1,31 @@
 package storm.handler.cusmade;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang.time.DateFormatUtils;
+import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.cache.SysRealDataCache;
+import storm.cache.VehicleCache;
+import storm.constant.FormatConstant;
 import storm.dao.DataToRedis;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
-import storm.service.TimeFormatService;
 import storm.system.AlarmMessageType;
 import storm.system.DataKey;
 import storm.util.DataUtils;
+import storm.util.JedisPoolUtils;
 import storm.util.ParamsRedisUtil;
 
 import java.text.ParseException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 /**
  * @author: xzp
@@ -26,15 +35,17 @@ import java.util.*;
 public final class CarNoCanJudge {
 
     private static final Logger logger = LoggerFactory.getLogger(CarNoCanJudge.class);
-    private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
-
-    /**
-     * 时间格式化服务
-     */
-    private static final TimeFormatService TIME_FORMAT_SERVICE = TimeFormatService.getInstance();
+    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
+    private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
+    private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
     private static final int REDIS_DB_INDEX = 6;
+
+    /**
+     * 出于兼容性考虑暂留, 已存储到车辆缓存<code>VehicleCache</code>中
+     */
     private static final String REDIS_TABLE_NAME = "vehCache.qy.notice.can";
+
     private static final String STATUS_KEY = "status";
 
     /**
@@ -86,25 +97,30 @@ public final class CarNoCanJudge {
         final Map<String, Map<String, Object>> restoreFromRedis = new TreeMap<>();
         recorder.rebootInit(REDIS_DB_INDEX, REDIS_TABLE_NAME, restoreFromRedis);
 
-        for(String vid : restoreFromRedis.keySet()) {
-            logger.info("从Redis还原无CAN车辆信息:" + vid);
+        for (String vid : restoreFromRedis.keySet()) {
+            logger.info("从Redis还原无CAN车辆信息:[{}]", vid);
 
             final Map<String, Object> item = restoreFromRedis.get(vid);
+            final ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder<>();
+            for (String key : item.keySet()) {
+                builder.put(key, ObjectUtils.toString(item.get(key), ""));
+            }
             try {
                 final AlarmStatus status = AlarmStatus.parseOf(
                     Integer.parseInt(
                         item.get(STATUS_KEY).toString()));
 
-                if(AlarmStatus.Start == status || AlarmStatus.Continue == status) {
-                    final CarNoCanItem carNoCanItem = new CarNoCanItem(vid, item, AlarmStatus.Start);
+                if (AlarmStatus.Start == status || AlarmStatus.Continue == status) {
+                    final CarNoCanItem carNoCanItem = new CarNoCanItem(vid, builder.build(), status);
                     carNoCanMap.put(carNoCanItem.vid, carNoCanItem);
                 }
-            }
-            catch (Exception ignore) {
-                ignore.printStackTrace();
+            } catch (Exception ignore) {
+                logger.warn("初始化告警异常", ignore);
             }
         }
     }
+
+    // region 全局配置
 
     /**
      * 获取触发CAN故障需要的连续帧数
@@ -170,6 +186,8 @@ public final class CarNoCanJudge {
         logger.info("触发CAN正常需要的持续时长被设置为:" + normalTriggerTimeoutMillisecond);
     }
 
+    // endregion
+
     /**
      * @param data 车辆数据
      * @return 如果产生无CAN通知, 则填充通知, 否则为空集合.
@@ -181,23 +199,20 @@ public final class CarNoCanJudge {
 
         final String vid = data.get(DataKey.VEHICLE_ID);
         final String timeString = data.get(DataKey.TIME);
-        final boolean traceVehicle = paramsRedisUtil.isTraceVehicleId(vid);
+        final boolean traceVehicle = PARAMS_REDIS_UTIL.isTraceVehicleId(vid);
 
-        if(StringUtils.isBlank(vid)
+        if (StringUtils.isBlank(vid)
             || StringUtils.isBlank(timeString)) {
-            if(traceVehicle) {
+            if (traceVehicle) {
                 logger.info("无CAN放弃判定, 时间空白.");
             }
             return result;
         }
         final long time;
         try {
-            time = TIME_FORMAT_SERVICE.stringTimeLong(timeString);
+            time = DateUtils.parseDate(timeString, new String[]{FormatConstant.DATE_FORMAT}).getTime();
         } catch (ParseException e) {
-            e.printStackTrace();
-            if(traceVehicle) {
-                logger.info("无CAN放弃判定, 时间格式错误.");
-            }
+            logger.warn("无CAN放弃判定, 时间格式错误.", e);
             return result;
         }
 
@@ -215,23 +230,23 @@ public final class CarNoCanJudge {
         final ICarNoCanDecide carNoCanDecide = getCarNoCanDecide();
         boolean hasCan = carNoCanDecide.hasCan(data);
 
-        if(!hasCan) {
+        if (!hasCan) {
             final CarNoCanItem carNoCanItem;
-            if(carNoCanMap.containsKey(vid)) {
+            if (carNoCanMap.containsKey(vid)) {
                 carNoCanItem = carNoCanMap.get(vid);
             } else {
                 carNoCanItem = new CarNoCanItem(vid);
                 carNoCanMap.put(vid, carNoCanItem);
             }
             continueFaultIncrement(result, carNoCanItem, time, totalMileage, location);
-        } else if(carNoCanMap.containsKey(vid)) {
+        } else if (carNoCanMap.containsKey(vid)) {
             final CarNoCanItem carNoCanItem = carNoCanMap.get(vid);
             continueNormalIncrement(result, carNoCanItem, time, totalMileage, location);
         }
 
-        paramsRedisUtil.autoLog(vid, id -> {
-            if(result.containsKey(STATUS_KEY)) {
-                logger.info("VID[{}]收到无CAN告警通知, status[{}]", id, result.get(STATUS_KEY));
+        PARAMS_REDIS_UTIL.autoLog(vid, () -> {
+            if (result.containsKey(STATUS_KEY)) {
+                logger.info("VID[{}]收到无CAN告警通知, status[{}]", vid, result.get(STATUS_KEY));
             }
         });
 
@@ -248,49 +263,88 @@ public final class CarNoCanJudge {
         @NotNull final String totalMileage,
         @NotNull final String location
     ) {
-        final boolean traceVehicle = paramsRedisUtil.isTraceVehicleId(item.vid);
+        final boolean traceVehicle = PARAMS_REDIS_UTIL.isTraceVehicleId(item.vid);
 
-        if(item.continueCount > FIRST_FAULT_FRAME) {
+        if (item.continueCount > FIRST_FAULT_FRAME) {
             item.continueCount = FIRST_FAULT_FRAME;
         }
 
-        if(item.continueCount == FIRST_FAULT_FRAME) {
+        if (item.continueCount == FIRST_FAULT_FRAME) {
+
             final String totalMileageString;
-            if (StringUtils.isNotEmpty(totalMileage) && StringUtils.isNumeric(totalMileage)) {
-                totalMileageString = totalMileage;
-            } else {
-                // TODO XZP: 从缓存里取值
-                totalMileageString = "";
+            try {
+
+                totalMileageString = getTotalMileageString(item.vid, totalMileage);
+            } catch (ExecutionException e) {
+
+                logger.warn("从缓存获取有效累计里程值异常", e);
+                return;
             }
+
             item.firstFrameEnterFault(time, totalMileageString, location);
         }
 
-        if(traceVehicle) {
+        if (traceVehicle) {
             logger.info("VID[" + item.vid + "]判定为无CAN[" + item.continueCount + "]");
         }
 
-        if(item.continueCount > -getFaultTriggerContinueCount()) {
+        if (item.continueCount > -getFaultTriggerContinueCount()) {
             --item.continueCount;
             return;
         }
 
         final long delayMillisecond = getFaultTriggerTimeoutMillisecond();
-        if(time - item.getFirstFrameTime() > delayMillisecond) {
+        if (time - item.getFirstFrameTime() > delayMillisecond) {
 
             item.lastFrameEnterFault(delayMillisecond);
 
-            if(item.getAlarmStatus() == AlarmStatus.End
+            if (item.getAlarmStatus() == AlarmStatus.End
                 || item.getAlarmStatus() == AlarmStatus.Init) {
+
+                try {
+
+                    final ImmutableMap<String, String> oldNotice = VEHICLE_CACHE.getField(
+                        item.vid,
+                        AlarmMessageType.NO_CAN_VEH
+                    );
+                    if (MapUtils.isNotEmpty(oldNotice)) {
+
+                        final String vid = oldNotice.get("vid");
+                        final int status = NumberUtils.toInt(oldNotice.get(STATUS_KEY));
+                        if (item.vid.equals(vid)
+                            && (status == AlarmStatus.Start.value || status == AlarmStatus.Continue.value)) {
+
+                            final CarNoCanItem newItem = new CarNoCanItem(item.vid, oldNotice, AlarmStatus.parseOf(status));
+                            carNoCanMap.put(newItem.vid, newItem);
+                            logger.info("从缓存取回CAN故障告警, 不再发送通知.");
+                            return;
+                        }
+                    }
+                } catch (ExecutionException e) {
+
+                    logger.warn("获取CAN故障通知缓存异常");
+                }
 
                 item.setAlarmStatus(AlarmStatus.Start);
 
-                if(traceVehicle) {
+                if (traceVehicle) {
                     logger.info("VID[" + item.vid + "]触发CAN故障[" + item.getAlarmStatus() + "]");
                 }
 
-                final Map<String, Object> notice = item.generateNotice();
+                final ImmutableMap<String, String> notice = item.generateNotice();
+
                 noticeResult.putAll(notice);
-                recorder.save(REDIS_DB_INDEX, REDIS_TABLE_NAME, item.vid, notice);
+
+                try {
+                    VEHICLE_CACHE.putField(
+                        item.vid,
+                        AlarmMessageType.NO_CAN_VEH,
+                        notice
+                    );
+                    PARAMS_REDIS_UTIL.autoLog(item.vid, ()->logger.info("VID[{}]CAN故障, 更新缓存.", item.vid));
+                } catch (ExecutionException e) {
+                    logger.error("存储CAN故障通知缓存异常");
+                }
             }
         }
     }
@@ -305,40 +359,88 @@ public final class CarNoCanJudge {
         @NotNull final String totalMileage,
         @NotNull final String location
     ) {
-        final boolean traceVehicle = paramsRedisUtil.isTraceVehicleId(item.vid);
+        final boolean traceVehicle = PARAMS_REDIS_UTIL.isTraceVehicleId(item.vid);
 
-        if(item.continueCount < FIRST_NORMAL_FRAME) {
+        if (item.continueCount < FIRST_NORMAL_FRAME) {
             item.continueCount = FIRST_NORMAL_FRAME;
         }
 
-        if(item.continueCount == FIRST_NORMAL_FRAME) {
-            item.firstFrameLeaveFault(time, totalMileage, location);
+        if (item.continueCount == FIRST_NORMAL_FRAME) {
+
+            final String totalMileageString;
+            try {
+
+                totalMileageString = getTotalMileageString(item.vid, totalMileage);
+            } catch (ExecutionException e) {
+
+                logger.warn("从缓存获取有效累计里程值异常", e);
+                return;
+            }
+
+            item.firstFrameLeaveFault(time, totalMileageString, location);
         }
 
-        if(traceVehicle) {
+        if (traceVehicle) {
             logger.info("VID[" + item.vid + "]判定为有CAN[" + item.continueCount + "]");
         }
 
-        if(item.continueCount < getNormalTriggerContinueCount()) {
+        if (item.continueCount < getNormalTriggerContinueCount()) {
             ++item.continueCount;
             return;
         }
 
         final long delayMillisecond = getNormalTriggerTimeoutMillisecond();
-        if(time - item.getFirstFrameTime() > delayMillisecond) {
+        if (time - item.getFirstFrameTime() > delayMillisecond) {
             item.lastFrameLeaveFault(delayMillisecond);
 
-            if(item.getAlarmStatus() == AlarmStatus.Start
+            if (item.getAlarmStatus() == AlarmStatus.Start
                 || item.getAlarmStatus() == AlarmStatus.Continue) {
+
+                try {
+
+                    final ImmutableMap<String, String> oldNotice = VEHICLE_CACHE.getField(
+                        item.vid,
+                        AlarmMessageType.NO_CAN_VEH
+                    );
+                    if (MapUtils.isNotEmpty(oldNotice)) {
+
+                        final String vid = oldNotice.get("vid");
+                        final int status = NumberUtils.toInt(oldNotice.get(STATUS_KEY));
+                        if (item.vid.equals(vid)
+                            && (status == AlarmStatus.End.value || status == AlarmStatus.Init.value)) {
+
+                            final CarNoCanItem newItem = new CarNoCanItem(item.vid, oldNotice, AlarmStatus.parseOf(status));
+                            carNoCanMap.put(newItem.vid, newItem);
+                            logger.info("从缓存取回CAN正常告警, 不再发送通知.");
+                            return;
+                        }
+                    }
+                } catch (ExecutionException e) {
+
+                    logger.warn("获取CAN正常通知缓存异常");
+                }
 
                 item.setAlarmStatus(AlarmStatus.End);
 
-                if(traceVehicle) {
+                if (traceVehicle) {
                     logger.info("VID[" + item.vid + "]触发CAN正常[" + item.getAlarmStatus() + "]");
                 }
 
-                final Map<String, Object> notice = item.generateNotice();
+                final ImmutableMap<String, String> notice = item.generateNotice();
+
                 noticeResult.putAll(notice);
+
+                try {
+                    VEHICLE_CACHE.delField(
+                        item.vid,
+                        AlarmMessageType.NO_CAN_VEH
+                    );
+                    PARAMS_REDIS_UTIL.autoLog(item.vid, ()->logger.info("VID[{}]CAN正常, 删除缓存.", item.vid));
+                } catch (ExecutionException e) {
+                    logger.error("删除CAN正常通知缓存异常");
+                }
+
+                // 出于兼容性考虑, 先暂留.
                 recorder.del(REDIS_DB_INDEX, REDIS_TABLE_NAME, item.vid);
             }
 
@@ -360,6 +462,21 @@ public final class CarNoCanJudge {
         logger.info("[logger]" + log);
         CarNoCanJudge.carNoCanDecide = carNoCanDecide;
         return true;
+    }
+
+    @Nullable
+    public String getTotalMileageString(
+        @NotNull String vid,
+        @Nullable String totalMileage)
+        throws ExecutionException {
+
+        if (NumberUtils.isDigits(totalMileage)) {
+            return totalMileage;
+        } else {
+            return VEHICLE_CACHE.getTotalMileageString(
+                vid,
+                "0");
+        }
     }
 
     /**
@@ -392,20 +509,22 @@ public final class CarNoCanJudge {
         /**
          * 属性集合
          */
-        private final Map<String, Object> properties;
+        private final Map<String, String> properties;
 
         /**
          * 消息唯一ID
          */
-        public final String msgId = UUID.randomUUID().toString();
+        public final String msgId;
 
         /**
          * 正常运行时创建的项
+         *
          * @param vid 车辆ID
          */
-        public CarNoCanItem(String vid){
+        public CarNoCanItem(String vid) {
             this.vid = vid;
             this.properties = new TreeMap<>();
+            msgId = UUID.randomUUID().toString();
 
             // 车辆Id
             this.properties.put("vid", vid);
@@ -414,30 +533,33 @@ public final class CarNoCanJudge {
             // 消息唯一ID
             this.properties.put("msgId", msgId);
             // 消息状态
-            this.properties.put(STATUS_KEY, AlarmStatus.Init.value);
+            this.properties.put(STATUS_KEY, String.valueOf(AlarmStatus.Init.value));
 
             this.setAlarmStatus(AlarmStatus.Init);
         }
 
         /**
          * Storm重启后从Redis还原项
-         * @param vid 车辆ID
-         * @param properties 属性集合
+         *
+         * @param vid         车辆ID
+         * @param properties  属性集合
          * @param alarmStatus 通知状态
          */
-        public CarNoCanItem(String vid, Map<String, Object> properties, AlarmStatus alarmStatus) {
+        public CarNoCanItem(String vid, Map<String, String> properties, AlarmStatus alarmStatus) {
             this.vid = vid;
             this.properties = properties;
+            msgId = properties.get("msgId");
 
             // 车辆Id
             this.properties.put("vid", vid);
             // 消息状态
-            this.properties.put(STATUS_KEY, alarmStatus.value);
+            this.properties.put(STATUS_KEY, String.valueOf(alarmStatus.value));
             this.setAlarmStatus(alarmStatus);
         }
 
         /**
          * 进入告警的首帧填充状态
+         *
          * @param time
          * @param totalMileage
          * @param location
@@ -448,7 +570,7 @@ public final class CarNoCanJudge {
             final String location
         ) {
             firstFrameTime = time;
-            final String stime = TIME_FORMAT_SERVICE.toDateString(new Date(time));
+            final String stime = DateFormatUtils.format(new Date(time), FormatConstant.DATE_FORMAT);
             properties.put("stime", stime);
             properties.put("smileage", totalMileage);
             properties.put("slocation", location);
@@ -456,14 +578,16 @@ public final class CarNoCanJudge {
 
         /**
          * 进入告警的末帧填充状态
+         *
          * @param delayMillisecond
          */
         public final void lastFrameEnterFault(final long delayMillisecond) {
-            properties.put("sdelay", delayMillisecond / 1000);
+            properties.put("sdelay", String.valueOf(delayMillisecond / 1000));
         }
 
         /**
          * 退出告警的首帧填充状态
+         *
          * @param time
          * @param totalMileage
          * @param location
@@ -474,7 +598,7 @@ public final class CarNoCanJudge {
             final String location
         ) {
             firstFrameTime = time;
-            final String etime = TIME_FORMAT_SERVICE.toDateString(new Date(time));
+            final String etime = DateFormatUtils.format(new Date(time), FormatConstant.DATE_FORMAT);
             properties.put("etime", etime);
             properties.put("emileage", totalMileage);
             properties.put("elocation", location);
@@ -482,23 +606,27 @@ public final class CarNoCanJudge {
 
         /**
          * 退出告警的末帧填充状态
+         *
          * @param delayMillisecond
          */
         public final void lastFrameLeaveFault(final long delayMillisecond) {
-            properties.put("edelay", delayMillisecond / 1000);
+            properties.put("edelay", String.valueOf(delayMillisecond / 1000));
         }
 
         /**
          * 根据当前属性生成通知消息
+         *
          * @return 通知消息
          */
         @NotNull
-        public final Map<String, Object> generateNotice() {
+        public final ImmutableMap<String, String> generateNotice() {
             final Date now = new Date();
-            final String noticetime = TIME_FORMAT_SERVICE.toDateString(now);
+            final String noticeTime = DateFormatUtils.format(now, FormatConstant.DATE_FORMAT);
 
-            final TreeMap<String, Object> result = new TreeMap<>(this.properties);
-            result.put("noticetime", noticetime);
+            final ImmutableMap<String, String> result = new ImmutableMap.Builder<String, String>()
+                .putAll(this.properties)
+                .put("noticetime", noticeTime)
+                .build();
             return result;
         }
 
@@ -520,16 +648,16 @@ public final class CarNoCanJudge {
          * 设置告警状态
          */
         public void setAlarmStatus(AlarmStatus alarmStatus) {
-            if(this.alarmStatus == alarmStatus) {
+            if (this.alarmStatus == alarmStatus) {
                 return;
             }
 
-            paramsRedisUtil.autoLog(vid, vid->{
-                    logger.info("VID[{}]无CAN状态从[{}]切换到[{}]", vid, this.alarmStatus, alarmStatus);
+            PARAMS_REDIS_UTIL.autoLog(vid, () -> {
+                logger.info("VID[{}]无CAN状态从[{}]切换到[{}]", vid, this.alarmStatus, alarmStatus);
             });
 
             this.alarmStatus = alarmStatus;
-            properties.put(STATUS_KEY, alarmStatus.value);
+            properties.put(STATUS_KEY, String.valueOf(alarmStatus.value));
         }
     }
 
@@ -556,9 +684,7 @@ public final class CarNoCanJudge {
         /**
          * 结束
          */
-        End(3),
-
-        ;
+        End(3),;
 
         public final int value;
 
@@ -566,21 +692,32 @@ public final class CarNoCanJudge {
             this.value = value;
         }
 
+        @Contract(pure = true)
         public static AlarmStatus parseOf(int value) {
-            if(Init.value == value) {
+            if (Init.value == value) {
                 return Init;
             }
-            if(Start.value == value) {
+            if (Start.value == value) {
                 return Start;
             }
-            if(Continue.value == value) {
+            if (Continue.value == value) {
                 return Continue;
             }
-            if(End.value == value) {
+            if (End.value == value) {
                 return End;
             }
 
             throw new UnknownFormatConversionException("无法识别的选项");
+        }
+
+        @Contract(pure = true)
+        public boolean equals(int value) {
+            return this.value == value;
+        }
+
+        @Contract("null -> false")
+        public boolean equals(String name) {
+            return this.name().equals(name);
         }
     }
 }

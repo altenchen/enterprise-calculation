@@ -31,7 +31,6 @@ import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
-import storm.util.NumberUtils;
 
 public class RedisTotalCacheInitUtil {
     private static Logger logger = LoggerFactory.getLogger(RedisTotalCacheInitUtil.class);
@@ -877,7 +876,8 @@ public class RedisTotalCacheInitUtil {
                 long runningonline=null==disMap.get(SysDefine.RUNNING_ONLINE)?0:Long.valueOf(disMap.get(SysDefine.RUNNING_ONLINE));
                 long stoponline=null==disMap.get(SysDefine.STOP_ONLINE)?0:Long.valueOf(disMap.get(SysDefine.STOP_ONLINE));
 
-                mileage +=Double.valueOf(NumberUtils.stringNumber(map.get(DataKey._2202_TOTAL_MILEAGE)));
+                String str = map.get(DataKey._2202_TOTAL_MILEAGE);
+                mileage +=Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0");
                 long lastTime=Long.valueOf(map.get(SysDefine.ONLINEUTC));
                 boolean istoday = timeIsToday(now, lastTime);
                 if (now-lastTime<time){

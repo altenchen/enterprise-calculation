@@ -1,7 +1,9 @@
 package storm.bolt.deal.cusmade;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -9,24 +11,27 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
+import storm.cache.VehicleCache;
 import storm.handler.FaultCodeHandler;
-import storm.handler.cusmade.*;
+import storm.handler.cusmade.CarOnOffHandler;
+import storm.handler.cusmade.CarRuleHandler;
+import storm.handler.cusmade.OnOffInfoNotice;
+import storm.handler.cusmade.ScanRange;
 import storm.protocol.CommandType;
 import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.GsonUtils;
-import storm.util.NumberUtils;
 import storm.util.ParamsRedisUtil;
 
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -38,6 +43,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(CarNoticelBolt.class);
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
     private static final GsonUtils gson = GsonUtils.getInstance();
+    private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
     private OutputCollector collector;
 
@@ -81,7 +87,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
     /**
      * prepare时值为2则进行一次全量数据扫描并修改值为1,
      */
-    private static int ispreCp=0;
+    private static int ispreCp = 0;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -98,7 +104,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
             // 从Redis读取超时时间
             Object outbyconf = paramsRedisUtil.PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
             if (null != outbyconf) {
-                idleTimeoutMillsecond =1000*(int)outbyconf;
+                idleTimeoutMillsecond = 1000 * (int) outbyconf;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -107,13 +113,13 @@ public final class CarNoticelBolt extends BaseRichBolt {
         // 多长时间算是离线
         String offLineSecond = MapUtils.getString(stormConf, StormConfigKey.REDIS_OFFLINE_SECOND);
         if (!StringUtils.isEmpty(offLineSecond)) {
-            offlineTimeMillisecond = Long.parseLong(NumberUtils.stringNumber(offLineSecond))*1000;
+            offlineTimeMillisecond = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(offLineSecond) ? offLineSecond : "0") * 1000;
         }
 
         // 多长时间检查一下是否离线
         String offLineCheckSpanSecond = MapUtils.getString(stormConf, StormConfigKey.REDIS_OFFLINE_CHECK_SPAN_SECOND);
         if (!StringUtils.isEmpty(offLineCheckSpanSecond)) {
-            offlineCheckSpanMillisecond = Long.parseLong(NumberUtils.stringNumber(offLineCheckSpanSecond))*1000;
+            offlineCheckSpanMillisecond = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(offLineCheckSpanSecond) ? offLineCheckSpanSecond : "0") * 1000;
         }
 
         carRuleHandler = new CarRuleHandler();
@@ -127,30 +133,31 @@ public final class CarNoticelBolt extends BaseRichBolt {
             if (stormConf.containsKey(StormConfigKey.REDIS_CLUSTER_DATA_SYN)) {
                 Object precp = stormConf.get(StormConfigKey.REDIS_CLUSTER_DATA_SYN);
                 if (null != precp && !"".equals(precp.toString().trim())) {
-                    ispreCp = Integer.valueOf(NumberUtils.stringNumber(precp.toString()));
+                    String str = precp.toString();
+                    ispreCp = Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0");
                 }
             }
             //2代表着读取历史车辆数据，即全部车辆
-            if (2 == ispreCp){
-                carOnOffhandler.onOffCheck("TIMEOUT",0,now, offlineTimeMillisecond);
-                List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AllData,now, idleTimeoutMillsecond);
-                if (null != msgs && msgs.size()>0) {
+            if (2 == ispreCp) {
+                carOnOffhandler.onOffCheck("TIMEOUT", 0, now, offlineTimeMillisecond);
+                List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
+                if (null != msgs && msgs.size() > 0) {
                     System.out.println("---------------syn redis cluster data--------");
                     for (Map<String, Object> map : msgs) {
                         if (null != map && map.size() > 0) {
                             Object vid = map.get("vid");
-                            String json= gson.toJson(map);
-                            sendToKafka(SysDefine.CUS_NOTICE,noticeTopic,vid, json);
+                            String json = gson.toJson(map);
+                            sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                         }
                     }
                 }
 
             }
-            ispreCp=1;
+            ispreCp = 1;
             // endregion
 
             // region 每5分钟执行一次活跃数据扫描，将闲置车辆告警发到kafka中。
-            class TimeOutClass implements Runnable{
+            class TimeOutClass implements Runnable {
 
                 @Override
                 public void run() {
@@ -167,19 +174,19 @@ public final class CarNoticelBolt extends BaseRichBolt {
                             //从配置文件中读出超时时间
                             Object outbyconf = ParamsRedisUtil.getInstance().PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
                             if (null != outbyconf) {
-                                idleTimeoutMillsecond =1000*(int)outbyconf;
+                                idleTimeoutMillsecond = 1000 * (int) outbyconf;
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
                         //车辆长期离线（闲置车辆）通知
-                        List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT",ScanRange.AliveData,System.currentTimeMillis(), idleTimeoutMillsecond);
-                        if (null != msgs && msgs.size()>0) {
+                        List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AliveData, System.currentTimeMillis(), idleTimeoutMillsecond);
+                        if (null != msgs && msgs.size() > 0) {
                             for (Map<String, Object> map : msgs) {
                                 if (null != map && map.size() > 0) {
                                     Object vid = map.get("vid");
-                                    String json= gson.toJson(map);
-                                    sendToKafka(SysDefine.CUS_NOTICE,noticeTopic,vid, json);
+                                    String json = gson.toJson(map);
+                                    sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                                 }
                             }
                         }
@@ -206,14 +213,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple tuple) {
-        long now = System.currentTimeMillis();
-
-        {
-            String vid = tuple.getString(0);
-            if (paramsRedisUtil.isTraceVehicleId(vid)) {
-                logger.warn("VID[" + vid + "]进入车辆通知处理");
-            }
-        }
+        final long now = System.currentTimeMillis();
 
         // region 离线判断: 如果时间差大于离线检查时间，则进行离线检查, 如果车辆离线，则发送此车辆的所有故障码结束通知
         if (now - lastOfflineCheckTimeMillisecond >= offlineCheckSpanMillisecond) {
@@ -221,78 +221,120 @@ public final class CarNoticelBolt extends BaseRichBolt {
             lastOfflineCheckTimeMillisecond = now;
             List<Map<String, Object>> msgs = faultCodeHandler.generateNotice(now);
 
-            if (null != msgs && msgs.size()>0) {
+            if (null != msgs && msgs.size() > 0) {
                 for (Map<String, Object> map : msgs) {
                     if (null != map && map.size() > 0) {
                         Object vid = map.get("vid");
-                        String json= gson.toJson(map);
-                        sendToKafka(SysDefine.CUS_NOTICE,noticeTopic,vid, json);
+                        String json = gson.toJson(map);
+                        sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                     }
                 }
             }
 
             //检查所有车辆是否离线，离线则发送离线通知。
             msgs = carRuleHandler.offlineMethod(now);
-            if (null != msgs && msgs.size()>0) {
+            if (null != msgs && msgs.size() > 0) {
                 for (Map<String, Object> map : msgs) {
                     if (null != map && map.size() > 0) {
                         Object vid = map.get("vid");
-                        String json= gson.toJson(map);
-                        sendToKafka(SysDefine.CUS_NOTICE,noticeTopic,vid, json);
+                        String json = gson.toJson(map);
+                        sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                     }
                 }
             }
 
-            carOnOffhandler.onOffCheck("TIMEOUT",1, now, offlineTimeMillisecond);
+            carOnOffhandler.onOffCheck("TIMEOUT", 1, now, offlineTimeMillisecond);
         }
         // endregion
 
-        if(CUS_NOTICE_GROUP.streamId.equals(tuple.getSourceStreamId())){
+        if (CUS_NOTICE_GROUP.streamId.equals(tuple.getSourceStreamId())) {
             String vid = tuple.getString(0);
 
             final Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
 
-            if(MapUtils.isEmpty(data)) {
+            if (MapUtils.isEmpty(data)) {
                 return;
             }
 
             if (null == data.get(DataKey.VEHICLE_ID)) {
                 data.put(DataKey.VEHICLE_ID, vid);
             }
-            
+
+            paramsRedisUtil.autoLog(vid, () -> logger.warn("VID[" + vid + "]进入车辆通知处理"));
+
+            // region 缓存持续里程有效值
+            final String collectTime = data.get(DataKey._2000_COLLECT_TIME);
+            final String totalMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
+
+            if (NumberUtils.isDigits(totalMileage)) {
+
+                try {
+
+                    final ImmutableMap<String, String> usefulTotalMileage =
+                        VEHICLE_CACHE.getField(
+                            vid,
+                            VehicleCache.TOTAL_MILEAGE_FIELD);
+                    if (MapUtils.isNotEmpty(usefulTotalMileage)) {
+
+                        final String oldTime = usefulTotalMileage.get(VehicleCache.VALUE_TIME_KEY);
+                        if(NumberUtils.toLong(oldTime) < NumberUtils.toLong(collectTime)) {
+
+                            final String oldData = usefulTotalMileage.get(VehicleCache.VALUE_DATA_KEY);
+                            if(NumberUtils.toLong(oldData) < NumberUtils.toLong(totalMileage)) {
+
+                                final ImmutableMap<String, String> update = new ImmutableMap.Builder<String, String>()
+                                    .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                    .put(VehicleCache.VALUE_DATA_KEY, totalMileage)
+                                    .build();
+                                VEHICLE_CACHE.putField(
+                                    vid,
+                                    VehicleCache.TOTAL_MILEAGE_FIELD,
+                                    update);
+                                paramsRedisUtil.autoLog(vid, ()-> logger.info("VID[{}]缓存有效累计里程值[{}]", vid, update));
+                            }
+                        }
+                    }
+                } catch (ExecutionException e) {
+                    logger.warn("获取累计里程缓存异常", e);
+                }
+            }
+            // endregion
+
+            // region 更新实时缓存
             try {
                 String type = data.get(SysDefine.MESSAGETYPE);
-                if(!CommandType.SUBMIT_LINKSTATUS.equals(type)){
-                    // 更新实时缓存
+                if (!CommandType.SUBMIT_LINKSTATUS.equals(type)) {
                     SysRealDataCache.updateCache(data, now);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            // endregion
+
             //返回车辆通知,(重要)
             //先检查规则是否启用，启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
             List<Map<String, Object>> msgs = carRuleHandler.generateNotices(data);
-            for(Map<String, Object> map: msgs) {
+            for (Map<String, Object> map : msgs) {
                 if (null != map && map.size() > 0) {
-                    String json= gson.toJson(map);
+                    String json = gson.toJson(map);
                     sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                 }
             }
 
             List<Map<String, Object>> faultCodeMessages = faultCodeHandler.generateNotice(data);
-            if (null != faultCodeMessages && faultCodeMessages.size()>0) {
+            if (null != faultCodeMessages && faultCodeMessages.size() > 0) {
                 for (Map<String, Object> map : faultCodeMessages) {
                     if (null != map && map.size() > 0) {
-                        String json= gson.toJson(map);
-                        sendToKafka(SysDefine.CUS_NOTICE,noticeTopic,vid, json);
+                        String json = gson.toJson(map);
+                        sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                     }
                 }
             }
             //如果下线了，则发送上下线的里程值
             Map<String, Object> map = carOnOffhandler.generateNotices(data, now, offlineTimeMillisecond);
             if (null != map && map.size() > 0) {
-                String json= gson.toJson(map);
-                sendToKafka(SysDefine.CUS_NOTICE,noticeTopic,vid, json);
+                String json = gson.toJson(map);
+                sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
             }
         }
 
@@ -303,8 +345,8 @@ public final class CarNoticelBolt extends BaseRichBolt {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(SysDefine.CUS_NOTICE, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
     }
-    
-    void sendToKafka(String define,String topic,Object vid, String message) {
+
+    void sendToKafka(String define, String topic, Object vid, String message) {
         collector.emit(define, new Values(topic, vid, message));
     }
 }

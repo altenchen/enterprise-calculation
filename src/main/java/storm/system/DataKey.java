@@ -39,11 +39,9 @@ public final class DataKey {
      * 协议版本:1.0.0
      */
     public static final String CAR_TYPE = "CTYPE";
-//------
-
 
     /**
-     * 采集时间
+     * 采集时间, 国标.
      */
     public static final String _2000_COLLECT_TIME = "2000";
 
@@ -503,7 +501,7 @@ public final class DataKey {
     public static final String _2924 = "2924";
 
     /**
-     * 采集时间
+     * 采集时间, 地标.
      */
     public static final String _3101_COLLECT_TIME = "3101";
 

@@ -31,7 +31,6 @@ import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
-import storm.util.NumberUtils;
 
 /**
  * 计算碳排里程等数据的处理类
@@ -685,7 +684,8 @@ public class MailCalHandler {
                 long runningonline=null==disMap.get(SysDefine.RUNNING_ONLINE)?0:Long.valueOf(disMap.get(SysDefine.RUNNING_ONLINE));
                 long stoponline=null==disMap.get(SysDefine.STOP_ONLINE)?0:Long.valueOf(disMap.get(SysDefine.STOP_ONLINE));
 
-                mileage +=Long.parseLong(NumberUtils.stringNumber(map.get(DataKey._2202_TOTAL_MILEAGE)));
+                String str = map.get(DataKey._2202_TOTAL_MILEAGE);
+                mileage +=Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0");
                 long lastTime=Long.valueOf(map.get(SysDefine.ONLINEUTC));
                 if (System.currentTimeMillis()-lastTime<time){
                     online++;

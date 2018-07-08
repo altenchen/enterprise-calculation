@@ -4,13 +4,14 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.time.DateFormatUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleModelCache;
+import storm.constant.FormatConstant;
 import storm.dto.*;
-import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
@@ -30,8 +31,6 @@ public class FaultCodeHandler {
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
     private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
-
-    private static final TimeFormatService TIME_FORMAT = TimeFormatService.getInstance();
 
     /**
      * 从数据库拉取规则的时间间隔, 默认360秒
@@ -139,7 +138,7 @@ public class FaultCodeHandler {
             return null;
         }
         List<Map<String, Object>>notices = new LinkedList<>();
-        String noticetime = TIME_FORMAT.toDateString(new Date(now));
+        String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
         //needRemoves缓存需要移除的故障码id（因为map不能在遍历的时候删除id或者放入id，否则会引发并发修改异常）
         List<String> needRemoves = new LinkedList<>();
         //lastTime为所有车辆的最后一帧报文的时间（vid，lastTime）
@@ -239,10 +238,10 @@ public class FaultCodeHandler {
 
         // 车型, 空字符串代表没有配置, 只匹配默认规则
         final String vehModel = VehicleModelCache.getInstance().getVehicleModel(vid);
-        paramsRedisUtil.autoLog(vid, v->{
+        paramsRedisUtil.autoLog(vid, ()->{
             logger.info("VID[{}]解析车型为[{}], 故障类型[{}]", vid, vehModel, faultType);
         });
-        String noticeTime = TIME_FORMAT.toDateString(now);
+        String noticeTime = DateFormatUtils.format(now, FormatConstant.DATE_FORMAT);
 
         boolean processByBit = false;
         if(bitRules.containsKey(faultType)) {
@@ -252,7 +251,7 @@ public class FaultCodeHandler {
             if(MapUtils.isNotEmpty(exceptions)) {
                 processByBit = true;
 
-                paramsRedisUtil.autoLog(vid, v->{
+                paramsRedisUtil.autoLog(vid, ()->{
                     logger.info("VID[{}]故障类型[{}]按位解析, 一共[{}]条异常码.", vid, faultType, exceptions.size());
                 });
 
@@ -274,7 +273,7 @@ public class FaultCodeHandler {
 
                         if(1 == (int)alarmMessage.get(NOTICE_STATUS)) {
                             notices.add(alarmMessage);
-                            paramsRedisUtil.autoLog(vid, v->{
+                            paramsRedisUtil.autoLog(vid, ()->{
                                 logger.info("VID[{}]按位解析FID[{}]触发", vid, bit.exceptionId);
                             });
                         }
@@ -286,7 +285,7 @@ public class FaultCodeHandler {
                             deleteNoticeMsg(alarmMessage, time, location, bit.exceptionId, noticeTime);
                             notices.add(alarmMessage);
 
-                            paramsRedisUtil.autoLog(vid, v->{
+                            paramsRedisUtil.autoLog(vid, ()->{
                                 logger.info("VID[{}]按位解析FID[{}]解除", vid, bit.exceptionId);
                             });
                         }
@@ -298,7 +297,7 @@ public class FaultCodeHandler {
         // 没有匹配按位处理规则, 转为按字节处理
         if(!processByBit) {
 
-            paramsRedisUtil.autoLog(vid, v->{
+            paramsRedisUtil.autoLog(vid, ()->{
                 logger.info("VID[{}]故障类型[{}]按字节解析, 一共[{}]条异常码.", vid, faultType, byteRules.size());
             });
 
@@ -376,7 +375,7 @@ public class FaultCodeHandler {
         String location = DataUtils.buildLocation(longitude, latitude);
 
         Date now = new Date();
-        String noticetime = TIME_FORMAT.toDateString(now);
+        String noticetime = DateFormatUtils.format(now, FormatConstant.DATE_FORMAT);
         long last = now.getTime();
 
         // 一辆车的故障信息缓存, Key是故障码Id(faultId)

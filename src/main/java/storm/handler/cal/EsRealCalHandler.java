@@ -28,7 +28,6 @@ import storm.system.ProtocolItem;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
-import storm.util.NumberUtils;
 
 public class EsRealCalHandler{
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
@@ -402,7 +401,7 @@ public class EsRealCalHandler{
                     && !"255".equals(chargeStatus)
                     && !"254".equals(chargeStatus)){
 
-                esmap.put(EsField.chargeStatus, Integer.valueOf(NumberUtils.stringNumber(chargeStatus)));
+                esmap.put(EsField.chargeStatus, Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(chargeStatus) ? chargeStatus : "0"));
             }
         }
         if("1".equals(dat.get(SysDefine.ISALARM)) && null != dat.get(SysDefine.ALARMUTC)){
@@ -414,7 +413,7 @@ public class EsRealCalHandler{
         esmap.put(EsField.serverTime, toEsDateString(new Date()));
         esmap.put(EsField.terminalTime, toTimeString(time));
 
-        tenthKm = NumberUtils.stringNumber(tenthKm);
+        tenthKm = org.apache.commons.lang.math.NumberUtils.isNumber(tenthKm) ? tenthKm : "0";
         if (!"0".equals(tenthKm)){
             double km = Double.parseDouble(tenthKm);
             if (km < 10000000) {

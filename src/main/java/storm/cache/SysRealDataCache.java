@@ -13,22 +13,22 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.time.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
+import storm.constant.FormatConstant;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.handler.cal.RedisClusterLoaderUseCtfo;
 import storm.protocol.CommandType;
-import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
-import storm.util.NumberUtils;
 import storm.util.ParamsRedisUtil;
 
 /**
@@ -70,7 +70,6 @@ public class SysRealDataCache {
     private static long lasttime;
     private static long flushtime = 2100000;//2100秒 35分钟刷新一下
     private static List<String> chargeTypes;
-    static TimeFormatService timeformat;
     static long timeouttime = 86400000L;
 
     /**
@@ -102,7 +101,6 @@ public class SysRealDataCache {
             long now = System.currentTimeMillis();
             lasttime = now;
             chargeCarCache = new ConcurrentHashMap<String,FillChargeCar>();
-            timeformat = TimeFormatService.getInstance();
 
             Object outbyconf = ParamsRedisUtil.getInstance().PARAMS.get("gt.inidle.timeOut.time");
             if (null != outbyconf) {
@@ -237,8 +235,8 @@ public class SysRealDataCache {
             if (!StringUtils.isEmpty(time)
                     && !StringUtils.isEmpty(latit)
                     && !StringUtils.isEmpty(longi)) {
-                double longitude = Double.parseDouble(NumberUtils.stringNumber(longi));
-                double latitude = Double.parseDouble(NumberUtils.stringNumber(latit));
+                double longitude = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(longi) ? longi : "0");
+                double latitude = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(latit) ? latit : "0");
                 longitude = longitude/1000000.0;
                 latitude = latitude/1000000.0;
                 FillChargeCar chargeCar = new FillChargeCar(vid, longitude, latitude, time);
@@ -320,8 +318,8 @@ public class SysRealDataCache {
             }
 
             String utc = dat.get(SysDefine.ONLINEUTC);
-            long utctime = Long.valueOf(NumberUtils.stringNumber(utc));
-            long tertime = timeformat.stringTimeLong(time);
+            long utctime = Long.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(utc) ? utc : "0");
+            long tertime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             long lastTime = Math.max(utctime, tertime);
             if (! dat.containsKey(SysDefine.ONLINEUTC)) {
                 dat.put(SysDefine.ONLINEUTC, ""+lastTime);
@@ -390,7 +388,7 @@ public class SysRealDataCache {
                     return true;
                 }
             } else {
-                long lastTime = timeformat.stringTimeLong(time);
+                long lastTime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
                 if (now-lastTime<= timeout) {
                     return true;
                 }

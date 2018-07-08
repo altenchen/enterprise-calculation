@@ -91,8 +91,8 @@ public class FileSource {
                                 String [] location = locations[idx].split(",");
                                 if (2 == location.length) {
 
-                                    double x = Double.parseDouble(NumberUtils.stringNumber(location[0]));
-                                    double y = Double.parseDouble(NumberUtils.stringNumber(location[1]));
+                                    double x = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(location[0]) ? location[0] : "0");
+                                    double y = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(location[1]) ? location[1] : "0");
 
                                     Coordinate coord = new Coordinate(x, y);
                                     coordinates.add(coord);

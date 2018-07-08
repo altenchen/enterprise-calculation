@@ -12,7 +12,6 @@ import com.google.common.cache.Cache;
 import storm.cache.SystemCache;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
-import storm.util.NumberUtils;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -50,7 +49,8 @@ public class QuickCacheBolt extends BaseRichBolt {
 
     private void handle(String vid,Map<String, String> data){
         String time=data.get("2000");
-        String mile=NumberUtils.stringNumber(data.get("2202"));
+        String str = data.get("2202");
+        String mile= org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0";
         String vin=data.get(SysDefine.VIN);
         if(StringUtils.isEmpty(time)
                 ||StringUtils.isEmpty(mile)

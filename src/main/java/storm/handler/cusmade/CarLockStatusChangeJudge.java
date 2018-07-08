@@ -2,21 +2,19 @@ package storm.handler.cusmade;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.time.DateFormatUtils;
+import storm.constant.FormatConstant;
 import storm.dao.DataToRedis;
 import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.system.SysDefine;
-import storm.util.NumberUtils;
 
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
-import storm.dao.DataToRedis;
+
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
-
-import static storm.handler.cusmade.CarRuleHandler.timeformat;
 
 public class CarLockStatusChangeJudge {
 
@@ -39,7 +37,7 @@ public class CarLockStatusChangeJudge {
         try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             Date date = new Date();
-            String noticetime = timeformat.toDateString(date);
+            String noticetime = DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
             String msgType = dat.get(SysDefine.MESSAGETYPE);
             if (StringUtils.isEmpty(vid)
                     || StringUtils.isEmpty(msgType)) {

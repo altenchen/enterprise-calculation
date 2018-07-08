@@ -1,5 +1,8 @@
 package storm.handler.cusmade;
 
+import org.apache.commons.lang.time.DateFormatUtils;
+import org.apache.commons.lang.time.DateUtils;
+import storm.constant.FormatConstant;
 import storm.util.ConfigUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -16,7 +19,6 @@ import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.service.TimeFormatService;
 import storm.system.*;
 import storm.util.*;
 
@@ -109,7 +111,6 @@ public class CarRuleHandler implements InfoNotice {
     static String onOffRedisKeys;
     static String socRedisKeys;
 
-    static TimeFormatService timeformat;
     static int topn;
     static long offlinetime = 600000;//600秒
     static int nogpsJudgeNum = 5;//5次
@@ -141,7 +142,6 @@ public class CarRuleHandler implements InfoNotice {
     //以下参数可以通过读取配置文件进行重置
     static {
         logger.warn("运行静态代码块，读取配置文件中值");
-        timeformat = TimeFormatService.getInstance();
         topn = 20;
         onOffRedisKeys = "vehCache.qy.onoff.notice";
         socRedisKeys = "vehCache.qy.soc.notice";
@@ -531,7 +531,7 @@ public class CarRuleHandler implements InfoNotice {
         final String location = DataUtils.buildLocation(longitudeString, latitudeString);
 
         final Date date = new Date();
-        String noticeTime = timeformat.toDateString(date);
+        String noticeTime = DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
 
         // 返回的通知消息
         final List<Map<String, Object>> result = new LinkedList<>();
@@ -552,8 +552,8 @@ public class CarRuleHandler implements InfoNotice {
             final int lowSocCount = vidLowSocCount.getOrDefault(vid, 0) + 1;
             vidLowSocCount.put(vid, lowSocCount);
 
-            paramsRedisUtil.autoLog(vid, v->{
-                logger.info("VID[{}]判定为SOC过低第[{}]次", v, lowSocCount);
+            paramsRedisUtil.autoLog(vid, ()->{
+                logger.info("VID[{}]判定为SOC过低第[{}]次", vid, lowSocCount);
             });
 
             final Map<String, Object> lowSocNotice = vidSocNotice.getOrDefault(vid, new TreeMap<>());
@@ -563,8 +563,8 @@ public class CarRuleHandler implements InfoNotice {
                 lowSocNotice.put("vid", vid);
                 vidSocNotice.put(vid, lowSocNotice);
 
-                paramsRedisUtil.autoLog(vid, v->{
-                    logger.info("VID[{}]SOC首帧缓存初始化", v);
+                paramsRedisUtil.autoLog(vid, ()->{
+                    logger.info("VID[{}]SOC首帧缓存初始化", vid);
                 });
             }
 
@@ -582,8 +582,8 @@ public class CarRuleHandler implements InfoNotice {
                 // 兼容性处理, 暂留
                 lowSocNotice.put("lowSocThreshold", socAlarm);
 
-                paramsRedisUtil.autoLog(vid, v->{
-                    logger.info("VID[{}]SOC过低首帧初始化", v);
+                paramsRedisUtil.autoLog(vid, ()->{
+                    logger.info("VID[{}]SOC过低首帧初始化", vid);
                 });
             }
 
@@ -593,7 +593,7 @@ public class CarRuleHandler implements InfoNotice {
 
             final Long firstLowSocTime;
             try {
-                firstLowSocTime = timeformat.stringTimeLong(lowSocNotice.get("stime").toString());
+                firstLowSocTime = DateUtils.parseDate(lowSocNotice.get("stime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
             } catch (ParseException e) {
                 e.printStackTrace();
                 return null;
@@ -613,14 +613,14 @@ public class CarRuleHandler implements InfoNotice {
 
             result.add(lowSocNotice);
 
-            paramsRedisUtil.autoLog(vid, v->{
-                logger.info("VID[{}]SOC异常通知发送[{}]", v, lowSocNotice.get("msgId"));
+            paramsRedisUtil.autoLog(vid, ()->{
+                logger.info("VID[{}]SOC异常通知发送[{}]", vid, lowSocNotice.get("msgId"));
             });
 
             //查找附近补电车
             try {
-                final double longitude = Double.parseDouble(NumberUtils.stringNumber(longitudeString)) / 1000000.0;
-                final double latitude = Double.parseDouble(NumberUtils.stringNumber(latitudeString)) / 1000000.0;
+                final double longitude = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(longitudeString) ? longitudeString : "0") / 1000000.0;
+                final double latitude = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(latitudeString) ? latitudeString : "0") / 1000000.0;
                 Map<String, Object> chargeMap = chargeCarNotice(vid, longitude, latitude);
                 if (MapUtils.isNotEmpty(chargeMap)) {
                     result.add(chargeMap);
@@ -641,8 +641,8 @@ public class CarRuleHandler implements InfoNotice {
             final int normalSocCount = vidNormSoc.getOrDefault(vid, 0) + 1;
             vidNormSoc.put(vid, normalSocCount);
 
-            paramsRedisUtil.autoLog(vid, v->{
-                logger.info("VID[{}]判定为SOC正常第[{}]次", v, normalSocCount);
+            paramsRedisUtil.autoLog(vid, ()->{
+                logger.info("VID[{}]判定为SOC正常第[{}]次", vid, normalSocCount);
             });
 
             // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
@@ -657,8 +657,8 @@ public class CarRuleHandler implements InfoNotice {
                 normalSocNotice.put("ethreshold", socAlarm);
                 normalSocNotice.put("esoc", socNum);
 
-                paramsRedisUtil.autoLog(vid, v->{
-                    logger.info("VID[{}]SOC正常首帧初始化", v);
+                paramsRedisUtil.autoLog(vid, ()->{
+                    logger.info("VID[{}]SOC正常首帧初始化", vid);
                 });
             }
 
@@ -668,7 +668,7 @@ public class CarRuleHandler implements InfoNotice {
 
             final Long firstNormalSocTime;
             try {
-                firstNormalSocTime = timeformat.stringTimeLong(normalSocNotice.get("etime").toString());
+                firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
             } catch (ParseException e) {
                 e.printStackTrace();
                 return result;
@@ -688,8 +688,8 @@ public class CarRuleHandler implements InfoNotice {
 
             result.add(normalSocNotice);
 
-            paramsRedisUtil.autoLog(vid, v->{
-                logger.info("VID[{}]SOC正常通知发送", v, normalSocNotice.get("msgId"));
+            paramsRedisUtil.autoLog(vid, ()->{
+                logger.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
             });
 
             return result;
@@ -822,7 +822,7 @@ public class CarRuleHandler implements InfoNotice {
 
                 if (vidLastDat.containsKey(vid)) {
                     //mileage如果是数字字符串则返回，不是则返回字符串“0”
-                    mileage = NumberUtils.stringNumber(mileage);
+                    mileage = org.apache.commons.lang.math.NumberUtils.isNumber(mileage) ? mileage : "0";
                     if (!"0".equals(mileage)) {
                         int mile = Integer.parseInt(mileage);//当前总里程
                         Map<String, Object> lastMap = vidLastDat.get(vid);
@@ -858,7 +858,7 @@ public class CarRuleHandler implements InfoNotice {
 
     private void setLastDat(Map<String, String> dat) {
         String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
-        mileage = NumberUtils.stringNumber(mileage);
+        mileage = org.apache.commons.lang.math.NumberUtils.isNumber(mileage) ? mileage : "0";
         if (!"0".equals(mileage)) {
             Map<String, Object> lastMap = new TreeMap<String, Object>();
             String vid = dat.get(DataKey.VEHICLE_ID);
@@ -896,14 +896,14 @@ public class CarRuleHandler implements InfoNotice {
             String latit = dat.get(DataKey._2503_LATITUDE);
             String longi = dat.get(DataKey._2502_LONGITUDE);
             String location = longi + "," + latit;
-            String noticetime = timeformat.toDateString(new Date());
+            String noticetime = DateFormatUtils.format(new Date(), FormatConstant.DATE_FORMAT);
             String speed = dat.get(DataKey._2201_SPEED);
             String socStr = dat.get(DataKey._7615_STATE_OF_CHARGE);
             String mileageStr = dat.get(DataKey._2202_TOTAL_MILEAGE);
 
             double soc = -1;
             if (!StringUtils.isEmpty(socStr)) {
-                soc = Double.parseDouble(NumberUtils.stringNumber(socStr));
+                soc = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(socStr) ? socStr : "0");
                 if (-1 != soc) {
 
                     lastSoc.put(vid, soc);
@@ -915,7 +915,7 @@ public class CarRuleHandler implements InfoNotice {
             }
             double mileage = -1;
             if (!StringUtils.isEmpty(mileageStr)) {
-                mileage = Double.parseDouble(NumberUtils.stringNumber(mileageStr));
+                mileage = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(mileageStr) ? mileageStr : "0");
                 if (-1 != mileage) {
 
                     lastMile.put(vid, mileage);
@@ -936,7 +936,7 @@ public class CarRuleHandler implements InfoNotice {
                 if (!StringUtils.isEmpty(speed)) {
 
                     maxSpd = igniteShutMaxSpeed.get(vid);
-                    spd = Double.parseDouble(NumberUtils.stringNumber(speed));
+                    spd = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(speed) ? speed : "0");
                     if (spd > maxSpd) {
                         maxSpd = spd;
                         igniteShutMaxSpeed.put(vid, maxSpd);
@@ -1045,12 +1045,12 @@ public class CarRuleHandler implements InfoNotice {
                     || StringUtils.isEmpty(rev)) {
                 return null;
             }
-            double spd = Double.parseDouble(NumberUtils.stringNumber(speed));
-            double rv = Double.parseDouble(NumberUtils.stringNumber(rev));
+            double spd = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(speed) ? speed : "0");
+            double rv = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(rev) ? rev : "0");
             String latit = dat.get(DataKey._2503_LATITUDE);
             String longi = dat.get(DataKey._2502_LONGITUDE);
             String location = longi + "," + latit;
-            String noticetime = timeformat.toDateString(new Date());
+            String noticetime = DateFormatUtils.format(new Date(), FormatConstant.DATE_FORMAT);
             if (spd > 0 && rv > 0) {
 
                 int cnts = 0;
@@ -1135,9 +1135,9 @@ public class CarRuleHandler implements InfoNotice {
             String latit = dat.get(DataKey._2503_LATITUDE);
             String longi = dat.get(DataKey._2502_LONGITUDE);
             String location = longi + "," + latit;
-            String noticetime = timeformat.toDateString(new Date());
-            long msgtime = timeformat.stringTimeLong(time);
-            double spd = Double.parseDouble(NumberUtils.stringNumber(speed));
+            String noticetime = DateFormatUtils.format(new Date(), FormatConstant.DATE_FORMAT);
+            long msgtime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
+            double spd = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(speed) ? speed : "0");
             if (spd > 0) {
                 int cnts = 0;
                 if (vidSpeedGtZero.containsKey(vid)) {
@@ -1158,7 +1158,7 @@ public class CarRuleHandler implements InfoNotice {
                         notice.put("status", 1);
                         notice.put("location", location);
                     } else {
-                        long stime = timeformat.stringTimeLong((String) notice.get("stime"));
+                        long stime = DateUtils.parseDate((String) notice.get("stime"), new String[]{FormatConstant.DATE_FORMAT}).getTime();
                         long timespace = msgtime - stime;
                         if ("true".equals(notice.get("isNotice"))) {
                             notice.put("count", cnts);
@@ -1229,13 +1229,13 @@ public class CarRuleHandler implements InfoNotice {
             String latitude = dat.get(DataKey._2503_LATITUDE);
             //noticetime为当前时间
             Date date = new Date();
-            String noticetime = timeformat.toDateString(date);
+            String noticetime = DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
 
             boolean isValid = true;
             if (!StringUtils.isEmpty(latitude)
                     && !StringUtils.isEmpty(longitude)) {
-                latitude = NumberUtils.stringNumber(latitude);
-                longitude = NumberUtils.stringNumber(longitude);
+                latitude = org.apache.commons.lang.math.NumberUtils.isNumber(latitude) ? latitude : "0";
+                longitude = org.apache.commons.lang.math.NumberUtils.isNumber(longitude) ? longitude : "0";
                 double latitd = Double.parseDouble(latitude);
                 double longid = Double.parseDouble(longitude);
                 if (latitd < 0 || latitd > 180000000
@@ -1272,7 +1272,7 @@ public class CarRuleHandler implements InfoNotice {
                     vidgpsNotice.put(vid, notice);
 
                     Long nowTime = date.getTime();
-                    Long firstNogpsTime = timeformat.stringTimeLong(notice.get("stime").toString());
+                    Long firstNogpsTime = DateUtils.parseDate(notice.get("stime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
                     //如果满足条件，将judgeIsSend中的GpsIsSend置为true，意思是已经发送了未定位通知。
                     if (1 == (int) notice.get("status") && nowTime - firstNogpsTime > nogpsIntervalTime) {
                         IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
@@ -1349,7 +1349,7 @@ public class CarRuleHandler implements InfoNotice {
             if (!isoff) {//上线
                 Map<String, Object> notice = vidOnOffNotice.get(vid);
                 if (null == notice) {
-                    String noticetime = timeformat.toDateString(new Date());
+                    String noticetime = DateFormatUtils.format(new Date(), FormatConstant.DATE_FORMAT);
                     notice = new TreeMap<String, Object>();
                     notice.put("msgType", "ON_OFF");
                     notice.put("vid", vid);
@@ -1372,7 +1372,7 @@ public class CarRuleHandler implements InfoNotice {
 
                     Map<String, Object> notice = vidOnOffNotice.get(vid);
                     if (null != notice) {
-                        String noticetime = timeformat.toDateString(new Date());
+                        String noticetime = DateFormatUtils.format(new Date(), FormatConstant.DATE_FORMAT);
                         notice.put("status", 3);
                         notice.put("etime", time);
                         notice.put("noticetime", noticetime);
@@ -1402,8 +1402,8 @@ public class CarRuleHandler implements InfoNotice {
                 String loginTime = dat.get(SUBMIT_LOGIN.LOGIN_TIME);
                 if (!StringUtils.isEmpty(logoutTime)
                         && !StringUtils.isEmpty(logoutTime)) {
-                    long logout = Long.parseLong(NumberUtils.stringNumber(logoutTime));
-                    long login = Long.parseLong(NumberUtils.stringNumber(loginTime));
+                    long logout = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(logoutTime) ? logoutTime : "0");
+                    long login = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(loginTime) ? loginTime : "0");
                     if (login > logout) {
                         return false;
                     }
@@ -1441,7 +1441,7 @@ public class CarRuleHandler implements InfoNotice {
             return null;
         }
         List<Map<String, Object>> notices = new LinkedList<Map<String, Object>>();
-        String noticetime = timeformat.toDateString(new Date(now));
+        String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
         List<String> needRemoves = new LinkedList<String>();
         for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
             long last = entry.getValue();
@@ -1473,7 +1473,7 @@ public class CarRuleHandler implements InfoNotice {
             return null;
         }
         List<Map<String, Object>> notices = new LinkedList<Map<String, Object>>();
-        String noticetime = timeformat.toDateString(new Date(now));
+        String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
         List<String> needRemoves = new LinkedList<String>();
         for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
             long last = entry.getValue();

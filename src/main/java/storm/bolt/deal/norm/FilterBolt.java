@@ -322,10 +322,9 @@ public class FilterBolt extends BaseRichBolt {
             if (dataMap.containsKey(DataKey._2202_TOTAL_MILEAGE)
                 && !"".equals(dataMap.get(DataKey._2202_TOTAL_MILEAGE))) {
 
+                String str = dataMap.get(DataKey._2202_TOTAL_MILEAGE);
                 long mileage = Long.parseLong(
-                    NumberUtils.stringNumber(
-                        dataMap.get(DataKey._2202_TOTAL_MILEAGE)
-                    )
+                    org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0"
                 );
                 Long maxCacheMileage = maxMileMap.get(vid);
                 Long minCacheMileage = minMileMap.get(vid);
@@ -366,9 +365,10 @@ public class FilterBolt extends BaseRichBolt {
                     }
                     
                     int cacheNum = chargeMap.get(vid);
+                    String str = dataMap.get(DataKey._2201_SPEED);
                     if (charging.equals(status) &&
                         // 车速为0
-                        "0".equals(NumberUtils.stringNumber(dataMap.get(DataKey._2201_SPEED)))) {
+                        "0".equals(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0")) {
                         chargeMap.put(vid, cacheNum + 1);
                         if (cacheNum >= 10) {
                             dataMap.put(SysDefine.ISCHARGE, "1");
@@ -472,12 +472,11 @@ public class FilterBolt extends BaseRichBolt {
             if (dataMap.containsKey(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801)
                 && !"".equals(dataMap.get(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801))) {
                 // WORD通过二进制标识(预留部分填0)
+                String str = dataMap.get(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801);
                 String binaryStr = TimeUtils.fillNBitBefore(
                     Long.toBinaryString(
                         Long.parseLong(
-                            NumberUtils.stringNumber(
-                                dataMap.get(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801)
-                            )
+                            org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0"
                         )
                     ),
                     12,
@@ -512,12 +511,11 @@ public class FilterBolt extends BaseRichBolt {
 
             // region 国标: 通用报警标志值, 见表18
             else if(dataMap.containsKey(DataKey._3801_ALARM_MARK) && !"".equals(dataMap.get(DataKey._3801_ALARM_MARK))) {
+                String str = dataMap.get(DataKey._3801_ALARM_MARK);
                 String binaryStr = TimeUtils.fillNBitBefore(
                     Long.toBinaryString(
                         Long.parseLong(
-                            NumberUtils.stringNumber(
-                                dataMap.get(DataKey._3801_ALARM_MARK)
-                            )
+                            org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0"
                         )
                     ),
                     32,
@@ -556,12 +554,11 @@ public class FilterBolt extends BaseRichBolt {
          */
         try {
             if (dataMap.containsKey(DataKey._3110_STATUS_FLAGS) && !"".equals(dataMap.get(DataKey._3110_STATUS_FLAGS))) {
+                String str = dataMap.get(DataKey._3110_STATUS_FLAGS);
                 String binaryStr = TimeUtils.fillNBitBefore(
                     Long.toBinaryString(
                         Long.parseLong(
-                            NumberUtils.stringNumber(
-                                dataMap.get(DataKey._3110_STATUS_FLAGS)
-                            )
+                            org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0"
                         )
                     ),
                     4,

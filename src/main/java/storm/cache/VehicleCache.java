@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.exceptions.JedisException;
 import storm.constant.RedisConstant;
+import storm.system.DataKey;
 import storm.util.GsonUtils;
 import storm.util.JedisPoolUtils;
 
@@ -35,6 +36,10 @@ import java.util.concurrent.TimeUnit;
  */
 @SuppressWarnings("unused")
 public final class VehicleCache {
+
+    public static final String VALUE_TIME_KEY = "time";
+    public static final String VALUE_DATA_KEY = "data";
+    public static final String TOTAL_MILEAGE_FIELD = "useful" + DataKey._2202_TOTAL_MILEAGE;
 
     private static final Logger logger = LoggerFactory.getLogger(VehicleCache.class);
     private static final GsonUtils GSON_UTILS = GsonUtils.getInstance();
@@ -475,4 +480,24 @@ public final class VehicleCache {
     }
 
     // endregion 清除缓存
+
+    // region 封装
+
+    @NotNull
+    public String getTotalMileageString(
+        @NotNull String vid,
+        @NotNull String defaultValue)
+        throws ExecutionException {
+
+        final ImmutableMap<String, String> totalMileageCache =
+            getField(
+                vid,
+                VehicleCache.TOTAL_MILEAGE_FIELD);
+        return StringUtils.defaultIfEmpty(
+            totalMileageCache.get(
+                VehicleCache.VALUE_DATA_KEY),
+            defaultValue);
+    }
+
+    // endregion
 }

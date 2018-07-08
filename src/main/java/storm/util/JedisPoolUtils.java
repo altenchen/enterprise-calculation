@@ -138,43 +138,43 @@ public final class JedisPoolUtils {
     }
 
     public final void useResource(
-        @NotNull final Consumer<? super Jedis> action)
+        @NotNull final Consumer<? super Jedis> function)
         throws JedisException {
 
-        Objects.requireNonNull(action);
+        Objects.requireNonNull(function);
 
-        useResourceInternal(action).accept(JEDIS_POOL);
+        useResourceInternal(function).accept(JEDIS_POOL);
     }
 
     public final <R> R useResource(
-        @NotNull final Function<? super Jedis, ? extends R> action)
+        @NotNull final Function<? super Jedis, ? extends R> function)
         throws JedisException {
 
-        Objects.requireNonNull(action);
+        Objects.requireNonNull(function);
 
-        return useResourceInternal(action).apply(JEDIS_POOL);
+        return useResourceInternal(function).apply(JEDIS_POOL);
     }
 
     public final <R, D extends R> R useResource(
         @Nullable final D defaultValue,
-        @NotNull final BiFunction<? super R, ? super Jedis, D> action)
+        @NotNull final BiFunction<? super R, ? super Jedis, D> function)
         throws JedisException {
 
-        Objects.requireNonNull(action);
+        Objects.requireNonNull(function);
 
-        return useResourceInternal(action).apply(defaultValue, JEDIS_POOL);
+        return useResourceInternal(function).apply(defaultValue, JEDIS_POOL);
     }
 
     @NotNull
     @Contract(pure = true)
     private static Consumer<? super JedisPool> useResourceInternal(
-        @NotNull final Consumer<? super Jedis> action)
+        @NotNull final Consumer<? super Jedis> function)
         throws JedisException {
 
         return jedisPool -> {
             final Jedis jedis = jedisPool.getResource();
             try {
-                action.accept(jedis);
+                function.accept(jedis);
                 jedisPool.returnResource(jedis);
             } catch (JedisException e) {
                 jedisPool.returnBrokenResource(jedis);
@@ -186,13 +186,13 @@ public final class JedisPoolUtils {
     @NotNull
     @Contract(pure = true)
     private static <R> Function<? super JedisPool, ? extends R> useResourceInternal(
-        @NotNull final Function<? super Jedis, ? extends R> action)
+        @NotNull final Function<? super Jedis, ? extends R> function)
         throws JedisException {
 
         return jedisPool -> {
             final Jedis jedis = jedisPool.getResource();
             try {
-                final R result = action.apply(jedis);
+                final R result = function.apply(jedis);
                 jedisPool.returnResource(jedis);
                 return result;
             } catch (JedisException e) {
@@ -205,13 +205,13 @@ public final class JedisPoolUtils {
     @NotNull
     @Contract(pure = true)
     private static <R> BiFunction<? super R, ? super JedisPool, ? extends R> useResourceInternal(
-        @NotNull final BiFunction<? super R, ? super Jedis, ? extends R> action)
+        @NotNull final BiFunction<? super R, ? super Jedis, ? extends R> function)
         throws JedisException {
 
         return (defaultValue, jedisPool) -> {
             final Jedis jedis = jedisPool.getResource();
             try {
-                final R result = action.apply(defaultValue, jedis);
+                final R result = function.apply(defaultValue, jedis);
                 jedisPool.returnResource(jedis);
                 return result;
             } catch (JedisException e) {

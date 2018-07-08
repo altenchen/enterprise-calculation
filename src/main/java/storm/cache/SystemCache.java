@@ -16,7 +16,6 @@ import storm.dao.DataToRedis;
 import storm.system.DataKey;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
-import storm.util.NumberUtils;
 import storm.system.SysDefine;
 
 public class SystemCache {
@@ -249,7 +248,8 @@ public class SystemCache {
                             if (keyarr.length>=3) {
                                 key = keyarr[2];
                                 if (!StringUtils.isEmpty(key)) {
-                                    mileage = mileage + Double.parseDouble(NumberUtils.stringNumber((CTFOUtils.getDefaultCTFOCacheTable().queryHash(key, DataKey._2202_TOTAL_MILEAGE))));
+                                    String str = (CTFOUtils.getDefaultCTFOCacheTable().queryHash(key, DataKey._2202_TOTAL_MILEAGE));
+                                    mileage = mileage + Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0");
                                 }
                             }
 

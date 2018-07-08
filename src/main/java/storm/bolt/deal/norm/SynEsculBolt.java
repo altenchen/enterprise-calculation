@@ -1,6 +1,5 @@
 package storm.bolt.deal.norm;
 
-import com.google.gson.Gson;
 import org.apache.commons.lang.StringUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -15,7 +14,6 @@ import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.GsonUtils;
-import storm.util.NumberUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -56,7 +54,8 @@ public class SynEsculBolt extends BaseRichBolt {
             if (stormConf.containsKey("redis.cluster.data.syn")) {
                 Object precp = stormConf.get("redis.cluster.data.syn");
                 if (null != precp && !"".equals(precp.toString().trim())) {
-                    ispreCp = Integer.valueOf(NumberUtils.stringNumber(precp.toString()));
+                    String str = precp.toString();
+                    ispreCp = Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0");
                 }
             }
             handler = new EsRealCalHandler();

@@ -25,7 +25,6 @@ import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.util.GsonUtils;
-import storm.util.NumberUtils;
 import storm.dto.alarm.CoefOffset;
 import storm.dto.alarm.CoefOffsetGetter;
 import storm.dto.alarm.EarlyWarn;
@@ -73,7 +72,8 @@ public class AlarmBoltBak extends BaseRichBolt {
         try {
             Object alarmObject = stormConf.get("alarm.continue.counts");
             if (null !=alarmObject) {
-                alarmNum = Integer.parseInt(NumberUtils.stringNumber(alarmObject.toString()));
+                String str = alarmObject.toString();
+                alarmNum = Integer.parseInt(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0");
             }
             Object oncetime = stormConf.get("es.send.time");
             if(null != oncetime)
@@ -391,7 +391,7 @@ public class AlarmBoltBak extends BaseRichBolt {
               //上传的实时数据包含左1字段 才进行预警判定
                 if (StringUtils.isEmpty(left1Value))
                     return ret;
-                boolean stringIsNum = NumberUtils.stringIsNumber(left1Value);
+                boolean stringIsNum = org.apache.commons.lang.math.NumberUtils.isNumber(left1Value);
 
                 if (null != coefOffset
                         && 0 == coefOffset.type
@@ -402,19 +402,19 @@ public class AlarmBoltBak extends BaseRichBolt {
                         && ! stringIsNum)
                     return ret;
 
-                int leftExp = Integer.valueOf(NumberUtils.stringNumber(warn.leftExpression));
+                int leftExp = Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(warn.leftExpression) ? warn.leftExpression : "0");
                 String left2 = warn.left2DataItem; //左2数据项ID
-                int midExp = Integer.valueOf(NumberUtils.stringNumber(warn.middleExpression));
+                int midExp = Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(warn.middleExpression) ? warn.middleExpression : "0");
                 double right1 = warn.right1Value;//Double.valueOf(NumberUtils.stringNumber(brr[8]));
                 double right2 = warn.right2Value;//Double.valueOf(NumberUtils.stringNumber(brr[9]));
                 if(StringUtils.isEmpty(left2)){   //左二字段为空，L2_ID为空  根据EXPR_MID，和R1_VAL, R2_VAL判断
 
                     //不需要处理偏移和系数
                     if (null == coefOffset) {
-                        double left1_value = Double.valueOf(NumberUtils.stringNumber(left1Value));
+                        double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
                         ret = diffMarkValid(left1_value,midExp,right1,right2); //判断是否软报警条件(true/false)
                     } else if(0 == coefOffset.type ) {
-                        double left1_value = Double.valueOf(NumberUtils.stringNumber(left1Value));
+                        double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
                         left1_value = (left1_value - coefOffset.offset)/coefOffset.coef;
                         ret = diffMarkValid(left1_value,midExp,right1,right2); //判断是否软报警条件(true/false)
                     } else if(1 == coefOffset.type) {// 1代表是数据项是数组
@@ -433,7 +433,7 @@ public class AlarmBoltBak extends BaseRichBolt {
 
                                         String[] arr2 = arr2m[1].split("_");
                                         for(int j=0;j<arr2.length;j++){
-                                            double value = Double.parseDouble(NumberUtils.stringNumber(arr2[j]));
+                                            double value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(arr2[j]) ? arr2[j] : "0");
                                             value= (value - coefOffset.offset)/coefOffset.coef;
                                             ret = diffMarkValid(value,midExp,right1,right2); //判断是否软报警条件(true/false)
                                             if(ret==1) return ret;
@@ -459,15 +459,15 @@ public class AlarmBoltBak extends BaseRichBolt {
                         if (null != left2coefOffset && 1 == left2coefOffset.type)
                             return ret;
 
-                        if (! NumberUtils.stringIsNumber(left1Value)
-                                || ! NumberUtils.stringIsNumber(left2Value))
+                        if (!org.apache.commons.lang.math.NumberUtils.isNumber(left1Value)
+                                || !org.apache.commons.lang.math.NumberUtils.isNumber(left2Value))
                             return ret;
 
-                        double left1_value = Double.valueOf(NumberUtils.stringNumber(left1Value));
+                        double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
                         if (null != coefOffset)
                             left1_value = (left1_value - coefOffset.offset)/coefOffset.coef;
 
-                        double left2_value = Double.valueOf(NumberUtils.stringNumber(left2Value));
+                        double left2_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left2Value) ? left2Value : "0");
                         if (null != left2coefOffset)
                             left2_value = (left2_value - left2coefOffset.offset)/left2coefOffset.coef;
 
@@ -527,8 +527,8 @@ public class AlarmBoltBak extends BaseRichBolt {
                                                 if (larr2.length == arr2.length) {
 
                                                     for(int j=0;j<arr2.length;j++){
-                                                        double left1_value = Double.parseDouble(NumberUtils.stringNumber(larr2[j]));
-                                                        double left2_value = Double.parseDouble(NumberUtils.stringNumber(arr2[j]));
+                                                        double left1_value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(larr2[j]) ? larr2[j] : "0");
+                                                        double left2_value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(arr2[j]) ? arr2[j] : "0");
                                                         if (null != coefOffset) {
                                                             left1_value = (left1_value - coefOffset.offset)/coefOffset.coef;
                                                             left2_value = (left2_value - coefOffset.offset)/coefOffset.coef;
@@ -548,8 +548,8 @@ public class AlarmBoltBak extends BaseRichBolt {
 
                                 return ret;
                             }
-                            double left1_value = Double.valueOf(NumberUtils.stringNumber(lastData));
-                            double left2_value = Double.valueOf(NumberUtils.stringNumber(left2Value));
+                            double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(lastData) ? lastData : "0");
+                            double left2_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left2Value) ? left2Value : "0");
                             if (null != coefOffset) {
                                 left1_value = (left1_value - coefOffset.offset)/coefOffset.coef;
                                 left2_value = (left2_value - coefOffset.offset)/coefOffset.coef;

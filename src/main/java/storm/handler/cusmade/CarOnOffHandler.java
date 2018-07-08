@@ -4,20 +4,19 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.time.DateFormatUtils;
+import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.NotNull;
 import storm.cache.SysRealDataCache;
+import storm.constant.FormatConstant;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.service.TimeFormatService;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
-import storm.util.DataUtils;
-import storm.util.NumberUtils;
-import storm.util.ParamsRedisUtil;
 
 /**
  * 车辆上下线及相关处理
@@ -33,7 +32,6 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
     private final Recorder recorder = new RedisRecorder();
     private static final int REDIS_DB_INDEX =6;
     private static final String IDLE_REDIS_KEYS = "vehCache.qy.idle";
-    private static TimeFormatService timeFormatService = TimeFormatService.getInstance();
 
     {
         //重要：从redis数据库中读取系统重启前的车辆状态。不写的话，当系统重启时，会导致车辆的状态丢失
@@ -238,7 +236,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
                 //下面三个if类似，都是校验一下，增强健壮性然后将vid和最后一帧的数据存入
                 if (null !=speed && !"".equals(speed)) {
-                    speed = NumberUtils.stringNumber(speed);
+                    speed = org.apache.commons.lang.math.NumberUtils.isNumber(speed) ? speed : "0";
                     int posidx = speed.indexOf(".");
                     if (posidx != -1) {
                         speed = speed.substring(0, posidx);
@@ -251,7 +249,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 }
 
                 if (null !=soc && !"".equals(soc)) {
-                    soc = NumberUtils.stringNumber(soc);
+                    soc = org.apache.commons.lang.math.NumberUtils.isNumber(soc) ? soc : "0";
                     int posidx = soc.indexOf(".");
                     if (posidx != -1) {
                         soc = soc.substring(0, posidx);
@@ -263,7 +261,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                     }
                 }
                 if (null !=mileage && !"".equals(mileage)) {
-                    mileage = NumberUtils.stringNumber(mileage);
+                    mileage = org.apache.commons.lang.math.NumberUtils.isNumber(mileage) ? mileage : "0";
                     int posidx = mileage.indexOf(".");
                     if (posidx != -1) {
                         mileage = mileage.substring(0, posidx);
@@ -287,7 +285,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             e.printStackTrace();
         }
         String lastUtc = dat.get(SysDefine.ONLINEUTC);
-        String noticetime = timeFormatService.toDateString(new Date(now));
+        String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
 
         //是否为登入报文
         boolean isLogin = CommandType.SUBMIT_LOGIN.equals(dat.get(SysDefine.MESSAGETYPE));
@@ -388,7 +386,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
         String lastUtc = dat.get(SysDefine.ONLINEUTC);
         double lastmileage = -1;
         if (dat.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
-            lastmileage = Double.parseDouble(NumberUtils.stringNumber(dat.get(DataKey._2202_TOTAL_MILEAGE)));
+            String str = dat.get(DataKey._2202_TOTAL_MILEAGE);
+            lastmileage = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0");
             if (-1 != lastmileage) {
                 vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
             }
@@ -436,10 +435,11 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             return null;
         }
         String lastUtc = dat.get(SysDefine.ONLINEUTC);
-        String noticetime = timeFormatService.toDateString(new Date(now));
+        String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
         double lastmileage = -1;
         if (dat.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
-            String mileage = NumberUtils.stringNumber(dat.get(DataKey._2202_TOTAL_MILEAGE));
+            String str = dat.get(DataKey._2202_TOTAL_MILEAGE);
+            String mileage = org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0";
             if (! "0".equals(mileage)) {
 
                 lastmileage = Double.parseDouble(mileage);
@@ -492,8 +492,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             return false;
         }
         try {
-            long last = Long.parseLong(NumberUtils.stringNumber(lastUtc));
-            long tertime = timeFormatService.stringTimeLong(time);
+            long last = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(lastUtc) ? lastUtc : "0");
+            long tertime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             long maxtime = Math.max(last, tertime);
             if (now - maxtime > timeout) {
                 return true;
@@ -526,8 +526,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 String loginSeq = dat.get(SUBMIT_LOGIN.LOGIN_SEQ);
                 if (!StringUtils.isEmpty(logoutSeq)
                         && !StringUtils.isEmpty(logoutSeq)) {
-                    int logout = Integer.parseInt(NumberUtils.stringNumber(logoutSeq));
-                    int login = Integer.parseInt(NumberUtils.stringNumber(loginSeq));
+                    int logout = Integer.parseInt(org.apache.commons.lang.math.NumberUtils.isNumber(logoutSeq) ? logoutSeq : "0");
+                    int login = Integer.parseInt(org.apache.commons.lang.math.NumberUtils.isNumber(loginSeq) ? loginSeq : "0");
                     if(login >logout){
                         return false;
                     }

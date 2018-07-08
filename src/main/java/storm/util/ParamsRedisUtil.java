@@ -11,7 +11,7 @@ import storm.system.SysDefine;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * @author wza
@@ -230,9 +230,15 @@ public final class ParamsRedisUtil {
         return false;
     }
 
-    public void autoLog(@NotNull String vehicleId, Consumer<String> action) {
-        if(null != action && isTraceVehicleId(vehicleId)) {
-            action.accept(vehicleId);
+    public void autoLog(@NotNull String vehicleId, @NotNull Runnable func) {
+        if(isTraceVehicleId(vehicleId)) {
+            func.run();
+        }
+    }
+
+    public <T> void autoLog(@NotNull String vehicleId, @NotNull T t, @NotNull BiConsumer<String, ? super T> func) {
+        if(isTraceVehicleId(vehicleId)) {
+            func.accept(vehicleId, t);
         }
     }
 
@@ -244,10 +250,10 @@ public final class ParamsRedisUtil {
                 || StringUtils.isBlank(value)) {
             } else {
 
-                if (NumberUtils.stringIsNumber(value)) {
+                if (org.apache.commons.lang.math.NumberUtils.isNumber(value)) {
                     // 缓存数字配置
                     Object val;
-                    value = NumberUtils.stringNumber(value);
+                    value = org.apache.commons.lang.math.NumberUtils.isNumber(value) ? value : "0";
                     if (value.contains(".")) {
 
                         val = Double.parseDouble(value);
