@@ -25,7 +25,7 @@ public class VehicleCacheTest {
 
     private static JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
-    private static final VehicleCache CACHE = VehicleCache.getInstance();
+    private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
     private static final String TEST_VID = "TV-" + UUID.randomUUID();
     private static final String TEST_FIELD_1 = "TF1-" + UUID.randomUUID();
@@ -47,8 +47,8 @@ public class VehicleCacheTest {
             .put(TEST_FIELD_2, TEST_MAP)
             .build();
 
-    private static final int REDIS_DB_INDEX = 6;
-    private static final String REDIS_KEY = "vehCache." + TEST_VID;
+    private static final int REDIS_DB_INDEX = VehicleCache.REDIS_DB_INDEX;
+    private static final String REDIS_KEY = VehicleCache.buildRedisKey(TEST_VID);
 
     private VehicleCacheTest() {
     }
@@ -57,14 +57,14 @@ public class VehicleCacheTest {
     @BeforeAll
     private static void beforeAll() {
         // 所有测试之前
-        CACHE.delFields(TEST_VID);
+        VEHICLE_CACHE.delFields(TEST_VID);
     }
 
     @SuppressWarnings("unused")
     @BeforeEach
     private void beforeEach() {
         // 每个测试之前
-        CACHE.invalidateAll();
+        VEHICLE_CACHE.invalidateAll();
     }
 
     @DisplayName("测试单个缓存")
@@ -75,41 +75,41 @@ public class VehicleCacheTest {
         noneExist();
 
         {
-            final ImmutableMap<String, String> dictionary = CACHE.getField(TEST_VID, TEST_FIELD_1);
+            final ImmutableMap<String, String> dictionary = VEHICLE_CACHE.getField(TEST_VID, TEST_FIELD_1);
             Assertions.assertNotNull(dictionary, "缓存不应该为null");
             Assertions.assertTrue(dictionary.isEmpty(), "缓存应该为空");
         }
 
-        CACHE.putField(TEST_VID, TEST_FIELD_1, TEST_MAP);
+        VEHICLE_CACHE.putField(TEST_VID, TEST_FIELD_1, TEST_MAP);
         onlyField1Exist();
 
         {
-            final ImmutableMap<String, String> dictionary = CACHE.getField(TEST_VID, TEST_FIELD_1);
+            final ImmutableMap<String, String> dictionary = VEHICLE_CACHE.getField(TEST_VID, TEST_FIELD_1);
             Assertions.assertNotNull(dictionary, "缓存不应该为null");
             Assertions.assertFalse(dictionary.isEmpty(), "获取缓存不该为空");
             Assertions.assertEquals(TEST_MAP, dictionary, "缓存内容应该相同");
         }
 
-        CACHE.invalidate(TEST_VID, TEST_FIELD_1);
+        VEHICLE_CACHE.invalidate(TEST_VID, TEST_FIELD_1);
 
         {
-            final ImmutableMap<String, String> dictionary = CACHE.getField(TEST_VID, TEST_FIELD_1);
+            final ImmutableMap<String, String> dictionary = VEHICLE_CACHE.getField(TEST_VID, TEST_FIELD_1);
             Assertions.assertNotNull(dictionary, "缓存不应该为null");
             Assertions.assertFalse(dictionary.isEmpty(), "缓存不该为空");
             Assertions.assertEquals(TEST_MAP, dictionary, "缓存内容应该相同");
         }
 
-        CACHE.putField(TEST_VID, TEST_FIELD_2, TEST_MAP);
+        VEHICLE_CACHE.putField(TEST_VID, TEST_FIELD_2, TEST_MAP);
         bothExist();
 
-        CACHE.delField(TEST_VID, TEST_FIELD_1);
+        VEHICLE_CACHE.delField(TEST_VID, TEST_FIELD_1);
         onlyField2Exist();
 
-        CACHE.delField(TEST_VID, TEST_FIELD_2);
+        VEHICLE_CACHE.delField(TEST_VID, TEST_FIELD_2);
         noneExist();
 
         {
-            final ImmutableMap<String, String> dictionary = CACHE.getField(TEST_VID, TEST_FIELD_1);
+            final ImmutableMap<String, String> dictionary = VEHICLE_CACHE.getField(TEST_VID, TEST_FIELD_1);
             Assertions.assertNotNull(dictionary, "缓存不应该为null");
             Assertions.assertTrue(dictionary.isEmpty(), "缓存应该为空");
         }
@@ -123,35 +123,35 @@ public class VehicleCacheTest {
         noneExist();
 
         {
-            final Map<String, ImmutableMap<String, String>> dictionaries = CACHE.getFields(TEST_VID, TEST_FIELD_SET);
+            final Map<String, ImmutableMap<String, String>> dictionaries = VEHICLE_CACHE.getFields(TEST_VID, TEST_FIELD_SET);
             Assertions.assertNotNull(dictionaries, "缓存不应该为null");
             for (ImmutableMap<String, String> dictionary : dictionaries.values()) {
                 Assertions.assertTrue(dictionary.isEmpty(), "缓存应该为空");
             }
         }
 
-        CACHE.putFields(TEST_VID, TEST_FIELD_MAP);
+        VEHICLE_CACHE.putFields(TEST_VID, TEST_FIELD_MAP);
         bothExist();
 
         {
-            final Map<String, ImmutableMap<String, String>> dictionaries = CACHE.getFields(TEST_VID, TEST_FIELD_SET);
+            final Map<String, ImmutableMap<String, String>> dictionaries = VEHICLE_CACHE.getFields(TEST_VID, TEST_FIELD_SET);
             Assertions.assertNotNull(dictionaries, "缓存不应该为null");
             Assertions.assertEquals(TEST_FIELD_MAP, dictionaries, "缓存内容应该相同");
         }
 
-        CACHE.invalidateAll(TEST_VID, TEST_FIELD_SET);
+        VEHICLE_CACHE.invalidateAll(TEST_VID, TEST_FIELD_SET);
 
         {
-            final Map<String, ImmutableMap<String, String>> dictionaries = CACHE.getFields(TEST_VID, TEST_FIELD_SET);
+            final Map<String, ImmutableMap<String, String>> dictionaries = VEHICLE_CACHE.getFields(TEST_VID, TEST_FIELD_SET);
             Assertions.assertNotNull(dictionaries, "缓存不应该为null");
             Assertions.assertEquals(TEST_FIELD_MAP, dictionaries, "缓存内容应该相同");
         }
 
-        CACHE.delFields(TEST_VID, TEST_FIELD_SET);
+        VEHICLE_CACHE.delFields(TEST_VID, TEST_FIELD_SET);
         noneExist();
 
         {
-            final Map<String, ImmutableMap<String, String>> dictionaries = CACHE.getFields(TEST_VID, TEST_FIELD_SET);
+            final Map<String, ImmutableMap<String, String>> dictionaries = VEHICLE_CACHE.getFields(TEST_VID, TEST_FIELD_SET);
             Assertions.assertNotNull(dictionaries, "缓存不应该为null");
             for (ImmutableMap<String, String> dictionary : dictionaries.values()) {
                 Assertions.assertTrue(dictionary.isEmpty(), "缓存应该为空");
@@ -198,13 +198,13 @@ public class VehicleCacheTest {
     @AfterEach
     private void afterEach() {
         // 每个测试之后
-        CACHE.invalidateAll();
+        VEHICLE_CACHE.invalidateAll();
     }
 
     @SuppressWarnings("unused")
     @AfterAll
     private static void afterAll() {
         // 所有测试之后
-        CACHE.delFields(TEST_VID);
+        VEHICLE_CACHE.delFields(TEST_VID);
     }
 }

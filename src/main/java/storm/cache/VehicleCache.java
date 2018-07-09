@@ -37,11 +37,13 @@ import java.util.concurrent.TimeUnit;
 @SuppressWarnings("unused")
 public final class VehicleCache {
 
+    private static final Logger logger = LoggerFactory.getLogger(VehicleCache.class);
+
+    public static final int REDIS_DB_INDEX = 6;
     public static final String VALUE_TIME_KEY = "time";
     public static final String VALUE_DATA_KEY = "data";
     public static final String TOTAL_MILEAGE_FIELD = "useful" + DataKey._2202_TOTAL_MILEAGE;
 
-    private static final Logger logger = LoggerFactory.getLogger(VehicleCache.class);
     private static final GsonUtils GSON_UTILS = GsonUtils.getInstance();
 
     private static final VehicleCache INSTANCE = new VehicleCache();
@@ -51,7 +53,6 @@ public final class VehicleCache {
         return INSTANCE;
     }
 
-    private static final int REDIS_DB_INDEX = 6;
     private static final Type TREE_MAP_STRING_STRING_TYPE = new TypeToken<TreeMap<String, String>>() {
     }.getType();
 
@@ -59,7 +60,7 @@ public final class VehicleCache {
 
     @Contract(pure = true)
     @NotNull
-    private static String buildRedisKey(@NotNull final String vid) {
+    public static String buildRedisKey(@NotNull final String vid) {
         return "vehCache." + vid;
     }
 

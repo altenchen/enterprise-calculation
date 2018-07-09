@@ -1,6 +1,8 @@
 package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
@@ -14,12 +16,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
+import storm.constant.RedisConstant;
 import storm.dao.DataToRedis;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.system.AlarmMessageType;
 import storm.system.DataKey;
 import storm.util.DataUtils;
+import storm.util.GsonUtils;
 import storm.util.JedisPoolUtils;
 import storm.util.ParamsRedisUtil;
 
@@ -38,6 +42,7 @@ public final class CarNoCanJudge {
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
+    private static final GsonUtils GSON_UTILS = GsonUtils.getInstance();
 
     private static final int REDIS_DB_INDEX = 6;
 
@@ -94,30 +99,38 @@ public final class CarNoCanJudge {
     // 实例初始化代码块
     {
 
-        final Map<String, Map<String, Object>> restoreFromRedis = new TreeMap<>();
-        recorder.rebootInit(REDIS_DB_INDEX, REDIS_TABLE_NAME, restoreFromRedis);
+        JEDIS_POOL_UTILS.useResource(jedis -> {
 
-        for (String vid : restoreFromRedis.keySet()) {
-            logger.info("从Redis还原无CAN车辆信息:[{}]", vid);
-
-            final Map<String, Object> item = restoreFromRedis.get(vid);
-            final ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder<>();
-            for (String key : item.keySet()) {
-                builder.put(key, ObjectUtils.toString(item.get(key), ""));
+            final String select = jedis.select(REDIS_DB_INDEX);
+            if (!RedisConstant.Select.OK.equals(select)) {
+                return;
             }
-            try {
-                final AlarmStatus status = AlarmStatus.parseOf(
-                    Integer.parseInt(
-                        item.get(STATUS_KEY).toString()));
 
-                if (AlarmStatus.Start == status || AlarmStatus.Continue == status) {
-                    final CarNoCanItem carNoCanItem = new CarNoCanItem(vid, builder.build(), status);
-                    carNoCanMap.put(carNoCanItem.vid, carNoCanItem);
+            final Map<String, String> notices = jedis.hgetAll(REDIS_TABLE_NAME);
+            for (String vid : notices.keySet()) {
+
+                logger.info("从Redis还原无CAN车辆信息:[{}]", vid);
+
+                final String json = notices.get(vid);
+                final Map<String, String> notice = GSON_UTILS.fromJson(
+                    json,
+                    new TypeToken<TreeMap<String, String>>() {
+                    }.getType());
+
+                try {
+                    final String statusString = notice.get(STATUS_KEY);
+                    final int statusValue = NumberUtils.toInt(statusString);
+                    final AlarmStatus status = AlarmStatus.parseOf(statusValue);
+
+                    if (AlarmStatus.Start == status || AlarmStatus.Continue == status) {
+                        final CarNoCanItem carNoCanItem = new CarNoCanItem(vid, notice, status);
+                        carNoCanMap.put(carNoCanItem.vid, carNoCanItem);
+                    }
+                } catch (Exception ignore) {
+                    logger.warn("初始化告警异常", ignore);
                 }
-            } catch (Exception ignore) {
-                logger.warn("初始化告警异常", ignore);
             }
-        }
+        });
     }
 
     // region 全局配置
@@ -260,7 +273,7 @@ public final class CarNoCanJudge {
         @NotNull final Map<String, Object> noticeResult,
         @NotNull final CarNoCanItem item,
         @NotNull final long time,
-        @NotNull final String totalMileage,
+        @Nullable final String totalMileage,
         @NotNull final String location
     ) {
         final boolean traceVehicle = PARAMS_REDIS_UTIL.isTraceVehicleId(item.vid);
@@ -314,7 +327,10 @@ public final class CarNoCanJudge {
                         if (item.vid.equals(vid)
                             && (status == AlarmStatus.Start.value || status == AlarmStatus.Continue.value)) {
 
-                            final CarNoCanItem newItem = new CarNoCanItem(item.vid, oldNotice, AlarmStatus.parseOf(status));
+                            final CarNoCanItem newItem = new CarNoCanItem(
+                                item.vid,
+                                oldNotice,
+                                AlarmStatus.parseOf(status));
                             carNoCanMap.put(newItem.vid, newItem);
                             logger.info("从缓存取回CAN故障告警, 不再发送通知.");
                             return;
@@ -341,7 +357,7 @@ public final class CarNoCanJudge {
                         AlarmMessageType.NO_CAN_VEH,
                         notice
                     );
-                    PARAMS_REDIS_UTIL.autoLog(item.vid, ()->logger.info("VID[{}]CAN故障, 更新缓存.", item.vid));
+                    PARAMS_REDIS_UTIL.autoLog(item.vid, () -> logger.info("VID[{}]CAN故障, 更新缓存.", item.vid));
                 } catch (ExecutionException e) {
                     logger.error("存储CAN故障通知缓存异常");
                 }
@@ -356,7 +372,7 @@ public final class CarNoCanJudge {
         @NotNull final Map<String, Object> noticeResult,
         @NotNull final CarNoCanItem item,
         @NotNull final long time,
-        @NotNull final String totalMileage,
+        @Nullable final String totalMileage,
         @NotNull final String location
     ) {
         final boolean traceVehicle = PARAMS_REDIS_UTIL.isTraceVehicleId(item.vid);
@@ -409,7 +425,10 @@ public final class CarNoCanJudge {
                         if (item.vid.equals(vid)
                             && (status == AlarmStatus.End.value || status == AlarmStatus.Init.value)) {
 
-                            final CarNoCanItem newItem = new CarNoCanItem(item.vid, oldNotice, AlarmStatus.parseOf(status));
+                            final CarNoCanItem newItem = new CarNoCanItem(
+                                item.vid,
+                                oldNotice,
+                                AlarmStatus.parseOf(status));
                             carNoCanMap.put(newItem.vid, newItem);
                             logger.info("从缓存取回CAN正常告警, 不再发送通知.");
                             return;
@@ -435,7 +454,7 @@ public final class CarNoCanJudge {
                         item.vid,
                         AlarmMessageType.NO_CAN_VEH
                     );
-                    PARAMS_REDIS_UTIL.autoLog(item.vid, ()->logger.info("VID[{}]CAN正常, 删除缓存.", item.vid));
+                    PARAMS_REDIS_UTIL.autoLog(item.vid, () -> logger.info("VID[{}]CAN正常, 删除缓存.", item.vid));
                 } catch (ExecutionException e) {
                     logger.error("删除CAN正常通知缓存异常");
                 }
@@ -464,8 +483,8 @@ public final class CarNoCanJudge {
         return true;
     }
 
-    @Nullable
-    public String getTotalMileageString(
+    @NotNull
+    private String getTotalMileageString(
         @NotNull String vid,
         @Nullable String totalMileage)
         throws ExecutionException {
@@ -536,6 +555,17 @@ public final class CarNoCanJudge {
             this.properties.put(STATUS_KEY, String.valueOf(AlarmStatus.Init.value));
 
             this.setAlarmStatus(AlarmStatus.Init);
+        }
+
+        /**
+         * Storm重启后从Redis还原项
+         *
+         * @param vid         车辆ID
+         * @param properties  属性集合
+         * @param alarmStatus 通知状态
+         */
+        public CarNoCanItem(String vid, ImmutableMap<String, String> properties, AlarmStatus alarmStatus) {
+            this(vid, new TreeMap<>(properties), alarmStatus);
         }
 
         /**
@@ -623,9 +653,9 @@ public final class CarNoCanJudge {
             final Date now = new Date();
             final String noticeTime = DateFormatUtils.format(now, FormatConstant.DATE_FORMAT);
 
+            this.properties.put("noticetime", noticeTime);
             final ImmutableMap<String, String> result = new ImmutableMap.Builder<String, String>()
                 .putAll(this.properties)
-                .put("noticetime", noticeTime)
                 .build();
             return result;
         }

@@ -1,10 +1,13 @@
 package storm.handler.ctx;
 
 import com.google.gson.reflect.TypeToken;
+import dagger.Lazy;
+import org.apache.commons.collections.MapUtils;
 import storm.dao.DataToRedis;
 import storm.util.GsonUtils;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 
 /**
@@ -75,7 +78,7 @@ public final class RedisRecorder implements Recorder {
             this.redis = new DataToRedis();
         }
         Map<String, String> redisCache = redis.hgetallMapByKeyAndDb(type, dbIndex);
-        if (null != redisCache && redisCache.size() > 0) {
+        if (MapUtils.isNotEmpty(redisCache)) {
 
             for (Map.Entry<String, String> entry : redisCache.entrySet()) {
                 String vid = entry.getKey();
