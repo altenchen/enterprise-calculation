@@ -266,6 +266,8 @@ public final class CarNoticelBolt extends BaseRichBolt {
             final String collectTime = data.get(DataKey._2000_COLLECT_TIME);
             final String totalMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
 
+            paramsRedisUtil.autoLog(vid, () -> logger.warn("VID[" + vid + "][{}][{}]有效累计里程缓存处理", collectTime, totalMileage));
+
             if (NumberUtils.isDigits(totalMileage)) {
 
                 try {
@@ -274,29 +276,38 @@ public final class CarNoticelBolt extends BaseRichBolt {
                         VEHICLE_CACHE.getField(
                             vid,
                             VehicleCache.TOTAL_MILEAGE_FIELD);
-                    if (MapUtils.isNotEmpty(usefulTotalMileage)) {
+                    final String oldTime = usefulTotalMileage.get(VehicleCache.VALUE_TIME_KEY);
 
-                        final String oldTime = usefulTotalMileage.get(VehicleCache.VALUE_TIME_KEY);
-                        if(NumberUtils.toLong(oldTime) < NumberUtils.toLong(collectTime)) {
+                    if (NumberUtils.toLong(oldTime) < NumberUtils.toLong(collectTime)) {
 
-                            final String oldData = usefulTotalMileage.get(VehicleCache.VALUE_DATA_KEY);
-                            if(NumberUtils.toLong(oldData) < NumberUtils.toLong(totalMileage)) {
-
-                                final ImmutableMap<String, String> update = new ImmutableMap.Builder<String, String>()
-                                    .put(VehicleCache.VALUE_TIME_KEY, collectTime)
-                                    .put(VehicleCache.VALUE_DATA_KEY, totalMileage)
-                                    .build();
-                                VEHICLE_CACHE.putField(
-                                    vid,
-                                    VehicleCache.TOTAL_MILEAGE_FIELD,
-                                    update);
-                                paramsRedisUtil.autoLog(vid, ()-> logger.info("VID[{}]缓存有效累计里程值[{}]", vid, update));
-                            }
-                        }
+                        final ImmutableMap<String, String> update = new ImmutableMap.Builder<String, String>()
+                            .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                            .put(VehicleCache.VALUE_DATA_KEY, totalMileage)
+                            .build();
+                        VEHICLE_CACHE.putField(
+                            vid,
+                            VehicleCache.TOTAL_MILEAGE_FIELD,
+                            update);
+                        paramsRedisUtil.autoLog(
+                            vid,
+                            () -> logger.info(
+                                "VID[{}]更新有效累计里程缓存[{}]",
+                                vid,
+                                update));
+                    } else {
+                        paramsRedisUtil.autoLog(
+                            vid,
+                            () -> logger.info(
+                                "VID[{}]保持有效累计里程值缓存[{}]",
+                                vid,
+                                usefulTotalMileage));
                     }
+
                 } catch (ExecutionException e) {
-                    logger.warn("获取累计里程缓存异常", e);
+                    logger.warn("获取有效累计里程缓存异常", e);
                 }
+            } else {
+                paramsRedisUtil.autoLog(vid, () -> logger.warn("无效的累计里程[{}]", totalMileage));
             }
             // endregion
 
