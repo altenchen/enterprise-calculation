@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutionException;
  * @date: 2018-07-05
  * @description:
  */
+@Disabled
 @DisplayName("车辆缓存测试")
 public class VehicleCacheTest {
 

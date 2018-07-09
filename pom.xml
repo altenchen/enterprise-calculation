@@ -21,11 +21,13 @@
     <properties>
 
         <!-- 依赖组件开始 -->
-        <!-- 配合 storm v1.0.3 一起使用 -->
+        <cdh.version>5.4.3</cdh.version>
+        <zookeeper.version>3.4.5-cdh${cdh.version}</zookeeper.version>
         <slf4j.version>1.7.7</slf4j.version>
         <mysql.connector.version>8.0.11</mysql.connector.version>
         <storm.version>1.0.3</storm.version>
-        <guava.version>25.1-jre</guava.version>
+        <commons.collections.vresion>3.2.2</commons.collections.vresion>
+        <guava.version>16.0.1</guava.version>
         <fastjson.version>1.1.36</fastjson.version>
         <!-- 依赖组件结束 -->
 
@@ -53,6 +55,11 @@
             <id>clojars.org</id>
             <url>http://clojars.org/repo</url>
         </repository>
+        <!-- CDH仓库 -->
+        <repository>
+            <id>cloudera</id>
+            <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
+        </repository>
         <!-- 北理私服 -->
         <repository>
         <id>nexus</id>
@@ -72,12 +79,6 @@
             <groupId>com.bitnei.bigdata</groupId>
             <artifactId>datacenter</artifactId>
             <version>2.4.2</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>redis.clients</groupId>
-                    <artifactId>jedis</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <!-- org.apache.storm:storm-starter 嵌入2.7.0 兼容性风险. -->
@@ -88,6 +89,14 @@
             <artifactId>jedis</artifactId>
             <version>2.4.2</version>
         </dependency>
+
+        <!-- redis.clients:jedis:2.4.2依赖这个包 -->
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-pool2 -->
+        <!--<dependency>-->
+            <!--<groupId>org.apache.commons</groupId>-->
+            <!--<artifactId>commons-pool2</artifactId>-->
+            <!--<version>2.0</version>-->
+        <!--</dependency>-->
 
         <!-- 北理大数据依赖结束 -->
 
@@ -101,7 +110,7 @@
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
-                    <artifactId>slf4j-api</artifactId>
+                    <artifactId>log4j-over-slf4j</artifactId>
                     <groupId>org.slf4j</groupId>
                 </exclusion>
                 <exclusion>
@@ -118,49 +127,82 @@
             <version>1.0.3</version>
             <exclusions>
                 <exclusion>
+                    <artifactId>zookeeper</artifactId>
+                    <groupId>org.apache.zookeeper</groupId>
+                </exclusion>
+                <exclusion>
                     <artifactId>slf4j-api</artifactId>
                     <groupId>org.slf4j</groupId>
                 </exclusion>
             </exclusions>
         </dependency>
 
+        <!-- 集成了大量工具类, 暂时保持不变 -->
+        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-starter -->
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-starter</artifactId>
+            <version>${storm.version}</version>
+        </dependency>
+
         <!-- org.apache.storm:storm-starter 嵌入 -->
-        <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients -->
+        <!--https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients-->
         <!--<dependency>-->
             <!--<groupId>org.apache.kafka</groupId>-->
             <!--<artifactId>kafka-clients</artifactId>-->
-            <!--<version>1.1.0</version>-->
-            <!--<exclusions>-->
-                <!--<exclusion>-->
-                    <!--<artifactId>slf4j-api</artifactId>-->
-                    <!--<groupId>org.slf4j</groupId>-->
-                <!--</exclusion>-->
-            <!--</exclusions>-->
+            <!--<version>0.8.2.1</version>-->
         <!--</dependency>-->
 
         <!-- Storm 依赖结束 -->
 
+        <!-- CDH依赖开始 -->
+
+        <!-- https://mvnrepository.com/artifact/com.cloudera.cdh/zookeeper-root -->
+        <dependency>
+            <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
+            <version>${zookeeper.version}</version>
+            <scope>runtime</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>slf4j-api</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>log4j</artifactId>
+                    <groupId>log4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>slf4j-log4j12</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- CDH依赖结束 -->
 
         <!-- 数据库依赖开始 -->
 
         <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
-        <!--<dependency>-->
-            <!--<groupId>mysql</groupId>-->
-            <!--<artifactId>mysql-connector-java</artifactId>-->
-            <!--<version>${mysql.connector.version}</version>-->
-        <!--</dependency>-->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>${mysql.connector.version}</version>
+            <scope>runtime</scope>
+        </dependency>
 
         <!-- 数据库依赖结束 -->
 
 
         <!-- 工具组件依赖开始 -->
 
-        <!-- org.apache.storm:storm-starter 嵌入 -->
+        <!-- org.apache.storm:storm-core 提供 -->
         <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
         <!--<dependency>-->
             <!--<groupId>org.slf4j</groupId>-->
             <!--<artifactId>slf4j-api</artifactId>-->
             <!--<version>${slf4j.version}</version>-->
+            <!--<scope>provided</scope>-->
         <!--</dependency>-->
 
         <!-- org.apache.storm:storm-starter 嵌入 -->
@@ -176,7 +218,7 @@
         <!--<dependency>-->
             <!--<groupId>commons-collections</groupId>-->
             <!--<artifactId>commons-collections</artifactId>-->
-            <!--<version>3.2.2</version>-->
+            <!--<version>${commons.collections.vresion}</version>-->
         <!--</dependency>-->
 
         <!-- org.apache.storm:storm-starter 嵌入 -->
@@ -188,15 +230,6 @@
         <!--</dependency>-->
 
         <!-- 工具组件依赖结束 -->
-
-        <!-- 集成了大量工具类, 暂时保持不变 -->
-        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-starter -->
-        <dependency>
-            <groupId>org.apache.storm</groupId>
-            <artifactId>storm-starter</artifactId>
-            <version>${storm.version}</version>
-        </dependency>
-
 
         <!-- 编译组件依赖开始 -->
 
@@ -266,10 +299,28 @@
                             <version>${dagger.version}</version>
                         </path>
                     </annotationProcessorPaths>
-                    <compilerArguments>
-                        <extdirs>${basedir}/lib</extdirs>
-                    </compilerArguments>
                 </configuration>
+            </plugin>
+            <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-dependency-plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/extlib</outputDirectory>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                            <includeScope>runtime</includeScope>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-surefire-plugin -->
             <plugin>

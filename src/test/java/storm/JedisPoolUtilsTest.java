@@ -14,6 +14,7 @@ import storm.util.JedisPoolUtils;
  * @date: 2018-07-03
  * @description:
  */
+@Disabled
 @DisplayName("Redis连接池工具测试")
 final class JedisPoolUtilsTest {
 

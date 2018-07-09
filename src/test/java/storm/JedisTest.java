@@ -12,6 +12,7 @@ import storm.util.JedisPoolUtils;
  * @date: 2018-07-05
  * @description:
  */
+@Disabled
 @DisplayName("Jedis试验")
 final class JedisTest {
 
