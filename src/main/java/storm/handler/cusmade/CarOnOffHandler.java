@@ -280,6 +280,18 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                         }
                     }
                 }
+            }else{
+                if(null != vidLastSpeed.get(vid)){
+                    numSpeed = vidLastSpeed.get(vid);
+                }
+
+                if(null != vidLastSoc.get(vid)){
+                    numSoc = vidLastSoc.get(vid);
+                }
+
+                if(null != vidLastMileage.get(vid)){
+                    numMileage = vidLastMileage.get(vid);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -309,6 +321,9 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 //吉利要求，新增
                 notice.put("offlineMillisecondsThreshold", timeout);
             }else{
+                if(-1 == (int)notice.get("smileage")){
+                    notice.put("smileage",numMileage);
+                }
                 notice.put("status", 2);
             }
             notice.put("noticetime", noticetime);
