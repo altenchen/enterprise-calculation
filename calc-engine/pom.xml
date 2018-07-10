@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>cn.bitnei</groupId>
+        <artifactId>enterprise-calculation</artifactId>
+        <version>0.4.15-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <!-- 模块标识 -->
+    <artifactId>calc-engine</artifactId>
+    <!-- 语义化版本 -->
+    <!-- https://semver.org/lang/zh-CN/ -->
+    <version>0.4.15-SNAPSHOT</version>
+    <!-- 模块描述 -->
+    <description>计算引擎</description>
+
+    <!-- 打包方式 -->
+    <packaging>jar</packaging>
+
+    <properties>
+        <dagger.version>2.16</dagger.version>
+    </properties>
+
+    <!-- 项目依赖 -->
+    <dependencies>
+
+        <!-- 北理大数据依赖开始 -->
+
+        <!-- 主要使用了CTFO组件, 只有jar包, 没有源码, 附加依赖绑定, 宝宝不开心只会说方法找不到, 感动不(ಥ _ ಥ) -->
+        <!-- http://218.205.184.127:8081/nexus/#nexus-search;gav~com.bitnei.bigdata~datacenter -->
+        <dependency>
+            <groupId>com.bitnei.bigdata</groupId>
+            <artifactId>datacenter</artifactId>
+        </dependency>
+
+        <!-- 小心 CTFO 组件内部的兼容性 -->
+        <!-- com.bitnei.bigdata:datacenter:2.4.2 嵌入2.4.2 兼容性风险. -->
+        <!-- org.apache.storm:storm-starter:1.0.3 嵌入2.7.0 兼容性风险. -->
+        <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+        </dependency>
+
+        <!-- 北理大数据依赖结束 -->
+
+        <!-- Storm 依赖开始 -->
+
+        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-core -->
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-core</artifactId>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-kafka -->
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-kafka</artifactId>
+        </dependency>
+
+        <!-- 集成了大量工具类, 暂时保持不变 -->
+        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-starter -->
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-starter</artifactId>
+        </dependency>
+
+        <!-- Storm 依赖结束 -->
+
+        <!-- CDH依赖开始 -->
+
+        <!-- https://mvnrepository.com/artifact/com.cloudera.cdh/zookeeper-root -->
+        <dependency>
+            <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- CDH依赖结束 -->
+
+        <!-- 数据库依赖开始 -->
+
+        <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- 数据库依赖结束 -->
+
+
+        <!-- 工具组件依赖开始 -->
+
+        <!-- org.apache.storm:storm-starter 嵌入 -->
+        <!-- https://mvnrepository.com/artifact/com.sun.jersey/jersey-core -->
+        <!--<dependency>-->
+        <!--<groupId>com.sun.jersey</groupId>-->
+        <!--<artifactId>jersey-core</artifactId>-->
+        <!--</dependency>-->
+
+        <!-- 工具组件依赖结束 -->
+
+        <!-- 编译组件依赖开始 -->
+
+        <!-- https://mvnrepository.com/artifact/com.google.dagger/dagger -->
+        <dependency>
+            <groupId>com.google.dagger</groupId>
+            <artifactId>dagger</artifactId>
+            <version>${dagger.version}</version>
+        </dependency>
+
+        <!-- 编译组件依赖结束 -->
+
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-compiler-plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <!-- https://mvnrepository.com/artifact/com.google.dagger/dagger-compiler -->
+                            <groupId>com.google.dagger</groupId>
+                            <artifactId>dagger-compiler</artifactId>
+                            <version>${dagger.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-dependency-plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/extlib</outputDirectory>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                            <includeScope>runtime</includeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -34,5 +34,5 @@ hs_err_pid*
 .settings
 
 # Output
-/target
-/*.iml
+target
+*.iml
