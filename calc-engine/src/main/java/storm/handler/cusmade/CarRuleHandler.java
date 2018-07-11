@@ -72,6 +72,17 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Double> lastSoc = new HashMap<>();
     private Map<String, Double> lastMile = new HashMap<>();
 
+    public static void setSocAlarm(int socAlarm) {
+        CarRuleHandler.socAlarm = socAlarm;
+    }
+
+    public static void setLowSocJudgeNum(int lowSocJudgeNum) {
+        CarRuleHandler.lowSocJudgeNum = lowSocJudgeNum;
+    }
+    public static void setLowsocIntervalMillisecond(Long lowsocIntervalMillisecond) {
+        CarRuleHandler.lowsocIntervalMillisecond = lowsocIntervalMillisecond;
+    }
+
     /**
      * SOC过低阈值, 默认 10%
      */
@@ -80,6 +91,7 @@ public class CarRuleHandler implements InfoNotice {
      * SOC过低确认帧数
      */
     private static int lowSocJudgeNum = 3;
+
     /**
      * SOC过低确认延时, 默认1分钟.
      */
@@ -445,7 +457,7 @@ public class CarRuleHandler implements InfoNotice {
         if (1 == socRule) {
             //lowsoc(data)返回一个map，里面有vid和通知消息（treeMap）
             // SOC 过低
-            final List<Map<String, Object>> socJudges = lowSoc(data);
+            List<Map<String, Object>> socJudges = lowSoc(data);
             if (!CollectionUtils.isEmpty(socJudges)) {
                 list.addAll(socJudges);
             }
@@ -512,6 +524,7 @@ public class CarRuleHandler implements InfoNotice {
 
         return list;
     }
+
 
     //soc<30 后面抽象成通用的规则
     /**
