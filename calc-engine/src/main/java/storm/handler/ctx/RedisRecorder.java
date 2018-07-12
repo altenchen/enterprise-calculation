@@ -86,7 +86,7 @@ public final class RedisRecorder implements Recorder {
                 if (null != vid && !"".equals(vid)
                     && null != json && !"".equals(json)) {
 
-                    Map<String, Object> map = gson.fromJson(
+                    TreeMap<String, Object> map = gson.fromJson(
                         json,
                         new TypeToken<TreeMap<String, Object>>() {
                         }.getType());

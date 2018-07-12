@@ -43,19 +43,19 @@
         <commons.collections.version>3.2.2</commons.collections.version>
         <guava.version>16.0.1</guava.version>
         <jersey.core.version>1.19.4</jersey.core.version>
+        <dagger.version>2.16</dagger.version>
         <!-- 工具组件版本结束 -->
 
         <!-- 编译套件版本开始 -->
-        <maven.compiler.plugin.version>3.7.0</maven.compiler.plugin.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <annotations.version>16.0.2</annotations.version>
-        <dagger.version>2.16</dagger.version>
+        <maven.compiler.plugin.version>3.7.0</maven.compiler.plugin.version>
+        <maven.compiler.plugin.configuration.source>1.8</maven.compiler.plugin.configuration.source>
+        <maven.compiler.plugin.configuration.target>1.8</maven.compiler.plugin.configuration.target>
+        <maven.compiler.plugin.configuration.encoding>UTF-8</maven.compiler.plugin.configuration.encoding>
+        <maven.dependency.plugin.version>3.1.1</maven.dependency.plugin.version>
         <!-- 编译套件版本结束-->
 
         <!-- 测试套件版本开始 -->
-        <maven.dependency.plugin.version>3.1.1</maven.dependency.plugin.version>
         <maven.surefire.plugin.version>2.22.0</maven.surefire.plugin.version>
         <junit.platform.version>1.2.0</junit.platform.version>
         <junit.jupiter.version>5.2.0</junit.jupiter.version>
@@ -365,9 +365,9 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${maven.compiler.plugin.version}</version>
                     <configuration>
-                        <source>${maven.compiler.source}</source>
-                        <target>${maven.compiler.target}</target>
-                        <encoding>${project.build.sourceEncoding}</encoding>
+                        <source>${maven.compiler.plugin.configuration.source}</source>
+                        <target>${maven.compiler.plugin.configuration.target}</target>
+                        <encoding>${maven.compiler.plugin.configuration.encoding}</encoding>
                     </configuration>
                 </plugin>
                 <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-dependency-plugin -->
