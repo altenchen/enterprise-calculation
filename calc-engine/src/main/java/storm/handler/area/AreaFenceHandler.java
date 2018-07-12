@@ -101,8 +101,9 @@ public class AreaFenceHandler {
      * @return 若干个矩形的index
      */
     private Set<Integer> indexs(Coordinate coord){
-        if (null == areaFences || areaFences.size() ==0)
+        if (null == areaFences || areaFences.size() ==0) {
             return null;
+        }
 
         int len = areaFences.size();//总区域数
         int st = 0;

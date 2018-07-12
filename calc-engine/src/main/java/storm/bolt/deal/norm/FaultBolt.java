@@ -53,18 +53,20 @@ public class FaultBolt extends BaseRichBolt {
         if(tuple.getSourceStreamId().equals(SysDefine.FAULT_GROUP)){
             String vid = tuple.getString(0);
             Map<String, String> alarmMsg = (TreeMap<String, String>) tuple.getValue(1);
-            if (null == alarmMsg.get(DataKey.VEHICLE_ID))
+            if (null == alarmMsg.get(DataKey.VEHICLE_ID)) {
                 alarmMsg.put(DataKey.VEHICLE_ID, vid);
+            }
 
             //fault result
             List<String>resuts = service.handler(alarmMsg);
-            if(null != resuts && resuts.size()>0)
+            if(null != resuts && resuts.size()>0) {
                 for (String json : resuts) {
                     if(!isNullOrEmpty(json)){
                         //kafka存储
                         sendAlarmKafka(SysDefine.FAULT_STREAM,faultTopic,vid, json);
                     }
                 }
+            }
         }
 
     }
@@ -79,8 +81,9 @@ public class FaultBolt extends BaseRichBolt {
     }
     
     boolean isNullOrEmpty(String string){
-        if(null == string || "".equals(string))
+        if(null == string || "".equals(string)) {
             return true;
+        }
         return "".equals(string.trim());
     }
     

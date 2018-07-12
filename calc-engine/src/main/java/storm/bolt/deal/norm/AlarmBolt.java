@@ -314,6 +314,7 @@ public class AlarmBolt extends BaseRichBolt {
         declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
     }
 
+    @Override
     public Map<String, Object> getComponentConfiguration() {
         return null;
     }

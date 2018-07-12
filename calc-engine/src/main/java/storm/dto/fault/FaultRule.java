@@ -45,13 +45,15 @@ public class FaultRule implements Serializable {
         resetDef();
     }
     public int getLevel(int times,long duration){
-        if(null != firstDef)
+        if(null != firstDef) {
             return firstDef.cal(times, duration);
+        }
         return -999;
     }
     public boolean nowIsalive(){
-        if (null == period)
+        if (null == period) {
             return true;
+        }
 
         long now = System.currentTimeMillis();
         if (now - lastalivetime > 300000) {//每5分钟判断是否处于激活状态
@@ -63,8 +65,9 @@ public class FaultRule implements Serializable {
 
     public void addDef(AbstractDef def){
         if (null != def) {
-            if (! defs.contains(def))
+            if (! defs.contains(def)) {
                 defs.add(def);
+            }
         }
     }
 
@@ -84,15 +87,17 @@ public class FaultRule implements Serializable {
 
     public void addFaultRule(FaultRule rule){
         if (null != rule && rule != this) {
-            if (! dependFaultRules.contains(rule))
+            if (! dependFaultRules.contains(rule)) {
                 dependFaultRules.add(rule);
+            }
         }
     }
 
     public void addFaultAlarmRule(FaultAlarmRule rule){
         if (null != rule) {
-            if (! dependAlarmRules.contains(rule))
+            if (! dependAlarmRules.contains(rule)) {
                 dependAlarmRules.add(rule);
+            }
         }
     }
 
@@ -129,13 +134,17 @@ public class FaultRule implements Serializable {
          * </p>
          */
         if (null == dependAlarmRules || dependAlarmRules.size() < 1) //代表不需要告警规则也可以触发成功
+        {
             return true;
-        if(null == result || result.size()<1)
+        }
+        if(null == result || result.size()<1) {
             return false;
+        }
         //简单处理，只要告警满足，不论级别代表都可以触发故障
         for (FaultAlarmRule rule : dependAlarmRules) {
-            if (!result.containsKey(rule.id))
+            if (!result.containsKey(rule.id)) {
                 return false;
+            }
 
         }
         return true;
@@ -148,8 +157,9 @@ public class FaultRule implements Serializable {
      * @return
      */
     private boolean faultTriggerSuccess(Map<String,AlarmMessage> result){
-        if(null == dependFaultRules || dependFaultRules.size() < 1)
+        if(null == dependFaultRules || dependFaultRules.size() < 1) {
             return true;
+        }
         /**
          * <p>
          * 现在简化处理，认为只要产生了故障，
@@ -167,8 +177,9 @@ public class FaultRule implements Serializable {
     }
 
     private boolean faultTrigger(Map<String,FaultMessage> result){
-        if(null == dependFaultRules || dependFaultRules.size() < 1)
+        if(null == dependFaultRules || dependFaultRules.size() < 1) {
             return true;
+        }
         /**
          * <p>
          * 现在简化处理，认为只要产生了故障，

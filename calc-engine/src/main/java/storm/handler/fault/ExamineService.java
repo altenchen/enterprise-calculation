@@ -88,8 +88,9 @@ public class ExamineService {
                     message.triggerCounter = message.triggerCounter+1;
                     message.status = 2;
                 }
-                if(null == message.vid)
+                if(null == message.vid) {
                     message.vid = vid;
+                }
                     
                 message.time = utcTime;
                 message.sustainTime = message.time-message.startTime;
@@ -114,8 +115,9 @@ public class ExamineService {
     }
     
     private String jsonMsg(FaultMessage message){
-        if(null == message)
+        if(null == message) {
             return null;
+        }
         if (-999 != message.risk) {
             Map<String, Object> map = new TreeMap<String,Object>();
             map.put("MSG_ID", message.msgId);
@@ -134,8 +136,9 @@ public class ExamineService {
         return null;
     }
     public List<String> handler(Map<String, String>alarmMsg){
-        if (null == alarmMsg || alarmMsg.size()<5) 
+        if (null == alarmMsg || alarmMsg.size()<5) {
             return null;
+        }
         
         String vid = alarmMsg.get(DataKey.VEHICLE_ID);
         String alarmRuleId = alarmMsg.get("CONST_ID");
@@ -146,15 +149,17 @@ public class ExamineService {
 //        long now = System.currentTimeMillis();
         
         Map<String,AlarmMessage> alarmRuleResult = vidAlarmMsgs.get(vid);
-        if (null == alarmRuleResult) 
+        if (null == alarmRuleResult) {
             alarmRuleResult = new TreeMap<String,AlarmMessage>();
+        }
         if ("3".equals(status)) {//代表告警结束
             alarmRuleResult.remove(alarmRuleId);
         } else {
             
             AlarmMessage msg = alarmRuleResult.get(alarmRuleId);
-            if (null == msg) 
+            if (null == msg) {
                 msg = new AlarmMessage(alarmId,utctime, alarmRuleId);
+            }
             
             if ("1".equals(status)) {//告警开始
                 msg.startTime = utctime;

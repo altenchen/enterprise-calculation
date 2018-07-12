@@ -36,10 +36,12 @@ public class TimePeriod implements Serializable {
     }
 
     public boolean dateIntimes(Date date){
-        if(null == type)
+        if(null == type) {
             return false;
-        if (null == inSeqSmalltimes)
+        }
+        if (null == inSeqSmalltimes) {
             return false;
+        }
         try {
             Calendar cal = getCalendar();
             cal.setTime(date);
@@ -48,21 +50,24 @@ public class TimePeriod implements Serializable {
                 int month = cal.get(Calendar.MONTH)+1;
                 int day = cal.get(Calendar.DAY_OF_MONTH);
                 boolean inBig = false;
-                if(null != inSeqbigtimes)
-                for(Long[] bigSeq:inSeqbigtimes){
-                    if (bigSeq[0] <= year*10000+month*100+day
-                            && year*10000+month*100+day <= bigSeq[1]) {
-                        inBig = true;
-                        break;
+                if(null != inSeqbigtimes) {
+                    for(Long[] bigSeq:inSeqbigtimes){
+                        if (bigSeq[0] <= year*10000+month*100+day
+                                && year*10000+month*100+day <= bigSeq[1]) {
+                            inBig = true;
+                            break;
+                        }
                     }
                 }
-                if (!inBig)
+                if (!inBig) {
                     return false;
+                }
                 int hour = cal.get(Calendar.HOUR_OF_DAY);
                 int minute = cal.get(Calendar.MINUTE);
                 for(Long[]small : inSeqSmalltimes){
-                    if (small[0]<=hour*100+minute && hour*100+minute<=small[1])
+                    if (small[0]<=hour*100+minute && hour*100+minute<=small[1]) {
                         return true;
+                    }
                 }
                 return false;
 
@@ -71,68 +76,78 @@ public class TimePeriod implements Serializable {
                 int hour = cal.get(Calendar.HOUR_OF_DAY);
                 int minute = cal.get(Calendar.MINUTE);
                 for(Long[]small : inSeqSmalltimes){
-                    if (small[0]<=hour*100+minute && hour*100+minute<=small[1])
+                    if (small[0]<=hour*100+minute && hour*100+minute<=small[1]) {
                         return true;
+                    }
                 }
                 return false;
             } else if(TimePeriod.TYPE_WEEK.equalsIgnoreCase(type)){
                 int weekday = cal.get(Calendar.DAY_OF_WEEK);
                 weekday = weekday-1;
-                if (0 == weekday)
+                if (0 == weekday) {
                     weekday = 7;
-                boolean inBig = false;
-                if(null != inSeqbigtimes)
-                for(Long[] bigSeq:inSeqbigtimes){
-                    if (bigSeq[0] <= weekday && weekday <= bigSeq[1]) {
-                        inBig = true;
-                        break;
-                    }
                 }
-                if (!inBig) {
-                    if(null != inbigtimes)
-                    for (long bigi : inbigtimes) {
-                        if(bigi == weekday){
+                boolean inBig = false;
+                if(null != inSeqbigtimes) {
+                    for(Long[] bigSeq:inSeqbigtimes){
+                        if (bigSeq[0] <= weekday && weekday <= bigSeq[1]) {
                             inBig = true;
                             break;
                         }
                     }
                 }
-                if (!inBig)
+                if (!inBig) {
+                    if(null != inbigtimes) {
+                        for (long bigi : inbigtimes) {
+                            if(bigi == weekday){
+                                inBig = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!inBig) {
                     return false;
+                }
                 int hour = cal.get(Calendar.HOUR_OF_DAY);
                 int minute = cal.get(Calendar.MINUTE);
                 for(Long[]small : inSeqSmalltimes){
-                    if (small[0]<=hour*100+minute && hour*100+minute<=small[1])
+                    if (small[0]<=hour*100+minute && hour*100+minute<=small[1]) {
                         return true;
+                    }
                 }
                 return false;
 
             } else if(TimePeriod.TYPE_MONTH.equalsIgnoreCase(type)){
                 int day = cal.get(Calendar.DAY_OF_MONTH);
                 boolean inBig = false;
-                if(null != inSeqbigtimes)
-                for(Long[] bigSeq:inSeqbigtimes){
-                    if (bigSeq[0] <= day && day <= bigSeq[1]) {
-                        inBig = true;
-                        break;
-                    }
-                }
-                if (!inBig) {
-                    if(null != inbigtimes)
-                    for (long bigi : inbigtimes) {
-                        if(bigi == day){
+                if(null != inSeqbigtimes) {
+                    for(Long[] bigSeq:inSeqbigtimes){
+                        if (bigSeq[0] <= day && day <= bigSeq[1]) {
                             inBig = true;
                             break;
                         }
                     }
                 }
-                if (!inBig)
+                if (!inBig) {
+                    if(null != inbigtimes) {
+                        for (long bigi : inbigtimes) {
+                            if(bigi == day){
+                                inBig = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!inBig) {
                     return false;
+                }
                 int hour = cal.get(Calendar.HOUR_OF_DAY);
                 int minute = cal.get(Calendar.MINUTE);
                 for(Long[]small : inSeqSmalltimes){
-                    if (small[0]<=hour*100+minute && hour*100+minute<=small[1])
+                    if (small[0]<=hour*100+minute && hour*100+minute<=small[1]) {
                         return true;
+                    }
                 }
                 return false;
             }
@@ -143,14 +158,17 @@ public class TimePeriod implements Serializable {
     }
 
     public boolean stringTimeIntimes(String yyyyMMddHHmmss){
-        if(null == type)
+        if(null == type) {
             return false;
-        if (null == inSeqSmalltimes)
+        }
+        if (null == inSeqSmalltimes) {
             return false;
+        }
         if (null == yyyyMMddHHmmss
                 || "".equals(yyyyMMddHHmmss.trim())
-                || yyyyMMddHHmmss.length() < 12)
+                || yyyyMMddHHmmss.length() < 12) {
             return false;
+        }
 
         try {
             int hm = Integer.valueOf(yyyyMMddHHmmss.substring(8, 12));
@@ -164,17 +182,20 @@ public class TimePeriod implements Serializable {
                         break;
                     }
                 }
-                if (!inBig)
+                if (!inBig) {
                     return false;
+                }
                 for(Long[]small : inSeqSmalltimes){
-                    if (small[0]<=hm && hm<=small[1])
+                    if (small[0]<=hm && hm<=small[1]) {
                         return true;
+                    }
                 }
                 return false;
             } else if(TimePeriod.TYPE_DAY.equalsIgnoreCase(type)){
                 for(Long[]small : inSeqSmalltimes){
-                    if (small[0]<=hm && hm<=small[1])
+                    if (small[0]<=hm && hm<=small[1]) {
                         return true;
+                    }
                 }
                 return false;
             } else {
@@ -185,56 +206,65 @@ public class TimePeriod implements Serializable {
                 if(TimePeriod.TYPE_WEEK.equalsIgnoreCase(type)){
                     int weekday = cal.get(Calendar.DAY_OF_WEEK);
                     weekday = weekday-1;
-                    if (0 == weekday)
+                    if (0 == weekday) {
                         weekday = 7;
-                    boolean inBig = false;
-                    if(null != inSeqbigtimes)
-                    for(Long[] bigSeq:inSeqbigtimes){
-                        if (bigSeq[0] <= weekday && weekday <= bigSeq[1]) {
-                            inBig = true;
-                            break;
-                        }
                     }
-                    if (!inBig) {
-                        if(null != inbigtimes)
-                        for (long bigi : inbigtimes) {
-                            if(bigi == weekday){
+                    boolean inBig = false;
+                    if(null != inSeqbigtimes) {
+                        for(Long[] bigSeq:inSeqbigtimes){
+                            if (bigSeq[0] <= weekday && weekday <= bigSeq[1]) {
                                 inBig = true;
                                 break;
                             }
                         }
                     }
-                    if (!inBig)
+                    if (!inBig) {
+                        if(null != inbigtimes) {
+                            for (long bigi : inbigtimes) {
+                                if(bigi == weekday){
+                                    inBig = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (!inBig) {
                         return false;
+                    }
                     for(Long[]small : inSeqSmalltimes){
-                        if (small[0]<=hm && hm<=small[1])
+                        if (small[0]<=hm && hm<=small[1]) {
                             return true;
+                        }
                     }
                     return false;
                 } else if(TimePeriod.TYPE_MONTH.equalsIgnoreCase(type)){
                     int day = cal.get(Calendar.DAY_OF_MONTH);
                     boolean inBig = false;
-                    if(null != inSeqbigtimes)
-                    for(Long[] bigSeq:inSeqbigtimes){
-                        if (bigSeq[0] <= day && day <= bigSeq[1]) {
-                            inBig = true;
-                            break;
-                        }
-                    }
-                    if (!inBig) {
-                        if(null != inbigtimes)
-                        for (long bigi : inbigtimes) {
-                            if(bigi == day){
+                    if(null != inSeqbigtimes) {
+                        for(Long[] bigSeq:inSeqbigtimes){
+                            if (bigSeq[0] <= day && day <= bigSeq[1]) {
                                 inBig = true;
                                 break;
                             }
                         }
                     }
-                    if (!inBig)
+                    if (!inBig) {
+                        if(null != inbigtimes) {
+                            for (long bigi : inbigtimes) {
+                                if(bigi == day){
+                                    inBig = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (!inBig) {
                         return false;
+                    }
                     for(Long[]small : inSeqSmalltimes){
-                        if (small[0]<=hm && hm<=small[1])
+                        if (small[0]<=hm && hm<=small[1]) {
                             return true;
+                        }
                     }
                     return false;
                 }
@@ -247,10 +277,12 @@ public class TimePeriod implements Serializable {
     }
 
     public boolean longtimeIntimes(long utc){
-        if(null == type)
+        if(null == type) {
             return false;
-        if (null == inSeqSmalltimes)
+        }
+        if (null == inSeqSmalltimes) {
             return false;
+        }
         return dateIntimes(new Date(utc));
     }
     boolean isNumber(String str) {

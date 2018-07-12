@@ -42,35 +42,43 @@ public abstract class AbstractDef implements Serializable {
      * @return
      */
     int cal(int times,long duration){
-        if (! isFirst())
+        if (! isFirst()) {
             return -999;
-        if (times<0 || duration<0)
+        }
+        if (times<0 || duration<0) {
             return -999;
+        }
         if ((mintimes <0 || maxtimes<0)
-                && (minduration <0 || maxduration<0) )
+                && (minduration <0 || maxduration<0) ) {
             return -999;
+        }
 
         int risk = caltime(times);
-        if(-999 != risk)
+        if(-999 != risk) {
             return risk;
+        }
         risk = caldur(duration);
         return risk;
     }
 
     private int caltime(int times){
-        if (mintimes <= times && times <= maxtimes)
+        if (mintimes <= times && times <= maxtimes) {
             return level;
-        if (null != nextDef)
+        }
+        if (null != nextDef) {
             return nextDef.caltime(times);
+        }
         return -999;
     }
 
     private int caldur(long duration){
-        if(minduration*3600000 <= duration && duration < maxduration*3600000)
+        if(minduration*3600000 <= duration && duration < maxduration*3600000) {
             return level;
+        }
 
-        if (null != nextDef)
+        if (null != nextDef) {
             return nextDef.caldur(duration);
+        }
         return -999;
     }
 
@@ -87,12 +95,14 @@ public abstract class AbstractDef implements Serializable {
     }
 
     public void addNextDef(AbstractDef next){
-        if (null == next || next == this)
+        if (null == next || next == this) {
             return;
+        }
         next.setFirst(false);
-        if(null == nextDef)
+        if(null == nextDef) {
             setNextDef(next);
-        else
+        } else {
             nextDef.addNextDef(next);
+        }
     }
 }

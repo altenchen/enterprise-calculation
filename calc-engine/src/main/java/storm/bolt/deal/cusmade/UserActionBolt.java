@@ -45,8 +45,9 @@ public class UserActionBolt extends BaseRichBolt {
         if(tuple.getSourceStreamId().equals(SysDefine.YAACTION_GROUP)){
             String vid = tuple.getString(0);
             Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
-            if (null == data.get(DataKey.VEHICLE_ID))
+            if (null == data.get(DataKey.VEHICLE_ID)) {
                 data.put(DataKey.VEHICLE_ID, vid);
+            }
 
             List<Map<String, String>> actions = handle(data);
             if (null != actions) {
@@ -65,8 +66,9 @@ public class UserActionBolt extends BaseRichBolt {
                             .append(":")
                             .append(entry.getValue());
                             cnt++;
-                            if(cnt<size)
+                            if(cnt<size) {
                                 sb.append(",");
+                            }
                         }
                         //kafka存储
                         sendAlarmKafka(SysDefine.YAACTION_NOTICE,actionTopic,vid, sb.toString());
@@ -99,13 +101,15 @@ public class UserActionBolt extends BaseRichBolt {
     }
     
     private List<Map<String,String>> analysisToListMap(String vid,String base64s){
-        if(isNullOrEmpty(base64s))
+        if(isNullOrEmpty(base64s)) {
             return null;
+        }
         List<Map<String,String>> list = null;
         try {
             String[] arr = base64s.split("\\|");
-            if (arr.length<1)
+            if (arr.length<1) {
                 return list;
+            }
             list = new LinkedList<Map<String,String>>();
             for(int i =0;i<arr.length;i++){
 
@@ -125,8 +129,9 @@ public class UserActionBolt extends BaseRichBolt {
     }
     
     private Map<String,String> analysisToMap(String base64){
-        if(isNullOrEmpty(base64))
+        if(isNullOrEmpty(base64)) {
             return null;
+        }
         Map<String,String> map =null;
         try {
             String string = new String(Base64.decode(base64),"UTF-8");
@@ -135,13 +140,15 @@ public class UserActionBolt extends BaseRichBolt {
             if (strings.length == 3) {
                 map = new TreeMap<String,String>();
                 for(int i=0;i<3;i++){
-                    if (1 == i)
+                    if (1 == i) {
                         continue;
+                    }
 
                     String [] kv = strings[i].split(":");
                     if(kv.length==2){
-                        if("1".equals(kv[0]))
+                        if("1".equals(kv[0])) {
                             map.put("TYPE", new String(kv[1]));
+                        }
                         if("3".equals(kv[0])){
                             String [] spcs = kv[1].split("_");
                             if(6 == spcs.length){
@@ -167,13 +174,15 @@ public class UserActionBolt extends BaseRichBolt {
     }
     
     boolean isNullOrEmpty(Map map){
-        if(map == null || map.size()==0)
+        if(map == null || map.size()==0) {
             return true;
+        }
         return false;
     }
     boolean isNullOrEmpty(String string){
-        if(null == string || "".equals(string))
+        if(null == string || "".equals(string)) {
             return true;
+        }
         return "".equals(string.trim());
     }
     

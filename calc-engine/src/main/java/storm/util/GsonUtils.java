@@ -1,13 +1,11 @@
 package storm.util;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.gson.*;
 import com.google.gson.internal.LinkedTreeMap;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
-import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -44,111 +42,92 @@ public final class GsonUtils {
         .registerTypeAdapter(
             new TypeToken<TreeMap<String, Object>>() {
             }.getType(),
-            new JsonDeserializer<TreeMap<String, Object>>() {
+            (JsonDeserializer<TreeMap<String, Object>>) (jsonElement, type, jsonDeserializationContext) -> {
 
-                @Override
-                public TreeMap<String, Object> deserialize(
-                    JsonElement jsonElement,
-                    Type type,
-                    JsonDeserializationContext jsonDeserializationContext)
-                    throws JsonParseException {
+                final JsonObject jsonObject = jsonElement.getAsJsonObject();
+                final Set<Map.Entry<String, JsonElement>> entrySet = jsonObject.entrySet();
 
-                    final JsonObject jsonObject = jsonElement.getAsJsonObject();
-                    final Set<Map.Entry<String, JsonElement>> entrySet = jsonObject.entrySet();
+                final TreeMap<String, Object> treeMap = new TreeMap<>();
+                for (Map.Entry<String, JsonElement> entry : entrySet) {
 
-                    final TreeMap<String, Object> treeMap = new TreeMap<>();
-                    for (Map.Entry<String, JsonElement> entry : entrySet) {
+                    final String key = entry.getKey();
+                    final JsonElement element = entry.getValue();
 
-                        final String key = entry.getKey();
-                        final JsonElement element = entry.getValue();
-
-                        treeMap.put(
-                            key,
-                            GsonUtils.deserialize(element));
-                    }
-                    return treeMap;
+                    treeMap.put(
+                        key,
+                        deserialize(element));
                 }
+                return treeMap;
             }
         )
         .registerTypeAdapter(
             new TypeToken<HashMap<String, Object>>() {
             }.getType(),
-            new JsonDeserializer<HashMap<String, Object>>() {
+            (JsonDeserializer<HashMap<String, Object>>) (jsonElement, type, jsonDeserializationContext) -> {
 
-                @Override
-                public HashMap<String, Object> deserialize(
-                    JsonElement jsonElement,
-                    Type type,
-                    JsonDeserializationContext jsonDeserializationContext)
-                    throws JsonParseException {
+                final JsonObject jsonObject = jsonElement.getAsJsonObject();
+                final Set<Map.Entry<String, JsonElement>> entrySet = jsonObject.entrySet();
 
-                    final JsonObject jsonObject = jsonElement.getAsJsonObject();
-                    final Set<Map.Entry<String, JsonElement>> entrySet = jsonObject.entrySet();
+                final HashMap<String, Object> treeMap = new HashMap<>(entrySet.size());
+                for (Map.Entry<String, JsonElement> entry : entrySet) {
 
-                    final HashMap<String, Object> treeMap = new HashMap<>(entrySet.size());
-                    for (Map.Entry<String, JsonElement> entry : entrySet) {
+                    final String key = entry.getKey();
+                    final JsonElement element = entry.getValue();
 
-                        final String key = entry.getKey();
-                        final JsonElement element = entry.getValue();
-
-                        treeMap.put(
-                            key,
-                            GsonUtils.deserialize(element));
-                    }
-                    return treeMap;
+                    treeMap.put(
+                        key,
+                        deserialize(element));
                 }
+                return treeMap;
             }
         )
         .registerTypeAdapter(
-            new TypeToken<Map<String, Object>>() {
+            new TypeToken<Object[]>() {
             }.getType(),
-            new JsonDeserializer<Map<String, Object>>() {
+            (JsonDeserializer<Object[]>) (jsonElement, type, jsonDeserializationContext) -> {
 
-                @Override
-                public Map<String, Object> deserialize(
-                    JsonElement jsonElement,
-                    Type type,
-                    JsonDeserializationContext jsonDeserializationContext)
-                    throws JsonParseException {
+                final JsonArray jsonArray = jsonElement.getAsJsonArray();
 
-                    final JsonObject jsonObject = jsonElement.getAsJsonObject();
-                    final Set<Map.Entry<String, JsonElement>> entrySet = jsonObject.entrySet();
+                final Collection<Object> linkedList = new LinkedList<>();
 
-                    final LinkedTreeMap<String, Object> linkedMap = new LinkedTreeMap<>();
-                    for (Map.Entry<String, JsonElement> entry : entrySet) {
-
-                        final String key = entry.getKey();
-                        final JsonElement element = entry.getValue();
-
-                        linkedMap.put(
-                            key,
-                            GsonUtils.deserialize(element));
-                    }
-                    return linkedMap;
+                for (JsonElement element : jsonArray) {
+                    linkedList.add(deserialize(element));
                 }
+                return linkedList.toArray();
             }
         )
-        .registerTypeAdapter(
-            new TypeToken<List<Object>>() {
-            }.getType(),
-            new JsonDeserializer<List<Object>>() {
+        .registerTypeHierarchyAdapter(
+            Map.class,
+            (JsonDeserializer<Map<String, Object>>) (jsonElement, type, jsonDeserializationContext) -> {
 
-                @Override
-                public List<Object> deserialize(
-                    JsonElement jsonElement,
-                    Type type,
-                    JsonDeserializationContext jsonDeserializationContext)
-                    throws JsonParseException {
+                final JsonObject jsonObject = jsonElement.getAsJsonObject();
+                final Set<Map.Entry<String, JsonElement>> entrySet = jsonObject.entrySet();
 
-                    final JsonArray jsonArray = jsonElement.getAsJsonArray();
+                final LinkedTreeMap<String, Object> linkedMap = new LinkedTreeMap<>();
+                for (Map.Entry<String, JsonElement> entry : entrySet) {
 
-                    final List<Object> linkedList = new LinkedList<>();
+                    final String key = entry.getKey();
+                    final JsonElement element = entry.getValue();
 
-                    for (JsonElement element : jsonArray) {
-                        linkedList.add(GsonUtils.deserialize(element));
-                    }
-                    return linkedList;
+                    linkedMap.put(
+                        key,
+                        deserialize(element));
                 }
+                return linkedMap;
+            }
+        )
+        .registerTypeHierarchyAdapter(
+            Iterable.class,
+            (JsonDeserializer<Iterable<Object>>) (jsonElement, type, jsonDeserializationContext) -> {
+
+                final JsonArray jsonArray = jsonElement.getAsJsonArray();
+
+                final Collection<Object> linkedList = new LinkedList<>();
+
+                for (JsonElement element : jsonArray) {
+                    linkedList.add(deserialize(element));
+                }
+                return linkedList;
             }
         )
         .create();
@@ -165,22 +144,20 @@ public final class GsonUtils {
                 return primitive.getAsBoolean();
             }
 
+            final String asString = primitive.getAsString();
+
             if (primitive.isNumber()) {
 
-                final String asString = primitive.getAsString();
-                if (primitive.isNumber()) {
+                if (NumberUtils.isDigits(asString)) {
 
-                    if (NumberUtils.isDigits(asString)) {
+                    return primitive.getAsInt();
+                } else {
 
-                        return primitive.getAsInt();
-                    } else {
-
-                        return primitive.getAsDouble();
-                    }
+                    return primitive.getAsDouble();
                 }
             }
 
-            return primitive.getAsString();
+            return asString;
         }
 
         if (jsonElement.isJsonObject()) {
@@ -205,28 +182,14 @@ public final class GsonUtils {
         return gson;
     }
 
-    @Contract("null, _ -> null")
     public final <T> String toJson(T src) {
         return gson.toJson(src);
     }
 
-    /**
-     * @param src
-     * @param typeOfSrc new TypeToken<T>() {}.getType()
-     * @param <T>
-     * @return
-     */
-    @Contract("null, _ -> null")
     public final <T> String toJson(T src, Type typeOfSrc) {
         return gson.toJson(src, typeOfSrc);
     }
 
-    /**
-     * @param json
-     * @param typeOfT new TypeToken<T>() {}.getType()
-     * @param <T>
-     * @return
-     */
     @Contract("null, _ -> null")
     public final <T> T fromJson(String json, Type typeOfT) {
         return gson.fromJson(json, typeOfT);
@@ -239,7 +202,7 @@ public final class GsonUtils {
 
     private static final class ObjectTypeAdapter extends TypeAdapter<Object> {
 
-        public static final TypeAdapterFactory FACTORY = new TypeAdapterFactory() {
+        static final TypeAdapterFactory FACTORY = new TypeAdapterFactory() {
             @SuppressWarnings("unchecked")
             @Override public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
                 if (type.getRawType() == Object.class) {
@@ -259,7 +222,7 @@ public final class GsonUtils {
             JsonToken token = in.peek();
             switch (token) {
                 case BEGIN_ARRAY:
-                    List<Object> list = new ArrayList<Object>();
+                    List<Object> list = new ArrayList<>();
                     in.beginArray();
                     while (in.hasNext()) {
                         list.add(read(in));
@@ -268,7 +231,7 @@ public final class GsonUtils {
                     return list;
 
                 case BEGIN_OBJECT:
-                    Map<String, Object> map = new LinkedTreeMap<String, Object>();
+                    Map<String, Object> map = new LinkedTreeMap<>();
                     in.beginObject();
                     while (in.hasNext()) {
                         map.put(in.nextName(), read(in));
@@ -310,7 +273,7 @@ public final class GsonUtils {
                 return;
             }
 
-            TypeAdapter<Object> typeAdapter = (TypeAdapter<Object>) gson.getAdapter(value.getClass());
+            TypeAdapter<Object> typeAdapter = gson.getAdapter((Class<Object>) value.getClass());
             if (typeAdapter instanceof ObjectTypeAdapter) {
                 out.beginObject();
                 out.endObject();

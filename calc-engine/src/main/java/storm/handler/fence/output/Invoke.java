@@ -21,17 +21,19 @@ public interface Invoke {
         }
 
         private void setResultClass(){
-            if (null != this.result)
+            if (null != this.result) {
                 resultClass=this.result.getClass();
-            else
+            } else {
                 resultClass=null;
+            }
         }
 
         public Result setResultValue(Object result) {
-            if (VOID == this)
+            if (VOID == this) {
                 this.result=null;
-            else
+            } else {
                 this.result = result;
+            }
             setResultClass();
             return this;
         }

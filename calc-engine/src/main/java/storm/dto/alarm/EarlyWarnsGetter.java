@@ -134,8 +134,9 @@ public class EarlyWarnsGetter {
     private static EarlyWarn getEarlyByRule(Object[] rule){
         //ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL
 
-        if (null == rule)
+        if (null == rule) {
             return null;
+        }
 
         if (rule.length == 11) {
             String id = (null == rule[0])? null : (String)rule[0];
@@ -174,8 +175,9 @@ public class EarlyWarnsGetter {
                 EarlyWarn warn = new EarlyWarn(id, name, vehModelId, levels, dependId, left1DataItem, leftExpression, left2DataItem, middleExpression, right1Value, right2Value);
 
 //                EarlyWarn warn = new EarlyWarn(id, vehModelId, left1DataItem, leftExpression, left2DataItem, middleExpression, right1Value, right2Value);
-                if (null != dependId)
+                if (null != dependId) {
                     warn.dependId = dependId;
+                }
 
                 return warn;
             }
@@ -248,11 +250,13 @@ public class EarlyWarnsGetter {
     private synchronized static Set<EarlyWarn> getAllWarnRules(String type){
         Set<EarlyWarn> commonWarns = commonWarns();
         Set<EarlyWarn> customWarns = customWarns(type);
-        if (null == commonWarns)
+        if (null == commonWarns) {
             return customWarns;
+        }
 
-        if (null == customWarns)
+        if (null == customWarns) {
             return commonWarns;
+        }
 
         Set<EarlyWarn> warns = new HashSet<EarlyWarn>();
         warns.addAll(commonWarns);

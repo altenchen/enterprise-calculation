@@ -90,12 +90,13 @@ public class EleFenceBolt extends BaseRichBolt {
         if(tuple.getSourceStreamId().equals(SysDefine.FENCE_GROUP)){
             String vid = tuple.getString(0);
             Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
-            if (null == data.get(DataKey.VEHICLE_ID))
+            if (null == data.get(DataKey.VEHICLE_ID)) {
                 data.put(DataKey.VEHICLE_ID, vid);
+            }
 
             //fence
             List<Map<String, Object>>resuts = handle(data);
-            if(null != resuts && resuts.size()>0)
+            if(null != resuts && resuts.size()>0) {
                 for (Map<String, Object> map : resuts) {
                     if(null != map && map.size()>0){
 
@@ -104,6 +105,7 @@ public class EleFenceBolt extends BaseRichBolt {
                         sendAlarmKafka(SysDefine.FENCE_ALARM,fenceAlarmTopic,vid, jsonString);
                     }
                 }
+            }
         }
 
     }
@@ -131,10 +133,12 @@ public class EleFenceBolt extends BaseRichBolt {
         if (!isNullOrEmpty(data)) {
             String vid = data.get(DataKey.VEHICLE_ID);
             List<EleFence> fences = new LinkedList<EleFence>();
-            if (!isNullOrEmpty(defaultfences))
+            if (!isNullOrEmpty(defaultfences)) {
                 fences.addAll(defaultfences);
-            if (!isNullOrEmpty(vidFenceCache) && !isNullOrEmpty(vidFenceCache.get(vid)))
+            }
+            if (!isNullOrEmpty(vidFenceCache) && !isNullOrEmpty(vidFenceCache.get(vid))) {
                 fences.addAll(vidFenceCache.get(vid));
+            }
             if (!isNullOrEmpty(fences)) {
                 String time = data.get("2000");
                 String lon = data.get("2502");//经度
@@ -154,16 +158,19 @@ public class EleFenceBolt extends BaseRichBolt {
                     System.out.println("FENCE------------------msgTime---"+msgTime);
                     for (EleFence eleFence : fences) {
                         System.out.println("FENCE------------------EleFenceID---"+eleFence.id+eleFence.toString());
-                        if (!"1".equals(eleFence.status))
+                        if (!"1".equals(eleFence.status)) {
                             continue;
+                        }
                         boolean nowIsalive = eleFence.nowIsalive();
-                        if (!nowIsalive)
+                        if (!nowIsalive) {
                             continue;
+                        }
                         boolean intimes = eleFence.stringTimeIntimes(time);
                         boolean incoord = eleFence.coordisIn(coord);
 
-                        if (!intimes)
+                        if (!intimes) {
                             continue;
+                        }
 
                         Map<String, Object> judge = new TreeMap<String, Object>();
                         judge.put("NOTIFYTYPE", "FENCE_ALARM");
@@ -187,8 +194,9 @@ public class EleFenceBolt extends BaseRichBolt {
                                             if (null !=re && re.size()>0) {
                                                 rst.putAll(re);
                                                 Object code = re.get(SysDefine.CODE);
-                                                if (null !=code)
+                                                if (null !=code) {
                                                     codes.add(code);
+                                                }
                                             }
                                         }
                                     }
@@ -201,8 +209,9 @@ public class EleFenceBolt extends BaseRichBolt {
                                             if (null !=re && re.size()>0) {
                                                 rst.putAll(re);
                                                 Object code = re.get(SysDefine.CODE);
-                                                if (null !=code)
+                                                if (null !=code) {
                                                     codes.add(code);
+                                                }
                                             }
                                         }
                                     }
@@ -213,31 +222,35 @@ public class EleFenceBolt extends BaseRichBolt {
                                     judge.put("DATAOTHER", rst);
                                 }
                             }
-                            if (vidInfence.containsKey(vid))
+                            if (vidInfence.containsKey(vid)) {
                                 vidInfence.put(vid, true);
-                            else
+                            } else {
                                 vidInfence.put(vid, false);
+                            }
 
                             boolean ongoing = vidInfence.get(vid);
-                            if (ongoing)
+                            if (ongoing) {
                                 judge.put("ONGOING", 1);
-                            else
+                            } else {
                                 judge.put("ONGOING", 0);
+                            }
                             vidOutfence.remove(vid);
                         }
                         if (!incoord && intimes) {
                             vidInfence.remove(vid);
                             judge.put("FLAG", 0);
-                            if (vidOutfence.containsKey(vid))
+                            if (vidOutfence.containsKey(vid)) {
                                 vidOutfence.put(vid, true);
-                            else
+                            } else {
                                 vidOutfence.put(vid, false);
+                            }
 
                             boolean ongoing = vidOutfence.get(vid);
-                            if (ongoing)
+                            if (ongoing) {
                                 judge.put("ONGOING", 1);
-                            else
+                            } else {
                                 judge.put("ONGOING", 0);
+                            }
                         }
 
                         results.add(judge);
@@ -249,18 +262,21 @@ public class EleFenceBolt extends BaseRichBolt {
         return null;
     }
     boolean isNullOrEmpty(Collection collection){
-        if (null == collection || collection.size()==0)
+        if (null == collection || collection.size()==0) {
             return true;
+        }
         return false;
     }
     boolean isNullOrEmpty(Map map){
-        if(map == null || map.size()==0)
+        if(map == null || map.size()==0) {
             return true;
+        }
         return false;
     }
     boolean isNullOrEmpty(String string){
-        if(null == string || "".equals(string))
+        if(null == string || "".equals(string)) {
             return true;
+        }
         return "".equals(string.trim());
     }
     

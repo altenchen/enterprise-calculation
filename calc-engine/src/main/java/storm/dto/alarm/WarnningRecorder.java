@@ -55,8 +55,9 @@ public class WarnningRecorder {
             return null;
         }
         Map<String, WarnRecord> records = getRecords(vid);
-        if (null != records)
+        if (null != records) {
             return records.get(warnId);
+        }
         return null;
     }
 

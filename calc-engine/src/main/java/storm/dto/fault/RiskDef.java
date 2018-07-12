@@ -23,8 +23,9 @@ public class RiskDef extends AbstractDef {
     private static final long serialVersionUID = 1239000061L;
     @Override
     Object calcul(Object... objs) {
-        if(null == objs || objs.length !=2)
+        if(null == objs || objs.length !=2) {
             return null;
+        }
         try {
             int times=(Integer)objs[0];
             int duration=(Integer)objs[1];

@@ -2,7 +2,6 @@ package storm;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
-import com.google.gson.internal.LinkedTreeMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.storm.shade.com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.*;
@@ -15,7 +14,7 @@ import java.util.*;
 /**
  * @author: xzp
  * @date: 2018-07-04
- * @description:
+ * @description: Gson工具类测试
  */
 @DisplayName("Gson工具测试")
 final class GsonUtilsTest {
@@ -88,7 +87,7 @@ final class GsonUtilsTest {
 
         final String mapToJson = GSON_UTILS.toJson(srcMap);
 
-        final Map<String, Object> treeMap = GSON_UTILS.fromJson(
+        final TreeMap<String, Object> treeMap = GSON_UTILS.fromJson(
             mapToJson,
             new TypeToken<TreeMap<String, Object>>() {
             }.getType());
@@ -98,7 +97,7 @@ final class GsonUtilsTest {
         Assertions.assertEquals(Double.class, treeMap.get(floatKey).getClass());
         Assertions.assertEquals(Integer.class, treeMap.get(intKey).getClass());
 
-        final Map<String, Object> hashMap = GSON_UTILS.fromJson(
+        final HashMap<String, Object> hashMap = GSON_UTILS.fromJson(
             mapToJson,
             new TypeToken<HashMap<String, Object>>() {
             }.getType());
@@ -119,19 +118,28 @@ final class GsonUtilsTest {
         Assertions.assertEquals(Integer.class, defaultMap.get(intKey).getClass());
 
 
-        final ImmutableSet<Object> srcList = new ImmutableSet.Builder<Object>()
+        final ImmutableSet<Object> srcSet = new ImmutableSet.Builder<>()
             .add(intValue + 1)
             .add(intValue + 2)
             .add(intValue + 3)
             .build();
+        final String setToJson = GSON_UTILS.toJson(srcSet);
 
-        final String listToJson = GSON_UTILS.toJson(srcList);
-        logger.trace("listToJson={}", listToJson);
         final List<Object> defaultList = GSON_UTILS.fromJson(
-            listToJson,
+            setToJson,
             new TypeToken<List<Object>>() {
             }.getType());
+
         for (Object item : defaultList) {
+            Assertions.assertEquals(Integer.class, item.getClass());
+        }
+
+        final Object[] defaultArray = GSON_UTILS.fromJson(
+            setToJson,
+            new TypeToken<Object[]>() {
+            }.getType());
+
+        for (Object item : defaultArray) {
             Assertions.assertEquals(Integer.class, item.getClass());
         }
     }

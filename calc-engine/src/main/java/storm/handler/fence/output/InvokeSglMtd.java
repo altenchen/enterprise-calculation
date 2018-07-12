@@ -60,19 +60,22 @@ public class InvokeSglMtd extends InvokeMtd implements Invoke {
                 boolean isalm = false;
                 if(alarmRule.speedType==AlarmRule.GT
                         || "0001".equals(alarmRule.getCode())){
-                    if(spd>alarmRule.speeds[1])
+                    if(spd>alarmRule.speeds[1]) {
                         isalm= true;
+                    }
 
                 } else if(alarmRule.speedType==AlarmRule.LT
                         || "0002".equals(alarmRule.getCode())){
-                    if(spd<alarmRule.speeds[0])
+                    if(spd<alarmRule.speeds[0]) {
                         isalm= true;
+                    }
 
                 } else if(alarmRule.speedType==AlarmRule.GLT
                         || "0001,0002".equals(alarmRule.getCode())){
                     if(spd<alarmRule.speeds[0]
-                            ||spd>alarmRule.speeds[1])
+                            ||spd>alarmRule.speeds[1]) {
                         isalm= true;
+                    }
                 }
                 if (isalm) {
                     rst = new TreeMap<String, Object>();

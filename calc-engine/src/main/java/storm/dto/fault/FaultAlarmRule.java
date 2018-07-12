@@ -43,8 +43,9 @@ public class FaultAlarmRule implements Serializable {
         lastalivetime = 0L;
     }
     public boolean nowIsalive(){
-        if (null == period)
+        if (null == period) {
             return true;
+        }
 
         long now = System.currentTimeMillis();
         if (now - lastalivetime > 300000) {//每5分钟判断是否处于激活状态

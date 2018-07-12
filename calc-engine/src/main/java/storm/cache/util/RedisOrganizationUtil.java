@@ -41,12 +41,14 @@ public class RedisOrganizationUtil {
 
             for (String vin : vids) {
                 int pos=vin.indexOf(",");
-                if(-1 == pos)
+                if(-1 == pos) {
                     continue;
+                }
                 vin=vin.substring(0,pos);
                 Set<String> userIds=carUser.get(vin);
-                if(null==userIds)
+                if(null==userIds) {
                     userIds=new HashSet<String>();
+                }
                 userIds.add(user);
                 carUser.put(vin, userIds);
 //                String vid=vin.substring(pos+1);
@@ -63,8 +65,9 @@ public class RedisOrganizationUtil {
         Map<String, Set<String>>userVids=new HashMap<String, Set<String>>();
 
         Map<String,String> userMap=redis.getMap(10, "XNY.USERINFO");
-        if(null==userMap || userMap.size()==0)
+        if(null==userMap || userMap.size()==0) {
             return userVids;
+        }
         Set<String>userIds=userMap.keySet();
 
         Set<String> groupIds=redis.getKeysSet(10, "XNY.GROUP.USER.*");
@@ -75,8 +78,9 @@ public class RedisOrganizationUtil {
 
             for (String user : groupUserIds) {
                 Set<String> gids=userGroups.get(user);
-                if (null==gids)
+                if (null==gids) {
                     gids=new HashSet<String>();
+                }
                 gids.add(groupId);
                 userGroups.put(user, gids);
             }
@@ -92,14 +96,17 @@ public class RedisOrganizationUtil {
 
         for (String userId : userIds) {
             Set<String> vids=userVids.get(userId);
-            if (null==vids)
+            if (null==vids) {
                 vids=new HashSet<String>();
+            }
             Set<String> gids=userGroups.get(userId);
-            if(null !=gids)
-            for (String group : gids) {
-                Set<String>vidSet=groupVids.get(group);
-                if(null!=vidSet)
-                    vids.addAll(vidSet);
+            if(null !=gids) {
+                for (String group : gids) {
+                    Set<String>vidSet=groupVids.get(group);
+                    if(null!=vidSet) {
+                        vids.addAll(vidSet);
+                    }
+                }
             }
             userVids.put(userId, vids);
         }
@@ -111,58 +118,68 @@ public class RedisOrganizationUtil {
         Map<String, Set<String>> districtMap=new HashMap<String,Set<String>>();
 
         Set<String> districtOrg=redis.getKeysSet(10, "XNY.AREA.*");
-        if(!CollectionUtils.isEmpty(districtOrg))
-        for (String org : districtOrg) {
-            int last=org.lastIndexOf(".");
-            if(last+1==org.length())
-                continue;
-            String districtId=org.substring(last+1);
-            if(StringUtils.isEmpty(districtId))
-                continue;
-            Set<String> sets=districtMap.get(districtId);
-            if(null==sets)
-                sets=new HashSet<String>();
-
-            sets.add(districtId);
-            Set<String>districtIds=redis.getSmembersSet(10, org);
-            if (null==districtIds || districtIds.size()==0)
-                continue;
-            sets.addAll(districtIds);
-
-            for (String pid : districtIds) {
-                Set<String>ids=redis.getSmembersSet(10, "XNY.AREA."+pid);
-                if (null==ids || ids.size()==0)
+        if(!CollectionUtils.isEmpty(districtOrg)) {
+            for (String org : districtOrg) {
+                int last=org.lastIndexOf(".");
+                if(last+1==org.length()) {
                     continue;
-                sets.addAll(ids);
-
-                for (String id : ids) {
-                    Set<String>idCs=redis.getSmembersSet(10, "XNY.AREA."+id);
-                    if(null==idCs || idCs.size()==0)
-                        continue;
-                    sets.addAll(idCs);
-                    for (String idC : idCs) {
-                        Set<String>idXs=redis.getSmembersSet(10, "XNY.AREA."+idC);
-                        if(null==idXs || idXs.size()==0)
-                            continue;
-                        sets.addAll(idXs);
-                        for (String idX : idXs) {
-                            Set<String>idZs=redis.getSmembersSet(10, "XNY.AREA."+idX);
-                            if(null==idZs || idZs.size()==0)
-                                continue;
-                            sets.addAll(idZs);
-                        }
-                    }
-
                 }
+                String districtId=org.substring(last+1);
+                if(StringUtils.isEmpty(districtId)) {
+                    continue;
+                }
+                Set<String> sets=districtMap.get(districtId);
+                if(null==sets) {
+                    sets = new HashSet<String>();
+                }
+
+                sets.add(districtId);
+                Set<String>districtIds=redis.getSmembersSet(10, org);
+                if (null==districtIds || districtIds.size()==0) {
+                    continue;
+                }
+                sets.addAll(districtIds);
+
+                for (String pid : districtIds) {
+                    Set<String>ids=redis.getSmembersSet(10, "XNY.AREA."+pid);
+                    if (null==ids || ids.size()==0) {
+                        continue;
+                    }
+                    sets.addAll(ids);
+
+                    for (String id : ids) {
+                        Set<String>idCs=redis.getSmembersSet(10, "XNY.AREA."+id);
+                        if(null==idCs || idCs.size()==0) {
+                            continue;
+                        }
+                        sets.addAll(idCs);
+                        for (String idC : idCs) {
+                            Set<String>idXs=redis.getSmembersSet(10, "XNY.AREA."+idC);
+                            if(null==idXs || idXs.size()==0) {
+                                continue;
+                            }
+                            sets.addAll(idXs);
+                            for (String idX : idXs) {
+                                Set<String>idZs=redis.getSmembersSet(10, "XNY.AREA."+idX);
+                                if(null==idZs || idZs.size()==0) {
+                                    continue;
+                                }
+                                sets.addAll(idZs);
+                            }
+                        }
+
+                    }
+                }
+                districtMap.put(districtId, sets);
             }
-            districtMap.put(districtId, sets);
         }
         return districtMap;
     }
 
     public static Map<String, Set<String>> getDistrictClassify(){
-        if(null == districtIds)
+        if(null == districtIds) {
             districtIds=getDistrictS();
+        }
         return districtIds;
     }
 
@@ -174,12 +191,14 @@ public class RedisOrganizationUtil {
             String districtId=entry.getKey();
             Set<String> districts=entry.getValue();
             if(StringUtils.isEmpty(districtId)
-                    || CollectionUtils.isEmpty(districts))
+                    || CollectionUtils.isEmpty(districts)) {
                 continue;
+            }
             for (String district : districts) {
                 Set<String> pids=districtIds.get(district);
-                if(null==pids)
+                if(null==pids) {
                     pids=new HashSet<String>();
+                }
 
                 pids.add(district);
                 pids.add(districtId);

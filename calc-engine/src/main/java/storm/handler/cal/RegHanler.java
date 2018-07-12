@@ -20,8 +20,9 @@ class RegHanler {
     }
 
     Map<String,Object> regHandler(Map<String, String> msg){
-        if (null == msg || msg.size()<1)
+        if (null == msg || msg.size()<1) {
             return null;
+        }
 
         String type = msg.get(ProtocolItem.REG_TYPE);
         String time = msg.get(SysDefine.TIME);
@@ -46,8 +47,9 @@ class RegHanler {
                         iccid = new String(Base64.decode(icc),"GBK");
                     }
                 }
-                if (iccid==null || "".equals(iccid.trim()))
+                if (iccid==null || "".equals(iccid.trim())) {
                     iccid = "";
+                }
 
                 Map<String, Object> esmap = new TreeMap<String, Object>();
                 esmap.put(EsField.vid, vid);
@@ -55,10 +57,12 @@ class RegHanler {
                 if (! "".equals(iccid)){
                     iccid = iccid.trim();
                     int end = iccid.indexOf("\\0",0);
-                    if (end != -1)
+                    if (end != -1) {
                         iccid = iccid.substring(0, end);
-                    if (! "".equals(iccid))
+                    }
+                    if (! "".equals(iccid)) {
                         esmap.put(EsField.iccid, iccid);
+                    }
                 }
 
                 if (regVids.containsKey(vid)) {

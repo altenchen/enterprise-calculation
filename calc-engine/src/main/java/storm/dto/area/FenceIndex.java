@@ -34,15 +34,17 @@ public class FenceIndex {
             ymin= st.y;
             ymax= st.y;
             for (Coordinate coord : coords) {
-                if (xmin > coord.x)
+                if (xmin > coord.x) {
                     xmin = coord.x;
-                else if (xmax < coord.x)
+                } else if (xmax < coord.x) {
                     xmax = coord.x;
+                }
 
-                if (ymin > coord.y)
+                if (ymin > coord.y) {
                     ymin = coord.y;
-                else if (ymax < coord.y)
+                } else if (ymax < coord.y) {
                     ymax = coord.y;
+                }
 
             }
         }

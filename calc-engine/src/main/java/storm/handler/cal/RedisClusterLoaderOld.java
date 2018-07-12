@@ -54,13 +54,15 @@ public class RedisClusterLoaderOld {
                 String value = entry.getValue();
 
                 if (StringUtils.isEmpty(key)
-                        || StringUtils.isEmpty(value))
+                        || StringUtils.isEmpty(value)) {
                     continue;
+                }
 
                 String []strings=value.split(",",-1);
 
-                if(strings.length != 15)
+                if(strings.length != 15) {
                     continue;
+                }
                 carInfoCache.put(key, strings);
             }
         }catch (Exception e) {
@@ -101,8 +103,9 @@ public class RedisClusterLoaderOld {
                         break;
                     }
                 }
-                if (allComplete)
+                if (allComplete) {
                     exe=false;
+                }
             }
             keyLoadComp = true;
             pools=null;
@@ -133,8 +136,9 @@ public class RedisClusterLoaderOld {
 
             if (null != pool) {
                 Set<String> keys = pool.keys(0, DATA_KEY);
-                if(null!=keys && keys.size()>0)
+                if(null!=keys && keys.size()>0) {
                     loadBykeys(keys);
+                }
             }
             complete = true;
         }
@@ -146,11 +150,13 @@ public class RedisClusterLoaderOld {
         void loadBykeys(Set<String> keys){
             try {
                 for(String key :keys){
-                    if (StringUtils.isEmpty(key))
+                    if (StringUtils.isEmpty(key)) {
                         continue;
+                    }
                     Map<String, String> map = pool.hgetall(0, key);
-                    if(MapUtils.isEmpty(map))
+                    if(MapUtils.isEmpty(map)) {
                         continue;
+                    }
                     Map<String, String> newmap =  new TreeMap<String, String>();
                     //不缓存无用的数据项，减小缓存大小
                     for (Map.Entry<String, String> entry : map.entrySet()) {
@@ -189,8 +195,9 @@ public class RedisClusterLoaderOld {
      */
     public synchronized static Cache<String,Map<String,String>> getDataCache(){
         try {
-            if (!redisclusterIsload)
+            if (!redisclusterIsload) {
                 initDatByCluster();
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -199,8 +206,9 @@ public class RedisClusterLoaderOld {
 
     public synchronized static Cache<String, String[]> getCarinfoCache(){
         try {
-            if (!carinfoIsload)
+            if (!carinfoIsload) {
                 initCarinfoCache();
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

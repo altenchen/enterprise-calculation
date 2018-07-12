@@ -101,11 +101,13 @@ public class EarlyWarn implements Serializable {
     }
 
     void addDependWarns(EarlyWarn warn){
-        if (null == warn)
+        if (null == warn) {
             return;
+        }
 
-        if (null == earlyWarns)
+        if (null == earlyWarns) {
             earlyWarns = new LinkedList<EarlyWarn>();
+        }
 
         if (!earlyWarns.contains(warn)) {
             earlyWarns.add(warn);
