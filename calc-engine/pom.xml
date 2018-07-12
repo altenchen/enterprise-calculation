@@ -6,7 +6,7 @@
     <parent>
         <groupId>cn.bitnei</groupId>
         <artifactId>enterprise-calculation</artifactId>
-        <version>0.4.15-SNAPSHOT</version>
+        <version>0.4.x-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -14,7 +14,7 @@
     <artifactId>calc-engine</artifactId>
     <!-- 语义化版本 -->
     <!-- https://semver.org/lang/zh-CN/ -->
-    <version>0.4.15-SNAPSHOT</version>
+    <version>0.4.x-alpha</version>
     <!-- 模块描述 -->
     <description>计算引擎</description>
 
