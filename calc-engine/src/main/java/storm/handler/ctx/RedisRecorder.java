@@ -1,13 +1,13 @@
 package storm.handler.ctx;
 
 import com.google.gson.reflect.TypeToken;
-import dagger.Lazy;
 import org.apache.commons.collections.MapUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.dao.DataToRedis;
-import storm.util.GsonUtils;
+import storm.util.JsonUtils;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.TreeMap;
 
 /**
@@ -15,7 +15,9 @@ import java.util.TreeMap;
  */
 public final class RedisRecorder implements Recorder {
 
-    private static final GsonUtils gson = GsonUtils.getInstance();
+    private static final Logger logger = LoggerFactory.getLogger(RedisRecorder.class);
+
+    private static final JsonUtils gson = JsonUtils.getInstance();
 
     private DataToRedis redis;
 
@@ -90,6 +92,16 @@ public final class RedisRecorder implements Recorder {
                         json,
                         new TypeToken<TreeMap<String, Object>>() {
                         }.getType());
+
+
+                    for (String key : map.keySet()) {
+                        final Object value = map.get(key);
+                        if(Double.class.equals(value.getClass())) {
+                            logger.debug("[{}]{}: {}-> \"{}\"", dbIndex, type, vid, json);
+                        }
+                    }
+
+
                     initMap.put(vid, map);
                 }
             }

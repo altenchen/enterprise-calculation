@@ -37,6 +37,7 @@ final class RedisRecorderTest {
         // 每个测试之前
     }
 
+    @Disabled
     @DisplayName("测试重启初始化")
     @Test
     void rebootInit() {

@@ -13,7 +13,7 @@ import storm.handler.cal.EsRealCalHandler;
 import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
-import storm.util.GsonUtils;
+import storm.util.JsonUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -27,7 +27,7 @@ public class SynEsculBolt extends BaseRichBolt {
 
     private static final long serialVersionUID = 1700001L;
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
-    private static final GsonUtils gson = GsonUtils.getInstance();
+    private static final JsonUtils gson = JsonUtils.getInstance();
     private OutputCollector collector;
     private static String statusEsTopic;
     private long lastExeTime;

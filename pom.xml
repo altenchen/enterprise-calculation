@@ -37,6 +37,7 @@
         <!-- 企业组件版本结束 -->
 
         <!-- 工具组件版本开始 -->
+        <fastjson.version>1.2.47</fastjson.version>
         <slf4j.version>1.7.7</slf4j.version>
         <mysql.connector.version>8.0.11</mysql.connector.version>
         <jedis.version>2.4.2</jedis.version>
@@ -203,6 +204,13 @@
 
 
             <!-- 工具组件依赖开始 -->
+
+            <!-- https://mvnrepository.com/artifact/com.alibaba/fastjson -->
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>fastjson</artifactId>
+                <version>${fastjson.version}</version>
+            </dependency>
 
             <!-- org.apache.storm:storm-core 提供 -->
             <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->

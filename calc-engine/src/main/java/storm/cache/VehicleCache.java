@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.exceptions.JedisException;
 import storm.constant.RedisConstant;
 import storm.system.DataKey;
-import storm.util.GsonUtils;
+import storm.util.JsonUtils;
 import storm.util.JedisPoolUtils;
 
 import java.lang.reflect.Type;
@@ -44,7 +44,7 @@ public final class VehicleCache {
     public static final String VALUE_DATA_KEY = "data";
     public static final String TOTAL_MILEAGE_FIELD = "useful" + DataKey._2202_TOTAL_MILEAGE;
 
-    private static final GsonUtils GSON_UTILS = GsonUtils.getInstance();
+    private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
 
     private static final VehicleCache INSTANCE = new VehicleCache();
 

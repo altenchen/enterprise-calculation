@@ -11,7 +11,7 @@ import storm.dto.fault.AlarmMessage;
 import storm.dto.fault.FaultMessage;
 import storm.dto.fault.FaultRule;
 import storm.system.DataKey;
-import storm.util.GsonUtils;
+import storm.util.JsonUtils;
 import storm.util.dbconn.Conn;
 
 /**
@@ -19,7 +19,7 @@ import storm.util.dbconn.Conn;
  */
 public class ExamineService {
     
-    private static final GsonUtils gson = GsonUtils.getInstance();
+    private static final JsonUtils gson = JsonUtils.getInstance();
 
     /**
      * <vid,<alarmRruleid,msg>>

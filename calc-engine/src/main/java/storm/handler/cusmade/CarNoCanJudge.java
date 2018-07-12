@@ -1,10 +1,8 @@
 package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -23,7 +21,7 @@ import storm.handler.ctx.RedisRecorder;
 import storm.system.AlarmMessageType;
 import storm.system.DataKey;
 import storm.util.DataUtils;
-import storm.util.GsonUtils;
+import storm.util.JsonUtils;
 import storm.util.JedisPoolUtils;
 import storm.util.ParamsRedisUtil;
 
@@ -42,7 +40,7 @@ public final class CarNoCanJudge {
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
-    private static final GsonUtils GSON_UTILS = GsonUtils.getInstance();
+    private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
 
     private static final int REDIS_DB_INDEX = 6;
 

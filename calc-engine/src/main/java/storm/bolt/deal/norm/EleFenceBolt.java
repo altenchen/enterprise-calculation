@@ -17,7 +17,7 @@ import storm.handler.fence.output.InvokeCtxMtd;
 import storm.handler.fence.output.InvokeSglMtd;
 import storm.system.DataKey;
 import storm.system.SysDefine;
-import storm.util.GsonUtils;
+import storm.util.JsonUtils;
 import storm.util.dbconn.Conn;
 
 import java.util.Collection;
@@ -32,7 +32,7 @@ import java.util.concurrent.ScheduledExecutorService;
 public class EleFenceBolt extends BaseRichBolt {
 
     private static final long serialVersionUID = 1700001L;
-    private static final GsonUtils gson = GsonUtils.getInstance();
+    private static final JsonUtils gson = JsonUtils.getInstance();
     private OutputCollector collector;
     private Map<String, EleFence>fenceCache;//key:fenceId,value:EleFence
     private Map<String, List<EleFence>>vidFenceCache;//key:vid,value:

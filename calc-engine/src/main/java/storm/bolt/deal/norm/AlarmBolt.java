@@ -26,7 +26,7 @@ import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
-import storm.util.GsonUtils;
+import storm.util.JsonUtils;
 import storm.dto.alarm.CoefOffset;
 import storm.dto.alarm.CoefOffsetGetter;
 import storm.dto.alarm.EarlyWarn;
@@ -45,7 +45,7 @@ public class AlarmBolt extends BaseRichBolt {
      * 
      */
     private static final long serialVersionUID = 1720001L;
-    private static final GsonUtils gson = GsonUtils.getInstance();
+    private static final JsonUtils gson = JsonUtils.getInstance();
 
     private OutputCollector collector;
 

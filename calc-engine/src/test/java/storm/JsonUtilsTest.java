@@ -7,8 +7,9 @@ import org.apache.storm.shade.com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.util.GsonUtils;
+import storm.util.JsonUtils;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 /**
@@ -17,14 +18,14 @@ import java.util.*;
  * @description: Gson工具类测试
  */
 @DisplayName("Gson工具测试")
-final class GsonUtilsTest {
+final class JsonUtilsTest {
 
     @SuppressWarnings("unused")
-    private static final Logger logger = LoggerFactory.getLogger(GsonUtilsTest.class);
+    private static final Logger logger = LoggerFactory.getLogger(JsonUtilsTest.class);
 
-    private static final GsonUtils GSON_UTILS = GsonUtils.getInstance();
+    private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
 
-    private GsonUtilsTest() {
+    private JsonUtilsTest() {
     }
 
     @SuppressWarnings("unused")
@@ -73,7 +74,7 @@ final class GsonUtilsTest {
         Assertions.assertEquals(Boolean.class, GSON_UTILS.fromJson(booleanJson, Object.class).getClass());
 
         final String floatJson = GSON_UTILS.toJson(floatValue);
-        Assertions.assertEquals(Double.class, GSON_UTILS.fromJson(floatJson, Object.class).getClass());
+        Assertions.assertEquals(BigDecimal.class, GSON_UTILS.fromJson(floatJson, Object.class).getClass());
 
         final String intJson = GSON_UTILS.toJson(intValue);
         Assertions.assertEquals(Integer.class, GSON_UTILS.fromJson(intJson, Integer.class).getClass());
@@ -94,7 +95,7 @@ final class GsonUtilsTest {
 
         Assertions.assertEquals(String.class, treeMap.get(stringKey).getClass());
         Assertions.assertEquals(Boolean.class, treeMap.get(booleanKey).getClass());
-        Assertions.assertEquals(Double.class, treeMap.get(floatKey).getClass());
+        Assertions.assertEquals(BigDecimal.class, treeMap.get(floatKey).getClass());
         Assertions.assertEquals(Integer.class, treeMap.get(intKey).getClass());
 
         final HashMap<String, Object> hashMap = GSON_UTILS.fromJson(
@@ -104,7 +105,7 @@ final class GsonUtilsTest {
 
         Assertions.assertEquals(String.class, hashMap.get(stringKey).getClass());
         Assertions.assertEquals(Boolean.class, hashMap.get(booleanKey).getClass());
-        Assertions.assertEquals(Double.class, hashMap.get(floatKey).getClass());
+        Assertions.assertEquals(BigDecimal.class, hashMap.get(floatKey).getClass());
         Assertions.assertEquals(Integer.class, hashMap.get(intKey).getClass());
 
         final Map<String, Object> defaultMap = GSON_UTILS.fromJson(
@@ -114,7 +115,7 @@ final class GsonUtilsTest {
 
         Assertions.assertEquals(String.class, defaultMap.get(stringKey).getClass());
         Assertions.assertEquals(Boolean.class, defaultMap.get(booleanKey).getClass());
-        Assertions.assertEquals(Double.class, defaultMap.get(floatKey).getClass());
+        Assertions.assertEquals(BigDecimal.class, defaultMap.get(floatKey).getClass());
         Assertions.assertEquals(Integer.class, defaultMap.get(intKey).getClass());
 
 
@@ -141,6 +142,28 @@ final class GsonUtilsTest {
 
         for (Object item : defaultArray) {
             Assertions.assertEquals(Integer.class, item.getClass());
+        }
+    }
+
+    @DisplayName("测试反序列化2")
+    @Test
+    void fromJson2() {
+
+
+        final String json = "{\"mileage\":-1,\"msgId\":\"08d6d6e8d6db41f5bc15043d8fdae8f5\",\"msgType\":\"IDLE_VEH\",\"noticetime\":\"20180614103052\",\"soc\":-1,\"speed\":-1,\"status\":1,\"stime\":\"20180614102755\",\"vid\":\"b3f4fc61-8cfd-4561-815a-7bb46fde6bec\"}";
+
+        final Map<String, Object> defaultMap2 = GSON_UTILS.fromJson(
+            json,
+            new TypeToken<Map<String, Object>>() {
+            }.getType());
+        for (final String key : defaultMap2.keySet()) {
+            final Object value = defaultMap2.get(key);
+            if(Double.class.equals(value.getClass())) {
+                logger.trace("\"{}\": {}", key, value);
+            } else {
+                logger.trace("{} -> {}", value, value.getClass());
+            }
+            Assertions.assertNotEquals(Double.class, value.getClass());
         }
     }
 

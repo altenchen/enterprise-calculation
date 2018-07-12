@@ -96,6 +96,12 @@
 
         <!-- 工具组件依赖开始 -->
 
+        <!-- https://mvnrepository.com/artifact/com.alibaba/fastjson -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+        </dependency>
+
         <!-- org.apache.storm:storm-starter 嵌入 -->
         <!-- https://mvnrepository.com/artifact/com.sun.jersey/jersey-core -->
         <!--<dependency>-->

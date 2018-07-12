@@ -5,19 +5,17 @@ import com.google.common.collect.Maps;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ObjectUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
-import storm.dto.fault.AlarmMessage;
 import storm.handler.cusmade.CarNoCanDecideJili;
 import storm.handler.cusmade.CarNoCanJudge;
 import storm.system.AlarmMessageType;
 import storm.system.DataKey;
-import storm.util.GsonUtils;
+import storm.util.JsonUtils;
 import storm.util.JedisPoolUtils;
 
 import java.util.*;
@@ -35,7 +33,7 @@ final class CarNoCanJudgeTest {
     private static final Logger logger = LoggerFactory.getLogger(CarNoCanJudgeTest.class);
 
     private static JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
-    private static final GsonUtils GSON_UTILS = GsonUtils.getInstance();
+    private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
 
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 

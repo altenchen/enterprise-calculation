@@ -41,7 +41,7 @@ public class CarRuleHandler implements InfoNotice {
     private static final Logger logger = LoggerFactory.getLogger(CarRuleHandler.class);
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
-    private static final GsonUtils gson = GsonUtils.getInstance();
+    private static final JsonUtils gson = JsonUtils.getInstance();
 
     
 

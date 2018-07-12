@@ -25,7 +25,7 @@ import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
-import storm.util.GsonUtils;
+import storm.util.JsonUtils;
 import storm.util.ParamsRedisUtil;
 
 import java.util.List;
@@ -42,7 +42,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
     private static final Logger logger = LoggerFactory.getLogger(CarNoticelBolt.class);
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
-    private static final GsonUtils gson = GsonUtils.getInstance();
+    private static final JsonUtils gson = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
     private OutputCollector collector;
