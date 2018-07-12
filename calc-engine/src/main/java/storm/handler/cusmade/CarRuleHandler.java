@@ -576,6 +576,7 @@ public class CarRuleHandler implements InfoNotice {
 
             if(1 == lowSocCount) {
                 lowSocNotice.put("stime", timeString);
+                lowSocNotice.put("location", location);
                 lowSocNotice.put("slocation", location);
                 lowSocNotice.put("sthreshold", socAlarm);
                 lowSocNotice.put("ssoc", socNum);
