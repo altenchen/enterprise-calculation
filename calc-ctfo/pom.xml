@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <artifactId>enterprise-calculation</artifactId>
+        <groupId>cn.bitnei</groupId>
+        <version>0.4.x-SNAPSHOT</version>
+    </parent>
+
+    <!-- 模块标识 -->
+    <artifactId>calc-ctfo</artifactId>
+    <!-- 绑定版本 -->
+    <version>2.4.2</version>
+    <!-- 模块描述 -->
+    <description>分布式缓存</description>
+
+    <!-- 打包方式 -->
+    <packaging>jar</packaging>
+
+    <properties>
+        <jedis.version>${project.version}</jedis.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+        </dependency>
+
+    </dependencies>
+
+</project>
