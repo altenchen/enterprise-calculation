@@ -13,7 +13,7 @@
     <!-- 模块标识 -->
     <artifactId>calc-ctfo</artifactId>
     <!-- 绑定版本 -->
-    <version>2.4.2</version>
+    <version>2.7.2</version>
     <!-- 模块描述 -->
     <description>分布式缓存</description>
 

@@ -7,7 +7,6 @@
         <groupId>cn.bitnei</groupId>
         <artifactId>enterprise-calculation</artifactId>
         <version>0.4.x-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <!-- 模块标识 -->

@@ -26,10 +26,13 @@ public class ConnectionPoolFactorySingleton {
             config.setTestOnBorrow(connConfig.isSHARDPOOL_TESTONBORROW());
             List<JedisShardInfo> jedisShardInfoList = new ArrayList();
             for (String name : map.keySet()) {
-                String[] ip_port = ((String) map.get(name)).split(":");
-                JedisShardInfo jedisShardInfo = new JedisShardInfo(ip_port[0], Integer.parseInt(ip_port[1]), name);
+                final String[] ip_port = ((String) map.get(name)).split(":");
                 final int shardPoolTimeout = connConfig.getSHARDPOOL_TIMEOUT();
-                jedisShardInfo.setTimeout(shardPoolTimeout);
+                JedisShardInfo jedisShardInfo = new JedisShardInfo(
+                    ip_port[0],
+                    Integer.parseInt(ip_port[1]),
+                    shardPoolTimeout,
+                    name);
                 jedisShardInfoList.add(jedisShardInfo);
             }
             ShardedJedisPool shardedJedisPool = new ShardedJedisPool(config, jedisShardInfoList, Hashing.MD5, Sharded.DEFAULT_KEY_TAG_PATTERN);
