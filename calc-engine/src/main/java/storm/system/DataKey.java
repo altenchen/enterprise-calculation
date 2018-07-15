@@ -264,6 +264,10 @@ public final class DataKey {
 
     /**
      * 定位状态
+     * bit[0]: 0-有效, 1-无效, 无效时可能收到失效前最后的有效值.
+     * bit[1]: 0-北纬, 1-南纬
+     * bit[2]: 0-东经, 1-西经
+     * bit[3-7]: 保留
      */
     public static final String _2501_ORIENTATION = "2501";
 
