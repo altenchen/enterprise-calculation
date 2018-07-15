@@ -278,6 +278,19 @@ public final class SysDefine {
      */
     public static final String LT_ALARM_SOC = "lt.alarm.soc";
 
+  /**
+   * 未定位开始帧数判断
+   */
+  public static final String GPS_NOVALUE_CONTINUE_NO = "gps.novalue.continue.no";
+  /**
+   * 未定位结束帧数判断
+   */
+  public static final String GPS_HASVALUE_CONTINUE_NO = "gps.hasvalue.continue.no";
+  /**
+   * 未定位开始时间阈值
+   */
+  public static final String GPS_JUDGE_TIME = "gps.judge.time";
+
     /**
      * 车辆车型刷新间隔(秒), 不应大于30分钟
      */
