@@ -229,6 +229,25 @@ public class CarRuleHandler implements InfoNotice {
                 enableTimeRule = Integer.parseInt(value);
                 value = null;
             }
+
+            value = configUtils.sysDefine.getProperty(SysDefine.GPS_NOVALUE_CONTINUE_NO);
+            if (!StringUtils.isEmpty(value)) {
+                nogpsJudgeNum = Integer.parseInt(value);
+                value = null;
+            }
+
+            value = configUtils.sysDefine.getProperty(SysDefine.GPS_HASVALUE_CONTINUE_NO);
+            if (!StringUtils.isEmpty(value)) {
+                hasgpsJudgeNum = Integer.parseInt(value);
+                value = null;
+            }
+
+            value = configUtils.sysDefine.getProperty(SysDefine.GPS_JUDGE_TIME);
+            if (!StringUtils.isEmpty(value)) {
+                nogpsIntervalTime = Long.parseLong(value);
+                value = null;
+            }
+
             logger.warn("时间异常通知规则" + (enableTimeRule == 1 ? "启用" : "停用"));
         }
         init();
@@ -1228,20 +1247,24 @@ public class CarRuleHandler implements InfoNotice {
             }
             String longitude = dat.get(DataKey._2502_LONGITUDE);
             String latitude = dat.get(DataKey._2503_LATITUDE);
+            String locationStatus= dat.get(DataKey._2501_ORIENTATION);
+
             //noticetime为当前时间
             Date date = new Date();
             String noticetime = DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
 
-            boolean isValid = true;
-            if (!StringUtils.isEmpty(latitude)
+            boolean isValid = false;
+            if ("0".equals(locationStatus) && !StringUtils.isEmpty(latitude)
                     && !StringUtils.isEmpty(longitude)) {
                 latitude = org.apache.commons.lang.math.NumberUtils.isNumber(latitude) ? latitude : "0";
                 longitude = org.apache.commons.lang.math.NumberUtils.isNumber(longitude) ? longitude : "0";
                 double latitd = Double.parseDouble(latitude);
                 double longid = Double.parseDouble(longitude);
-                if (latitd < 0 || latitd > 180000000
-                        || longid < 0 || longid > 180000000) {
-                    isValid = false;
+                double dis=1e-6;
+                //此处为什么用180000000？答：国标中定义“以度为单位的纬度值乘以 10 的 6 次方，精确到百万分之一度”
+                if ( ((latitd > 0 && latitd <= 180000000) || (Math.abs(latitd-0)<dis) )
+                        && ((longid > 0 && longid <= 180000000) || (Math.abs(longid-0)<dis)) ) {
+                    isValid = true;
                 }
             }
             if (!isValid) {
