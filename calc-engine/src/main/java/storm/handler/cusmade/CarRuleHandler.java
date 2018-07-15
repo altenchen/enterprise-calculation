@@ -119,8 +119,8 @@ public class CarRuleHandler implements InfoNotice {
     static int nocanJudgeNum = 5;//5次
     static int hascanJudgeNum = 10;//10次
     static int mileHop = 20;//2公里 ，单位是0.1km
-    static Long nogpsIntervalTime = (long) 10800000;//10800秒,1天
-    static Long nocanIntervalTime = (long) 10800000;//10800秒，1天
+    static long nogpsIntervalTime = 600000L;//600秒
+    static long nocanIntervalTime = 600000L;//600秒
 
     static int db = 6;
     static int socRule = 0;//1代表规则启用
@@ -1250,7 +1250,7 @@ public class CarRuleHandler implements InfoNotice {
             //noticetime为当前时间
             Date date = new Date();
             String noticetime = DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
-            
+
             String orientationString= dat.get(DataKey._2501_ORIENTATION);
             String longitudeString = dat.get(DataKey._2502_LONGITUDE);
             String latitudeString = dat.get(DataKey._2503_LATITUDE);
