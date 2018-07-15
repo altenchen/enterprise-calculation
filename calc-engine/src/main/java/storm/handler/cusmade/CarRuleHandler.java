@@ -1258,12 +1258,11 @@ public class CarRuleHandler implements InfoNotice {
                     && !StringUtils.isEmpty(longitude)) {
                 latitude = org.apache.commons.lang.math.NumberUtils.isNumber(latitude) ? latitude : "0";
                 longitude = org.apache.commons.lang.math.NumberUtils.isNumber(longitude) ? longitude : "0";
-                double latitd = Double.parseDouble(latitude);
-                double longid = Double.parseDouble(longitude);
-                double dis=1e-6;
+                double latitd = Integer.parseInt(latitude);
+                double longid = Integer.parseInt(longitude);
                 //此处为什么用180000000？答：国标中定义“以度为单位的纬度值乘以 10 的 6 次方，精确到百万分之一度”
-                if ( ((latitd > 0 && latitd <= 180000000) || (Math.abs(latitd-0)<dis) )
-                        && ((longid > 0 && longid <= 180000000) || (Math.abs(longid-0)<dis)) ) {
+                if ( latitd >= 0 && latitd < 90000000
+                        && longid >= 0 && longid < 180000000 ) {
                     isValid = true;
                 }
             }
