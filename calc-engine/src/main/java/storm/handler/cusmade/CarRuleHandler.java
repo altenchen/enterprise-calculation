@@ -1,5 +1,6 @@
 package storm.handler.cusmade;
 
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import storm.constant.FormatConstant;
@@ -1254,8 +1255,8 @@ public class CarRuleHandler implements InfoNotice {
             String noticetime = DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
 
             boolean isValid = false;
-            if ("0".equals(locationStatus) && !StringUtils.isEmpty(latitude)
-                    && !StringUtils.isEmpty(longitude)) {
+            if ("0".equals(locationStatus) && NumberUtils.isDigits(latitude)
+                    && NumberUtils.isDigits(longitude)) {
                 latitude = org.apache.commons.lang.math.NumberUtils.isNumber(latitude) ? latitude : "0";
                 longitude = org.apache.commons.lang.math.NumberUtils.isNumber(longitude) ? longitude : "0";
                 double latitd = Integer.parseInt(latitude);
