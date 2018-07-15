@@ -1246,33 +1246,42 @@ public class CarRuleHandler implements InfoNotice {
                     || StringUtils.isEmpty(time)) {
                 return null;
             }
-            String locationStatus= dat.get(DataKey._2501_ORIENTATION);
-            String longitudeString = dat.get(DataKey._2502_LONGITUDE);
-            String latitudeString = dat.get(DataKey._2503_LATITUDE);
 
             //noticetime为当前时间
             Date date = new Date();
             String noticetime = DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
+            
+            String orientationString= dat.get(DataKey._2501_ORIENTATION);
+            String longitudeString = dat.get(DataKey._2502_LONGITUDE);
+            String latitudeString = dat.get(DataKey._2503_LATITUDE);
 
-            final String effectiveStatue = "0";
             boolean isValid = false;
-            if (effectiveStatue.equals(locationStatus)
-                && NumberUtils.isDigits(longitudeString)
-                && NumberUtils.isDigits(latitudeString)) {
+            if (NumberUtils.isDigits(orientationString)) {
 
-                final int longitudeValue = NumberUtils.toInt(longitudeString);
-                final int latitudeValue = NumberUtils.toInt(latitudeString);
+                final int orientationValue = NumberUtils.toInt(orientationString);
+                // 根据国标表15, 最低位为0时表示有效定位
+                final int effectiveMask = 0x00000001;
+                final int effectiveOrientation = 0x00000000;
+                if((orientationValue & effectiveMask) == effectiveOrientation) {
 
-                // 国标中定义“以度为单位的值乘以 10 的 6 次方，精确到百万分之一度”
-                final int minLongitude = 0;
-                final int maxLongitude = 180000000;
-                final int minLatitude = 0;
-                final int maxLatitude = 90000000;
+                    if(NumberUtils.isDigits(longitudeString)
+                        && NumberUtils.isDigits(latitudeString)){
 
-                if (longitudeValue >= minLongitude && longitudeValue < maxLongitude
-                    && latitudeValue >= minLatitude && latitudeValue < maxLatitude) {
+                        final int longitudeValue = NumberUtils.toInt(longitudeString);
+                        final int latitudeValue = NumberUtils.toInt(latitudeString);
 
-                    isValid = true;
+                        // 国标中定义“以度为单位的值乘以 10 的 6 次方，精确到百万分之一度”
+                        final int minLongitude = 0;
+                        final int maxLongitude = 180000000;
+                        final int minLatitude = 0;
+                        final int maxLatitude = 90000000;
+
+                        if (longitudeValue >= minLongitude && longitudeValue < maxLongitude
+                            && latitudeValue >= minLatitude && latitudeValue < maxLatitude) {
+
+                            isValid = true;
+                        }
+                    }
                 }
             }
             if (!isValid) {
