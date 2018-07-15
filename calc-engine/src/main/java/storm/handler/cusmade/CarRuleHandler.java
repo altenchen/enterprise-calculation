@@ -1246,24 +1246,32 @@ public class CarRuleHandler implements InfoNotice {
                     || StringUtils.isEmpty(time)) {
                 return null;
             }
-            String longitude = dat.get(DataKey._2502_LONGITUDE);
-            String latitude = dat.get(DataKey._2503_LATITUDE);
             String locationStatus= dat.get(DataKey._2501_ORIENTATION);
+            String longitudeString = dat.get(DataKey._2502_LONGITUDE);
+            String latitudeString = dat.get(DataKey._2503_LATITUDE);
 
             //noticetime为当前时间
             Date date = new Date();
             String noticetime = DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
 
+            final String effectiveStatue = "0";
             boolean isValid = false;
-            if ("0".equals(locationStatus) && NumberUtils.isDigits(latitude)
-                    && NumberUtils.isDigits(longitude)) {
-                latitude = org.apache.commons.lang.math.NumberUtils.isNumber(latitude) ? latitude : "0";
-                longitude = org.apache.commons.lang.math.NumberUtils.isNumber(longitude) ? longitude : "0";
-                double latitd = Integer.parseInt(latitude);
-                double longid = Integer.parseInt(longitude);
-                //此处为什么用180000000？答：国标中定义“以度为单位的纬度值乘以 10 的 6 次方，精确到百万分之一度”
-                if ( latitd >= 0 && latitd < 90000000
-                        && longid >= 0 && longid < 180000000 ) {
+            if (effectiveStatue.equals(locationStatus)
+                && NumberUtils.isDigits(longitudeString)
+                && NumberUtils.isDigits(latitudeString)) {
+
+                final int longitudeValue = NumberUtils.toInt(longitudeString);
+                final int latitudeValue = NumberUtils.toInt(latitudeString);
+
+                // 国标中定义“以度为单位的值乘以 10 的 6 次方，精确到百万分之一度”
+                final int minLongitude = 0;
+                final int maxLongitude = 180000000;
+                final int minLatitude = 0;
+                final int maxLatitude = 90000000;
+
+                if (longitudeValue >= minLongitude && longitudeValue < maxLongitude
+                    && latitudeValue >= minLatitude && latitudeValue < maxLatitude) {
+
                     isValid = true;
                 }
             }
@@ -1339,7 +1347,7 @@ public class CarRuleHandler implements InfoNotice {
                         vidgpsNotice.remove(vid);
                         cache.gpsIsSend = false;
                         if (null != notice) {
-                            String location = longitude + "," + latitude;
+                            String location = longitudeString + "," + latitudeString;
                             notice.put("status", 3);
                             notice.put("location", location);
                             notice.put("etime", time);
