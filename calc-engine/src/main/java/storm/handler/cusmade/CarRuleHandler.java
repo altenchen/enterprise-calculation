@@ -3,6 +3,7 @@ package storm.handler.cusmade;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -44,8 +45,9 @@ public class CarRuleHandler implements InfoNotice {
     private static final Logger logger = LoggerFactory.getLogger(CarRuleHandler.class);
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
-    private static final JsonUtils gson = JsonUtils.getInstance();
+    private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
+    private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
     
 
@@ -103,7 +105,7 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Integer> vidFlyEd = new HashMap<>();
     private Map<String, Map<String, Object>> vidcanNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidIgniteShutNotice = new HashMap<>();
-    private Map<String, Map<String, Object>> vidGpsNotice = new HashMap<>();
+    private Map<String, Map<String, String>> vidGpsNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidSpeedGtZeroNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidFlyNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidOnOffNotice = new HashMap<>();
@@ -118,7 +120,6 @@ public class CarRuleHandler implements InfoNotice {
     private Recorder recorder;
     static String onOffRedisKeys = "vehCache.qy.onoff.notice";
     static String socRedisKeys = "vehCache.qy.soc.notice";
-    static String gpsRedisKeys = "vehCache.qy.gps.notice";
 
     static int topn = 20;
     static long offlinetime = 600000;//600秒
@@ -234,13 +235,13 @@ public class CarRuleHandler implements InfoNotice {
             }
 
             value = configUtils.sysDefine.getProperty(SysDefine.GPS_NOVALUE_CONTINUE_NO);
-            if (!StringUtils.isEmpty(value)) {
+            if (NumberUtils.isDigits(value)) {
                 gpsFaultFrameTriggerCount = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty(SysDefine.GPS_HASVALUE_CONTINUE_NO);
-            if (!StringUtils.isEmpty(value)) {
+            if (NumberUtils.isDigits(value)) {
                 gpsNormalFrameTriggerCount = Integer.parseInt(value);
                 value = null;
             }
@@ -465,8 +466,12 @@ public class CarRuleHandler implements InfoNotice {
             }
         }
         if (1 == gpsRule) {
-            // 为定位车辆
-            gpsJudge = noGps(data);
+            // 未定位车辆
+            gpsJudge = new TreeMap<>();
+            final Map<String, String> notice = noGps(data);
+            if(MapUtils.isNotEmpty(notice)) {
+                gpsJudge.putAll(notice);
+            }
         }
         if (1 == abnormalRule) {
             // 异常用车
@@ -735,7 +740,7 @@ public class CarRuleHandler implements InfoNotice {
                 jsonMap.put("lastOnline", chargeCar.lastOnline);
                 jsonMap.put("distance", distance);
 
-                String jsonString = gson.toJson(jsonMap);
+                String jsonString = JSON_UTILS.toJson(jsonMap);
                 topnCars.put("" + cts, jsonString);
                 //send to kafka map
                 Map<String, Object> kMap = new TreeMap<>();
@@ -1221,7 +1226,7 @@ public class CarRuleHandler implements InfoNotice {
     /**
      * 未定位车辆_于心沼
      */
-    Map<String, Object> noGps(Map<String, String> dat) {
+    Map<String, String> noGps(Map<String, String> dat) {
 
         if (MapUtils.isEmpty(dat)) {
             return null;
@@ -1259,7 +1264,7 @@ public class CarRuleHandler implements InfoNotice {
                         vid,
                         gpsFaultCount));
 
-                final Map<String, Object> gpsFaultNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
+                final Map<String, String> gpsFaultNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
                 if (MapUtils.isEmpty(gpsFaultNotice)) {
                     gpsFaultNotice.put("msgType", AlarmMessageType.NO_POSITION_VEH);
                     gpsFaultNotice.put("msgId", UUID.randomUUID().toString());
@@ -1275,15 +1280,15 @@ public class CarRuleHandler implements InfoNotice {
                 }
 
                 // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-                int status = (int)gpsFaultNotice.getOrDefault("status", 0);
-                if (status != 0 && status != 3) {
+                String status = gpsFaultNotice.getOrDefault("status", "0");
+                if (!"0".equals(status) && !"3".equals(status)) {
                     return null;
                 }
 
                 if (1 == gpsFaultCount) {
 
                     gpsFaultNotice.put("stime", timeString);
-                    gpsFaultNotice.put("status", 1);
+                    gpsFaultNotice.put("status", "1");
 
                     paramsRedisUtil.autoLog(
                         vid,
@@ -1306,7 +1311,7 @@ public class CarRuleHandler implements InfoNotice {
                     return null;
                 }
 
-                final Long firstGpsFaultTime;
+                final long firstGpsFaultTime;
                 try {
                     firstGpsFaultTime = DateUtils
                         .parseDate(
@@ -1323,12 +1328,41 @@ public class CarRuleHandler implements InfoNotice {
                     return null;
                 }
 
-                gpsFaultNotice.put("status", 1);
-                gpsFaultNotice.put("slazy", gpsFaultIntervalMillisecond);
+                try {
+
+                    final ImmutableMap<String, String> oldNotice = VEHICLE_CACHE.getField(
+                        vid,
+                        AlarmMessageType.NO_POSITION_VEH
+                    );
+                    if (MapUtils.isNotEmpty(oldNotice)) {
+
+                        final String oldStatus = oldNotice.get("status");
+                        if ("1".equals(oldStatus) || "2".equals(oldStatus)) {
+
+                            gpsFaultNotice.clear();
+                            gpsFaultNotice.putAll(oldNotice);
+
+                            logger.info("从缓存取回GPS故障告警, 不再发送通知.");
+                            return null;
+                        }
+                    }
+                } catch (ExecutionException e) {
+
+                    logger.warn("获取GPS故障通知缓存异常");
+                }
+
+                gpsFaultNotice.put("status", "1");
+                gpsFaultNotice.put("slazy", String.valueOf(gpsFaultIntervalMillisecond));
                 gpsFaultNotice.put("noticeTime", noticeTime);
 
-                //把GPS故障开始通知存储到redis中
-                recorder.save(db, gpsRedisKeys, vid, gpsFaultNotice);
+                final ImmutableMap<String, String> notice = new ImmutableMap.Builder<String, String>()
+                    .putAll(gpsFaultNotice)
+                    .build();
+
+                VEHICLE_CACHE.putField(
+                    vid,
+                    AlarmMessageType.NO_POSITION_VEH,
+                    notice);
 
                 paramsRedisUtil.autoLog(
                     vid,
@@ -1345,11 +1379,6 @@ public class CarRuleHandler implements InfoNotice {
 
                 vidGpsFaultCount.remove(vid);
 
-                final Map<String, Object> gpsNormalNotice = vidGpsNotice.get(vid);
-                if(null == gpsNormalNotice) {
-                    return null;
-                }
-
                 final int gpsNormalCount = vidGpsNormalCount.getOrDefault(vid, 0) + 1;
                 vidGpsNormalCount.put(vid, gpsNormalCount);
 
@@ -1360,9 +1389,25 @@ public class CarRuleHandler implements InfoNotice {
                         vid,
                         gpsNormalCount));
 
+                final Map<String, String> gpsNormalNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
+                if (MapUtils.isEmpty(gpsNormalNotice)) {
+                    gpsNormalNotice.put("msgType", AlarmMessageType.NO_POSITION_VEH);
+                    gpsNormalNotice.put("msgId", UUID.randomUUID().toString());
+                    gpsNormalNotice.put("vid", vid);
+                    gpsNormalNotice.put("status", "0");
+                    vidGpsNotice.put(vid, gpsNormalNotice);
+
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        ()-> logger.info(
+                            "VID[{}]GPS正常首帧缓存初始化",
+                            vid));
+
+                }
+
                 // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-                final int status = (int)gpsNormalNotice.getOrDefault("status", 0);
-                if (status != 1 && status != 2) {
+                final String status = gpsNormalNotice.getOrDefault("status", "0");
+                if (!"1".equals(status) && !"2".equals(status)) {
                     return null;
                 }
 
@@ -1404,12 +1449,37 @@ public class CarRuleHandler implements InfoNotice {
                     return null;
                 }
 
-                gpsNormalNotice.put("status", 3);
-                gpsNormalNotice.put("elazy", lowsocIntervalMillisecond);
+                try {
+
+                    final ImmutableMap<String, String> oldNotice = VEHICLE_CACHE.getField(
+                        vid,
+                        AlarmMessageType.NO_POSITION_VEH
+                    );
+                    if (MapUtils.isNotEmpty(oldNotice)) {
+
+                        final String oldStatus = oldNotice.get("status");
+                        if ("0".equals(oldStatus) || "3".equals(oldStatus)) {
+
+                            gpsNormalNotice.clear();
+                            gpsNormalNotice.putAll(oldNotice);
+
+                            logger.info("从缓存取回GPS正常告警, 不再发送通知.");
+                            vidGpsNotice.remove(vid);
+                            return null;
+                        }
+                    }
+                } catch (ExecutionException e) {
+
+                    logger.warn("获取GPS正常通知缓存异常");
+                }
+
+                gpsNormalNotice.put("status", "3");
+                gpsNormalNotice.put("elazy", String.valueOf(lowsocIntervalMillisecond));
                 gpsNormalNotice.put("noticeTime", noticeTime);
 
                 vidGpsNotice.remove(vid);
-                recorder.del(db, gpsRedisKeys, vid);
+
+                VEHICLE_CACHE.delField(vid, AlarmMessageType.NO_POSITION_VEH);
 
                 paramsRedisUtil.autoLog(
                     vid,
@@ -1467,8 +1537,8 @@ public class CarRuleHandler implements InfoNotice {
         final int longitudeValue = NumberUtils.toInt(longitudeString);
         final int latitudeValue = NumberUtils.toInt(latitudeString);
 
-        return DataUtils.isOrientationLongitudeUseful(longitudeValue)
-            && DataUtils.isOrientationLatitudeUseful(latitudeValue);
+        return !DataUtils.isOrientationLongitudeUseful(longitudeValue)
+            || !DataUtils.isOrientationLatitudeUseful(latitudeValue);
     }
 
     private Map<String, Object> onOffline(Map<String, String> dat) {
@@ -1652,8 +1722,11 @@ public class CarRuleHandler implements InfoNotice {
                         notices.add(msg);
                     }
                 }
-                msg = vidGpsNotice.get(vid);
-                if (null != msg) {
+                Map<String, String> notice = vidGpsNotice.get(vid);
+                if (null != notice) {
+
+                    msg = new TreeMap<>();
+                    msg.putAll(notice);
 
                     getOffline(msg, noticetime);
                     if (null != msg) {
@@ -1723,7 +1796,6 @@ public class CarRuleHandler implements InfoNotice {
         if (isRestart) {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
             recorder.rebootInit(db, socRedisKeys, vidSocNotice);
-            recorder.rebootInit(db, gpsRedisKeys, vidGpsNotice);
             recorder.rebootInit(CarLockStatusChangeJudge.db, CarLockStatusChangeJudge.lockStatusRedisKeys, vidLockStatus);
         }
     }
