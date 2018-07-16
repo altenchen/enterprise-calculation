@@ -43,6 +43,9 @@ public final class VehicleCache {
     public static final String VALUE_TIME_KEY = "time";
     public static final String VALUE_DATA_KEY = "data";
     public static final String TOTAL_MILEAGE_FIELD = "useful" + DataKey._2202_TOTAL_MILEAGE;
+    public static final String ORIENTATION_FIELD = "useful" + DataKey._2501_ORIENTATION;
+    public static final String LONGITUDE_FIELD = "useful" + DataKey._2502_LONGITUDE;
+    public static final String LATITUDE_FIELD = "useful" + DataKey._2503_LATITUDE;
 
     private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
 

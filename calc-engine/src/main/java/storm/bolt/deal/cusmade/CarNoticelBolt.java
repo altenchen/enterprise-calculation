@@ -25,6 +25,7 @@ import storm.stream.CUS_NOTICE_GROUP;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
+import storm.util.DataUtils;
 import storm.util.JsonUtils;
 import storm.util.ParamsRedisUtil;
 
@@ -260,54 +261,221 @@ public final class CarNoticelBolt extends BaseRichBolt {
                 data.put(DataKey.VEHICLE_ID, vid);
             }
 
-            paramsRedisUtil.autoLog(vid, () -> logger.warn("VID[" + vid + "]进入车辆通知处理"));
+            paramsRedisUtil.autoLog(vid, () -> logger.warn("VID[{}]进入车辆通知处理", vid));
+
+            final String collectTime = data.get(DataKey._2000_COLLECT_TIME);
 
             // region 缓存持续里程有效值
-            final String collectTime = data.get(DataKey._2000_COLLECT_TIME);
-            final String totalMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
+            {
+                final String totalMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
 
-            paramsRedisUtil.autoLog(vid, () -> logger.warn("VID[" + vid + "][{}][{}]有效累计里程缓存处理", collectTime, totalMileage));
+                paramsRedisUtil.autoLog(vid, () -> logger.warn("VID[{}][{}][{}]有效累计里程缓存处理", vid, collectTime, totalMileage));
 
-            if (NumberUtils.isDigits(totalMileage)) {
+                if (NumberUtils.isDigits(totalMileage)) {
 
-                try {
+                    try {
 
-                    final ImmutableMap<String, String> usefulTotalMileage =
-                        VEHICLE_CACHE.getField(
-                            vid,
-                            VehicleCache.TOTAL_MILEAGE_FIELD);
-                    final String oldTime = usefulTotalMileage.get(VehicleCache.VALUE_TIME_KEY);
-
-                    if (NumberUtils.toLong(oldTime) < NumberUtils.toLong(collectTime)) {
-
-                        final ImmutableMap<String, String> update = new ImmutableMap.Builder<String, String>()
-                            .put(VehicleCache.VALUE_TIME_KEY, collectTime)
-                            .put(VehicleCache.VALUE_DATA_KEY, totalMileage)
-                            .build();
-                        VEHICLE_CACHE.putField(
-                            vid,
-                            VehicleCache.TOTAL_MILEAGE_FIELD,
-                            update);
-                        paramsRedisUtil.autoLog(
-                            vid,
-                            () -> logger.info(
-                                "VID[{}]更新有效累计里程缓存[{}]",
+                        final ImmutableMap<String, String> usefulTotalMileage =
+                            VEHICLE_CACHE.getField(
                                 vid,
-                                update));
+                                VehicleCache.TOTAL_MILEAGE_FIELD);
+                        final String oldTime = usefulTotalMileage.get(VehicleCache.VALUE_TIME_KEY);
+
+                        if (NumberUtils.toLong(oldTime) < NumberUtils.toLong(collectTime)) {
+
+                            final ImmutableMap<String, String> update = new ImmutableMap.Builder<String, String>()
+                                .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                .put(VehicleCache.VALUE_DATA_KEY, totalMileage)
+                                .build();
+                            VEHICLE_CACHE.putField(
+                                vid,
+                                VehicleCache.TOTAL_MILEAGE_FIELD,
+                                update);
+                            paramsRedisUtil.autoLog(
+                                vid,
+                                () -> logger.info(
+                                    "VID[{}]更新有效累计里程缓存[{}]",
+                                    vid,
+                                    update));
+                        } else {
+                            paramsRedisUtil.autoLog(
+                                vid,
+                                () -> logger.info(
+                                    "VID[{}]保持有效累计里程值缓存[{}]",
+                                    vid,
+                                    usefulTotalMileage));
+                        }
+
+                    } catch (ExecutionException e) {
+                        logger.warn("获取有效累计里程缓存异常", e);
+                    }
+                } else {
+                    paramsRedisUtil.autoLog(vid, () -> logger.warn("无效的累计里程[{}]", totalMileage));
+                }
+            }
+            // endregion
+
+            // region 缓存GPS定位有效值
+            {
+                final String orientationString = data.get(DataKey._2501_ORIENTATION);
+
+                paramsRedisUtil.autoLog(
+                    vid,
+                    () -> logger.warn(
+                        "VID[{}][{}][{}]有效定位缓存处理",
+                        vid,
+                        collectTime,
+                        orientationString));
+
+
+                if (NumberUtils.isDigits(orientationString)) {
+
+                    final int orientationValue = NumberUtils.toInt(orientationString);
+                    if (DataUtils.isOrientationUseful(orientationValue)) {
+
+                        final String longitudeString = data.get(DataKey._2502_LONGITUDE);
+                        final String latitudeString = data.get(DataKey._2503_LATITUDE);
+
+                        if(NumberUtils.isDigits(orientationString)
+                            && NumberUtils.isDigits(orientationString)) {
+
+
+                            final int longitudeValue = NumberUtils.toInt(longitudeString);
+                            final int latitudeValue = NumberUtils.toInt(latitudeString);
+
+                            if(DataUtils.isOrientationLongitudeUseful(longitudeValue)
+                                && DataUtils.isOrientationLatitudeUseful(latitudeValue)) {
+
+                                try {
+                                    final ImmutableMap<String, String> usefulOrientation =
+                                        VEHICLE_CACHE.getField(
+                                            vid,
+                                            VehicleCache.ORIENTATION_FIELD);
+                                    final String oldOrientationTime = usefulOrientation.get(VehicleCache.VALUE_TIME_KEY);
+
+                                    final ImmutableMap<String, String> usefulLongitude =
+                                        VEHICLE_CACHE.getField(
+                                            vid,
+                                            VehicleCache.LONGITUDE_FIELD);
+                                    final String oldLongitudeTime = usefulLongitude.get(VehicleCache.VALUE_TIME_KEY);
+
+                                    final ImmutableMap<String, String> usefulLatitude =
+                                        VEHICLE_CACHE.getField(
+                                            vid,
+                                            VehicleCache.LATITUDE_FIELD);
+                                    final String oldLatitudeTime = usefulLatitude.get(VehicleCache.VALUE_TIME_KEY);
+
+                                    if (NumberUtils.toLong(oldOrientationTime) < NumberUtils.toLong(collectTime)) {
+
+                                        final ImmutableMap<String, String> updateOrientation = new ImmutableMap.Builder<String, String>()
+                                            .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                            .put(VehicleCache.VALUE_DATA_KEY, longitudeString)
+                                            .build();
+                                        VEHICLE_CACHE.putField(
+                                            vid,
+                                            VehicleCache.ORIENTATION_FIELD,
+                                            updateOrientation);
+                                        paramsRedisUtil.autoLog(
+                                            vid,
+                                            () -> logger.info(
+                                                "VID[{}]更新有效定位缓存[{}]",
+                                                vid,
+                                                updateOrientation));
+                                    } else {
+                                        paramsRedisUtil.autoLog(
+                                            vid,
+                                            () -> logger.info(
+                                                "VID[{}]保持有效定位缓存[{}]",
+                                                vid,
+                                                usefulOrientation));
+                                    }
+
+                                    if (NumberUtils.toLong(oldLongitudeTime) < NumberUtils.toLong(collectTime)) {
+
+                                        final ImmutableMap<String, String> updateLongitude = new ImmutableMap.Builder<String, String>()
+                                            .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                            .put(VehicleCache.VALUE_DATA_KEY, longitudeString)
+                                            .build();
+                                        VEHICLE_CACHE.putField(
+                                            vid,
+                                            VehicleCache.LONGITUDE_FIELD,
+                                            updateLongitude);
+                                        paramsRedisUtil.autoLog(
+                                            vid,
+                                            () -> logger.info(
+                                                "VID[{}]更新有效经度缓存[{}]",
+                                                vid,
+                                                updateLongitude));
+                                    } else {
+                                        paramsRedisUtil.autoLog(
+                                            vid,
+                                            () -> logger.info(
+                                                "VID[{}]保持有效经度缓存[{}]",
+                                                vid,
+                                                usefulLongitude));
+                                    }
+
+                                    if (NumberUtils.toLong(oldLatitudeTime) < NumberUtils.toLong(collectTime)) {
+
+                                        final ImmutableMap<String, String> updateLatitude = new ImmutableMap.Builder<String, String>()
+                                            .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                            .put(VehicleCache.VALUE_DATA_KEY, latitudeString)
+                                            .build();
+                                        VEHICLE_CACHE.putField(
+                                            vid,
+                                            VehicleCache.LATITUDE_FIELD,
+                                            updateLatitude);
+                                        paramsRedisUtil.autoLog(
+                                            vid,
+                                            () -> logger.info(
+                                                "VID[{}]更新有效纬度缓存[{}]",
+                                                vid,
+                                                updateLatitude));
+                                    } else {
+                                        paramsRedisUtil.autoLog(
+                                            vid,
+                                            () -> logger.info(
+                                                "VID[{}]保持有效纬度缓存[{}]",
+                                                vid,
+                                                usefulLatitude));
+                                    }
+                                } catch (ExecutionException e) {
+                                    e.printStackTrace();
+                                }
+                            } else {
+                                paramsRedisUtil.autoLog(
+                                    vid,
+                                    () -> logger.warn(
+                                        "VID[{}]经纬度超出范围[{}, {}]",
+                                        vid,
+                                        longitudeString,
+                                        latitudeValue));
+                            }
+                        } else {
+                            paramsRedisUtil.autoLog(
+                                vid,
+                                () -> logger.warn(
+                                    "VID[{}]经纬度格式错误[{}][{}]",
+                                    vid,
+                                    longitudeString,
+                                    latitudeString));
+                        }
                     } else {
                         paramsRedisUtil.autoLog(
                             vid,
-                            () -> logger.info(
-                                "VID[{}]保持有效累计里程值缓存[{}]",
+                            () -> logger.warn(
+                                "VID[{}]定位无效[{}]",
                                 vid,
-                                usefulTotalMileage));
+                                orientationString));
                     }
-
-                } catch (ExecutionException e) {
-                    logger.warn("获取有效累计里程缓存异常", e);
+                } else {
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        () -> logger.warn(
+                            "VID[{}]定位状态格式错误[{}]",
+                            vid,
+                            orientationString));
                 }
-            } else {
-                paramsRedisUtil.autoLog(vid, () -> logger.warn("无效的累计里程[{}]", totalMileage));
             }
             // endregion
 

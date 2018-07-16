@@ -272,19 +272,69 @@ public final class DataKey {
     public static final String _2501_ORIENTATION = "2501";
 
     /**
+     * 有效位掩码
+     */
+    public static final int ORIENTATION_MASK_QUALITY = 0x00000001;
+
+    /**
+     * 无效定位
+     */
+    public static final int ORIENTATION_MASK_QUALITY_USELESS = 0x00000000;
+
+    /**
+     * 有效定位
+     */
+    public static final int ORIENTATION_MASK_QUALITY_USEFUL = 0x00000001;
+
+    /**
+     * 经度位掩码
+     */
+    public static final int ORIENTATION_MASK_LONGITUDE = 0x00000004;
+
+    /**
+     * 东经
+     */
+    public static final int ORIENTATION_MASK_LONGITUDE_EAST = 0x00000000;
+
+    /**
+     * 西经
+     */
+    public static final int ORIENTATION_MASK_LONGITUDE_WEST = 0x00000004;
+
+    /**
+     * 纬度位掩码
+     */
+    public static final int ORIENTATION_MASK_LATITUDE = 0x00000002;
+
+    /**
+     * 北纬
+     */
+    public static final int ORIENTATION_MASK_LATITUDE_NORTH = 0x00000000;
+
+    /**
+     * 南纬
+     */
+    public static final int ORIENTATION_MASK_LATITUDE_SOUTH = 0x00000002;
+
+    /**
+     * 经纬度精度, 精确到小数点后6位.
+     */
+    public static final double ORIENTATION_PRECISION = 1000000D;
+
+    /**
      * 经度
      */
     public static final String _2502_LONGITUDE = "2502";
 
     /**
-     * 经度最小有效值
+     * 经度最小有效值, 0°, 精确到小数点后6位.
      */
     public static final int MIN_2502_LONGITUDE = 0;
 
     /**
-     * 经度最大有效值
+     * 经度最大有效值, 180°, 精确到小数点后6位.
      */
-    public static final int MAX_2502_LONGITUDE = 0x7FFFFFFF;
+    public static final int MAX_2502_LONGITUDE = 180000000;
 
     /**
      * 纬度
@@ -292,14 +342,14 @@ public final class DataKey {
     public static final String _2503_LATITUDE = "2503";
 
     /**
-     * 纬度最小有效值
+     * 纬度最小有效值, 0°, 精确到小数点后6位.
      */
     public static final int MIN_2503_LATITUDE = 0;
 
     /**
-     * 纬度最大有效值
+     * 纬度最大有效值, 90°, 精确到小数点后6位.
      */
-    public static final int MAX_2503_LATITUDE = 0x7FFFFFFF;
+    public static final int MAX_2503_LATITUDE = 90000000;
 
     /**
      * 速度
