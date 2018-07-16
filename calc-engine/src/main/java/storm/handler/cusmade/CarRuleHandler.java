@@ -16,16 +16,12 @@ import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
-import storm.dto.IsSendNoticeCache;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.system.DataKey;
-import storm.system.ProtocolItem;
-import storm.system.StormConfigKey;
-import storm.system.SysDefine;
+import storm.system.*;
 import storm.util.*;
 
 import java.text.ParseException;
@@ -1265,7 +1261,7 @@ public class CarRuleHandler implements InfoNotice {
 
                 final Map<String, Object> gpsFaultNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
                 if (MapUtils.isEmpty(gpsFaultNotice)) {
-                    gpsFaultNotice.put("msgType", "NO_POSITION_VEH");
+                    gpsFaultNotice.put("msgType", AlarmMessageType.NO_POSITION_VEH);
                     gpsFaultNotice.put("msgId", UUID.randomUUID().toString());
                     gpsFaultNotice.put("vid", vid);
                     vidGpsNotice.put(vid, gpsFaultNotice);
@@ -1727,6 +1723,7 @@ public class CarRuleHandler implements InfoNotice {
         if (isRestart) {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
             recorder.rebootInit(db, socRedisKeys, vidSocNotice);
+            recorder.rebootInit(db, gpsRedisKeys, vidGpsNotice);
             recorder.rebootInit(CarLockStatusChangeJudge.db, CarLockStatusChangeJudge.lockStatusRedisKeys, vidLockStatus);
         }
     }

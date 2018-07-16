@@ -7,4 +7,6 @@ package storm.system;
  */
 public final class AlarmMessageType {
     public static final String NO_CAN_VEH = "NO_CAN_VEH";
+
+    public static final String NO_POSITION_VEH = "NO_POSITION_VEH";
 }
