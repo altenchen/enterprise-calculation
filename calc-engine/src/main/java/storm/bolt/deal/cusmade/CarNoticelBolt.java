@@ -369,7 +369,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
                                         final ImmutableMap<String, String> updateOrientation = new ImmutableMap.Builder<String, String>()
                                             .put(VehicleCache.VALUE_TIME_KEY, collectTime)
-                                            .put(VehicleCache.VALUE_DATA_KEY, longitudeString)
+                                            .put(VehicleCache.VALUE_DATA_KEY, orientationString)
                                             .build();
                                         VEHICLE_CACHE.putField(
                                             vid,

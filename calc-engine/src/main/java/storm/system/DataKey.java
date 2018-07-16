@@ -277,14 +277,14 @@ public final class DataKey {
     public static final int ORIENTATION_MASK_QUALITY = 0x00000001;
 
     /**
-     * 无效定位
-     */
-    public static final int ORIENTATION_MASK_QUALITY_USELESS = 0x00000000;
-
-    /**
      * 有效定位
      */
-    public static final int ORIENTATION_MASK_QUALITY_USEFUL = 0x00000001;
+    public static final int ORIENTATION_MASK_QUALITY_USEFUL = 0x00000000;
+
+    /**
+     * 无效定位
+     */
+    public static final int ORIENTATION_MASK_QUALITY_USELESS = 0x00000001;
 
     /**
      * 经度位掩码
