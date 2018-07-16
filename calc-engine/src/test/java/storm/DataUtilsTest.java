@@ -73,6 +73,26 @@ final class DataUtilsTest {
         Assertions.assertTrue(orientationLatitudeSouth, "应该是南纬");
     }
 
+    @DisplayName("测试经度")
+    @Test
+    void isOrientationLongitudeUseful() {
+        Assertions.assertTrue(DataUtils.isOrientationLongitudeUseful(0), "应该是有效经度");
+        Assertions.assertTrue(DataUtils.isOrientationLongitudeUseful(180000000), "应该是有效经度");
+        Assertions.assertFalse(DataUtils.isOrientationLongitudeUseful(-1), "应该是无效经度");
+        Assertions.assertFalse(DataUtils.isOrientationLongitudeUseful(180000001), "应该是无效经度");
+    }
+
+    @DisplayName("测试纬度")
+    @Test
+    void isOrientationLatitudeUseful() {
+        Assertions.assertTrue(DataUtils.isOrientationLatitudeUseful(0), "应该是有效纬度");
+        Assertions.assertTrue(DataUtils.isOrientationLatitudeUseful(90000000), "应该是有效纬度");
+        Assertions.assertFalse(DataUtils.isOrientationLatitudeUseful(-1), "应该是无效纬度");
+        Assertions.assertFalse(DataUtils.isOrientationLatitudeUseful(90000001), "应该是无效纬度");
+    }
+
+
+
     @SuppressWarnings("unused")
     @AfterEach
     private void afterEach() {
