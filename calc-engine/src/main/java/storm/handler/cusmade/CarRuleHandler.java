@@ -1,5 +1,6 @@
 package storm.handler.cusmade;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -11,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
+import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
@@ -28,6 +30,7 @@ import storm.util.*;
 
 import java.text.ParseException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 /**
  * <p>
@@ -46,6 +49,7 @@ public class CarRuleHandler implements InfoNotice {
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
     private static final JsonUtils gson = JsonUtils.getInstance();
+    private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
     
 
@@ -1281,6 +1285,7 @@ public class CarRuleHandler implements InfoNotice {
                 }
 
                 if (1 == gpsFaultCount) {
+
                     gpsFaultNotice.put("stime", timeString);
                     gpsFaultNotice.put("status", 1);
 
@@ -1289,6 +1294,16 @@ public class CarRuleHandler implements InfoNotice {
                         ()-> logger.info(
                             "VID[{}]GPS故障首帧更新",
                             vid));
+                }
+
+                if (!gpsFaultNotice.containsKey("slocation")) {
+
+                    try {
+                        final String locationFromCache = getUsefulLocationFromCache(vid);
+                        gpsFaultNotice.put("slocation", locationFromCache);
+                    } catch (ExecutionException e) {
+                        logger.warn("获取定位缓存异常", e);
+                    }
                 }
 
                 if(gpsFaultCount < gpsFaultFrameTriggerCount) {
@@ -1417,6 +1432,22 @@ public class CarRuleHandler implements InfoNotice {
     }
 
     @NotNull
+    private String getUsefulLocationFromCache(
+        @NotNull String vid)
+        throws ExecutionException {
+
+        //final ImmutableMap<String, String> orientationCache = VEHICLE_CACHE.getField(vid, VehicleCache.ORIENTATION_FIELD);
+        final ImmutableMap<String, String> longitudeCache = VEHICLE_CACHE.getField(vid, VehicleCache.LONGITUDE_FIELD);
+        final ImmutableMap<String, String> latitudeCache = VEHICLE_CACHE.getField(vid, VehicleCache.LATITUDE_FIELD);
+
+        //final String orientation = orientationCache.get(VehicleCache.VALUE_DATA_KEY);
+        final String longitude = longitudeCache.get(VehicleCache.VALUE_DATA_KEY);
+        final String latitude = latitudeCache.get(VehicleCache.VALUE_DATA_KEY);
+
+        return DataUtils.buildLocation(longitude, latitude);
+    }
+
+    @NotNull
     private boolean isGpsFault(
         @Nullable String orientationString,
         @Nullable String longitudeString,
@@ -1426,11 +1457,9 @@ public class CarRuleHandler implements InfoNotice {
             return true;
         }
 
+
         final int orientationValue = NumberUtils.toInt(orientationString);
-        // 根据国标表15, 最低位为0时表示有效定位
-        final int effectiveMask = 0x00000001;
-        final int effectiveOrientation = 0x00000000;
-        if ((orientationValue & effectiveMask) != effectiveOrientation) {
+        if(!DataUtils.isOrientationUseful(orientationValue)) {
             return true;
         }
 
@@ -1442,19 +1471,8 @@ public class CarRuleHandler implements InfoNotice {
         final int longitudeValue = NumberUtils.toInt(longitudeString);
         final int latitudeValue = NumberUtils.toInt(latitudeString);
 
-        // 国标中定义“以度为单位的值乘以 10 的 6 次方，精确到百万分之一度”
-        final int minLongitude = 0;
-        final int maxLongitude = 180000000;
-        final int minLatitude = 0;
-        final int maxLatitude = 90000000;
-
-        if (longitudeValue >= minLongitude && longitudeValue < maxLongitude
-            && latitudeValue >= minLatitude && latitudeValue < maxLatitude) {
-
-            return false;
-        }
-
-        return true;
+        return DataUtils.isOrientationLongitudeUseful(longitudeValue)
+            && DataUtils.isOrientationLatitudeUseful(latitudeValue);
     }
 
     private Map<String, Object> onOffline(Map<String, String> dat) {
