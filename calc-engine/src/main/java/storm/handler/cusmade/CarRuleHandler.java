@@ -3,7 +3,6 @@ package storm.handler.cusmade;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -55,8 +54,8 @@ public class CarRuleHandler implements InfoNotice {
     private final Map<String, Integer> vidGpsNormalCount = new HashMap<>();
     private static int gpsFaultFrameTriggerCount = 5;
     private static int gpsNormalFrameTriggerCount = 10;
-    private static long gpsFaultIntervalMillisecond = 600000L;
-    private static long gpsNormalIntervalMillisecond = 600000L;
+    private static long gpsFaultIntervalMillisecond = 60000L;
+    private static long gpsNormalIntervalMillisecond = 60000L;
 
     /**
      * 无CAN计数器
@@ -1248,7 +1247,7 @@ public class CarRuleHandler implements InfoNotice {
             final String longitudeString = dat.get(DataKey._2502_LONGITUDE);
             final String latitudeString = dat.get(DataKey._2503_LATITUDE);
 
-            boolean isFault = isGpsFault(orientationString, longitudeString, latitudeString);
+            boolean isFault = isGpsFault(vid, orientationString, longitudeString, latitudeString);
             if (isFault) {
                 // region 定位异常逻辑
 
@@ -1269,6 +1268,7 @@ public class CarRuleHandler implements InfoNotice {
                     gpsFaultNotice.put("msgType", AlarmMessageType.NO_POSITION_VEH);
                     gpsFaultNotice.put("msgId", UUID.randomUUID().toString());
                     gpsFaultNotice.put("vid", vid);
+                    gpsFaultNotice.put("status", "0");
                     vidGpsNotice.put(vid, gpsFaultNotice);
 
                     paramsRedisUtil.autoLog(
@@ -1282,13 +1282,21 @@ public class CarRuleHandler implements InfoNotice {
                 // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
                 String status = gpsFaultNotice.getOrDefault("status", "0");
                 if (!"0".equals(status) && !"3".equals(status)) {
+
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        () -> logger.info(
+                            "VID[{}][{}]GPS故障不是初始化或已结束状态",
+                            vid,
+                            status
+                        )
+                    );
                     return null;
                 }
 
                 if (1 == gpsFaultCount) {
 
                     gpsFaultNotice.put("stime", timeString);
-                    gpsFaultNotice.put("status", "1");
 
                     paramsRedisUtil.autoLog(
                         vid,
@@ -1302,12 +1310,21 @@ public class CarRuleHandler implements InfoNotice {
                     try {
                         final String locationFromCache = getUsefulLocationFromCache(vid);
                         gpsFaultNotice.put("slocation", locationFromCache);
+                        // 兼容性暂留
+                        gpsFaultNotice.put("location", locationFromCache);
                     } catch (ExecutionException e) {
                         logger.warn("获取定位缓存异常", e);
                     }
                 }
 
                 if(gpsFaultCount < gpsFaultFrameTriggerCount) {
+
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        ()-> logger.info(
+                            "VID[{}]GPS故障连续帧数不足[{}]帧",
+                            vid,
+                            gpsFaultFrameTriggerCount));
                     return null;
                 }
 
@@ -1325,6 +1342,14 @@ public class CarRuleHandler implements InfoNotice {
                 }
 
                 if (currentTimeMillis - firstGpsFaultTime <= gpsFaultIntervalMillisecond) {
+
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        ()-> logger.info(
+                            "VID[{}]GPS故障时延不足[{}]毫秒",
+                            vid,
+                            gpsFaultIntervalMillisecond));
+
                     return null;
                 }
 
@@ -1354,6 +1379,13 @@ public class CarRuleHandler implements InfoNotice {
                 gpsFaultNotice.put("status", "1");
                 gpsFaultNotice.put("slazy", String.valueOf(gpsFaultIntervalMillisecond));
                 gpsFaultNotice.put("noticeTime", noticeTime);
+
+                paramsRedisUtil.autoLog(
+                    vid,
+                    ()-> logger.info(
+                        "VID[{}]GPS故障通知缓存[{}]",
+                        vid,
+                        gpsFaultNotice.get("msgId")));
 
                 final ImmutableMap<String, String> notice = new ImmutableMap.Builder<String, String>()
                     .putAll(gpsFaultNotice)
@@ -1408,6 +1440,15 @@ public class CarRuleHandler implements InfoNotice {
                 // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
                 final String status = gpsNormalNotice.getOrDefault("status", "0");
                 if (!"1".equals(status) && !"2".equals(status)) {
+
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        () -> logger.info(
+                            "VID[{}][{}]GPS正常不是已开始或持续中状态",
+                            vid,
+                            status
+                        )
+                    );
                     return null;
                 }
 
@@ -1431,6 +1472,13 @@ public class CarRuleHandler implements InfoNotice {
                 }
 
                 if(gpsNormalCount < gpsNormalFrameTriggerCount) {
+
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        ()-> logger.info(
+                            "VID[{}]GPS正常连续帧数不足[{}]帧",
+                            vid,
+                            gpsNormalFrameTriggerCount));
                     return null;
                 }
 
@@ -1446,6 +1494,13 @@ public class CarRuleHandler implements InfoNotice {
                 }
 
                 if (currentTimeMillis - firstGpsNormalTime <= gpsNormalIntervalMillisecond) {
+
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        ()-> logger.info(
+                            "VID[{}]GPS正常时延不足[{}]毫秒",
+                            vid,
+                            gpsNormalIntervalMillisecond));
                     return null;
                 }
 
@@ -1515,30 +1570,65 @@ public class CarRuleHandler implements InfoNotice {
 
     @NotNull
     private boolean isGpsFault(
+        @NotNull String vid,
         @Nullable String orientationString,
         @Nullable String longitudeString,
         @Nullable String latitudeString) {
 
         if (!NumberUtils.isDigits(orientationString)) {
+            paramsRedisUtil.autoLog(
+                vid,
+                ()-> logger.info(
+                    "定位状态[{}]非法, 判定为GPS故障.",
+                    orientationString));
             return true;
         }
 
 
         final int orientationValue = NumberUtils.toInt(orientationString);
         if(!DataUtils.isOrientationUseful(orientationValue)) {
+            paramsRedisUtil.autoLog(
+                vid,
+                ()-> logger.info(
+                    "定位状态[{}]无效, 判定为GPS故障.",
+                    orientationString));
             return true;
         }
 
         if (!NumberUtils.isDigits(longitudeString)
             || !NumberUtils.isDigits(latitudeString)) {
+            paramsRedisUtil.autoLog(
+                vid,
+                ()-> logger.info(
+                    "经度[{}]纬度[{}]非法, 判定为GPS故障.",
+                    longitudeString,
+                    latitudeString));
             return true;
         }
 
         final int longitudeValue = NumberUtils.toInt(longitudeString);
         final int latitudeValue = NumberUtils.toInt(latitudeString);
 
-        return !DataUtils.isOrientationLongitudeUseful(longitudeValue)
-            || !DataUtils.isOrientationLatitudeUseful(latitudeValue);
+        if(DataUtils.isOrientationLongitudeUseful(longitudeValue)
+            && DataUtils.isOrientationLatitudeUseful(latitudeValue)) {
+
+            paramsRedisUtil.autoLog(
+                vid,
+                ()-> logger.info(
+                    "经度[{}]纬度[{}]有效, 判定为GPS正常.",
+                    longitudeString,
+                    latitudeString));
+            return false;
+        }
+
+        paramsRedisUtil.autoLog(
+            vid,
+            ()-> logger.info(
+                "经度[{}]纬度[{}]无效, 判定为GPS故障.",
+                longitudeString,
+                latitudeString));
+
+        return true;
     }
 
     private Map<String, Object> onOffline(Map<String, String> dat) {
