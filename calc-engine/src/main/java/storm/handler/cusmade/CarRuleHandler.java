@@ -295,7 +295,7 @@ public class CarRuleHandler implements InfoNotice {
         if (null != hopnum) {
             mileHop = ((int) hopnum) * 10;
         }
-        Object nogpsJudgeTime = paramsRedisUtil.PARAMS.get("gps.judge.time");
+        Object nogpsJudgeTime = paramsRedisUtil.PARAMS.get(SysDefine.GPS_JUDGE_TIME);
         if (null != nogpsJudgeTime) {
             gpsFaultIntervalMillisecond = ((int) nogpsJudgeTime) * 1000L;
             gpsNormalIntervalMillisecond = gpsFaultIntervalMillisecond;

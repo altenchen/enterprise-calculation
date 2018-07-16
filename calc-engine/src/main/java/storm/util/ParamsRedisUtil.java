@@ -64,10 +64,6 @@ public final class ParamsRedisUtil {
     /**
      * 秒
      */
-    public static final String GPS_JUDGE_SECOND = "gps.judge.time";
-    /**
-     * 秒
-     */
     public static final String CAN_JUDGE_SECOND = "can.judge.time";
     /**
      * 配置来源于Redis哪个库
@@ -125,8 +121,8 @@ public final class ParamsRedisUtil {
         PARAMS.put(CAN_NOVALUE_CONTINUE_NO, 5);
         PARAMS.put(CAN_HASVALUE_CONTINUE_NO, 10);
         PARAMS.put(MILE_HOP_NUM, 2);
-        PARAMS.put(GPS_JUDGE_SECOND, 10800);
-        PARAMS.put(CAN_JUDGE_SECOND, 10800);
+        PARAMS.put(SysDefine.GPS_JUDGE_TIME, 60);
+        PARAMS.put(CAN_JUDGE_SECOND, 60);
 
         PARAMS.put(SysDefine.RULE_OVERRIDE, "default");
         PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT, 3);
@@ -288,8 +284,8 @@ public final class ParamsRedisUtil {
         paramCache.put("gps.novalue.continue.no", "10");
         paramCache.put("can.novalue.continue.no", "10");
         paramCache.put("mile.hop.num", "2");
-        paramCache.put("gps.judge.time", "10800");
-        paramCache.put("can.judge.time", "10800");
+        paramCache.put(SysDefine.GPS_JUDGE_TIME, "600");
+        paramCache.put("can.judge.time", "600");
 
         final ParamsRedisUtil instance = ParamsRedisUtil.getInstance();
         instance.initParams(paramCache);
