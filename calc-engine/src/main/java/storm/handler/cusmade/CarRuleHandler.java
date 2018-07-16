@@ -1,17 +1,17 @@
 package storm.handler.cusmade;
 
-import org.apache.commons.lang.math.NumberUtils;
-import org.apache.commons.lang.time.DateFormatUtils;
-import org.apache.commons.lang.time.DateUtils;
-import storm.constant.FormatConstant;
-import storm.util.ConfigUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang.time.DateFormatUtils;
+import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
+import storm.constant.FormatConstant;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.dto.IsSendNoticeCache;
@@ -20,7 +20,10 @@ import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.system.*;
+import storm.system.DataKey;
+import storm.system.ProtocolItem;
+import storm.system.StormConfigKey;
+import storm.system.SysDefine;
 import storm.util.*;
 
 import java.text.ParseException;
@@ -46,8 +49,13 @@ public class CarRuleHandler implements InfoNotice {
 
     
 
-    private Map<String, Integer> vidNoGps;
-    private Map<String, Integer> vidNormalGps;
+    private final Map<String, Integer> vidGpsFaultCount = new HashMap<>();
+    private final Map<String, Integer> vidGpsNormalCount = new HashMap<>();
+    private static int gpsFaultFrameTriggerCount = 5;
+    private static int gpsNormalFrameTriggerCount = 10;
+    private static long gpsFaultIntervalMillisecond = 600000L;
+    private static long gpsNormalIntervalMillisecond = 600000L;
+
     /**
      * 无CAN计数器
      */
@@ -57,11 +65,11 @@ public class CarRuleHandler implements InfoNotice {
      */
     private final Map<String, Integer> vidNormalCanCount = new HashMap<>();
 
-    private Map<String, Integer> vidIgnite;
-    private Map<String, Integer> vidShut;
-    private Map<String, Double> igniteShutMaxSpeed;
-    private Map<String, Double> lastSoc;
-    private Map<String, Double> lastMile;
+    private Map<String, Integer> vidIgnite = new HashMap<>();
+    private Map<String, Integer> vidShut = new HashMap<>();
+    private Map<String, Double> igniteShutMaxSpeed = new HashMap<>();
+    private Map<String, Double> lastSoc = new HashMap<>();
+    private Map<String, Double> lastMile = new HashMap<>();
 
     /**
      * SOC过低阈值, 默认 10%
@@ -88,38 +96,35 @@ public class CarRuleHandler implements InfoNotice {
      */
     private Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
 
-    private Map<String, Integer> vidSpeedGtZero;
-    private Map<String, Integer> vidSpeedZero;
+    private Map<String, Integer> vidSpeedGtZero = new HashMap<>();
+    private Map<String, Integer> vidSpeedZero = new HashMap<>();
 
-    private Map<String, Integer> vidFlySt;
-    private Map<String, Integer> vidFlyEd;
-    private Map<String, Map<String, Object>> vidcanNotice;
-    private Map<String, Map<String, Object>> vidIgniteShutNotice;
-    private Map<String, Map<String, Object>> vidgpsNotice;
-    private Map<String, Map<String, Object>> vidSpeedGtZeroNotice;
-    private Map<String, Map<String, Object>> vidFlyNotice;
-    private Map<String, Map<String, Object>> vidOnOffNotice;
+    private Map<String, Integer> vidFlySt = new HashMap<>();
+    private Map<String, Integer> vidFlyEd = new HashMap<>();
+    private Map<String, Map<String, Object>> vidcanNotice = new HashMap<>();
+    private Map<String, Map<String, Object>> vidIgniteShutNotice = new HashMap<>();
+    private Map<String, Map<String, Object>> vidGpsNotice = new HashMap<>();
+    private Map<String, Map<String, Object>> vidSpeedGtZeroNotice = new HashMap<>();
+    private Map<String, Map<String, Object>> vidFlyNotice = new HashMap<>();
+    private Map<String, Map<String, Object>> vidOnOffNotice = new HashMap<>();
 
-    private Map<String, Map<String, Object>> vidLastDat;//vid和最后一帧数据的缓存
-    private Map<String, Map<String,Object>> vidLockStatus;
+    private Map<String, Map<String, Object>> vidLastDat = new HashMap<>();//vid和最后一帧数据的缓存
+    private Map<String, Map<String,Object>> vidLockStatus = new HashMap<>();
 
-    private Map<String, Long> lastTime;
-    private Map<String, IsSendNoticeCache> vidIsSendNoticeCache;
+    private Map<String, Long> lastTime = new HashMap<>();
 
 
     DataToRedis redis;
     private Recorder recorder;
-    static String onOffRedisKeys;
-    static String socRedisKeys;
+    static String onOffRedisKeys = "vehCache.qy.onoff.notice";
+    static String socRedisKeys = "vehCache.qy.soc.notice";
+    static String gpsRedisKeys = "vehCache.qy.gps.notice";
 
-    static int topn;
+    static int topn = 20;
     static long offlinetime = 600000;//600秒
-    static int nogpsJudgeNum = 5;//5次
-    static int hasgpsJudgeNum = 10;//10次
     static int nocanJudgeNum = 5;//5次
     static int hascanJudgeNum = 10;//10次
     static int mileHop = 20;//2公里 ，单位是0.1km
-    static long nogpsIntervalTime = 600000L;//600秒
     static long nocanIntervalTime = 600000L;//600秒
 
     static int db = 6;
@@ -143,9 +148,6 @@ public class CarRuleHandler implements InfoNotice {
     //以下参数可以通过读取配置文件进行重置
     static {
         logger.warn("运行静态代码块，读取配置文件中值");
-        topn = 20;
-        onOffRedisKeys = "vehCache.qy.onoff.notice";
-        socRedisKeys = "vehCache.qy.soc.notice";
         if (null != configUtils.sysDefine) {
             logger.warn("运行静态代码块，判断配置文件是否存在");
             String off = configUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
@@ -233,19 +235,20 @@ public class CarRuleHandler implements InfoNotice {
 
             value = configUtils.sysDefine.getProperty(SysDefine.GPS_NOVALUE_CONTINUE_NO);
             if (!StringUtils.isEmpty(value)) {
-                nogpsJudgeNum = Integer.parseInt(value);
+                gpsFaultFrameTriggerCount = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty(SysDefine.GPS_HASVALUE_CONTINUE_NO);
             if (!StringUtils.isEmpty(value)) {
-                hasgpsJudgeNum = Integer.parseInt(value);
+                gpsNormalFrameTriggerCount = Integer.parseInt(value);
                 value = null;
             }
 
             value = configUtils.sysDefine.getProperty(SysDefine.GPS_JUDGE_TIME);
             if (!StringUtils.isEmpty(value)) {
-                nogpsIntervalTime = Long.parseLong(value);
+                gpsFaultIntervalMillisecond = Long.parseLong(value);
+                gpsNormalIntervalMillisecond = gpsFaultIntervalMillisecond;
                 value = null;
             }
 
@@ -282,11 +285,11 @@ public class CarRuleHandler implements InfoNotice {
 
         Object nogpsNum = paramsRedisUtil.PARAMS.get("gps.novalue.continue.no");
         if (null != nogpsNum) {
-            nogpsJudgeNum = (int) nogpsNum;
+            gpsFaultFrameTriggerCount = (int) nogpsNum;
         }
         Object hasgpsNum = paramsRedisUtil.PARAMS.get("gps.novalue.continue.no");
         if (null != hasgpsNum) {
-            hasgpsJudgeNum = (int) hasgpsNum;
+            gpsNormalFrameTriggerCount = (int) hasgpsNum;
         }
         Object hopnum = paramsRedisUtil.PARAMS.get("mile.hop.num");
         if (null != hopnum) {
@@ -294,7 +297,8 @@ public class CarRuleHandler implements InfoNotice {
         }
         Object nogpsJudgeTime = paramsRedisUtil.PARAMS.get("gps.judge.time");
         if (null != nogpsJudgeTime) {
-            nogpsIntervalTime = ((int) nogpsJudgeTime) * 1000L;
+            gpsFaultIntervalMillisecond = ((int) nogpsJudgeTime) * 1000L;
+            gpsNormalIntervalMillisecond = gpsFaultIntervalMillisecond;
         }
         Object nocanJudgeTime = paramsRedisUtil.PARAMS.get("can.judge.time");
         if (null != nocanJudgeTime) {
@@ -380,30 +384,6 @@ public class CarRuleHandler implements InfoNotice {
     }
 
     {
-        vidNoGps = new HashMap<String, Integer>();
-        vidNormalGps = new HashMap<String, Integer>();
-        vidIgnite = new HashMap<String, Integer>();
-        vidShut = new HashMap<String, Integer>();
-        igniteShutMaxSpeed = new HashMap<String, Double>();
-        lastMile = new HashMap<String, Double>();
-        lastSoc = new HashMap<String, Double>();
-        vidcanNotice = new HashMap<String, Map<String, Object>>();
-        vidIgniteShutNotice = new HashMap<String, Map<String, Object>>();
-        vidgpsNotice = new HashMap<String, Map<String, Object>>();
-
-        vidSpeedGtZero = new HashMap<String, Integer>();
-        vidSpeedZero = new HashMap<String, Integer>();
-        vidSpeedGtZeroNotice = new HashMap<String, Map<String, Object>>();
-
-        vidFlySt = new HashMap<String, Integer>();
-        vidFlyEd = new HashMap<String, Integer>();
-        vidFlyNotice = new HashMap<String, Map<String, Object>>();
-        vidOnOffNotice = new HashMap<String, Map<String, Object>>();
-        vidLastDat = new HashMap<String, Map<String, Object>>();
-        lastTime = new HashMap<String, Long>();
-        vidIsSendNoticeCache = new HashMap<String, IsSendNoticeCache>();
-        vidLockStatus = new HashMap<String, Map<String, Object>>();
-
         redis = new DataToRedis();
         recorder = new RedisRecorder(redis);
         restartInit(true);
@@ -550,8 +530,10 @@ public class CarRuleHandler implements InfoNotice {
         final String latitudeString = dat.get(DataKey._2503_LATITUDE);
         final String location = DataUtils.buildLocation(longitudeString, latitudeString);
 
-        final Date date = new Date();
-        String noticeTime = DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
+        final Long currentTimeMillis = System.currentTimeMillis();
+        final String noticeTime = DateFormatUtils.format(
+            currentTimeMillis,
+            FormatConstant.DATE_FORMAT);
 
         // 返回的通知消息
         final List<Map<String, Object>> result = new LinkedList<>();
@@ -604,7 +586,7 @@ public class CarRuleHandler implements InfoNotice {
                 lowSocNotice.put("lowSocThreshold", socAlarm);
 
                 paramsRedisUtil.autoLog(vid, ()->{
-                    logger.info("VID[{}]SOC过低首帧初始化", vid);
+                    logger.info("VID[{}]SOC过低首帧更新", vid);
                 });
             }
 
@@ -614,14 +596,18 @@ public class CarRuleHandler implements InfoNotice {
 
             final Long firstLowSocTime;
             try {
-                firstLowSocTime = DateUtils.parseDate(lowSocNotice.get("stime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
+                firstLowSocTime = DateUtils
+                    .parseDate(
+                        lowSocNotice.get("stime").toString(),
+                        new String[]{FormatConstant.DATE_FORMAT})
+                    .getTime();
             } catch (ParseException e) {
-                e.printStackTrace();
+                logger.warn("解析开始时间异常", e);
+                lowSocNotice.put("stime", timeString);
                 return null;
             }
 
-            final Long nowTime = date.getTime();
-            if (nowTime - firstLowSocTime <= lowsocIntervalMillisecond) {
+            if (currentTimeMillis - firstLowSocTime <= lowsocIntervalMillisecond) {
                 return null;
             }
 
@@ -691,12 +677,12 @@ public class CarRuleHandler implements InfoNotice {
             try {
                 firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
             } catch (ParseException e) {
-                e.printStackTrace();
+                logger.warn("解析结束时间异常", e);
+                normalSocNotice.put("etime", timeString);
                 return result;
             }
 
-            final Long nowTime = date.getTime();
-            if (nowTime - firstNormalSocTime <= lowsocIntervalMillisecond) {
+            if (currentTimeMillis - firstNormalSocTime <= lowsocIntervalMillisecond) {
                 return result;
             }
 
@@ -729,9 +715,9 @@ public class CarRuleHandler implements InfoNotice {
         Map<Double, FillChargeCar> chargeCarInfo = findNearFill(longitude, latitude, fillvidgps);
 
         if (null != chargeCarInfo) {
-            Map<String, Object> chargeMap = new TreeMap<String, Object>();
-            List<Map<String, Object>> chargeCars = new LinkedList<Map<String, Object>>();
-            Map<String, String> topnCars = new TreeMap<String, String>();
+            Map<String, Object> chargeMap = new TreeMap<>();
+            List<Map<String, Object>> chargeCars = new LinkedList<>();
+            Map<String, String> topnCars = new TreeMap<>();
             int cts = 0;
             for (Map.Entry<Double, FillChargeCar> entry : chargeCarInfo.entrySet()) {
                 cts++;
@@ -742,7 +728,7 @@ public class CarRuleHandler implements InfoNotice {
                 FillChargeCar chargeCar = entry.getValue();
 
                 //save to redis map
-                Map<String, Object> jsonMap = new TreeMap<String, Object>();
+                Map<String, Object> jsonMap = new TreeMap<>();
                 jsonMap.put("vid", chargeCar.vid);
                 jsonMap.put("LONGITUDE", chargeCar.longitude);
                 jsonMap.put("LATITUDE", chargeCar.latitude);
@@ -752,7 +738,7 @@ public class CarRuleHandler implements InfoNotice {
                 String jsonString = gson.toJson(jsonMap);
                 topnCars.put("" + cts, jsonString);
                 //send to kafka map
-                Map<String, Object> kMap = new TreeMap<String, Object>();
+                Map<String, Object> kMap = new TreeMap<>();
                 kMap.put("vid", chargeCar.vid);
                 kMap.put("location", chargeCar.longitude + "," + chargeCar.latitude);
                 kMap.put("lastOnline", chargeCar.lastOnline);
@@ -853,7 +839,7 @@ public class CarRuleHandler implements InfoNotice {
                         if (nowmileHop >= mileHop) {
                             String lastTime = (String) lastMap.get(DataKey.TIME);//上一帧的时间即为跳变的开始时间
                             String vin = dat.get(DataKey.VEHICLE_NUMBER);
-                            notice = new TreeMap<String, Object>();
+                            notice = new TreeMap<>();
                             notice.put("msgType", "HOP_MILE");//这些字段是前端方面要求的。
                             notice.put("vid", vid);
                             notice.put("vin", vin);
@@ -881,7 +867,7 @@ public class CarRuleHandler implements InfoNotice {
         String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
         mileage = org.apache.commons.lang.math.NumberUtils.isNumber(mileage) ? mileage : "0";
         if (!"0".equals(mileage)) {
-            Map<String, Object> lastMap = new TreeMap<String, Object>();
+            Map<String, Object> lastMap = new TreeMap<>();
             String vid = dat.get(DataKey.VEHICLE_ID);
             String time = dat.get(DataKey.TIME);
             int mile = Integer.parseInt(mileage);
@@ -979,7 +965,7 @@ public class CarRuleHandler implements InfoNotice {
 
                     Map<String, Object> notice = vidIgniteShutNotice.get(vid);
                     if (null == notice) {
-                        notice = new TreeMap<String, Object>();
+                        notice = new TreeMap<>();
                         notice.put("msgType", "IGNITE_SHUT_MESSAGE");
                         notice.put("vid", vid);
                         notice.put("vin", vin);
@@ -1084,7 +1070,7 @@ public class CarRuleHandler implements InfoNotice {
 
                     Map<String, Object> notice = vidFlyNotice.get(vid);
                     if (null == notice) {
-                        notice = new TreeMap<String, Object>();
+                        notice = new TreeMap<>();
                         notice.put("msgType", "FLY_RECORD");
                         notice.put("vid", vid);
                         notice.put("msgId", UUID.randomUUID().toString());
@@ -1170,7 +1156,7 @@ public class CarRuleHandler implements InfoNotice {
 
                     Map<String, Object> notice = vidSpeedGtZeroNotice.get(vid);
                     if (null == notice) {
-                        notice = new TreeMap<String, Object>();
+                        notice = new TreeMap<>();
                         notice.put("msgType", "ABNORMAL_USE_VEH");
                         notice.put("vid", vid);
                         notice.put("msgId", UUID.randomUUID().toString());
@@ -1236,140 +1222,239 @@ public class CarRuleHandler implements InfoNotice {
      * 未定位车辆_于心沼
      */
     Map<String, Object> noGps(Map<String, String> dat) {
+
         if (MapUtils.isEmpty(dat)) {
             return null;
         }
+
         try {
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(DataKey.TIME);
+
+            final String vid = dat.get(DataKey.VEHICLE_ID);
+            final String timeString = dat.get(DataKey.TIME);
             if (StringUtils.isEmpty(vid)
-                    || StringUtils.isEmpty(time)) {
+                    || StringUtils.isEmpty(timeString)) {
                 return null;
             }
 
-            //noticetime为当前时间
-            Date date = new Date();
-            String noticetime = DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
+            final long currentTimeMillis = System.currentTimeMillis();
+            final String noticeTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
 
-            String orientationString= dat.get(DataKey._2501_ORIENTATION);
-            String longitudeString = dat.get(DataKey._2502_LONGITUDE);
-            String latitudeString = dat.get(DataKey._2503_LATITUDE);
+            final String orientationString= dat.get(DataKey._2501_ORIENTATION);
+            final String longitudeString = dat.get(DataKey._2502_LONGITUDE);
+            final String latitudeString = dat.get(DataKey._2503_LATITUDE);
 
-            boolean isValid = false;
-            if (NumberUtils.isDigits(orientationString)) {
+            boolean isFault = isGpsFault(orientationString, longitudeString, latitudeString);
+            if (isFault) {
+                // region 定位异常逻辑
 
-                final int orientationValue = NumberUtils.toInt(orientationString);
-                // 根据国标表15, 最低位为0时表示有效定位
-                final int effectiveMask = 0x00000001;
-                final int effectiveOrientation = 0x00000000;
-                if((orientationValue & effectiveMask) == effectiveOrientation) {
+                vidGpsNormalCount.remove(vid);
 
-                    if(NumberUtils.isDigits(longitudeString)
-                        && NumberUtils.isDigits(latitudeString)){
+                final int gpsFaultCount = vidGpsFaultCount.getOrDefault(vid, 0) + 1;
+                vidGpsFaultCount.put(vid, gpsFaultCount);
 
-                        final int longitudeValue = NumberUtils.toInt(longitudeString);
-                        final int latitudeValue = NumberUtils.toInt(latitudeString);
+                paramsRedisUtil.autoLog(
+                    vid,
+                    ()-> logger.info(
+                        "VID[{}]判定为GPS故障第[{}]次",
+                        vid,
+                        gpsFaultCount));
 
-                        // 国标中定义“以度为单位的值乘以 10 的 6 次方，精确到百万分之一度”
-                        final int minLongitude = 0;
-                        final int maxLongitude = 180000000;
-                        final int minLatitude = 0;
-                        final int maxLatitude = 90000000;
+                final Map<String, Object> gpsFaultNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
+                if (MapUtils.isEmpty(gpsFaultNotice)) {
+                    gpsFaultNotice.put("msgType", "NO_POSITION_VEH");
+                    gpsFaultNotice.put("msgId", UUID.randomUUID().toString());
+                    gpsFaultNotice.put("vid", vid);
+                    vidGpsNotice.put(vid, gpsFaultNotice);
 
-                        if (longitudeValue >= minLongitude && longitudeValue < maxLongitude
-                            && latitudeValue >= minLatitude && latitudeValue < maxLatitude) {
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        ()-> logger.info(
+                            "VID[{}]GPS故障首帧缓存初始化",
+                            vid));
 
-                            isValid = true;
-                        }
-                    }
                 }
-            }
-            if (!isValid) {
 
-                int cnts = 0;
-                //vidnogps缓存无gps车辆的vid和报文帧数
-                if (vidNoGps.containsKey(vid)) {
-                    cnts = vidNoGps.get(vid);
+                // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
+                int status = (int)gpsFaultNotice.getOrDefault("status", 0);
+                if (status != 0 && status != 3) {
+                    return null;
                 }
-                cnts++;
-                vidNoGps.put(vid, cnts);
-                if (cnts >= nogpsJudgeNum) {
-                    //vidgpsNotice缓存通知，第一次发通知
-                    Map<String, Object> notice = vidgpsNotice.get(vid);
-                    if (null == notice) {
-                        notice = new TreeMap<String, Object>();
-                        notice.put("msgType", "NO_POSITION_VEH");
-                        notice.put("vid", vid);
-                        notice.put("msgId", UUID.randomUUID().toString());
-                        notice.put("stime", time);
-                        notice.put("count", cnts);
-                        notice.put("status", 1);//1开始，2持续，3结束
 
-                    } else {
-                        //不是第一次了
-                        notice.put("count", cnts);
-                    }
-                    notice.put("noticetime", noticetime);
-                    vidgpsNotice.put(vid, notice);
+                if (1 == gpsFaultCount) {
+                    gpsFaultNotice.put("stime", timeString);
+                    gpsFaultNotice.put("status", 1);
 
-                    Long nowTime = date.getTime();
-                    Long firstNogpsTime = DateUtils.parseDate(notice.get("stime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
-                    //如果满足条件，将judgeIsSend中的GpsIsSend置为true，意思是已经发送了未定位通知。
-                    if (1 == (int) notice.get("status") && nowTime - firstNogpsTime > nogpsIntervalTime) {
-                        IsSendNoticeCache judgeIsSendNotice = vidIsSendNoticeCache.get(vid);
-                        if (null == judgeIsSendNotice) {
-                            judgeIsSendNotice = new IsSendNoticeCache();
-                            vidIsSendNoticeCache.put(vid, judgeIsSendNotice);
-                        }
-                        judgeIsSendNotice.gpsIsSend = true;
-                        return notice;
-
-                    }
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        ()-> logger.info(
+                            "VID[{}]GPS故障首帧更新",
+                            vid));
                 }
+
+                if(gpsFaultCount < gpsFaultFrameTriggerCount) {
+                    return null;
+                }
+
+                final Long firstGpsFaultTime;
+                try {
+                    firstGpsFaultTime = DateUtils
+                        .parseDate(
+                            gpsFaultNotice.get("stime").toString(),
+                            new String[]{FormatConstant.DATE_FORMAT})
+                        .getTime();
+                } catch (ParseException e) {
+                    logger.warn("解析开始时间异常", e);
+                    gpsFaultNotice.put("stime", timeString);
+                    return null;
+                }
+
+                if (currentTimeMillis - firstGpsFaultTime <= gpsFaultIntervalMillisecond) {
+                    return null;
+                }
+
+                gpsFaultNotice.put("status", 1);
+                gpsFaultNotice.put("slazy", gpsFaultIntervalMillisecond);
+                gpsFaultNotice.put("noticeTime", noticeTime);
+
+                //把GPS故障开始通知存储到redis中
+                recorder.save(db, gpsRedisKeys, vid, gpsFaultNotice);
+
+                paramsRedisUtil.autoLog(
+                    vid,
+                    ()-> logger.info(
+                        "VID[{}]GPS故障通知发送[{}]",
+                        vid,
+                        gpsFaultNotice.get("msgId")));
+
+
+                return gpsFaultNotice;
+                // endregion
             } else {
-                if (vidNoGps.containsKey(vid)) {//车的GPS是有效的，并且vidnogps中包含这辆车，才有可能发送结束通知报文
-                    int cnts = 0;
-                    if (vidNormalGps.containsKey(vid)) {
-                        cnts = vidNormalGps.get(vid);
-                    }
-                    cnts++;
-                    vidNormalGps.put(vid, cnts);
-                    //有效gps报文超过hasgpsJudgeNum  || 有效gps报文在（3贞以上，10贞以下）同时车辆登出
-                    if (cnts >= hasgpsJudgeNum || (cnts > 3 && null != dat.get(SUBMIT_LOGIN.LOGOUT_TIME))) {
+                // region 定位正常逻辑
 
-                        vidNormalGps.remove(vid);
-                        IsSendNoticeCache cache=vidIsSendNoticeCache.get(vid);
-                        //如果未定位开始通知没有发送，则不会发送结束通知，只会把各个缓存清空
-                        if (null != cache && !cache.gpsIsSend) {
-                            vidNoGps.remove(vid);
-                            vidgpsNotice.remove(vid);
-                            return null;
-                        }
+                vidGpsFaultCount.remove(vid);
 
-                        if(null == cache){
-                            cache = new IsSendNoticeCache();
-                            vidIsSendNoticeCache.put(vid,cache);
-                        }
-
-                        Map<String, Object> notice = vidgpsNotice.get(vid);
-                        vidNoGps.remove(vid);
-                        vidgpsNotice.remove(vid);
-                        cache.gpsIsSend = false;
-                        if (null != notice) {
-                            String location = longitudeString + "," + latitudeString;
-                            notice.put("status", 3);
-                            notice.put("location", location);
-                            notice.put("etime", time);
-                            notice.put("noticetime", noticetime);
-                            return notice;
-                        }
-                    }
+                final Map<String, Object> gpsNormalNotice = vidGpsNotice.get(vid);
+                if(null == gpsNormalNotice) {
+                    return null;
                 }
+
+                final int gpsNormalCount = vidGpsNormalCount.getOrDefault(vid, 0) + 1;
+                vidGpsNormalCount.put(vid, gpsNormalCount);
+
+                paramsRedisUtil.autoLog(
+                    vid,
+                    ()-> logger.info(
+                        "VID[{}]判定为GPS正常第[{}]次",
+                        vid,
+                        gpsNormalCount));
+
+                // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
+                final int status = (int)gpsNormalNotice.getOrDefault("status", 0);
+                if (status != 1 && status != 2) {
+                    return null;
+                }
+
+                if(1 == gpsNormalCount) {
+
+                    final String location = DataUtils.buildLocation(
+                        longitudeString,
+                        latitudeString
+                    );
+
+                    gpsNormalNotice.put("etime", timeString);
+                    gpsNormalNotice.put("elocation", location);
+                    // 兼容性暂留
+                    gpsNormalNotice.put("location", location);
+
+                    paramsRedisUtil.autoLog(
+                        vid,
+                        ()-> logger.info(
+                            "VID[{}]GPS正常首帧初始化",
+                            vid));
+                }
+
+                if(gpsNormalCount < gpsNormalFrameTriggerCount) {
+                    return null;
+                }
+
+                final Long firstGpsNormalTime;
+                try {
+                    firstGpsNormalTime = DateUtils.parseDate(
+                        gpsNormalNotice.get("etime").toString(),
+                        new String[]{FormatConstant.DATE_FORMAT}).getTime();
+                } catch (ParseException e) {
+                    logger.warn("解析结束时间异常", e);
+                    gpsNormalNotice.put("etime", timeString);
+                    return null;
+                }
+
+                if (currentTimeMillis - firstGpsNormalTime <= gpsNormalIntervalMillisecond) {
+                    return null;
+                }
+
+                gpsNormalNotice.put("status", 3);
+                gpsNormalNotice.put("elazy", lowsocIntervalMillisecond);
+                gpsNormalNotice.put("noticeTime", noticeTime);
+
+                vidGpsNotice.remove(vid);
+                recorder.del(db, gpsRedisKeys, vid);
+
+                paramsRedisUtil.autoLog(
+                    vid,
+                    ()-> logger.info(
+                        "VID[{}]GPS正常通知发送",
+                        vid,
+                        gpsNormalNotice.get("msgId")));
+
+                return gpsNormalNotice;
+                // endregion
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    @NotNull
+    private boolean isGpsFault(
+        @Nullable String orientationString,
+        @Nullable String longitudeString,
+        @Nullable String latitudeString) {
+
+        if (!NumberUtils.isDigits(orientationString)) {
+            return true;
+        }
+
+        final int orientationValue = NumberUtils.toInt(orientationString);
+        // 根据国标表15, 最低位为0时表示有效定位
+        final int effectiveMask = 0x00000001;
+        final int effectiveOrientation = 0x00000000;
+        if ((orientationValue & effectiveMask) != effectiveOrientation) {
+            return true;
+        }
+
+        if (!NumberUtils.isDigits(longitudeString)
+            || !NumberUtils.isDigits(latitudeString)) {
+            return true;
+        }
+
+        final int longitudeValue = NumberUtils.toInt(longitudeString);
+        final int latitudeValue = NumberUtils.toInt(latitudeString);
+
+        // 国标中定义“以度为单位的值乘以 10 的 6 次方，精确到百万分之一度”
+        final int minLongitude = 0;
+        final int maxLongitude = 180000000;
+        final int minLatitude = 0;
+        final int maxLatitude = 90000000;
+
+        if (longitudeValue >= minLongitude && longitudeValue < maxLongitude
+            && latitudeValue >= minLatitude && latitudeValue < maxLatitude) {
+
+            return false;
+        }
+
+        return true;
     }
 
     private Map<String, Object> onOffline(Map<String, String> dat) {
@@ -1391,7 +1476,7 @@ public class CarRuleHandler implements InfoNotice {
                 Map<String, Object> notice = vidOnOffNotice.get(vid);
                 if (null == notice) {
                     String noticetime = DateFormatUtils.format(new Date(), FormatConstant.DATE_FORMAT);
-                    notice = new TreeMap<String, Object>();
+                    notice = new TreeMap<>();
                     notice.put("msgType", "ON_OFF");
                     notice.put("vid", vid);
                     notice.put("vin", vin);
@@ -1481,9 +1566,9 @@ public class CarRuleHandler implements InfoNotice {
         if (null == lastTime || lastTime.size() == 0) {
             return null;
         }
-        List<Map<String, Object>> notices = new LinkedList<Map<String, Object>>();
+        List<Map<String, Object>> notices = new LinkedList<>();
         String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
-        List<String> needRemoves = new LinkedList<String>();
+        List<String> needRemoves = new LinkedList<>();
         for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
             long last = entry.getValue();
             if (now - last > offlinetime) {
@@ -1513,9 +1598,9 @@ public class CarRuleHandler implements InfoNotice {
         if (null == lastTime || lastTime.size() == 0) {
             return null;
         }
-        List<Map<String, Object>> notices = new LinkedList<Map<String, Object>>();
+        List<Map<String, Object>> notices = new LinkedList<>();
         String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
-        List<String> needRemoves = new LinkedList<String>();
+        List<String> needRemoves = new LinkedList<>();
         for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
             long last = entry.getValue();
             if (now - last > offlinetime) {
@@ -1553,7 +1638,7 @@ public class CarRuleHandler implements InfoNotice {
                         notices.add(msg);
                     }
                 }
-                msg = vidgpsNotice.get(vid);
+                msg = vidGpsNotice.get(vid);
                 if (null != msg) {
 
                     getOffline(msg, noticetime);
@@ -1585,7 +1670,7 @@ public class CarRuleHandler implements InfoNotice {
             vidFlyNotice.remove(vid);
             vidSocNotice.remove(vid);
             vidcanNotice.remove(vid);
-            vidgpsNotice.remove(vid);
+            vidGpsNotice.remove(vid);
             vidSpeedGtZeroNotice.remove(vid);
             vidIgniteShutNotice.remove(vid);
             vidOnOffNotice.remove(vid);
@@ -1600,8 +1685,8 @@ public class CarRuleHandler implements InfoNotice {
             vidNormSoc.remove(vid);
             vidNoCanCount.remove(vid);
             vidNormalCanCount.remove(vid);
-            vidNoGps.remove(vid);
-            vidNormalGps.remove(vid);
+            vidGpsFaultCount.remove(vid);
+            vidGpsNormalCount.remove(vid);
 
         }
         if (notices.size() > 0) {
