@@ -18,6 +18,7 @@
     <modules>
         <!-- 计算引擎 -->
         <module>calc-engine</module>
+        <module>calc-ctfo</module>
     </modules>
 
     <!-- 公共属性 -->
