@@ -27,7 +27,7 @@
         <!-- 环境组件版本开始 -->
         <!--http://storm.apache.org/releases/1.0.6/index.html-->
         <!-- http://storm.apache.org/releases/current/index.html -->
-        <storm.version>1.0.3</storm.version>
+        <storm.version>1.2.2</storm.version>
         <!-- Kafka version used by old storm-kafka spout code -->
         <storm.kafka.version>0.8.2.1</storm.kafka.version>
         <storm.kafka.artifact.id>kafka_2.10</storm.kafka.artifact.id>
@@ -124,6 +124,10 @@
                 <version>${storm.version}</version>
                 <scope>provided</scope>
                 <exclusions>
+                    <exclusion>
+                        <artifactId>clojure</artifactId>
+                        <groupId>org.clojure</groupId>
+                    </exclusion>
                     <exclusion>
                         <artifactId>log4j-over-slf4j</artifactId>
                         <groupId>org.slf4j</groupId>
