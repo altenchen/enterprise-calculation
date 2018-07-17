@@ -28,9 +28,9 @@
         <!--http://storm.apache.org/releases/1.0.6/index.html-->
         <!-- http://storm.apache.org/releases/current/index.html -->
         <storm.version>1.0.3</storm.version>
-        <clojure.version>1.7.0</clojure.version>
-        <slf4j.version>1.7.7</slf4j.version>
-        <log4j.version>2.1</log4j.version>
+        <!-- Kafka version used by old storm-kafka spout code -->
+        <storm.kafka.version>0.8.2.1</storm.kafka.version>
+        <storm.kafka.artifact.id>kafka_2.10</storm.kafka.artifact.id>
         <!-- https://www.cloudera.com/documentation/enterprise/release-notes/topics/cdh_vd_cdh5_maven_repo_54x.html#concept_rcg_gwm_hs -->
         <cdh.version>5.4.3</cdh.version>
         <zookeeper.version>3.4.5-cdh${cdh.version}</zookeeper.version>
@@ -41,12 +41,14 @@
         <!-- 企业组件版本结束 -->
 
         <!-- 工具组件版本开始 -->
-        <fastjson.version>1.2.47</fastjson.version>
-        <mysql.connector.version>8.0.11</mysql.connector.version>
-        <jedis.version>2.4.2</jedis.version>
         <commons.collections.version>3.2.2</commons.collections.version>
         <guava.version>16.0.1</guava.version>
-        <jersey.core.version>1.19.4</jersey.core.version>
+        <gson.version>2.8.5</gson.version>
+        <fastjson.version>1.2.47</fastjson.version>
+        <slf4j.version>1.7.7</slf4j.version>
+        <mysql.connector.version>8.0.11</mysql.connector.version>
+        <jedis.version>2.4.2</jedis.version>
+        <jersey.version>1.19.4</jersey.version>
         <dagger.version>2.16</dagger.version>
         <!-- 工具组件版本结束 -->
 
@@ -102,7 +104,8 @@
 
             <!-- 小心 CTFO 组件内部的兼容性 -->
             <!-- com.bitnei.bigdata:datacenter:2.4.2 嵌入2.4.2 兼容性风险. -->
-            <!-- org.apache.storm:storm-starter:1.0.3 嵌入2.7.0 兼容性风险. -->
+            <!-- org.apache.storm:storm-redis:1.0.3 嵌入2.7.0 兼容性风险. -->
+            <!-- org.apache.storm:storm-redis:1.2.2 嵌入2.9.0 兼容性风险. -->
             <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
             <dependency>
                 <groupId>redis.clients</groupId>
@@ -114,21 +117,6 @@
 
             <!-- Storm 依赖开始 -->
 
-            <!-- https://mvnrepository.com/artifact/org.clojure/clojure -->
-            <dependency>
-                <groupId>org.clojure</groupId>
-                <artifactId>clojure</artifactId>
-                <version>${clojure.version}</version>
-            </dependency>
-
-            <!-- org.apache.storm:storm-core 提供 -->
-            <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>${slf4j.version}</version>
-            </dependency>
-
             <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-core -->
             <dependency>
                 <groupId>org.apache.storm</groupId>
@@ -137,20 +125,12 @@
                 <scope>provided</scope>
                 <exclusions>
                     <exclusion>
-                        <groupId>org.clojure</groupId>
-                        <artifactId>clojure</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
                         <artifactId>log4j-over-slf4j</artifactId>
+                        <groupId>org.slf4j</groupId>
                     </exclusion>
                     <exclusion>
-                        <groupId>org.apache.logging.log4j</groupId>
                         <artifactId>log4j-slf4j-impl</artifactId>
+                        <groupId>org.apache.logging.log4j</groupId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -172,28 +152,18 @@
                 </exclusions>
             </dependency>
 
-            <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-redis -->
+            <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka -->
             <dependency>
-                <groupId>org.apache.storm</groupId>
-                <artifactId>storm-redis</artifactId>
-                <version>${storm.version}</version>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>${storm.kafka.artifact.id}</artifactId>
+                <version>${storm.kafka.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <artifactId>slf4j-api</artifactId>
+                        <groupId>org.slf4j</groupId>
+                    </exclusion>
+                </exclusions>
             </dependency>
-
-            <!-- 集成了大量工具类, 暂时保持不变 -->
-            <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-starter -->
-            <dependency>
-                <groupId>org.apache.storm</groupId>
-                <artifactId>storm-starter</artifactId>
-                <version>${storm.version}</version>
-            </dependency>
-
-            <!-- org.apache.storm:storm-starter 嵌入 -->
-            <!--https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients-->
-            <!--<dependency>-->
-            <!--<groupId>org.apache.kafka</groupId>-->
-            <!--<artifactId>kafka-clients</artifactId>-->
-            <!--<version>0.8.2.1</version>-->
-            <!--</dependency>-->
 
             <!-- Storm 依赖结束 -->
 
@@ -204,6 +174,7 @@
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
                 <version>${zookeeper.version}</version>
+                <scope>runtime</scope>
                 <exclusions>
                     <exclusion>
                         <artifactId>slf4j-api</artifactId>
@@ -237,6 +208,35 @@
 
             <!-- 工具组件依赖开始 -->
 
+            <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/commons-collections/commons-collections -->
+            <dependency>
+                <groupId>commons-collections</groupId>
+                <artifactId>commons-collections</artifactId>
+                <version>${commons.collections.version}</version>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>${gson.version}</version>
+            </dependency>
+
             <!-- https://mvnrepository.com/artifact/com.alibaba/fastjson -->
             <dependency>
                 <groupId>com.alibaba</groupId>
@@ -244,49 +244,11 @@
                 <version>${fastjson.version}</version>
             </dependency>
 
-            <!-- org.apache.storm:storm-starter 嵌入 -->
-            <!-- https://mvnrepository.com/artifact/commons-collections/commons-collections -->
-            <!--<dependency>-->
-            <!--<groupId>commons-collections</groupId>-->
-            <!--<artifactId>commons-collections</artifactId>-->
-            <!--<version>${commons.collections.version}</version>-->
-            <!--</dependency>-->
-
-            <!-- org.apache.storm:storm-starter 嵌入 -->
-            <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
-            <!--<dependency>-->
-            <!--<groupId>com.google.guava</groupId>-->
-            <!--<artifactId>guava</artifactId>-->
-            <!--<version>${guava.version}</version>-->
-            <!--</dependency>-->
-
-            <!-- org.apache.storm:storm-starter 嵌入 -->
             <!-- https://mvnrepository.com/artifact/com.sun.jersey/jersey-core -->
-            <!--<dependency>-->
-            <!--<groupId>com.sun.jersey</groupId>-->
-            <!--<artifactId>jersey-core</artifactId>-->
-            <!--<version>1.19.4</version>-->
-            <!--</dependency>-->
-
-            <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api -->
             <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-api</artifactId>
-                <version>${log4j.version}</version>
-            </dependency>
-
-            <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-core</artifactId>
-                <version>${log4j.version}</version>
-            </dependency>
-
-            <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-slf4j-impl -->
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-slf4j-impl</artifactId>
-                <version>${log4j.version}</version>
+                <groupId>com.sun.jersey</groupId>
+                <artifactId>jersey-core</artifactId>
+                <version>${jersey.version}</version>
             </dependency>
 
             <!-- 工具组件依赖结束 -->
@@ -310,6 +272,7 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-simple</artifactId>
                 <version>${slf4j.version}</version>
+                <scope>test</scope>
             </dependency>
 
             <!-- https://mvnrepository.com/artifact/org.junit.platform/junit-platform-surefire-provider -->
@@ -343,27 +306,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-
-        <!-- org.apache.storm:storm-core 提供 -->
-        <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
-        <!--<dependency>-->
-        <!--<groupId>org.slf4j</groupId>-->
-        <!--<artifactId>slf4j-api</artifactId>-->
-        <!--</dependency>-->
-
-        <!-- org.apache.storm:storm-starter 嵌入 -->
-        <!-- https://mvnrepository.com/artifact/commons-collections/commons-collections -->
-        <!--<dependency>-->
-        <!--<groupId>commons-collections</groupId>-->
-        <!--<artifactId>commons-collections</artifactId>-->
-        <!--</dependency>-->
-
-        <!-- org.apache.storm:storm-starter 嵌入 -->
-        <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
-        <!--<dependency>-->
-        <!--<groupId>com.google.guava</groupId>-->
-        <!--<artifactId>guava</artifactId>-->
-        <!--</dependency>-->
 
         <!-- 工具组件依赖结束 -->
 

@@ -37,8 +37,9 @@
         </dependency>
 
         <!-- 小心 CTFO 组件内部的兼容性 -->
-        <!-- com.bitnei.bigdata:datacenter:2.4.2 嵌入2.4.2 兼容性风险. -->
-        <!-- org.apache.storm:storm-starter:1.0.3 嵌入2.7.0 兼容性风险. -->
+        <!-- com.bitnei.bigdata:datacenter:2.4.2 集成2.4.2 兼容性风险. -->
+        <!-- org.apache.storm:storm-redis:1.0.3 集成2.7.0 兼容性风险. -->
+        <!-- org.apache.storm:storm-redis:1.2.2 集成2.9.0 兼容性风险. -->
         <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
         <dependency>
             <groupId>redis.clients</groupId>
@@ -76,11 +77,10 @@
             <artifactId>storm-kafka</artifactId>
         </dependency>
 
-        <!-- 集成了大量工具类, 暂时保持不变 -->
-        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-starter -->
+        <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka -->
         <dependency>
-            <groupId>org.apache.storm</groupId>
-            <artifactId>storm-starter</artifactId>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>${storm.kafka.artifact.id}</artifactId>
         </dependency>
 
         <!-- Storm 依赖结束 -->
@@ -110,18 +110,35 @@
 
         <!-- 工具组件依赖开始 -->
 
+        <!-- https://mvnrepository.com/artifact/commons-collections/commons-collections -->
+        <dependency>
+            <groupId>commons-collections</groupId>
+            <artifactId>commons-collections</artifactId>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/com.alibaba/fastjson -->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
         </dependency>
 
-        <!-- org.apache.storm:storm-starter 嵌入 -->
         <!-- https://mvnrepository.com/artifact/com.sun.jersey/jersey-core -->
-        <!--<dependency>-->
-        <!--<groupId>com.sun.jersey</groupId>-->
-        <!--<artifactId>jersey-core</artifactId>-->
-        <!--</dependency>-->
+        <dependency>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-core</artifactId>
+        </dependency>
 
         <!-- 工具组件依赖结束 -->
 
