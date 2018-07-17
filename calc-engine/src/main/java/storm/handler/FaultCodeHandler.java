@@ -58,7 +58,7 @@ public class FaultCodeHandler {
     /**
      * 最近一次从数据库拉取规则的时间
      */
-    private long lastPullRuleTime = System.currentTimeMillis();
+    private long lastPullRuleTime = 0;
 
     /**
      * 处理一些数据库查询的事情

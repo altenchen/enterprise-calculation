@@ -9,6 +9,7 @@ import java.util.*;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -507,6 +508,7 @@ public final class Conn {
         final Map<String, FaultTypeSingleBit> faultTypes = new TreeMap<>();
 
         if (StringUtils.isBlank(alarm_code_bit_sql)) {
+            logger.info("按位解析故障码查询语句为空.");
             return faultTypes;
         }
 
@@ -533,25 +535,30 @@ public final class Conn {
             // exception_id, exception
             final Map<String, ExceptionSingleBit> faultExceptionsCache = new TreeMap<>();
 
+            int count = 0;
             while(analyzeBitResult.next()) {
+
+                ++count;
+                logger.trace("开始解析第[{}]条规则", count);
 
                 // 故障码Id
                 final String fault_id = analyzeBitResult.getString(1);
                 if(StringUtils.isBlank(fault_id)) {
+                    logger.warn("空白的故障码.");
                     continue;
                 }
 
                 // 故障码类型(内部协议标号)
                 final String fault_type = analyzeBitResult.getString(2);
                 if (StringUtils.isBlank(fault_id)) {
-                    logger.trace("故障码[{}]: 空白的故障码类型.", fault_id);
+                    logger.warn("故障码[{}]: 空白的故障码类型.", fault_id);
                     continue;
                 }
 
                 // 解析方式 1-按字节, 2-按位
                 final String analyze_type = analyzeBitResult.getString(3);
-                if (StringUtils.isEmpty(analyze_type) || !StringUtils.isNumeric(analyze_type)) {
-                    logger.trace("故障码[{}]: 无效的解析方式[{}].", fault_id, analyze_type);
+                if (!NumberUtils.isDigits(analyze_type)) {
+                    logger.warn("故障码[{}]: 无效的解析方式[{}].", fault_id, analyze_type);
                     continue;
                 }
 
@@ -561,14 +568,17 @@ public final class Conn {
                 if(isAnalyzeByBit) {
 
                     // 位长, 目前固定为1
-                    final String param_length = analyzeBitResult.getString(4);
-                    if (StringUtils.isEmpty(param_length) || !StringUtils.isNumeric(param_length)) {
-                        logger.trace("故障码[{}]: 按位解析方式下, 空白的位长类型.", fault_id);
+                    final String param_length = StringUtils.defaultIfEmpty(
+                        analyzeBitResult.getString(4),
+                        "1");
+                    if (!NumberUtils.isDigits(param_length)) {
+                        logger.warn("故障码[{}]: 按位解析方式下, 无效的位长类型[{}].", fault_id, param_length);
                         continue;
                     }
 
                     // 目前只处理按1位解析规则, 其它的走老规则
-                    if(param_length != "1") {
+                    if(!"1".equals(param_length)) {
+                        logger.warn("故障码[{}]: 按位解析目前只支持位长1, 配置[{}]暂不支持.", fault_id, param_length);
                         continue;
                     }
 
@@ -584,15 +594,15 @@ public final class Conn {
 
                     // 起始位偏移量
                     final String start_point = analyzeBitResult.getString(6);
-                    if (StringUtils.isEmpty(start_point) || !StringUtils.isNumeric(start_point)) {
-                        logger.trace("故障码[{}]: 按位解析方式下, 空白的起始位偏移量.", fault_id);
+                    if (!NumberUtils.isDigits(start_point)) {
+                        logger.warn("故障码[{}]: 按位解析方式下, 无效的起始位偏移量[{}].", fault_id, start_point);
                         continue;
                     }
 
                     // 异常码Id
                     final String exception_id = analyzeBitResult.getString(7);
                     if (StringUtils.isBlank(exception_id)) {
-                        logger.trace("故障码[{}]: 按位解析方式下, 空白的异常码Id.", fault_id);
+                        logger.warn("故障码[{}]: 按位解析方式下, 空白的异常码Id.", fault_id);
                         continue;
                     }
 
@@ -609,17 +619,19 @@ public final class Conn {
                         continue;
                     }
 
-                    // 异常码码值, 应为目前固定位长为1, 所以码值也只有1了
+                    // 异常码码值, 因为目前固定位长为1, 所以码值也只有1了
                     final String exception_code = analyzeBitResult.getString(8);
-                    if (StringUtils.isEmpty(exception_code) || !StringUtils.isNumeric(exception_code)) {
-                        logger.trace("故障码[{}]: 按位解析方式下, 空白的异常码码值.", fault_id);
+                    if (!NumberUtils.isDigits(exception_code)) {
+                        logger.warn("故障码[{}]: 按位解析方式下, 无效的异常码码值[{}].", fault_id, "exception_code");
                         continue;
                     }
 
                     // 时间阈值
-                    final String time_threshold = analyzeBitResult.getString(9);
-                    if (StringUtils.isEmpty(time_threshold) || !StringUtils.isNumeric(time_threshold)) {
-                        logger.trace("故障码[{}]: 按位解析方式下, 空白的时间阈值.", fault_id);
+                    final String time_threshold = StringUtils.defaultIfEmpty(
+                        analyzeBitResult.getString(9),
+                        "0");
+                    if (!NumberUtils.isDigits(time_threshold)) {
+                        logger.warn("故障码[{}]: 按位解析方式下, 无效的时间阈值[{}].", fault_id, time_threshold);
                         continue;
                     }
 
@@ -637,9 +649,11 @@ public final class Conn {
                     }
 
                     // 告警等级
-                    final String response_level = analyzeBitResult.getString(10);
-                    if (StringUtils.isEmpty(response_level) || !StringUtils.isNumeric(response_level)) {
-                        logger.trace("故障码[{}]: 按位解析方式下, 空白的告警等级.", fault_id);
+                    final String response_level = StringUtils.defaultIfEmpty(
+                        analyzeBitResult.getString(10),
+                        "0");
+                    if (!NumberUtils.isDigits(response_level)) {
+                        logger.warn("故障码[{}]: 按位解析方式下, 无效的告警等级[{}].", fault_id, response_level);
                         continue;
                     }
 
@@ -690,7 +704,7 @@ public final class Conn {
                     }
                 }
             }
-            logger.info("更新获取到[{}]条有效按位解析故障码规则", faultExceptionsCache.size());
+            logger.info("更新获取到[{}]条按位解析故障码规则, 其中[{}]条有效.", count, faultExceptionsCache.size());
 
 
 //            while(analyzeValueResult.next()) {
@@ -715,7 +729,7 @@ public final class Conn {
 //            }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.warn("更新按位解析故障码规则异常", e);
         } finally {
             //close(analyzeValueResult, analyzeBitResult, statement, connection);
             close(analyzeBitResult, statement, connection);
