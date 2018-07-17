@@ -7,6 +7,7 @@
         <groupId>cn.bitnei</groupId>
         <artifactId>enterprise-calculation</artifactId>
         <version>0.4.x-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <!-- 模块标识 -->
@@ -49,21 +50,6 @@
         <!-- 北理大数据依赖结束 -->
 
         <!-- Storm 依赖开始 -->
-
-        <!-- https://mvnrepository.com/artifact/org.clojure/clojure -->
-        <dependency>
-            <groupId>org.clojure</groupId>
-            <artifactId>clojure</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- org.apache.storm:storm-core 提供 -->
-        <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-core -->
         <dependency>
