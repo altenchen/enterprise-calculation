@@ -659,7 +659,7 @@ public final class Conn {
 
                     final byte level;
                     try {
-                        level = Byte.decode(time_threshold);
+                        level = Byte.decode(response_level);
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
                         logger.warn(
