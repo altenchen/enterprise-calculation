@@ -21,6 +21,7 @@ import storm.util.ParamsRedisUtil;
 import storm.util.dbconn.Conn;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * 故障处理
@@ -74,9 +75,9 @@ public class FaultCodeHandler {
     private Collection<FaultCodeByteRule> rules = CollectionUtils.EMPTY_COLLECTION;
 
     /**
-     * vidRuleMsgs是每辆车的故障码信息缓存, <vid, <faultId, <k,v>>>
+     * vidRuleMsgs是每辆车的故障码信息缓存, <vid, <faultId, <exceptionId,<k,v>>>>
      */
-    private final Map<String, Map<String,Map<String,Object>>> vidRuleMsg = new HashMap<>();
+    private final Map<String, Map<String, Map<String, Map<String,Object>>>> vidRuleMsg = new ConcurrentSkipListMap<>();
     // endregion
 
     // region 按位解析
@@ -89,14 +90,14 @@ public class FaultCodeHandler {
     /**
      * vidRuleMsgs是每辆车的故障码信息缓存, <vid, <exceptionId, <k,v>>>
      */
-    private final Map<String, Map<String,Map<String,Object>>> vidBitRuleMsg = new HashMap<>();
+    private final Map<String, Map<String,Map<String,Object>>> vidBitRuleMsg = new ConcurrentSkipListMap<>();
 
     // endregion 按位解析
 
     /**
      * 所有车辆的最后一帧报文的时间, <vid, lastFrameTimeMillisecond>
      */
-    private Map<String, Long> lastTime = new HashMap<>();
+    private Map<String, Long> lastTime = new ConcurrentSkipListMap<>();
 
     {
         try {
@@ -142,32 +143,43 @@ public class FaultCodeHandler {
         //needRemoves缓存需要移除的故障码id（因为map不能在遍历的时候删除id或者放入id，否则会引发并发修改异常）
         List<String> needRemoves = new LinkedList<>();
         //lastTime为所有车辆的最后一帧报文的时间（vid，lastTime）
-        for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
-            long last = entry.getValue();
+        for (final Map.Entry<String, Long> entry : lastTime.entrySet()) {
+            final long last = entry.getValue();
             //如果这辆车已经离线，则把这辆车的故障码缓存移除，并且针对每个故障都发一个结束通知
             //offlinetime为车辆多长时间算是离线，
-            if (now - last > offlineTimeMillisecond) {
-                String vid = entry.getKey();
-                needRemoves.add(vid);
-                //vidRuleMsgs是每辆车的故障码信息缓存
-                Map<String,Map<String,Object>> ruleMsgs = vidRuleMsg.get(vid);
-                if (null != ruleMsgs) {
-                    for (Map.Entry<String,Map<String,Object>> ruleEntry : ruleMsgs.entrySet()) {
+            if (now - last <= offlineTimeMillisecond) {
+                continue;
+            }
 
-                        Map<String, Object> msg = ruleEntry.getValue();
-                        if (null != msg) {
-                            msg.put("noticetime", noticetime);
-                            msg.put("status", 3);
-                            msg.put("etime", noticetime);
+            final String vid = entry.getKey();
+            needRemoves.add(vid);
+            //vidRuleMsgs是每辆车的故障码信息缓存
+            final Map<String, Map<String,Map<String,Object>>> vidNotices = vidRuleMsg.get(vid);
+            if (!MapUtils.isNotEmpty(vidNotices)) {
+                continue;
+            }
 
-                            notices.add(msg);
-                        }
+            for (final Map<String, Map<String, Object>> faultNotices : vidNotices.values()) {
+                if (!MapUtils.isNotEmpty(faultNotices)) {
+                    continue;
+                }
+
+                for (Map<String, Object> exceptionNotice : faultNotices.values()) {
+                    if (!MapUtils.isNotEmpty(exceptionNotice)) {
+                        continue;
                     }
+
+                    deleteNoticeMsg(
+                        exceptionNotice,
+                        noticetime,
+                        "", noticetime);
+
+                    notices.add(exceptionNotice);
                 }
             }
         }
 
-        for (String vid : needRemoves) {
+        for (final String vid : needRemoves) {
             lastTime.remove(vid);
             vidRuleMsg.remove(vid);
         }
@@ -274,7 +286,7 @@ public class FaultCodeHandler {
                         if(1 == (int)alarmMessage.get(NOTICE_STATUS)) {
                             notices.add(alarmMessage);
                             paramsRedisUtil.autoLog(vid, ()->{
-                                logger.info("VID[{}]按位解析FID[{}]触发", vid, bit.exceptionId);
+                                logger.info("VID[{}]按位解析EID[{}]触发", vid, bit.exceptionId);
                             });
                         }
                     } else {
@@ -282,11 +294,15 @@ public class FaultCodeHandler {
                             final Map<String, Object> alarmMessage = alarms.get(bit.exceptionId);
                             alarms.remove(bit.exceptionId);
 
-                            deleteNoticeMsg(alarmMessage, time, location, bit.exceptionId, noticeTime);
+                            deleteNoticeMsg(
+                                alarmMessage,
+                                time,
+                                location,
+                                noticeTime);
                             notices.add(alarmMessage);
 
                             paramsRedisUtil.autoLog(vid, ()->{
-                                logger.info("VID[{}]按位解析FID[{}]解除", vid, bit.exceptionId);
+                                logger.info("VID[{}]按位解析EID[{}]解除", vid, bit.exceptionId);
                             });
                         }
                     }
@@ -297,15 +313,34 @@ public class FaultCodeHandler {
         // 没有匹配按位处理规则, 转为按字节处理
         if(!processByBit) {
 
-            paramsRedisUtil.autoLog(vid, ()->{
-                logger.info("VID[{}]故障类型[{}]按字节解析, 一共[{}]条异常码.", vid, faultType, byteRules.size());
-            });
+            final FaultCodeByteRule[] faultCodeByteRules = byteRules.stream()
+                .filter(r -> StringUtils.equals(r.faultType, faultType))
+                .toArray(FaultCodeByteRule[]::new);
 
-            for (FaultCodeByteRule ruleCode: byteRules.stream()
-                .filter(r -> r.faultType == faultType)
-                .toArray(FaultCodeByteRule[]::new)) {
+            paramsRedisUtil.autoLog(
+                vid,
+                () -> logger.info(
+                    "VID[{}]故障类型[{}]按值解析, 一共[{}]组故障规则.",
+                    vid,
+                    faultType,
+                    faultCodeByteRules.length
+                )
+            );
 
-                List<Map<String, Object>> msgs = byteFaultMsg(data, values, ruleCode);
+            for (FaultCodeByteRule rule: faultCodeByteRules) {
+
+                paramsRedisUtil.autoLog(
+                    vid,
+                    () -> logger.info(
+                        "VID[{}]故障类型[{}]按值解析, 故障码[{}]共[{}]个异常码.",
+                        vid,
+                        faultType,
+                        rule.faultId,
+                        rule.getFaultCodes().size()
+                    )
+                );
+
+                List<Map<String, Object>> msgs = byteFaultMsg(data, values, rule);
                 if (null != msgs) {
                     notices.addAll(msgs);
                 }
@@ -329,7 +364,7 @@ public class FaultCodeHandler {
         if(!vidBitRuleMsg.containsKey(vid)) {
             synchronized (ensureVehicleBitRuleMsgLock) {
                 if(!vidBitRuleMsg.containsKey(vid)) {
-                    vidBitRuleMsg.put(vid, new TreeMap<>());
+                    vidBitRuleMsg.put(vid, new ConcurrentSkipListMap<>());
                 }
             }
         }
@@ -352,83 +387,120 @@ public class FaultCodeHandler {
     /**
      * @param data 实时数据
      * @param msgFcodes 故障码
-     * @param rule 故障码告警规则
+     * @param byteRules 故障码告警规则
      * @return 故障码告警
      */
     private List<Map<String, Object>> byteFaultMsg(
-        @NotNull Map<String, String> data,
-        @NotNull long[] msgFcodes,
-        FaultCodeByteRule rule) {
+        @NotNull final Map<String, String> data,
+        @NotNull final long[] msgFcodes,
+        final FaultCodeByteRule byteRules) {
 
         final List<Map<String, Object>> notices = new LinkedList<>();
 
-        String vid = data.get(DataKey.VEHICLE_ID);
-        String time = data.get(DataKey.TIME);
+        final String vid = data.get(DataKey.VEHICLE_ID);
+        final String time = data.get(DataKey.TIME);
 
         if (StringUtils.isEmpty(vid)
                 || StringUtils.isEmpty(time)) {
             return notices;
         }
 
-        String latitude = data.get(DataKey._2503_LATITUDE);
-        String longitude = data.get(DataKey._2502_LONGITUDE);
-        String location = DataUtils.buildLocation(longitude, latitude);
+        final String latitude = data.get(DataKey._2503_LATITUDE);
+        final String longitude = data.get(DataKey._2502_LONGITUDE);
+        final String location = DataUtils.buildLocation(longitude, latitude);
 
-        Date now = new Date();
-        String noticetime = DateFormatUtils.format(now, FormatConstant.DATE_FORMAT);
-        long last = now.getTime();
+        final long currentTimeMillis = System.currentTimeMillis();
+        final String noticetime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
 
-        // 一辆车的故障信息缓存, Key是故障码Id(faultId)
-        Map<String,Map<String,Object>> ruleMsgs = vidRuleMsg.get(vid);
+        final Map<String, Map<String, Map<String,Object>>> vidNotices = vidRuleMsg.getOrDefault(vid, new ConcurrentSkipListMap<>());
+        vidRuleMsg.put(vid, vidNotices);
+
+        final String faultId = byteRules.faultId;
+
+        final Map<String, Map<String,Object>> faultNotices = vidNotices.getOrDefault(faultId, new ConcurrentSkipListMap<>());
+        vidNotices.put(faultId, faultNotices);
 
         //codes为若干个数字, 包含正常码和异常码集合
-        Iterable<FaultCodeByte> codes = rule.getFaultCodes();
-        for (FaultCodeByte faultCode : codes) {
-            //十六进制转换为十进制
-            long fcode = Long.decode(faultCode.equalCode);
-            if (ArrayUtils.contains(msgFcodes, fcode)) {
-                lastTime.put(vid, last);
-                //如果faultCode为0，则说明故障结束，发送故障结束报文
-                boolean end = (0 == faultCode.type);
-                if (end) {
-                    if (null != ruleMsgs) {
-                        Map<String, Object> msg = ruleMsgs.get(rule.faultId);
-                        if (null != msg) {
-                            ruleMsgs.remove(rule.faultId);
+        final Iterable<FaultCodeByte> rules = byteRules.getFaultCodes();
+        boolean hasExceptionCode = false;
+        // region 先处理异常码
+        for (final FaultCodeByte exceptionRule : rules) {
+            if(1 != exceptionRule.type) {
+                continue;
+            }
+            final long exceptionCode = Long.decode(exceptionRule.equalCode);
+            if (!ArrayUtils.contains(msgFcodes, exceptionCode)) {
+                continue;
+            }
+            hasExceptionCode = true;
 
-                            deleteNoticeMsg(msg, time, location,faultCode.codeId, noticetime);
-                            notices.add(msg);
-                        }
-                        return notices;
-                    }
-                }
-                boolean start = (1 == faultCode.type);
-                if (start) {
+            lastTime.put(vid, currentTimeMillis);
 
-                    if (null == ruleMsgs) {
-                        ruleMsgs = new TreeMap<>();
-                    }
-                    // 一个故障信息, 表示这个故障码是否触发
-                    Map<String, Object> msg = updateNoticeMsg(
-                        ruleMsgs.get(rule.faultId),
-                        vid,
+            final String exceptionId = exceptionRule.codeId;
+            // 一个故障信息, 表示这个故障码是否触发
+            final Map<String, Object> notice = updateNoticeMsg(
+                faultNotices.get(exceptionId),
+                vid,
+                time,
+                location,
+                exceptionId,
+                exceptionRule.alarmLevel,
+                exceptionCode,
+                noticetime);
+
+            //添加通知消息
+            if(1 == (int)notice.get(NOTICE_STATUS)) {
+                notices.add(notice);
+                paramsRedisUtil.autoLog(vid, ()->{
+                    logger.info("VID[{}]按值解析EID[{}]触发", vid, exceptionId);
+                });
+            }
+            //添加缓存
+            faultNotices.put(exceptionId, notice);
+        }
+        // endregion
+        // region 当没有异常码时, 才处理正常码.
+        if (hasExceptionCode) {
+            logger.info("VID[{}]按值解析FID[{}], 异常码和正常码同时出现, 忽略正常码.", vid, faultId);
+            return notices;
+        }
+        for (final FaultCodeByte normalRule : rules) {
+            if (0 != normalRule.type) {
+                continue;
+            }
+            final long normalCode = Long.decode(normalRule.equalCode);
+            if (!ArrayUtils.contains(msgFcodes, normalCode)) {
+                continue;
+            }
+
+            lastTime.put(vid, currentTimeMillis);
+
+            if (MapUtils.isEmpty(faultNotices)) {
+                continue;
+            }
+
+            for (final String exceptionId : faultNotices.keySet()) {
+
+                final Map<String, Object> notice = faultNotices.get(exceptionId);
+
+                if (MapUtils.isNotEmpty(notice)) {
+
+                    deleteNoticeMsg(
+                        notice,
                         time,
                         location,
-                        faultCode.codeId,
-                        faultCode.alarmLevel,
-                        fcode,
                         noticetime);
-
-                    //添加同通知消息
-                    if(1 == (int)msg.get(NOTICE_STATUS)) {
-                        notices.add(msg);
-                    }
-                    //添加缓存
-                    ruleMsgs.put(rule.faultId, msg);
-                    vidRuleMsg.put(vid, ruleMsgs);
+                    notices.add(notice);
+                    paramsRedisUtil.autoLog(vid, ()->{
+                        logger.info("VID[{}]按值解析EID[{}]解除", vid, exceptionId);
+                    });
                 }
+
+                faultNotices.remove(exceptionId);
+
             }
         }
+        // endregion
 
         return notices;
     }
@@ -475,13 +547,11 @@ public class FaultCodeHandler {
         @NotNull final Map<String, Object> notice,
         final String time,
         final String location,
-        final String normalId,
         final String noticeTime) {
 
         notice.put(NOTICE_STATUS, 3);
         notice.put("etime", time);
         notice.put("elocation", location);
-        notice.put("ruleId", normalId);
         notice.put("noticetime", noticeTime);
     }
 }

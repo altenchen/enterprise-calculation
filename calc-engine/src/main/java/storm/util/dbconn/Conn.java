@@ -278,12 +278,14 @@ public final class Conn {
         }
         return null;
     }
+
     /**
      * @return 故障码报警规则
      */
     @NotNull
     public Collection<FaultCodeByteRule> getFaultAlarmCodes(){
-        final Map<String, FaultCodeByteRule> result = new HashMap<>();
+        // <faultId, rules>
+        final Map<String, FaultCodeByteRule> result = new TreeMap<>();
 
         final List<String[]> rules = getFaultRuleCodeObjects();
 
@@ -296,26 +298,32 @@ public final class Conn {
         final byte exception_code = 6;
         final byte response_level = 7;
 
+        int count = 0;
+        final Set<String> codeIds = new HashSet<>();
+
         for (String[] objs : rules) {
+            ++count;
 
             final String faultId = objs[fault_id];
             if(StringUtils.isBlank(faultId)) {
+                logger.warn("空白的故障码.");
                 continue;
             }
 
             final String faultType = objs[fault_type];
             if(StringUtils.isBlank(faultType)) {
-                logger.trace("故障码[{}]: 空白的故障码类型.", faultType);
+                logger.warn("故障码[{}]: 空白的故障码类型.", faultType);
                 continue;
             }
 
             final String analyzeType = objs[analyze_type];
             if(StringUtils.isBlank(analyzeType)) {
-                logger.trace("故障码[{}]: 无效的解析方式[{}].", faultType, analyzeType);
+                logger.warn("故障码[{}]: 无效的解析方式[{}].", faultType, analyzeType);
                 continue;
             }
             // 解析方式 1-按字节, 2-按位; 这里只处理按字节解析的情况
             if(!"1".equals(analyzeType)) {
+                logger.warn("故障码[{}]: 无效的按值解析解析方式[{}].", faultType, analyzeType);
                 continue;
             }
 
@@ -329,6 +337,7 @@ public final class Conn {
                 .distinct()
                 .toArray(String[]::new);
             // 原逻辑没处理车型, 暂时不动
+            // TODO: 加上车型处理
 
             // 异常类型, 1-正常码, 2-异常码
             final int exceptionType;
@@ -355,6 +364,14 @@ public final class Conn {
                 logger.error("故障码[{}]异常码[{}]: 空白的异常码值.", faultType, exceptionId);
                 continue;
             }
+            // 数据库没有给十六进制数据库添加0x前缀, 则补上前缀
+            if(!StringUtils.startsWithAny(exceptionCode, new String[] {"0x", "0X"})){
+                exceptionCode = "0x" + exceptionCode;
+            }
+            if(!NumberUtils.isNumber(exceptionCode)) {
+                logger.error("故障码[{}]异常码[{}]: 无效的异常码值[{}].", faultType, exceptionId, exceptionCode);
+                continue;
+            }
 
             final int responseLevel;
             try {
@@ -365,16 +382,24 @@ public final class Conn {
                 continue;
             }
 
-            FaultCodeByteRule ruleCode = result.get(faultId);
-            if (null == ruleCode) {
-                ruleCode = new FaultCodeByteRule(faultId, faultType);
+            if (codeIds.contains(exceptionId)) {
+                logger.warn("重复的异常码[{}]", exceptionId);
+                continue;
             }
+            codeIds.add(exceptionId);
 
-            FaultCodeByte faultCode = new FaultCodeByte(exceptionId,exceptionCode, responseLevel, exceptionType);
+            final FaultCodeByteRule ruleCode = result.getOrDefault(faultId, new FaultCodeByteRule(faultId, faultType));
+            result.put(faultId, ruleCode);
+
+            final FaultCodeByte faultCode = new FaultCodeByte(
+                exceptionId,
+                exceptionCode,
+                responseLevel,
+                exceptionType);
             ruleCode.addFaultCode(faultCode);
 
-            result.put(faultId, ruleCode);
         }
+        logger.info("更新获取到[{}]条按值解析故障码规则, 其中[{}]条有效.", count, codeIds.size());
 
         return result.values();
     }
@@ -394,7 +419,7 @@ public final class Conn {
             if (null == conn) {
                 return null;
             }
-            faults = new HashMap<String, FaultRule>();
+            faults = new TreeMap<String, FaultRule>();
             s = conn.createStatement();
             rs = s.executeQuery(fault_rule_sql);
             while(rs.next()){
@@ -744,6 +769,7 @@ public final class Conn {
      */
     @NotNull
     private List<String[]> getFaultRuleCodeObjects() {
+        logger.info("开始更新按值解析故障码规则");
 
         final List<String[]> rules = new LinkedList<>();
 
@@ -753,12 +779,14 @@ public final class Conn {
 
         try {
             if (StringUtils.isEmpty(alarm_code_sql)) {
+                logger.info("按值解析故障码查询语句为空.");
                 return rules;
             }
             if (null == connection || connection.isClosed()) {
                 connection = getConn();
             }
             if (null == connection) {
+                logger.warn("创建数据库连接失败");
                 return rules;
             }
 
@@ -787,7 +815,7 @@ public final class Conn {
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.warn("更新按值解析故障码规则异常", e);
         } finally {
             close(resultSet,statement,connection);
         }
@@ -809,7 +837,7 @@ public final class Conn {
             if (null == conn) {
                 return null;
             }
-            rules = new HashMap<String, storm.dto.fault.FaultAlarmRule>();
+            rules = new TreeMap<String, storm.dto.fault.FaultAlarmRule>();
             s = conn.createStatement();
             rs = s.executeQuery(fault_alarm_rule_sql);
             while(rs.next()){
@@ -953,10 +981,10 @@ public final class Conn {
         if(null == vidFenceMap || vidFenceMap.size() == 0) {
             return null;
         }
-        Map<String, List<EleFence>> vidfences = new HashMap<String, List<EleFence>>();
+        Map<String, List<EleFence>> vidfences = new TreeMap<String, List<EleFence>>();
         try {
             Map<String, EleFence> fenceMap= fencesWithId();
-//        Map<String, List<String>> vidfenceIds = new HashMap<String, List<String>>();
+//        Map<String, List<String>> vidfenceIds = new TreeMap<String, List<String>>();
             for (String[] strings : vidFenceMap) {
                 if (null != strings && strings.length == 2) {
                     if(null != strings[0] && !"".equals(strings[0].trim())
@@ -997,7 +1025,7 @@ public final class Conn {
                 return fenceMap;
             }
             Map<String,List<Rule>> ruleMap= groupRulesById(rules);
-            fenceMap = new HashMap<String, EleFence>();
+            fenceMap = new TreeMap<String, EleFence>();
             if (null != fences && fences.size()>0) {
                 for (EleFence eleFence : fences) {
                     String fenceId = eleFence.id;
@@ -1150,7 +1178,7 @@ public final class Conn {
         }
 
         try {
-            Map<String,List<Rule>> maps= new HashMap<String,List<Rule>>();
+            Map<String,List<Rule>> maps= new TreeMap<String,List<Rule>>();
             for (Map<String, String> map : rules) {
                 if (null != map && map.size()>0) {
                     String fenceId = map.get("fenceId");
@@ -1237,7 +1265,7 @@ public final class Conn {
             return null;
         }
 
-        Map<String,List<Map<String,String>>> maps= new HashMap<String,List<Map<String, String>>>();
+        Map<String,List<Map<String,String>>> maps= new TreeMap<String,List<Map<String, String>>>();
         for (Map<String, String> map : rules) {
             if (null != map && map.size()>0) {
                 String fenceId = map.get("fenceId");

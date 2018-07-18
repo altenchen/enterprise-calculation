@@ -1,15 +1,17 @@
 package storm.dto;
 
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author xzp
  * 故障码告警规则(按字节解析)
  */
 public final class FaultCodeByteRule {
+    private static final Logger logger = LoggerFactory.getLogger(FaultCodeByteRule.class);
 
     /**
      * 故障码ID
@@ -24,7 +26,7 @@ public final class FaultCodeByteRule {
     /**
      * 异常码集合 + 正常码
      */
-    private final List<FaultCodeByte> faultCodes = new LinkedList<>();
+    private final Map<String, FaultCodeByte> faultCodes = new TreeMap<>();
 
     public FaultCodeByteRule(String faultId, String faultType) {
         this.faultId = faultId;
@@ -36,13 +38,16 @@ public final class FaultCodeByteRule {
      * @param faultCode 故障码
      */
     public void addFaultCode(@NotNull FaultCodeByte faultCode) {
-        faultCodes.add(faultCode);
+        if(faultCodes.containsKey(faultCode.codeId)) {
+            logger.warn("重复的异常码[{}]", faultCode.codeId);
+        }
+        faultCodes.put(faultCode.codeId, faultCode);
     }
 
     /**
      * 获取故障码集合
      */
-    public Iterable<FaultCodeByte> getFaultCodes() {
-        return faultCodes;
+    public Collection<FaultCodeByte> getFaultCodes() {
+        return faultCodes.values();
     }
 }
