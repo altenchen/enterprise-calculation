@@ -272,8 +272,14 @@ public class FaultCodeHandler {
         final String codeValues = data.get(faultType);
         final @NotNull long[] values = parseFaultCodes(codeValues);
         if(ArrayUtils.isEmpty(values)) {
+            paramsRedisUtil.autoLog(vid, ()->{
+                logger.info("VID[{}]故障码为空, 忽略处理.", vid);
+            });
             return;
         }
+        paramsRedisUtil.autoLog(vid, ()->{
+            logger.info("VID[{}]故障码解析[{}]:[{}]->[{}].", vid, faultType, ArrayUtils.toString(codeValues), ArrayUtils.toString(values));
+        });
 
         // 车型, 空字符串代表没有配置, 只匹配默认规则
         final String vehModel = VehicleModelCache.getInstance().getVehicleModel(vid);
@@ -334,10 +340,15 @@ public class FaultCodeHandler {
                                 noticeTime);
                             faultNotice.put(exceptionId, exceptionNotice);
 
-                            if (1 == (int) exceptionNotice.get(NOTICE_STATUS)) {
+                            final int status = (int) exceptionNotice.get(NOTICE_STATUS);
+                            if (1 == status) {
                                 notices.add(exceptionNotice);
                                 paramsRedisUtil.autoLog(vid, () -> {
                                     logger.info("VID[{}]按位解析EID[{}]触发", vid, exceptionId);
+                                });
+                            } else {
+                                paramsRedisUtil.autoLog(vid, () -> {
+                                    logger.info("VID[{}]按位解析EID[{}]持续", vid, exceptionId);
                                 });
                             }
                         } else {
@@ -353,6 +364,10 @@ public class FaultCodeHandler {
 
                                 paramsRedisUtil.autoLog(vid, () -> {
                                     logger.info("VID[{}]按位解析EID[{}]解除", vid, exceptionId);
+                                });
+                            } else {
+                                paramsRedisUtil.autoLog(vid, () -> {
+                                    logger.info("VID[{}]按位解析EID[{}]无效", vid, exceptionId);
                                 });
                             }
                         }
@@ -430,7 +445,7 @@ public class FaultCodeHandler {
     }
 
     @NotNull
-    private static long[] parseFaultCodes(@NotNull String faultCodes) {
+    public static long[] parseFaultCodes(@NotNull String faultCodes) {
         if(StringUtils.isBlank(faultCodes)) {
             return new long[0];
         }

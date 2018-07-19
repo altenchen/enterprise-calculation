@@ -145,11 +145,11 @@ public class SystemCache {
                     String statisId = "";
 
                     if( i == 0){
-                        dataId = SysDefine.ISONLINE;
+                        dataId = SysDefine.IS_ONLINE;
                         utcId = SysDefine.ONLINEUTC;
                         statisId = SysDefine.ONLINE_COUNT;
                     }else{
-                        dataId = SysDefine.ISALARM;
+                        dataId = SysDefine.IS_ALARM;
                         utcId = SysDefine.ALARMUTC;
                         statisId = SysDefine.FAULT_COUNT;
                     }

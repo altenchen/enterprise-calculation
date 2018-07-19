@@ -243,7 +243,7 @@ public class AlarmBolt extends BaseRichBolt {
                     String string = vid2Alarm.get(vid);
                     if (!StringUtils.isEmpty(string)) {
                         String[] alarmStr = string.split("_", 3);
-                        dat.put(SysDefine.ISALARM, new String(alarmStr[0]));
+                        dat.put(SysDefine.IS_ALARM, new String(alarmStr[0]));
                         dat.put(SysDefine.ALARMUTC, new String(alarmStr[1]));
                         alarmStr=null;
                     }
@@ -259,10 +259,10 @@ public class AlarmBolt extends BaseRichBolt {
             } else if (CommandType.SUBMIT_LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
                 Map<String, String> linkmap = new TreeMap<String, String>();
                 if ("1".equals(dat.get("TYPE"))) {
-                    linkmap.put(SysDefine.ISONLINE, "1");
+                    linkmap.put(SysDefine.IS_ONLINE, "1");
                 } else if ("3".equals(dat.get("TYPE"))) {
-                    linkmap.put(SysDefine.ISONLINE, "0");
-                    linkmap.put(SysDefine.ISALARM, "0");
+                    linkmap.put(SysDefine.IS_ONLINE, "0");
+                    linkmap.put(SysDefine.IS_ALARM, "0");
                 }
                 linkmap.put(SysDefine.ONLINEUTC, System.currentTimeMillis() + ""); // 增加utc字段，插入系统时间
                 /**

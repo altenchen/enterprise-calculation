@@ -160,12 +160,12 @@ public final class SysDefine {
     /** 指令类型 充电设施数据 */
     public static final String CHARGE = "CHARGE";
     /** 是否有告警 */
-    public static final String ISALARM = "10001";
+    public static final String IS_ALARM = "10001";
     /** 定时任务关键字 */
-    public static final String ISONLINE = "10002";
+    public static final String IS_ONLINE = "10002";
     /** 是否充电 */
-    public static final String ISCHARGE = "10003";
-    /** 定时任务关键字 */
+    public static final String IS_CHARGE = "10003";
+    /** 定时任务关键字, 等于最大里程数值减去最小里程数值. */
     public static final String MILEAGE = "10004";
     /** 定时任务关键字 */
     public static final String ONLINEUTC = "10005";

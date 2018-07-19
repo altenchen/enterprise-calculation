@@ -404,7 +404,7 @@ public class EsRealCalHandler{
                 esmap.put(EsField.chargeStatus, Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(chargeStatus) ? chargeStatus : "0"));
             }
         }
-        if("1".equals(dat.get(SysDefine.ISALARM)) && null != dat.get(SysDefine.ALARMUTC)){
+        if("1".equals(dat.get(SysDefine.IS_ALARM)) && null != dat.get(SysDefine.ALARMUTC)){
             esmap.put(EsField.alarmStatus, 2);
             esmap.put(EsField.alarmTime, toEsDateString(dat.get(SysDefine.ALARMUTC)));
         }else{

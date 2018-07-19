@@ -70,6 +70,48 @@ final class PartationBitTest {
         Assertions.assertEquals(3, code_31_2_3);
     }
 
+    @DisplayName("故障码测试")
+    @Test
+    void 故障码测试() {
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x0L}, (short)0, (byte)1));
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x0L}, (short)1, (byte)1));
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x0L}, (short)2, (byte)1));
+
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x1L}, (short)0, (byte)1));
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x1L}, (short)1, (byte)1));
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x1L}, (short)2, (byte)1));
+
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x2L}, (short)0, (byte)1));
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x2L}, (short)1, (byte)1));
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x2L}, (short)2, (byte)1));
+
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x3L}, (short)0, (byte)1));
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x3L}, (short)1, (byte)1));
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x3L}, (short)2, (byte)1));
+
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x4L}, (short)0, (byte)1));
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x4L}, (short)1, (byte)1));
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x4L}, (short)2, (byte)1));
+
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x5L}, (short)0, (byte)1));
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x5L}, (short)1, (byte)1));
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x5L}, (short)2, (byte)1));
+
+        Assertions.assertEquals(0, PartationBit.computeValue(new long[]{0x6L}, (short)0, (byte)1));
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x6L}, (short)1, (byte)1));
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x6L}, (short)2, (byte)1));
+
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x7L}, (short)0, (byte)1));
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x7L}, (short)1, (byte)1));
+        Assertions.assertEquals(1, PartationBit.computeValue(new long[]{0x7L}, (short)2, (byte)1));
+
+        final long code = PartationBit.computeValue(new long[]{0x0L}, (short)0);
+        Assertions.assertFalse(code != 0);
+        Assertions.assertTrue(code == 0);
+        Assertions.assertFalse(code != 0L);
+        Assertions.assertTrue(code == 0L);
+    }
+
     @SuppressWarnings("unused")
     @AfterEach
     private void afterEach() {

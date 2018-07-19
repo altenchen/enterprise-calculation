@@ -64,8 +64,17 @@ final class FormatTest {
             parseDate.getTime() / DateUtils.MILLIS_PER_SECOND);
 
         final Map<String, Map<String, String>> hashMap = new HashMap<>();
-        final Map<String, String> key = hashMap.getOrDefault("key", new HashMap<>());
-        Assertions.assertNotNull(key);
+        final Map<String, String> key1 = hashMap.getOrDefault("key", new HashMap<>());
+        Assertions.assertNotNull(key1);
+        final Map<String, String> key2 = hashMap.get("key");
+        Assertions.assertNull(key2);
+        hashMap.put("key", key1);
+        final Map<String, String> key3 = hashMap.get("key");
+        Assertions.assertNotNull(key3);
+        final Map<String, String> key4 = hashMap.remove("key");
+        Assertions.assertNotNull(key4);
+        final Map<String, String> key5 = hashMap.remove("key");
+        Assertions.assertNull(key5);
     }
 
     @SuppressWarnings("unused")

@@ -696,7 +696,7 @@ public class MailCalHandler {
                         runningonline++;
                     }
                 }
-                if("1".equals(map.get(SysDefine.ISALARM)) && null != map.get(SysDefine.ALARMUTC)) {
+                if("1".equals(map.get(SysDefine.IS_ALARM)) && null != map.get(SysDefine.ALARMUTC)) {
                     fault++;
                 }
                 if("1".equals(map.get("2301"))
