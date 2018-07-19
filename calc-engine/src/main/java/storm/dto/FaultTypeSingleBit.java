@@ -2,10 +2,12 @@ package storm.dto;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
 /**
+ * 故障类型按位解析(单个位)
  * @author: xzp
  * @date: 2018-06-24
  * @description:
@@ -31,7 +33,7 @@ public class FaultTypeSingleBit {
      * 故障码规则, <车型, <异常码Id, 异常码>>
      */
     @NotNull
-    public final Map<String, Map<String, ExceptionSingleBit>> vehExceptions = new TreeMap<>();
+    public final Map<String, Map<String, ExceptionSingleBit>> vehExceptions = new HashMap<>();
 
     public FaultTypeSingleBit(String faultId, String faultType, String analyzeType) {
         this.faultId = faultId;
@@ -39,15 +41,4 @@ public class FaultTypeSingleBit {
         this.analyzeType = analyzeType;
     }
 
-    /**
-     * 获取车型的异常字典, 适用于初始化, 对于不存在的车型, 会自动创建空字典.
-     * @param vehicleModel 车型
-     * @return 车型的异常字典
-     */
-    public final synchronized Map<String, ExceptionSingleBit> ensureVehExceptions(String vehicleModel) {
-        if(!vehExceptions.containsKey(vehicleModel)) {
-            vehExceptions.put(vehicleModel, new TreeMap<>());
-        }
-        return vehExceptions.get(vehicleModel);
-    }
 }

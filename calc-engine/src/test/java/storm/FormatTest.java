@@ -8,10 +8,7 @@ import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
 
 import java.text.ParseException;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
+import java.util.*;
 
 /**
  * @author: xzp
@@ -66,6 +63,9 @@ final class FormatTest {
             time.getTime() / DateUtils.MILLIS_PER_SECOND,
             parseDate.getTime() / DateUtils.MILLIS_PER_SECOND);
 
+        final Map<String, Map<String, String>> hashMap = new HashMap<>();
+        final Map<String, String> key = hashMap.getOrDefault("key", new HashMap<>());
+        Assertions.assertNotNull(key);
     }
 
     @SuppressWarnings("unused")

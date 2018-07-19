@@ -527,11 +527,12 @@ public final class Conn {
      */
     @SuppressWarnings("Duplicates")
     @NotNull
-    public Map<String, FaultTypeSingleBit> getFaultSingleBitRules() {
+    public Map<String, Map<String, FaultTypeSingleBit>> getFaultSingleBitRules() {
         logger.info("开始更新按位解析故障码规则");
 
-        // fault_type, fault
-        final Map<String, FaultTypeSingleBit> faultTypes = new TreeMap<>();
+        // 一个故障类型可以对应多个故障码
+        // <fault_type, <faultId, fault>>
+        final Map<String, Map<String, FaultTypeSingleBit>> faultTypes = new HashMap<>();
 
         if (StringUtils.isBlank(alarm_code_bit_sql)) {
             logger.info("按位解析故障码查询语句为空.");
@@ -559,7 +560,7 @@ public final class Conn {
             //analyzeValueResult = statement.executeQuery(alarm_code_sql);
 
             // exception_id, exception
-            final Map<String, ExceptionSingleBit> faultExceptionsCache = new TreeMap<>();
+            final Map<String, ExceptionSingleBit> faultExceptionsCache = new HashMap<>();
 
             int count = 0;
             while(analyzeBitResult.next()) {
@@ -696,37 +697,50 @@ public final class Conn {
                         continue;
                     }
 
-                    // Key-故障类型
-                    final FaultTypeSingleBit faultTypeSingleBit;
-                    if(faultTypes.containsKey(fault_type)) {
-                        faultTypeSingleBit = faultTypes.get(fault_type);
-                    } else {
-                        faultTypeSingleBit = new FaultTypeSingleBit(fault_id, fault_type, analyze_type);
-                        faultTypes.put(faultTypeSingleBit.faultType, faultTypeSingleBit);
-                    }
+                    // 故障类型规则集合
+                    final Map<String, FaultTypeSingleBit> faultTypeRule = faultTypes.getOrDefault(
+                        fault_type,
+                        new HashMap<>()
+                    );
+                    faultTypes.put(fault_type, faultTypeRule);
+
+                    // 故障码规则
+                    final FaultTypeSingleBit faultRule = faultTypeRule.getOrDefault(
+                        fault_id,
+                        new FaultTypeSingleBit(
+                            fault_id,
+                            fault_type,
+                            analyze_type
+                        )
+                    );
+                    faultTypeRule.put(fault_id, faultRule);
 
                     if (faultExceptionsCache.containsKey(exception_id)) {
                         logger.warn("重复的异常码[{}].", exception_id);
                         continue;
                     }
 
-                    final ExceptionSingleBit exception = new ExceptionSingleBit(exception_id, faultOffset, lazy, level);
-                    faultExceptionsCache.put(exception.exceptionId, exception);
+                    // 异常码规则
+                    final ExceptionSingleBit exceptionRule = new ExceptionSingleBit(exception_id, faultOffset, lazy, level);
+                    faultExceptionsCache.put(exceptionRule.exceptionId, exceptionRule);
 
                     // 将异常关联到适用车型, 空字符串表示默认车型
                     final String[] vehicleModels = ArrayUtils.isEmpty(model_num) ? new String[] {""} : model_num;
-                    for (String vehicleModel : vehicleModels) {
+                    for (final String vehicleModel : vehicleModels) {
                         final Map<String, ExceptionSingleBit> exceptions =
-                            faultTypeSingleBit.ensureVehExceptions(vehicleModel);
-                        if(exceptions.containsKey(exception.exceptionId)) {
+                            faultRule.vehExceptions.getOrDefault(
+                                vehicleModel,
+                                new HashMap<>());
+                        faultRule.vehExceptions.put(vehicleModel, exceptions);
+                        if(exceptions.containsKey(exceptionRule.exceptionId)) {
                             logger.warn(
                                 "故障码[{}]车型[{}]重复的异常码[{}].",
-                                faultTypeSingleBit.faultId,
+                                faultRule.faultId,
                                 vehicleModel,
-                                exception.exceptionId);
+                                exceptionRule.exceptionId);
                             continue;
                         }
-                        exceptions.put(exception.exceptionId, exception);
+                        exceptions.put(exceptionRule.exceptionId, exceptionRule);
                     }
                 }
             }

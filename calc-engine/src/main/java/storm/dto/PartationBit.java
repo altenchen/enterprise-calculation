@@ -122,49 +122,4 @@ public final class PartationBit {
             return ((((hValue & (0xFFFFFFFFL >> (32 - hOffset))) << (32 - lOffset))) | ((lValue & 0xFFFFFFFFL) >> lOffset));
         }
     }
-
-    public static void main(String[] args) {
-        // 低字节最高位
-        final Long code_30_2_0 = computeValue(new long[]{0x3FFFFFFFL, 0xFFFFFFFFL}, (short)30, (byte)2);
-        System.out.println("code_30_2_0 = " + String.valueOf(code_30_2_0));
-        assert 0 == code_30_2_0;
-        final Long code_30_2_1 = computeValue(new long[]{0x5FFFFFFFL, 0xFFFFFFFFL}, (short)30, (byte)2);
-        System.out.println("code_30_2_1 = " + String.valueOf(code_30_2_1));
-        assert 1 == code_30_2_1;
-        final Long code_30_2_2 = computeValue(new long[]{0xBFFFFFFFL, 0xFFFFFFFEL}, (short)30, (byte)2);
-        System.out.println("code_30_2_2 = " + String.valueOf(code_30_2_2));
-        assert 2 == code_30_2_2;
-        final Long code_30_2_3 = computeValue(new long[]{0xDFFFFFFFL, 0xFFFFFFFEL}, (short)30, (byte)2);
-        System.out.println("code_30_2_3 = " + String.valueOf(code_30_2_3));
-        assert 3 == code_30_2_3;
-
-
-        // 高字节最低位
-        final Long code_32_2_0 = computeValue(new long[]{0xFFFFFFFFL, 0xFFFFFFFCL}, (short)32, (byte)2);
-        System.out.println("code_32_2_0 = " + String.valueOf(code_32_2_0));
-        assert 0 == code_32_2_0;
-        final Long code_32_2_1 = computeValue(new long[]{0x7FFFFFFFL, 0xFFFFFFFDL}, (short)32, (byte)2);
-        System.out.println("code_32_2_1 = " + String.valueOf(code_32_2_1));
-        assert 1 == code_32_2_1;
-        final Long code_32_2_2 = computeValue(new long[]{0xFFFFFFFFL, 0xFFFFFFFAL}, (short)32, (byte)2);
-        System.out.println("code_32_2_2 = " + String.valueOf(code_32_2_2));
-        assert 2 == code_32_2_2;
-        final Long code_32_2_3 = computeValue(new long[]{0x7FFFFFFFL, 0xFFFFFFFBL}, (short)32, (byte)2);
-        System.out.println("code_32_2_3 = " + String.valueOf(code_32_2_3));
-        assert 3 == code_32_2_3;
-
-        // 双字节衔接位
-        final Long code_31_2_0 = computeValue(new long[]{0x7FFFFFFFL, 0xFFFFFFFEL}, (short)31, (byte)2);
-        System.out.println("code_31_2_0 = " + String.valueOf(code_31_2_0));
-        assert 0 == code_31_2_0;
-        final Long code_31_2_1 = computeValue(new long[]{0xBFFFFFFFL, 0xFFFFFFFEL}, (short)31, (byte)2);
-        System.out.println("code_31_2_1 = " + String.valueOf(code_31_2_1));
-        assert 1 == code_31_2_1;
-        final Long code_31_2_2 = computeValue(new long[]{0x7FFFFFFFL, 0xFFFFFFFDL}, (short)31, (byte)2);
-        System.out.println("code_31_2_2 = " + String.valueOf(code_31_2_2));
-        assert 2 == code_31_2_2;
-        final Long code_31_2_3 = computeValue(new long[]{0xBFFFFFFFL, 0xFFFFFFFDL}, (short)31, (byte)2);
-        System.out.println("code_31_2_3 = " + String.valueOf(code_31_2_3));
-        assert 3 == code_31_2_3;
-    }
 }
