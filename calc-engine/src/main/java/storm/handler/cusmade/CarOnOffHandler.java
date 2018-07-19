@@ -3,7 +3,9 @@ package storm.handler.cusmade;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.NotNull;
@@ -321,8 +323,9 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 //吉利要求，新增
                 notice.put("offlineMillisecondsThreshold", timeout);
             }else{
-                if(-1 == (int)notice.get("smileage")){
-                    notice.put("smileage",numMileage);
+                final Object smileage = notice.get("smileage");
+                if(smileage == null || "-1".equals(smileage.toString())) {
+                    notice.put("smileage", numMileage);
                 }
                 notice.put("status", 2);
             }
