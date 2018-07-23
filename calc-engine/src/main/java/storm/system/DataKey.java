@@ -41,7 +41,7 @@ public final class DataKey {
     public static final String CAR_TYPE = "CTYPE";
 
     /**
-     * 采集时间, 国标.
+     * 采集时间, 国标, 这个值可能超过范围, 有效判定条件是于服务器接收时间(9999)相差10分钟以内.
      */
     public static final String _2000_COLLECT_TIME = "2000";
 

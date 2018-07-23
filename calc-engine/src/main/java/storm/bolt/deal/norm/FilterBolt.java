@@ -215,7 +215,7 @@ public class FilterBolt extends BaseRichBolt {
                 // 如果是状态信息上报, 则将TIME设置为采集时间
                 stateKV.put(SysDefine.TIME, stateKV.get("3101"));
             } else if (CommandType.SUBMIT_HISTORY.equals(type)) {
-                stateKV.put(SysDefine.TIME, stateKV.get("2000"));
+                stateKV.put(SysDefine.TIME, stateKV.get(DataKey._2000_COLLECT_TIME));
             } else if (CommandType.SUBMIT_CARSTATUS.equals(type)) {
                 stateKV.put(SysDefine.TIME, stateKV.get("3201"));
             } else if (SysDefine.RENTCAR.equals(type)) { // 租赁数据

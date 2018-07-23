@@ -264,9 +264,22 @@ public final class CarNoticelBolt extends BaseRichBolt {
             paramsRedisUtil.autoLog(vid, () -> logger.warn("VID[{}]进入车辆通知处理", vid));
 
             final String collectTime = data.get(DataKey._2000_COLLECT_TIME);
+            final String serverReceiveTime = data.get(DataKey._9999_SERVER_RECEIVE_TIME);
+            boolean timeEffective = false;
+            if(NumberUtils.isDigits(serverReceiveTime) && NumberUtils.isDigits(collectTime)) {
+                try {
+                    // 误差10分钟内有效
+                    if (Math.abs(NumberUtils.toLong(serverReceiveTime) - NumberUtils.toLong(collectTime)) <= 1000 * 60 * 10) {
+                        timeEffective = true;
+                    }
+                } catch (Exception e) {
+                    logger.debug("时间格式异常", e);
+                }
+
+            }
 
             // region 缓存持续里程有效值
-            {
+            if(timeEffective) {
                 final String totalMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
 
                 paramsRedisUtil.autoLog(vid, () -> logger.warn("VID[{}][{}][{}]有效累计里程缓存处理", vid, collectTime, totalMileage));
@@ -316,7 +329,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
             // endregion
 
             // region 缓存GPS定位有效值
-            {
+            if(timeEffective) {
                 final String orientationString = data.get(DataKey._2501_ORIENTATION);
 
                 paramsRedisUtil.autoLog(

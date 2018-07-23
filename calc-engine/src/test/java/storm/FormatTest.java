@@ -36,7 +36,7 @@ final class FormatTest {
         // 每个测试之前
     }
 
-    @DisplayName("测试方法")
+    @DisplayName("时间格式化和反格式化测试")
     @Test
     void testFormat() throws ParseException {
 
@@ -75,6 +75,12 @@ final class FormatTest {
         Assertions.assertNotNull(key4);
         final Map<String, String> key5 = hashMap.remove("key");
         Assertions.assertNull(key5);
+    }
+
+    @DisplayName("时间范围测试")
+    @Test
+    void testRange() {
+
     }
 
     @SuppressWarnings("unused")
