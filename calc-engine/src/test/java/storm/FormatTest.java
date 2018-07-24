@@ -85,8 +85,9 @@ final class FormatTest {
             final long last = DateUtils.parseDate(String.valueOf(tmp_last), new String[]{FormatConstant.DATE_FORMAT}).getTime();
             logger.trace("last={}", last);
         } catch (ParseException e) {
-            logger.trace("时间解析异常", e);
+            return;
         }
+        Assertions.fail();
     }
 
     @SuppressWarnings("unused")

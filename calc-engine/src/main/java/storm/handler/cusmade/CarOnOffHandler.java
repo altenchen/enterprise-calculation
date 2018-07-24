@@ -1,9 +1,9 @@
 package storm.handler.cusmade;
 
+import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -323,7 +323,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
         //车辆 是否达到 闲置或者停机 超时的标准
         //判断标准就是当前时间与缓存中的最后一帧报文时间差值是否大于阈值，
         //需要注意的是，此时已经的下线车辆也是在全量数据或者活跃数据缓存中的。
-        boolean isout = istimeout(time, lastUtc, now, timeout);
+        boolean isout = isTimeout(time, lastUtc, now, timeout);
         if (isout) {//是闲置车辆
             Map<String, Object> notice = vidIdleNotice.get(vid);
             if (null == notice) {
@@ -430,7 +430,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
         //车辆是否离线
         boolean isoff = isOffline(dat);
         //车辆 是否达到 闲置或者停机 超时的标准
-        boolean isout = istimeout(time, lastUtc, now, timeout);
+        boolean isout = isTimeout(time, lastUtc, now, timeout);
         if (isoff || isout) {
             TimeMileage timeMileage = vidLastTimeMile.get(vid);
             if (null != timeMileage
@@ -484,7 +484,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             }
         }
         boolean isoff = isOffline(dat);
-        boolean isout = istimeout(time, lastUtc, now, timeout);
+        boolean isout = isTimeout(time, lastUtc, now, timeout);
         //根据报文判断离线了，或者，很长时间没发报文了，判断为离线
         if (isoff || isout) {
             TimeMileage timeMileage = vidLastTimeMile.get(vid);
@@ -521,23 +521,27 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
     /**
      * 车辆 是否达到 闲置或者停机 超时的标准
      */
-    private boolean istimeout(String time, String lastUtc,long now,long timeout){
+    private boolean isTimeout(String time, String lastUtc, long now, long timeout){
 
-        if (null == time && null == lastUtc) {
-            return false;
-        }
-        try {
-            if(NumberUtils.isDigits(lastUtc)){
-                long tmp_last = Long.parseLong(lastUtc);
-                long last = DateUtils.parseDate(String.valueOf(tmp_last), new String[]{FormatConstant.DATE_FORMAT}).getTime();
-                long tertime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
-                long maxtime = Math.max(last, tertime);
-                if (now - maxtime > timeout) {
-                    return true;
-                }
+        long last = 0;
+        if(NumberUtils.isDigits(lastUtc)) {
+            try {
+                last = DateUtils.parseDate(lastUtc, new String[]{FormatConstant.DATE_FORMAT}).getTime();
+            } catch (ParseException e) {
+                logger.warn("闲置时间是否超时判断中报出异常", e);
             }
-        } catch (Exception e) {
-            logger.warn("闲置时间是否超时判断中报出异常", e);
+        }
+        long terTime = 0;
+        if(NumberUtils.isDigits(time)) {
+            try {
+                terTime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
+            } catch (ParseException e) {
+                logger.warn("闲置时间是否超时判断中报出异常", e);
+            }
+        }
+        final long maxTime = Math.max(last, terTime);
+        if (maxTime > 0 && now - maxTime > timeout) {
+            return true;
         }
         return false;
     }
