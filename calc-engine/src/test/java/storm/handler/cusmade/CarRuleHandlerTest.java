@@ -157,7 +157,8 @@ class CarRuleHandlerTest {
 
         List<Map<String, Object>> notice_start = CarOnOffHandler.fulldoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
         Assertions.assertTrue(0 != notice_start.size(),"有问题，没有产生闲置开始通知");
-
+        System.out.println(notice_start.get(0).get("smileage"));
+        Assertions.assertTrue(notice_start.get(0).get("smileage").equals(18888),"有问题，闲置开始通知中的里程值有问题");
 
         //闲置车辆通知结束测试
 
