@@ -80,7 +80,13 @@ final class FormatTest {
     @DisplayName("时间范围测试")
     @Test
     void testRange() {
-
+        try {
+            final long tmp_last = 0;
+            final long last = DateUtils.parseDate(String.valueOf(tmp_last), new String[]{FormatConstant.DATE_FORMAT}).getTime();
+            logger.trace("last={}", last);
+        } catch (ParseException e) {
+            logger.trace("时间解析异常", e);
+        }
     }
 
     @SuppressWarnings("unused")
