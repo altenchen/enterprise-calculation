@@ -125,9 +125,7 @@ class CarRuleHandlerTest {
     @DisplayName("闲置车辆通知测试")
     @Test
     void testInidle(){
-
-
-
+        
         //闲置车辆通知开始测试
         final CarOnOffHandler CarOnOffHandler = new CarOnOffHandler();
         final Map<String, String> data = Maps.newHashMap();

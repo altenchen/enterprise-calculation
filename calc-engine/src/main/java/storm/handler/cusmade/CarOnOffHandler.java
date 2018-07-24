@@ -9,6 +9,8 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
 import storm.constant.FormatConstant;
 import storm.handler.ctx.Recorder;
@@ -34,6 +36,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
     private final Recorder recorder = new RedisRecorder();
     private static final int REDIS_DB_INDEX =6;
     private static final String IDLE_REDIS_KEYS = "vehCache.qy.idle";
+    private static final Logger logger = LoggerFactory.getLogger(CarNoCanJudge.class);
 
     {
         //重要：从redis数据库中读取系统重启前的车辆状态。不写的话，当系统重启时，会导致车辆的状态丢失
@@ -524,17 +527,18 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             return false;
         }
         try {
-            long tmp_last = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(lastUtc) ? lastUtc : "0");
-            long last = DateUtils.parseDate(String.valueOf(tmp_last), new String[]{FormatConstant.DATE_FORMAT}).getTime();
-            long tertime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
-            long maxtime = Math.max(last, tertime);
-            if (now - maxtime > timeout) {
-                return true;
+            if(NumberUtils.isDigits(lastUtc)){
+                long tmp_last = Long.parseLong(lastUtc);
+                long last = DateUtils.parseDate(String.valueOf(tmp_last), new String[]{FormatConstant.DATE_FORMAT}).getTime();
+                long tertime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
+                long maxtime = Math.max(last, tertime);
+                if (now - maxtime > timeout) {
+                    return true;
+                }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.warn("闲置时间是否超时判断中报出异常", e);
         }
-
         return false;
     }
 
