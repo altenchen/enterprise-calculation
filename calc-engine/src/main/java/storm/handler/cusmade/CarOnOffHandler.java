@@ -1,9 +1,5 @@
 package storm.handler.cusmade;
 
-import java.text.ParseException;
-import java.util.*;
-import java.util.concurrent.LinkedBlockingQueue;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -12,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
+import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
@@ -21,6 +18,11 @@ import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
+
+import java.text.ParseException;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * 车辆上下线及相关处理
@@ -37,6 +39,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
     private static final int REDIS_DB_INDEX =6;
     private static final String IDLE_REDIS_KEYS = "vehCache.qy.idle";
     private static final Logger logger = LoggerFactory.getLogger(CarNoCanJudge.class);
+    private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
     {
         //重要：从redis数据库中读取系统重启前的车辆状态。不写的话，当系统重启时，会导致车辆的状态丢失
@@ -315,6 +318,16 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        if(-1 == numMileage) {
+            try {
+                final String totalMileageCache = VEHICLE_CACHE.getTotalMileageString(vid, "-1");
+                numMileage = NumberUtils.toInt(totalMileageCache);
+            } catch (ExecutionException e) {
+                logger.warn("获取累计里程缓存异常", e);
+            }
+        }
+
         String lastUtc = dat.get(SysDefine.ONLINEUTC);
         String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
 
