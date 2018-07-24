@@ -213,6 +213,20 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 
     /**
      * 判断是否为闲置或者停机车辆。（重要）
+     *
+     * 车辆在系统中的最后一帧有效数据
+     * @param dat
+     * 系统当前时间
+     * @param now
+     * 超时时间，（通过判断系统当前时间与最后一帧有效数据的时间差是否大于超时时间）
+     * @param timeout
+     * 需要从活跃车辆列表中删除的活跃车辆
+     * @param markDel
+     * 状态变为活跃的车辆
+     * @param markAlive
+     *
+     * @return 闲置开始通知或者闲置结束通知，或者null
+     *
      */
     private Map<String, Object> inidle(Map<String, String> dat,long now,long timeout,List<String> markDel,List<String> markAlive){
         if (null == dat || dat.size() ==0) {
@@ -510,7 +524,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             return false;
         }
         try {
-            long last = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(lastUtc) ? lastUtc : "0");
+            long tmp_last = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(lastUtc) ? lastUtc : "0");
+            long last = DateUtils.parseDate(String.valueOf(tmp_last), new String[]{FormatConstant.DATE_FORMAT}).getTime();
             long tertime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             long maxtime = Math.max(last, tertime);
             if (now - maxtime > timeout) {

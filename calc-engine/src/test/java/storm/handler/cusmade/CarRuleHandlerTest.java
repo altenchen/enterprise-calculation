@@ -8,15 +8,20 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.cache.SysRealDataCache;
 import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
 import storm.system.DataKey;
+import storm.system.SysDefine;
 import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
+import storm.system.DataKey;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 
-@DisplayName("SOC通知测试")
+@DisplayName("SOC过低通知测试和闲置车辆通知")
 class CarRuleHandlerTest {
 
 
@@ -36,7 +41,8 @@ class CarRuleHandlerTest {
     private Map<String, Integer> vidNormSoc = new HashMap<>();
     private Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
 
-
+    //测试SOC过低通知是否可以正常产生与结束
+    @DisplayName("SOC过低通知测试")
     @Test
     void testGenerateNotices_SOC_Fault() {
 
@@ -115,4 +121,65 @@ class CarRuleHandlerTest {
         Assertions.assertTrue(0 != result_6.size(),"第6帧恢复通知");
 
     }
+
+    @DisplayName("闲置车辆通知测试")
+    @Test
+    void testInidle(){
+
+
+
+        //闲置车辆通知开始测试
+        final CarOnOffHandler CarOnOffHandler = new CarOnOffHandler();
+        final Map<String, String> data = Maps.newHashMap();
+        long now = System.currentTimeMillis();
+        long time = System.currentTimeMillis() - 600000;
+        long idleTimeoutMillsecond = 60000;
+        now = System.currentTimeMillis();
+        Date date = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+        //当前时间减去10分钟
+        date.setTime(date.getTime()-20*60*1000);
+
+        String now_time_yyMMddHHmmss_subtract_10minute = sdf.format(date);
+
+        data.put(DataKey.VEHICLE_ID, TEST_VID);
+        //数据采集时间，终端采集到数据的时间
+        data.put(DataKey.TIME, now_time_yyMMddHHmmss_subtract_10minute);
+        data.put(DataKey._2201_SPEED, "40");
+        data.put(DataKey._7615_STATE_OF_CHARGE,"66");
+        data.put(DataKey._2202_TOTAL_MILEAGE,"18888");
+        //系统接收报文时间
+        data.put(SysDefine.ONLINEUTC,now_time_yyMMddHHmmss_subtract_10minute);
+        data.put(SysDefine.MESSAGETYPE,"REALTIME");
+
+        SysRealDataCache.addAliveQueue(data.get(DataKey.VEHICLE_ID));
+        SysRealDataCache.addLastQueue(data.get(DataKey.VEHICLE_ID));
+        SysRealDataCache.livelyCarCache.put(DataKey.VEHICLE_ID,data);
+        SysRealDataCache.updateCache(data,time);
+
+        List<Map<String, Object>> notice_start = CarOnOffHandler.fulldoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
+        Assertions.assertTrue(0 != notice_start.size(),"有问题，没有产生闲置开始通知");
+
+
+        //闲置车辆通知结束测试
+
+        Date date_now = new Date();
+        String now_time_yyMMddHHmmss = sdf.format(date_now);
+        //数据采集时间，终端采集到数据的时间
+        data.put(DataKey.TIME, now_time_yyMMddHHmmss);
+        //系统接收报文时间
+        data.put(SysDefine.ONLINEUTC,now_time_yyMMddHHmmss);
+        //闲置车辆通知
+
+        SysRealDataCache.addAliveQueue(data.get(DataKey.VEHICLE_ID));
+        SysRealDataCache.addLastQueue(data.get(DataKey.VEHICLE_ID));
+        SysRealDataCache.livelyCarCache.put(DataKey.VEHICLE_ID,data);
+        SysRealDataCache.updateCache(data,time);
+
+        List<Map<String, Object>> notice_end = CarOnOffHandler.fulldoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
+        Assertions.assertTrue(0 != notice_end.size(),"有问题，没有产生闲置结束通知");
+
+    }
+
+
 }

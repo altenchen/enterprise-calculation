@@ -208,6 +208,7 @@ public class SysRealDataCache {
         // 缓存收到最后一帧数据, 对报文上传时间和处理时间有时间范围要求.
         addLivelyCar(dat, now, timeouttime);
     }
+    //补电车信息缓存
     private static void addChargeCar(Map<String, String> dat){
         if (null == dat || dat.size() ==0) {
             return;
@@ -245,6 +246,7 @@ public class SysRealDataCache {
         }
     }
 
+    //车辆数据（最原始的数据）缓存
     private static void addCarCache(Map<String, String> dat){
         if (MapUtils.isEmpty(dat)) {
             return;
