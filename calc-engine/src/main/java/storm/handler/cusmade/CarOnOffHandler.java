@@ -296,8 +296,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                         vidLastMileage.put(vid, numMileage);
                     }else{
                         //mileage无效，无效则取最后一帧有效的值，如果没有缓存最后一帧有效值，则置为-1，由前端处理展示
-                        if(null != vidLastMileage.get(vid)){
-                            numMileage = vidLastMileage.get(vid);
+                        if(null == vidLastMileage.get(vid)){
+                            numMileage = -1;
                             vidLastMileage.put(vid, numMileage);
                         }
                     }
