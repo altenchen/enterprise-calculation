@@ -76,11 +76,11 @@ public class CarRuleHandler implements InfoNotice {
         CarRuleHandler.socAlarm = socAlarm;
     }
 
-    public static void setLowSocJudgeNum(int lowSocJudgeNum) {
-        CarRuleHandler.lowSocJudgeNum = lowSocJudgeNum;
+    public static void setLowSocJudgeNum(int lowSocFaultJudgeNum) {
+        CarRuleHandler.lowSocFaultJudgeNum = lowSocFaultJudgeNum;
     }
-    public static void setLowsocIntervalMillisecond(Long lowsocIntervalMillisecond) {
-        CarRuleHandler.lowsocIntervalMillisecond = lowsocIntervalMillisecond;
+    public static void setLowSocIntervalMillisecond(Long lowSocFaultIntervalMillisecond) {
+        CarRuleHandler.lowSocFaultIntervalMillisecond = lowSocFaultIntervalMillisecond;
     }
 
     /**
@@ -90,12 +90,14 @@ public class CarRuleHandler implements InfoNotice {
     /**
      * SOC过低确认帧数
      */
-    private static int lowSocJudgeNum = 3;
+    private static int lowSocFaultJudgeNum = 3;
+    private static int lowSocNormalJudgeNum = 1;
 
     /**
      * SOC过低确认延时, 默认1分钟.
      */
-    private static Long lowsocIntervalMillisecond = (long) 60000;
+    private static Long lowSocFaultIntervalMillisecond = (long) 30000;
+    private static Long lowSocNormalIntervalMillisecond = (long) 0;
     /**
      * SOC 过低计数器
      */
@@ -131,23 +133,29 @@ public class CarRuleHandler implements InfoNotice {
     static String socRedisKeys = "vehCache.qy.soc.notice";
 
     static int topn = 20;
-    static long offlinetime = 600000;//600秒
-    static int nocanJudgeNum = 5;//5次
-    static int hascanJudgeNum = 10;//10次
-    static int mileHop = 20;//2公里 ，单位是0.1km
-    static long nocanIntervalTime = 600000L;//600秒
+    // 600秒
+    static long offlinetime = 600000;
+    // 5次
+    static int nocanJudgeNum = 5;
+    // 10次
+    static int hascanJudgeNum = 10;
+    // 2公里 ，单位是0.1km
+    static int mileHop = 20;
+    // 600秒
+    static long nocanIntervalTime = 600000L;
 
     static int db = 6;
-    static int socRule = 0;//1代表规则启用
-    static int enableCanRule = 0;//1代表规则启用
-    static int igniteRule = 0;//1代表规则启用
-    static int gpsRule = 0;//1代表规则启用
-    static int abnormalRule = 0;//1代表规则启用
-    static int flyRule = 0;//1代表规则启用
-    static int onoffRule = 0;//1代表规则启用
-    static int mileHopRule = 0;//1代表规则启用
-    static int enableTimeRule = 0;//1代表规则启用
-    static int carLockStatueChangeJudgeRule = 0;//1代表规则启用
+    // 1代表规则启用，0代表规则关闭
+    static int socRule = 0;
+    static int enableCanRule = 0;
+    static int igniteRule = 0;
+    static int gpsRule = 0;
+    static int abnormalRule = 0;
+    static int flyRule = 0;
+    static int onoffRule = 0;
+    static int mileHopRule = 0;
+    static int enableTimeRule = 0;
+    static int carLockStatueChangeJudgeRule = 0;
 
     private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
     private final TimeOutOfRangeNotice timeOutOfRangeNotice = new TimeOutOfRangeNotice();
@@ -219,17 +227,27 @@ public class CarRuleHandler implements InfoNotice {
                 value = null;
             }
 
-            value = configUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_TIME);
+            value = configUtils.sysDefine.getProperty(SysDefine.SOC_FAULT_JUDGE_TIME);
             if (!StringUtils.isEmpty(value)) {
-                lowsocIntervalMillisecond = Long.parseLong(value);
+                lowSocFaultIntervalMillisecond = Long.parseLong(value);
+                value = null;
+            }
+            value = configUtils.sysDefine.getProperty(SysDefine.SOC_NORMAL_JUDGE_TIME);
+            if (!StringUtils.isEmpty(value)) {
+                lowSocNormalIntervalMillisecond = Long.parseLong(value);
+                value = null;
+            }
+            value = configUtils.sysDefine.getProperty(SysDefine.SOC_FAULT_JUDGE_NO);
+            if (!StringUtils.isEmpty(value)) {
+                lowSocFaultJudgeNum = Integer.parseInt(value);
+                value = null;
+            }
+            value = configUtils.sysDefine.getProperty(SysDefine.SOC_NORMAL_JUDGE_NO);
+            if (!StringUtils.isEmpty(value)) {
+                lowSocNormalJudgeNum = Integer.parseInt(value);
                 value = null;
             }
 
-            value = configUtils.sysDefine.getProperty(SysDefine.SOC_JUDGE_NO);
-            if (!StringUtils.isEmpty(value)) {
-                lowSocJudgeNum = Integer.parseInt(value);
-                value = null;
-            }
 
             value = configUtils.sysDefine.getProperty(SysDefine.LT_ALARM_SOC);
             if (!StringUtils.isEmpty(value)) {
@@ -273,13 +291,22 @@ public class CarRuleHandler implements InfoNotice {
         if (null != socVal) {
             socAlarm = (int) socVal;
         }
-        Object lowsocNum = paramsRedisUtil.PARAMS.get("soc.judge.no");
-        if (null != lowsocNum) {
-            lowSocJudgeNum = (int) lowsocNum;
+        // soc过低开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
+        Object lowSocFaultJudgeCount = paramsRedisUtil.PARAMS.get("notice.soc.fault.trigger.continue.count");
+        if (null != lowSocFaultJudgeCount) {
+            lowSocFaultJudgeNum = (int) lowSocFaultJudgeCount;
         }
-        Object socJudgeTime = paramsRedisUtil.PARAMS.get("soc.judge.time");
-        if (null != socJudgeTime) {
-            lowsocIntervalMillisecond = ((int) socJudgeTime)*1L;
+        Object lowSocNormalJudgeCount = paramsRedisUtil.PARAMS.get("notice.soc.normal.trigger.continue.count");
+        if (null != lowSocNormalJudgeCount) {
+            lowSocNormalJudgeNum = (int) lowSocNormalJudgeCount;
+        }
+        Object lowSocFaultJudgeTime = paramsRedisUtil.PARAMS.get("notice.soc.fault.trigger.timeout.millisecond");
+        if (null != lowSocFaultJudgeTime) {
+            lowSocFaultIntervalMillisecond = ((int) lowSocFaultJudgeTime)*1L;
+        }
+        Object lowSocNormalJudgeTime = paramsRedisUtil.PARAMS.get("notice.soc.normal.trigger.timeout.millisecond");
+        if (null != lowSocNormalJudgeTime) {
+            lowSocNormalIntervalMillisecond = ((int) lowSocNormalJudgeTime)*1L;
         }
 
 
@@ -453,7 +480,7 @@ public class CarRuleHandler implements InfoNotice {
 
         if (1 == socRule) {
             //lowsoc(data)返回一个map，里面有vid和通知消息（treeMap）
-            // SOC 过低
+            // SOC
             List<Map<String, Object>> socJudges = lowSoc(data);
             if (!CollectionUtils.isEmpty(socJudges)) {
                 list.addAll(socJudges);
@@ -486,11 +513,11 @@ public class CarRuleHandler implements InfoNotice {
             abnormalJudge = abnormalCar(data);
         }
         if (1 == flyRule) {
-            // ????
+            // 飞机功能（一般不用）
             flyJudge = flySe(data);
         }
         if (1 == onoffRule) {
-            // ???
+            // 车辆上下线
             onOffJudge = onOffline(data);
         }
         if (1 == mileHopRule) {
@@ -604,7 +631,7 @@ public class CarRuleHandler implements InfoNotice {
                 });
             }
 
-            if(lowSocCount < lowSocJudgeNum) {
+            if(lowSocCount < lowSocFaultJudgeNum) {
                 return null;
             }
 
@@ -621,12 +648,12 @@ public class CarRuleHandler implements InfoNotice {
                 return null;
             }
 
-            if (currentTimeMillis - firstLowSocTime <= lowsocIntervalMillisecond) {
+            if (currentTimeMillis - firstLowSocTime <= lowSocFaultIntervalMillisecond) {
                 return null;
             }
 
             lowSocNotice.put("status", 1);
-            lowSocNotice.put("slazy", lowsocIntervalMillisecond);
+            lowSocNotice.put("slazy", lowSocFaultIntervalMillisecond);
             lowSocNotice.put("noticeTime", noticeTime);
 
             //把soc过低开始通知存储到redis中
@@ -683,7 +710,7 @@ public class CarRuleHandler implements InfoNotice {
                 });
             }
 
-            if(normalSocCount < lowSocJudgeNum) {
+            if(normalSocCount < lowSocNormalJudgeNum) {
                 return null;
             }
 
@@ -696,12 +723,12 @@ public class CarRuleHandler implements InfoNotice {
                 return result;
             }
 
-            if (currentTimeMillis - firstNormalSocTime <= lowsocIntervalMillisecond) {
+            if (currentTimeMillis - firstNormalSocTime <= lowSocNormalIntervalMillisecond) {
                 return result;
             }
 
             normalSocNotice.put("status", 3);
-            normalSocNotice.put("elazy", lowsocIntervalMillisecond);
+            normalSocNotice.put("elazy", lowSocNormalIntervalMillisecond);
             normalSocNotice.put("noticeTime", noticeTime);
 
             vidSocNotice.remove(vid);
@@ -1539,7 +1566,7 @@ public class CarRuleHandler implements InfoNotice {
                 }
 
                 gpsNormalNotice.put("status", "3");
-                gpsNormalNotice.put("elazy", String.valueOf(lowsocIntervalMillisecond));
+                gpsNormalNotice.put("elazy", String.valueOf(gpsNormalIntervalMillisecond));
                 gpsNormalNotice.put("noticeTime", noticeTime);
 
                 vidGpsNotice.remove(vid);

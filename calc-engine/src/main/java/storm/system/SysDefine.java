@@ -266,17 +266,27 @@ public final class SysDefine {
     public static final String RULE_OVERRIDE_VALUE_JILI = "jili";
 
     /**
-     * soc时间阈值
-     */
-    public static final String SOC_JUDGE_TIME = "soc.judge.time";
-    /**
-     * soc帧数判断
-     */
-    public static final String SOC_JUDGE_NO = "soc.judge.on";
-    /**
      * soc过低阈值
      */
     public static final String LT_ALARM_SOC = "lt.alarm.soc";
+
+    /**
+     * soc故障判断时间阈值
+     */
+    public static final String SOC_FAULT_JUDGE_TIME = "notice.soc.fault.trigger.timeout.millisecond";
+    /**
+     * soc正常判断时间阈值
+     */
+    public static final String SOC_NORMAL_JUDGE_TIME = "notice.soc.normal.trigger.timeout.millisecond";
+    /**
+     * soc故障帧数判断
+     */
+    public static final String SOC_FAULT_JUDGE_NO = "notice.soc.fault.trigger.continue.count";
+    /**
+     * soc正常帧数判断
+     */
+    public static final String SOC_NORMAL_JUDGE_NO = "notice.soc.normal.trigger.continue.count";
+
 
   /**
    * 未定位开始帧数判断
