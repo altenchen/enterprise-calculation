@@ -13,7 +13,7 @@ import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
 import storm.handler.cusmade.CarNoCanDecideJili;
 import storm.handler.cusmade.CarNoCanJudge;
-import storm.system.AlarmMessageType;
+import storm.system.NoticeType;
 import storm.system.DataKey;
 import storm.util.JsonUtils;
 import storm.util.JedisPoolUtils;
@@ -136,7 +136,7 @@ final class CarNoCanJudgeTest {
         Assertions.assertEquals(usefulTotalMileage, processFrame6.get("smileage"), "没有从缓存获取到正确的累计里程");
         JEDIS_POOL_UTILS.useResource(jedis -> {
             jedis.select(REDIS_DB_INDEX);
-            final String json = jedis.hget(REDIS_KEY, AlarmMessageType.NO_CAN_VEH);
+            final String json = jedis.hget(REDIS_KEY, NoticeType.NO_CAN_VEH);
             final Map<String, Object> notice = GSON_UTILS.fromJson(
                 json,
                 new TypeToken<TreeMap<String, Object>>() {
@@ -229,7 +229,7 @@ final class CarNoCanJudgeTest {
         Assertions.assertEquals(usefulTotalMileage, processFrame6.get("emileage"), "没有从缓存获取到正确的累计里程");
         JEDIS_POOL_UTILS.useResource(jedis -> {
             jedis.select(REDIS_DB_INDEX);
-            final String json = jedis.hget(REDIS_KEY, AlarmMessageType.NO_CAN_VEH);
+            final String json = jedis.hget(REDIS_KEY, NoticeType.NO_CAN_VEH);
             Assertions.assertNull(json, "缓存中的不应存在已恢复通知");
         });
 
@@ -256,7 +256,7 @@ final class CarNoCanJudgeTest {
         // 每个测试之后
         JEDIS_POOL_UTILS.useResource(jedis -> {
             jedis.select(REDIS_DB_INDEX);
-            jedis.hdel(REDIS_KEY, AlarmMessageType.NO_CAN_VEH);
+            jedis.hdel(REDIS_KEY, NoticeType.NO_CAN_VEH);
         });
     }
 

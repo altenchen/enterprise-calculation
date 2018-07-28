@@ -26,6 +26,8 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * 车辆数据缓存, 缓存了车辆的部分数据的最后有效值.
@@ -46,6 +48,7 @@ public final class VehicleCache {
     public static final String ORIENTATION_FIELD = "useful" + DataKey._2501_ORIENTATION;
     public static final String LONGITUDE_FIELD = "useful" + DataKey._2502_LONGITUDE;
     public static final String LATITUDE_FIELD = "useful" + DataKey._2503_LATITUDE;
+    public static final String JILI_LOCK = "JILI_LOCK";
 
     private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
 
@@ -239,6 +242,32 @@ public final class VehicleCache {
         }
 
         return cache.get(vid).get(field);
+    }
+
+    @NotNull
+    public ImmutableMap<String, String> getField(
+        @NotNull final String vid,
+        @NotNull final String field,
+        @NotNull Supplier<@NotNull ImmutableMap<String, String>> defaultValue) {
+
+        try {
+            return getField(vid, field);
+        } catch (ExecutionException e) {
+            return defaultValue.get();
+        }
+    }
+
+    @NotNull
+    public ImmutableMap<String, String> getField(
+        @NotNull final String vid,
+        @NotNull final String field,
+        @NotNull Function<@NotNull ExecutionException, @NotNull ImmutableMap<String, String>> defaultValue) {
+
+        try {
+            return getField(vid, field);
+        } catch (ExecutionException e) {
+            return defaultValue.apply(e);
+        }
     }
 
     @NotNull

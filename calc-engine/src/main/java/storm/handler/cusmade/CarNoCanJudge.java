@@ -18,7 +18,7 @@ import storm.constant.RedisConstant;
 import storm.dao.DataToRedis;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
-import storm.system.AlarmMessageType;
+import storm.system.NoticeType;
 import storm.system.DataKey;
 import storm.util.DataUtils;
 import storm.util.JsonUtils;
@@ -316,7 +316,7 @@ public final class CarNoCanJudge {
 
                     final ImmutableMap<String, String> oldNotice = VEHICLE_CACHE.getField(
                         item.vid,
-                        AlarmMessageType.NO_CAN_VEH
+                        NoticeType.NO_CAN_VEH
                     );
                     if (MapUtils.isNotEmpty(oldNotice)) {
 
@@ -352,7 +352,7 @@ public final class CarNoCanJudge {
                 try {
                     VEHICLE_CACHE.putField(
                         item.vid,
-                        AlarmMessageType.NO_CAN_VEH,
+                        NoticeType.NO_CAN_VEH,
                         notice
                     );
                     PARAMS_REDIS_UTIL.autoLog(item.vid, () -> logger.info("VID[{}]CAN故障, 更新缓存.", item.vid));
@@ -414,7 +414,7 @@ public final class CarNoCanJudge {
 
                     final ImmutableMap<String, String> oldNotice = VEHICLE_CACHE.getField(
                         item.vid,
-                        AlarmMessageType.NO_CAN_VEH
+                        NoticeType.NO_CAN_VEH
                     );
                     if (MapUtils.isNotEmpty(oldNotice)) {
 
@@ -450,7 +450,7 @@ public final class CarNoCanJudge {
                 try {
                     VEHICLE_CACHE.delField(
                         item.vid,
-                        AlarmMessageType.NO_CAN_VEH
+                        NoticeType.NO_CAN_VEH
                     );
                     PARAMS_REDIS_UTIL.autoLog(item.vid, () -> logger.info("VID[{}]CAN正常, 删除缓存.", item.vid));
                 } catch (ExecutionException e) {
@@ -546,7 +546,7 @@ public final class CarNoCanJudge {
             // 车辆Id
             this.properties.put("vid", vid);
             // 消息类型
-            this.properties.put("msgType", AlarmMessageType.NO_CAN_VEH);
+            this.properties.put("msgType", NoticeType.NO_CAN_VEH);
             // 消息唯一ID
             this.properties.put("msgId", msgId);
             // 消息状态

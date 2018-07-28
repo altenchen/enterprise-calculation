@@ -603,13 +603,35 @@ public final class DataKey {
      */
     public static final String _4410023_CAN_LIST ="4410023";
 
-    /**
-     * 吉利——锁车功能状态(锁车功能是否开启)
-     */
-    public static final String _4710061_LOCK_FUNCTION_STATUS ="4710061";
+    // region 吉利
+
+    // region 终端锁车状态
 
     /**
-     * 吉利——锁车状态（车是否是锁止状态）
+     *  锁车功能状态, 0-锁车功能关闭, 1-锁车功能打开.
      */
-    public static final String _4710062_CAR_LOCK_STATUS ="4710062";
+    public static final String _4710061_JILI_LOCK_FUNCTION ="4710061";
+    public static final String _4710061_JILI_LOCK_FUNCTION_DISABLE ="0";
+    public static final String _4710061_JILI_LOCK_FUNCTION_ENABLE ="1";
+
+    /**
+     * 锁车状态, 0-车辆未被锁定, 1-车辆被锁定.
+     */
+    public static final String _4710062_JILI_LOCK_STATUS ="4710062";
+    /**
+     * 动力未锁止
+     */
+    public static final String _4710062_JILI_LOCK_STATUS_UNLOCK ="0";
+    /**
+     * 动力锁止
+     */
+    public static final String _4710062_JILI_LOCK_STATUS_LOCKED ="1";
+    /**
+     * 禁止锁止动力
+     */
+    public static final String _4710062_JILI_LOCK_STATUS_DISABLE ="2";
+
+    // endregion 终端锁车状态
+
+    // endregion 吉利
 }

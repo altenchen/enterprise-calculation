@@ -122,8 +122,6 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Map<String, Object>> vidOnOffNotice = new HashMap<>();
 
     private Map<String, Map<String, Object>> vidLastDat = new HashMap<>();//vid和最后一帧数据的缓存
-    private Map<String, Map<String,Object>> vidLockStatus = new HashMap<>();
-
     private Map<String, Long> lastTime = new HashMap<>();
 
 
@@ -444,11 +442,10 @@ public class CarRuleHandler implements InfoNotice {
         Map<String, Object> flyJudge = null;
         Map<String, Object> onOffJudge = null;
         Map<String, Object> mileHopJudge = null;
-        Map<String, Object> lockStatueChange = null;
         //3、如果规则启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
 
         if (1 == carLockStatueChangeJudgeRule) {
-            lockStatueChange = carLockStatusChangeJudge.carLockStatueChangeJudge(data,vidLockStatus);
+            final Map<String, Object> lockStatueChange = carLockStatusChangeJudge.carLockStatueChangeJudge(data);
             if (!MapUtils.isEmpty(lockStatueChange)) {
                 list.add(lockStatueChange);
             }
@@ -1278,7 +1275,7 @@ public class CarRuleHandler implements InfoNotice {
 
                 final Map<String, String> gpsFaultNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
                 if (MapUtils.isEmpty(gpsFaultNotice)) {
-                    gpsFaultNotice.put("msgType", AlarmMessageType.NO_POSITION_VEH);
+                    gpsFaultNotice.put("msgType", NoticeType.NO_POSITION_VEH);
                     gpsFaultNotice.put("msgId", UUID.randomUUID().toString());
                     gpsFaultNotice.put("vid", vid);
                     gpsFaultNotice.put("status", "0");
@@ -1370,7 +1367,7 @@ public class CarRuleHandler implements InfoNotice {
 
                     final ImmutableMap<String, String> oldNotice = VEHICLE_CACHE.getField(
                         vid,
-                        AlarmMessageType.NO_POSITION_VEH
+                        NoticeType.NO_POSITION_VEH
                     );
                     if (MapUtils.isNotEmpty(oldNotice)) {
 
@@ -1406,7 +1403,7 @@ public class CarRuleHandler implements InfoNotice {
 
                 VEHICLE_CACHE.putField(
                     vid,
-                    AlarmMessageType.NO_POSITION_VEH,
+                    NoticeType.NO_POSITION_VEH,
                     notice);
 
                 paramsRedisUtil.autoLog(
@@ -1436,7 +1433,7 @@ public class CarRuleHandler implements InfoNotice {
 
                 final Map<String, String> gpsNormalNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
                 if (MapUtils.isEmpty(gpsNormalNotice)) {
-                    gpsNormalNotice.put("msgType", AlarmMessageType.NO_POSITION_VEH);
+                    gpsNormalNotice.put("msgType", NoticeType.NO_POSITION_VEH);
                     gpsNormalNotice.put("msgId", UUID.randomUUID().toString());
                     gpsNormalNotice.put("vid", vid);
                     gpsNormalNotice.put("status", "0");
@@ -1521,7 +1518,7 @@ public class CarRuleHandler implements InfoNotice {
 
                     final ImmutableMap<String, String> oldNotice = VEHICLE_CACHE.getField(
                         vid,
-                        AlarmMessageType.NO_POSITION_VEH
+                        NoticeType.NO_POSITION_VEH
                     );
                     if (MapUtils.isNotEmpty(oldNotice)) {
 
@@ -1547,7 +1544,7 @@ public class CarRuleHandler implements InfoNotice {
 
                 vidGpsNotice.remove(vid);
 
-                VEHICLE_CACHE.delField(vid, AlarmMessageType.NO_POSITION_VEH);
+                VEHICLE_CACHE.delField(vid, NoticeType.NO_POSITION_VEH);
 
                 paramsRedisUtil.autoLog(
                     vid,
@@ -1899,7 +1896,6 @@ public class CarRuleHandler implements InfoNotice {
         if (isRestart) {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
             recorder.rebootInit(db, socRedisKeys, vidSocNotice);
-            recorder.rebootInit(CarLockStatusChangeJudge.db, CarLockStatusChangeJudge.lockStatusRedisKeys, vidLockStatus);
         }
     }
 
