@@ -3,6 +3,7 @@ package storm.handler.cusmade;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -56,7 +57,9 @@ public final class CarLockStatusChangeJudge {
         }
 
         final String lockFunction = data.get(DataKey._4710061_JILI_LOCK_FUNCTION);
-
+        if(!NumberUtils.isDigits(lockFunction)) {
+            return null;
+        }
         if (!DataKey._4710061_JILI_LOCK_FUNCTION_DISABLE.equals(lockFunction)
                 && !DataKey._4710061_JILI_LOCK_FUNCTION_ENABLE.equals(lockFunction)) {
 
@@ -65,6 +68,9 @@ public final class CarLockStatusChangeJudge {
         }
 
         final String lockStatus = data.get(DataKey._4710062_JILI_LOCK_STATUS);
+        if(!NumberUtils.isDigits(lockStatus)) {
+            return null;
+        }
         if (!DataKey._4710062_JILI_LOCK_STATUS_UNLOCK.equals(lockStatus)
                 && !DataKey._4710062_JILI_LOCK_STATUS_LOCKED.equals(lockStatus)) {
 
