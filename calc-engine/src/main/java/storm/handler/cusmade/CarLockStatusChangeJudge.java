@@ -105,7 +105,11 @@ public final class CarLockStatusChangeJudge {
         notice.put("vid", vid);
         notice.put("noticetime", noticeTime);
         notice.put("lockFunctionStatusChange", lockFunction);
-        notice.put("lockStatusChange", lockStatus);
+        if(DataKey._4710061_JILI_LOCK_FUNCTION_DISABLE.equals(lockFunction)) {
+            notice.put("lockStatusChange", DataKey._4710062_JILI_LOCK_STATUS_DISABLE);
+        } else {
+            notice.put("lockStatusChange", lockStatus);
+        }
         return notice;
 
     }
