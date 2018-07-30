@@ -63,13 +63,17 @@
             <artifactId>storm-kafka</artifactId>
         </dependency>
 
+        <!-- Storm 依赖结束 -->
+
+        <!-- Kafka依赖开始 -->
+
         <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
-            <artifactId>${storm.kafka.artifact.id}</artifactId>
+            <artifactId>kafka_${scala.version}</artifactId>
         </dependency>
 
-        <!-- Storm 依赖结束 -->
+        <!-- Kafka依赖结束 -->
 
         <!-- CDH依赖开始 -->
 

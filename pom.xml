@@ -25,12 +25,12 @@
     <properties>
 
         <!-- 环境组件版本开始 -->
+        <scala.version>2.10</scala.version>
         <!--http://storm.apache.org/releases/1.0.6/index.html-->
         <!-- http://storm.apache.org/releases/current/index.html -->
         <storm.version>1.2.2</storm.version>
         <!-- Kafka version used by old storm-kafka spout code -->
-        <storm.kafka.version>0.8.2.1</storm.kafka.version>
-        <storm.kafka.artifact.id>kafka_2.10</storm.kafka.artifact.id>
+        <kafka.version>0.8.2.1</kafka.version>
         <!-- https://www.cloudera.com/documentation/enterprise/release-notes/topics/cdh_vd_cdh5_maven_repo_54x.html#concept_rcg_gwm_hs -->
         <cdh.version>5.4.3</cdh.version>
         <zookeeper.version>3.4.5-cdh${cdh.version}</zookeeper.version>
@@ -146,21 +146,29 @@
                 <version>${storm.version}</version>
                 <exclusions>
                     <exclusion>
+                        <artifactId>slf4j-api</artifactId>
+                        <groupId>org.slf4j</groupId>
+                    </exclusion>
+                    <exclusion>
                         <artifactId>zookeeper</artifactId>
                         <groupId>org.apache.zookeeper</groupId>
                     </exclusion>
                     <exclusion>
-                        <artifactId>slf4j-api</artifactId>
-                        <groupId>org.slf4j</groupId>
+                        <artifactId>kafka-clients</artifactId>
+                        <groupId>org.apache.kafka</groupId>
                     </exclusion>
                 </exclusions>
             </dependency>
 
+            <!-- Storm 依赖结束 -->
+
+            <!-- Kafka依赖开始 -->
+
             <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka -->
             <dependency>
                 <groupId>org.apache.kafka</groupId>
-                <artifactId>${storm.kafka.artifact.id}</artifactId>
-                <version>${storm.kafka.version}</version>
+                <artifactId>kafka_${scala.version}</artifactId>
+                <version>${kafka.version}</version>
                 <exclusions>
                     <exclusion>
                         <artifactId>slf4j-api</artifactId>
@@ -170,10 +178,26 @@
                         <artifactId>log4j</artifactId>
                         <groupId>log4j</groupId>
                     </exclusion>
+                    <exclusion>
+                        <artifactId>slf4j-log4j12</artifactId>
+                        <groupId>org.slf4j</groupId>
+                    </exclusion>
                 </exclusions>
             </dependency>
 
-            <!-- Storm 依赖结束 -->
+            <!-- https://mvnrepository.com/artifact/org.scala-lang.modules/scala-parser-combinators -->
+            <dependency>
+                <groupId>org.scala-lang.modules</groupId>
+                <artifactId>scala-parser-combinators_${scala.version}</artifactId>
+                <exclusions>
+                    <exclusion>
+                        <artifactId>scala-library</artifactId>
+                        <groupId>org.scala-lang</groupId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <!-- Kafka依赖结束 -->
 
             <!-- CDH依赖开始 -->
 

@@ -26,7 +26,8 @@ import java.util.UUID;
  * @date: 2018-07-28
  * @description:
  */
-@DisplayName("CarLockStatusChangeJudgeTest")
+@Disabled
+@DisplayName("车辆锁止状态变更测试")
 public class CarLockStatusChangeJudgeTest {
 
     @SuppressWarnings("unused")
