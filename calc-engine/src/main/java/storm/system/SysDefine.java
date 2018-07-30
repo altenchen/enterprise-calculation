@@ -8,25 +8,13 @@ public final class SysDefine {
     //接收实时数据TOPIC
     public static String VEH_REALINFO_DATA_TOPIC;
 
-    //Zookeeper根目录
-    public static String KAFKA_ZK_ROOT;
-
     //车辆实时数据组ID
     public static String VEH_REALINFO_GROUPID;
-
-    //kafka数据消费者地址
-    public static String KAFKA_ZK_HOSTS;
 
     /**
      * Kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开.
      */
     public static String KAFKA_BOOTSTRAP_SERVERS;
-
-    //Zookeeper端口
-    public static int KAFKA_ZK_PORT;
-
-    //Zookeeper地址
-    public static String KAFKA_ZK_SERVERS;
 
     //APP操作，平台到STORM的TOPIC名称
     public static String VEH_TEST_OPTION_TOPIC;
@@ -64,8 +52,6 @@ public final class SysDefine {
 
     //故障发送kafkaStream id
     public static final String FAULT_STREAM = "faultstreamId";
-    //雅安发送
-    public static final String YAACTION_NOTICE = "yanotice";
     //同步 es消息发送
     public static final String SYNES_NOTICE = "synesnotice";
     //
@@ -180,7 +166,7 @@ public final class SysDefine {
      */
     public static final String RENTALSTATION = "RENTALSTATION";
     /**
-     * 指令类型 租赁点更新数据
+     * 指令类型 充电站更新数据
      */
     public static final String CHARGESTATION = "CHARGESTATION";
     /**
@@ -196,21 +182,13 @@ public final class SysDefine {
      */
     public static final String IS_ALARM = "10001";
     /**
-     * 定时任务关键字
-     */
-    public static final String IS_ONLINE = "10002";
-    /**
      * 是否充电
      */
     public static final String IS_CHARGE = "10003";
     /**
-     * 定时任务关键字, 等于最大里程数值减去最小里程数值.
-     */
-    public static final String MILEAGE = "10004";
-    /**
      * 定时任务关键字
      */
-    public static final String ONLINEUTC = "10005";
+    public static final String ONLINE_UTC = "10005";
     /**
      * 定时任务关键字
      */
@@ -279,13 +257,9 @@ public final class SysDefine {
      **/
     public static final String SYNES_BOLT_ID = "synesboltid";
     public static final String SYNES_GROUP = "synesGroup";
-    public static final String YAACTION_BOLT_ID = "yaactionboltid";
-    public static final String YAACTION_GROUP = "yaactionGroup";
     public static final String DIRECT = "direct";//直连
     public static final String FORWARD = "forward";//转发
     public static final String CODE = "code";
-    public static final String REG_SPOUT_ID = "regpoutid";
-    public static final String REG_STREAM_ID = "regStreamId";
     /**
      * 接收传送过来的同步es streamId分组
      **/

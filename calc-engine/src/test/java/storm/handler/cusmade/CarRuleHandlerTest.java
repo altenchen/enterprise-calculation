@@ -3,6 +3,7 @@ package storm.handler.cusmade;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import storm.system.SysDefine;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+@Disabled
 @DisplayName("SOC过低通知测试和闲置车辆通知")
 class CarRuleHandlerTest {
 
@@ -139,7 +141,7 @@ class CarRuleHandlerTest {
         data.put(DataKey._7615_STATE_OF_CHARGE,"66");
         data.put(DataKey._2202_TOTAL_MILEAGE,"18888");
         //系统接收报文时间
-        data.put(SysDefine.ONLINEUTC,now_time_yyMMddHHmmss_subtract_10minute);
+        data.put(SysDefine.ONLINE_UTC,now_time_yyMMddHHmmss_subtract_10minute);
         data.put(SysDefine.MESSAGETYPE,"REALTIME");
 
         SysRealDataCache.addAliveQueue(data.get(DataKey.VEHICLE_ID));
@@ -159,7 +161,7 @@ class CarRuleHandlerTest {
         //数据采集时间，终端采集到数据的时间
         data.put(DataKey.TIME, now_time_yyMMddHHmmss);
         //系统接收报文时间
-        data.put(SysDefine.ONLINEUTC,now_time_yyMMddHHmmss);
+        data.put(SysDefine.ONLINE_UTC,now_time_yyMMddHHmmss);
         //闲置车辆通知
 
         SysRealDataCache.addAliveQueue(data.get(DataKey.VEHICLE_ID));

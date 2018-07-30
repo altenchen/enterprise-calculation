@@ -1,5 +1,6 @@
 package storm.bolt.deal.norm;
 
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -9,7 +10,11 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import org.jetbrains.annotations.NotNull;
+import storm.constant.StreamFieldKey;
 import storm.handler.cal.EsRealCalHandler;
+import storm.stream.FromRegistToElasticsearchStream;
+import storm.stream.KafkaStream;
 import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
@@ -28,6 +33,7 @@ public class SynEsculBolt extends BaseRichBolt {
     private static final long serialVersionUID = 1700001L;
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     private static final JsonUtils gson = JsonUtils.getInstance();
+    private static final FromRegistToElasticsearchStream FROM_REGIST_STREAM = FromRegistToElasticsearchStream.getInstance();
     private OutputCollector collector;
     private static String statusEsTopic;
     private long lastExeTime;
@@ -35,8 +41,6 @@ public class SynEsculBolt extends BaseRichBolt {
     private EsRealCalHandler handler;
     public static ScheduledExecutorService service;
     private static int ispreCp=0;
-    private long rebootTime;
-    public static long againNoproTime = 1800000;//处理积压数据，至少给予 半小时，1800秒时间
     
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -44,11 +48,6 @@ public class SynEsculBolt extends BaseRichBolt {
         statusEsTopic = stormConf.get("kafka.topic.es.status").toString();
         long now = System.currentTimeMillis();
         lastExeTime = now;
-        rebootTime = now;
-        String nocheckObj = configUtils.sysDefine.getProperty("sys.reboot.nocheck");
-        if (!StringUtils.isEmpty(nocheckObj)) {
-            againNoproTime=Long.parseLong(nocheckObj)*1000;
-        }
         offlinechecktime=Long.parseLong(stormConf.get("offline.check.time").toString());
         try {
             if (stormConf.containsKey("redis.cluster.data.syn")) {
@@ -60,7 +59,7 @@ public class SynEsculBolt extends BaseRichBolt {
             }
             handler = new EsRealCalHandler();
             if (5 == ispreCp || 2 == ispreCp){
-
+                // carinfo中车辆的注册信息 是否可以监控并推送 es, 此方法在系统启动的时候调用一次
                 List<Map<String, Object>> monitormsgs = handler.redisCarinfoSendMsgs();
                 if (null != monitormsgs && monitormsgs.size()>0) {
                     System.out.println("---------------syn car is monitor or no--------total size:"+monitormsgs.size());
@@ -74,6 +73,7 @@ public class SynEsculBolt extends BaseRichBolt {
                 }
             }
             if (2 == ispreCp){
+                // 集群中的数据一次全量推送通知，此方法只会调用一次
                 List<Map<String, Object>> msgs = handler.redisClusterSendMsgs();
                 if (null != msgs && msgs.size()>0) {
                     System.out.println("---------------syn redis cluster data--------");
@@ -94,7 +94,8 @@ public class SynEsculBolt extends BaseRichBolt {
                 @Override
                 public void run() {
                     try {
-
+                        // 每调用一次此方法会批量的检查 所有在线的车辆 是否存在离线的情况
+                        // 离线处理：发送es离线消息，将其在在线的车辆缓存中移除
                         List<Map<String, Object>> msgs = handler.checkAliveCarOffline();
                         if (null != msgs && msgs.size()>0) {
                             for (Map<String, Object> map : msgs) {
@@ -117,13 +118,15 @@ public class SynEsculBolt extends BaseRichBolt {
             e.printStackTrace();
         }
     }
+
     @Override
     public void execute(Tuple tuple) {
         long now = System.currentTimeMillis();
-        
+
         if(SysDefine.SYNES_GROUP.equals(tuple.getSourceStreamId())){
+            // 来自FilterBolt
             String vid = tuple.getString(0);
-            Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
+            Map<String, String> data = (Map<String, String>) tuple.getValue(1);
             if (null == data.get(DataKey.VEHICLE_ID)) {
                 data.put(DataKey.VEHICLE_ID, vid);
             }
@@ -134,14 +137,12 @@ public class SynEsculBolt extends BaseRichBolt {
                 String json =gson.toJson(esMap);
                 sendToKafka(SysDefine.SYNES_NOTICE,statusEsTopic,vid, json);
             }
-        } else if(SysDefine.REG_STREAM_ID.equals(tuple.getSourceStreamId())){
-            if (now - rebootTime <againNoproTime) {
-                return;
-            }
-            String regMsg = tuple.getString(0);
+        } else if(FROM_REGIST_STREAM.isSourceStream(tuple)){
+            // 来自 KafkaSpout -> RegisterRecordTranslator
+            String regMsg = tuple.getStringByField(StreamFieldKey.MSG);
             if (null != regMsg && regMsg.length() > 26 && regMsg.indexOf(SysDefine.COMMA) > 0 && regMsg.indexOf(SysDefine.COLON) > 0) {
                 String [] params = regMsg.split(SysDefine.COMMA);
-                Map<String, String> regMsgMap = new TreeMap<String, String>();
+                Map<String, String> regMsgMap = new TreeMap<>();
                 for (String param : params) {
                     if (null != param) {
                         String [] items = param.split(SysDefine.COLON);
@@ -153,6 +154,7 @@ public class SynEsculBolt extends BaseRichBolt {
                     }
                 }
                 if (regMsgMap.size() > 2) {
+                    //
                      Map<String, Object> esMap = handler.getRegCarMsg(regMsgMap);
                      if (null != esMap && esMap.size()>0) {
                          Object vid = esMap.get(SysDefine.UUID);
@@ -167,25 +169,13 @@ public class SynEsculBolt extends BaseRichBolt {
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SysDefine.SYNES_NOTICE, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
+    public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
+
+        KafkaStream.declareOutputFields(declarer, SysDefine.SYNES_NOTICE);
     }
     
-    void sendToKafka(String define,String topic,Object vid, String message) {
-        collector.emit(define, new Values(topic, vid, message));
+    void sendToKafka(String streamId,String topic, Object vid, String message) {
+        collector.emit(streamId, new Values(topic, vid, message));
     }
-    
-    boolean isNullOrEmpty(Map map){
-        if(map == null || map.size()==0) {
-            return true;
-        }
-        return false;
-    }
-    boolean isNullOrEmpty(String string){
-        if(null == string || "".equals(string)) {
-            return true;
-        }
-        return "".equals(string.trim());
-    }
-    
+
 }

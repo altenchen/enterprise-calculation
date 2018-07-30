@@ -686,7 +686,7 @@ public class MailCalHandler {
 
                 String str = map.get(DataKey._2202_TOTAL_MILEAGE);
                 mileage +=Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0");
-                long lastTime=Long.valueOf(map.get(SysDefine.ONLINEUTC));
+                long lastTime=Long.valueOf(map.get(SysDefine.ONLINE_UTC));
                 if (System.currentTimeMillis()-lastTime<time){
                     online++;
                     boolean isstop=isStop(map);
@@ -728,7 +728,7 @@ public class MailCalHandler {
                     return false;
                 }
                 if ("0".equals(spd) && "20000".equals(rev)){
-                    String timelong = map.get(SysDefine.ONLINEUTC);
+                    String timelong = map.get(SysDefine.ONLINE_UTC);
                     String lon = map.get("2502");//经度
                     String lan = map.get("2503");//纬度
 
@@ -739,13 +739,13 @@ public class MailCalHandler {
                         startZero.put("2201", spd);
                         startZero.put("2502", lon);
                         startZero.put("2503", lan);
-                        startZero.put(SysDefine.ONLINEUTC, timelong);
+                        startZero.put(SysDefine.ONLINE_UTC, timelong);
 
                         zeroCache.put(vid, startZero);
                         return false;
                     } else {
-                        long lastTime=Long.valueOf(map.get(SysDefine.ONLINEUTC));
-                        long starttime=Long.valueOf(startZero.get(SysDefine.ONLINEUTC));
+                        long lastTime=Long.valueOf(map.get(SysDefine.ONLINE_UTC));
+                        long starttime=Long.valueOf(startZero.get(SysDefine.ONLINE_UTC));
                         if (lastTime - starttime >= stoptime) {
                             String slon = startZero.get("2502");//经度
                             String slan = startZero.get("2503");//纬度

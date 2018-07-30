@@ -319,12 +319,12 @@ public class SysRealDataCache {
                 }
             }
 
-            String utc = dat.get(SysDefine.ONLINEUTC);
+            String utc = dat.get(SysDefine.ONLINE_UTC);
             long utctime = Long.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(utc) ? utc : "0");
             long tertime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             long lastTime = Math.max(utctime, tertime);
-            if (! dat.containsKey(SysDefine.ONLINEUTC)) {
-                dat.put(SysDefine.ONLINEUTC, ""+lastTime);
+            if (! dat.containsKey(SysDefine.ONLINE_UTC)) {
+                dat.put(SysDefine.ONLINE_UTC, ""+lastTime);
             }
             if(lastTime>0){
                 if (now-lastTime <= timeout ){//最后一条报文时间小于当前系统时间 + 30秒的误差
@@ -384,8 +384,8 @@ public class SysRealDataCache {
                     || StringUtils.isEmpty(time)) {
                 return false;
             }
-            if (dat.containsKey(SysDefine.ONLINEUTC)) {
-                long lastTime=Long.valueOf(dat.get(SysDefine.ONLINEUTC));
+            if (dat.containsKey(SysDefine.ONLINE_UTC)) {
+                long lastTime=Long.valueOf(dat.get(SysDefine.ONLINE_UTC));
                 if (now-lastTime <= timeout) {
                     return true;
                 }

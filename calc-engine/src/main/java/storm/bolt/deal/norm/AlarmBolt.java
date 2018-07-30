@@ -21,6 +21,8 @@ import org.apache.storm.tuple.Values;
 
 import com.sun.jersey.core.util.Base64;
 
+import org.jetbrains.annotations.NotNull;
+import storm.stream.KafkaStream;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
@@ -147,7 +149,7 @@ public class AlarmBolt extends BaseRichBolt {
                                 Map<String, String> dat = lastCache.get(keyVid);
                                 if (null != dat && dat.size() >0) {
                                     
-                                    String lastUtc = dat.get(SysDefine.ONLINEUTC);
+                                    String lastUtc = dat.get(SysDefine.ONLINE_UTC);
                                     if (null != lastUtc && !"".equals(lastUtc.trim())) {
                                         
                                         sendToNext(SysDefine.SYNES_GROUP,keyVid, dat);
@@ -209,7 +211,7 @@ public class AlarmBolt extends BaseRichBolt {
     public void execute(Tuple input) {
         if (input.getSourceStreamId().equals(SysDefine.SPLIT_GROUP)) {
             String vid = input.getString(0);
-            Map<String, String> dat = (TreeMap<String, String>) input.getValue(1);
+            Map<String, String> dat = (Map<String, String>) input.getValue(1);
 
             if (!dat.containsKey(SysDefine.TIME)
                     || StringUtils.isEmpty(dat.get(SysDefine.TIME))) {
@@ -254,12 +256,12 @@ public class AlarmBolt extends BaseRichBolt {
             } else if (CommandType.SUBMIT_LINKSTATUS.equals(type)) { // 车辆链接状态 TYPE：1上线，2心跳，3离线
                 Map<String, String> linkmap = new TreeMap<String, String>();
                 if ("1".equals(dat.get("TYPE"))) {
-                    linkmap.put(SysDefine.IS_ONLINE, "1");
+                    linkmap.put(DataKey._10002_IS_ONLINE, "1");
                 } else if ("3".equals(dat.get("TYPE"))) {
-                    linkmap.put(SysDefine.IS_ONLINE, "0");
+                    linkmap.put(DataKey._10002_IS_ONLINE, "0");
                     linkmap.put(SysDefine.IS_ALARM, "0");
                 }
-                linkmap.put(SysDefine.ONLINEUTC, System.currentTimeMillis() + ""); // 增加utc字段，插入系统时间
+                linkmap.put(SysDefine.ONLINE_UTC, System.currentTimeMillis() + ""); // 增加utc字段，插入系统时间
                 /**
                  * 当完全替换saveservice以后 打开
                  */
@@ -302,9 +304,11 @@ public class AlarmBolt extends BaseRichBolt {
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SysDefine.VEH_ALARM, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
-        declarer.declareStream(SysDefine.VEH_ALARM_REALINFO_STORE, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
+    public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
+
+        KafkaStream.declareOutputFields(declarer, SysDefine.VEH_ALARM);
+        KafkaStream.declareOutputFields(declarer, SysDefine.VEH_ALARM_REALINFO_STORE);
+
         declarer.declareStream(SysDefine.FAULT_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
         declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
     }
@@ -514,7 +518,7 @@ public class AlarmBolt extends BaseRichBolt {
                 sendMsg.put("LEFT1", left1);
                 String alarmhbase = gson.toJson(sendMsg);
                 //kafka存储
-                sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic,vid, alarmEnd);
+                sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmEnd);
                 //hbase存储
                 sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehAlarmStoreTopic, vid, alarmhbase);
                 
@@ -846,7 +850,7 @@ public class AlarmBolt extends BaseRichBolt {
                             sendMsg.put("RIGHT2", right2);
                             String alarmHbase = gson.toJson(sendMsg);
                             //发送kafka提供数据库存储
-                            sendAlarmKafka(SysDefine.VEH_ALARM,vehAlarmTopic,vid, alarmStart);
+                            sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmStart);
                             //hbase存储
                             sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehAlarmStoreTopic, vid, alarmHbase);
                             
@@ -908,7 +912,7 @@ public class AlarmBolt extends BaseRichBolt {
                         String alarmHbase = gson.toJson(sendMsg);
                         
                         //kafka存储
-                        sendAlarmKafka(SysDefine.VEH_ALARM,vehAlarmTopic,vid, alarmEnd);
+                        sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmEnd);
                         //hbase存储
                         sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE,vehAlarmStoreTopic, vid, alarmHbase);
                         //发送到 故障判断处理节点继续
@@ -936,12 +940,21 @@ public class AlarmBolt extends BaseRichBolt {
         vid2Alarm.put(vid, status + "_" + System.currentTimeMillis() + "_" + time);
     }
   //synchronized
-    private synchronized void sendAlarmKafka(String define,String topic,String vid, String message) {
-        collector.emit(define, new Values(topic, vid, message));
+    private synchronized void sendAlarmKafka(
+        @NotNull final String streamId,
+        @NotNull final String topic,
+        @NotNull final String vid,
+        @NotNull final String message) {
+
+        collector.emit(streamId, new Values(topic, vid, message));
     }
     
-    private synchronized void sendToNext(String define,String vid, Object message) {
-        collector.emit(define, new Values(vid, message));
+    private synchronized void sendToNext(
+        @NotNull final String streamId,
+        @NotNull final String vid,
+        Object message) {
+
+        collector.emit(streamId, new Values(vid, message));
     }
 
     private int diffMarkValid(double value, int mark, double right1, double right2) {
@@ -1106,9 +1119,9 @@ public class AlarmBolt extends BaseRichBolt {
                             
                             Map<String, String> dat = lastCache.get(vid);
                             if (null !=dat && dat.size()>0) {
-                                if (dat.containsKey(SysDefine.ONLINEUTC)) {
+                                if (dat.containsKey(SysDefine.ONLINE_UTC)) {
                                     
-                                    long timels = Long.parseLong(dat.get(SysDefine.ONLINEUTC));
+                                    long timels = Long.parseLong(dat.get(SysDefine.ONLINE_UTC));
                                     if (now - timels > offtime) {
                                         String vType = dat.get("VTYPE");
                                         if (!StringUtils.isEmpty(vid)

@@ -13,14 +13,29 @@ package storm.system;
 public final class DataKey {
 
     /**
-     * 车辆ID, 车辆在平台中唯一编码
+     * 消息前缀
      */
-    public static final String VEHICLE_ID = "VID";
+    public static final String PREFIX = "PREFIX";
+
+    /**
+     * 消息序号
+     */
+    public static final String SERIAL_NO = "SERIAL_NO";
 
     /**
      * VIN
      */
     public static final String VEHICLE_NUMBER = "VIN";
+
+    /**
+     * 消息类型
+     */
+    public static final String MESSAGE_TYPE = "MESSAGETYPE";
+
+    /**
+     * 车辆ID, 车辆在平台中唯一编码
+     */
+    public static final String VEHICLE_ID = "VID";
 
     /**
      * 时间
@@ -153,9 +168,14 @@ public final class DataKey {
     public static final String _2290 = "2290";
 
     /**
-     * 充放电状态
+     * 充放电状态, 1-停车充电, 2-行驶充电, 3-未充电状态, 4-充电完成
      */
     public static final String _2301_CHARGE_STATUS = "2301";
+
+    /**
+     * 停车充电状态
+     */
+    public static final String _2301_CHARGE_STATUS_CHARGING = "1";
 
     /**
      * 电机控制器温度
@@ -597,6 +617,11 @@ public final class DataKey {
      * SERVER_TIME服务器接收到报文的时间
      */
     public static final String _9999_SERVER_RECEIVE_TIME = "9999";
+
+    /**
+     * 车辆是否在线, 0-离线, 1-在线
+     */
+    public static final String _10002_IS_ONLINE = "10002";
 
     /**
      * can 列表

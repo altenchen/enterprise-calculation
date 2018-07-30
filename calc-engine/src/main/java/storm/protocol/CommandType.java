@@ -103,4 +103,14 @@ public final class CommandType {
      * 16.终端锁车报文
      */
     public  static final String SUBMIT_TERMLOCK = "TERMLOCK";
+
+    /**
+     * 指令类型 租赁点更新数据
+     */
+    public static final String RENTALSTATION = "RENTALSTATION";
+
+    /**
+     * 指令类型 充电站更新数据
+     */
+    public static final String CHARGESTATION = "CHARGESTATION";
 }

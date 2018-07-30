@@ -1,46 +1,57 @@
 package storm.topology;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.storm.Config;
+import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.spout.Scheme;
+import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
+import org.apache.storm.kafka.bolt.mapper.TupleToKafkaMapper;
+import org.apache.storm.kafka.bolt.selector.FieldNameTopicSelector;
+import org.apache.storm.kafka.bolt.selector.KafkaTopicSelector;
+import org.apache.storm.kafka.spout.KafkaSpout;
+import org.apache.storm.kafka.spout.KafkaSpoutConfig;
+import org.apache.storm.kafka.spout.RecordTranslator;
+import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.tuple.Fields;
 import org.jetbrains.annotations.NotNull;
-import storm.bolt.deal.KafkaSendBolt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.bolt.deal.cusmade.CarNoticelBolt;
-import storm.bolt.deal.cusmade.UserActionBolt;
-import storm.bolt.deal.norm.AlarmBolt;
-import storm.bolt.deal.norm.EleFenceBolt;
-import storm.bolt.deal.norm.FaultBolt;
-import storm.bolt.deal.norm.FilterBolt;
-import storm.bolt.deal.norm.SynEsculBolt;
+import storm.bolt.deal.norm.*;
+import storm.constant.StreamFieldKey;
+import storm.kafka.spout.GeneralRecordTranslator;
+import storm.kafka.spout.RegisterRecordTranslator;
+import storm.stream.FromFilterToCarNoticeStream;
+import storm.stream.FromGeneralToFilterStream;
+import storm.stream.FromRegistToElasticsearchStream;
+import storm.stream.KafkaStream;
+import storm.system.DataKey;
+import storm.system.StormConfigKey;
+import storm.system.SysDefine;
+import storm.util.ConfigUtils;
 
 import java.util.Properties;
 
-import storm.constant.StreamFieldKey;
-import storm.kafka.scheme.PacketScheme;
-import storm.kafka.scheme.RegistScheme;
-import storm.stream.FromFilterToCarNoticeStream;
-import storm.stream.FromGeneralToFilterStream;
-import storm.stream.FromPacketToFilterStream;
-import storm.stream.FromRegistToElasticsearchStream;
-import storm.system.DataKey;
-import storm.system.StormConfigKey;
-import storm.util.ConfigUtils;
-import storm.kafka.scheme.GeneralScheme;
-import storm.kafka.KafkaConfig;
-import storm.system.SysDefine;
-
-import org.apache.storm.Config;
-import org.apache.storm.StormSubmitter;
-import org.apache.storm.kafka.KafkaSpout;
-import org.apache.storm.topology.TopologyBuilder;
-import org.apache.storm.tuple.Fields;
-
+/**
+ * @author xzp
+ */
 public class TopologiesByConf {
 
-    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
+    private static final Logger LOG = LoggerFactory.getLogger(TopologiesByConf.class);
 
+    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
+
+    /**
+     * http://storm.apache.org/releases/current/index.html
+     * @param args 拓扑启动参数, 忽略.
+     * @throws Exception 拓扑启动异常
+     */
     public static void main(String[] args) throws Exception {
 
-        Properties properties = configUtils.sysDefine;
+        Properties properties = CONFIG_UTILS.sysDefine;
 
         fillKafkaConf(properties);
 
@@ -48,13 +59,6 @@ public class TopologiesByConf {
         StormTopology stormTopology = createTopology(properties);
         final String topologyName = properties.getProperty(SysDefine.TOPOLOGY_NAME, "qyallStorm");
         StormSubmitter.submitTopology(topologyName, stormConf, stormTopology);
-
-//        new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                RedisTotalCacheInitUtil.init();
-//            }
-//        });
     }
 
     private static Config buildStormConf(@NotNull Properties properties) {
@@ -68,6 +72,7 @@ public class TopologiesByConf {
         stormConf.setNumWorkers(workerNo);
         //设置不需要应答
         stormConf.setNumAckers(0);
+        stormConf.put(KafkaBolt.TOPIC, KafkaStream.TOPIC);
 
         return stormConf;
     }
@@ -101,7 +106,6 @@ public class TopologiesByConf {
         //region kafka
         stormConf.put("kafka.customer.hosts", properties.getProperty("kafka.broker.hosts"));
         stormConf.put("kafka.platform.veh.reg", properties.get("kafka.platform.veh.reg"));
-        stormConf.put("kafka.topic.action", properties.get("kafka.topic.action"));
         stormConf.put(SysDefine.KAFKA_TOPIC_ALARM, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM));
         stormConf.put("kafka.topic.alarmstore", properties.getProperty("kafka.topic.alarmstore"));
         stormConf.put("kafka.topic.customfault", properties.get("kafka.topic.customfault"));
@@ -112,9 +116,6 @@ public class TopologiesByConf {
         //endregion
 
         stormConf.put("offline.check.time", properties.get("offline.check.time"));
-
-        stormConf.put("producer.againNo", properties.get("producer.againNo"));
-        stormConf.put("producer.poolNo", properties.get("producer.poolNo"));
 
         //region redis
         stormConf.put("redis.cluster.data.syn", properties.get("redis.cluster.data.syn"));
@@ -181,66 +182,53 @@ public class TopologiesByConf {
      */
     private static void buildKafkaSpout(@NotNull TopologyBuilder builder, int realSpoutNo) {
 
+        // kafka 实时报文消息
         final FromGeneralToFilterStream fromGeneralToFilterStream = FromGeneralToFilterStream.getInstance();
-        // KafkaSpout: 实时数据
-        final KafkaConfig kafkaRealinfoConfig = buildKafkaConfig(
-            SysDefine.VEH_REALINFO_DATA_TOPIC,
-            SysDefine.VEH_REALINFO_GROUPID,
-            new GeneralScheme());
-        builder
-            // kafka实时报文消息
-            .setSpout(
-                fromGeneralToFilterStream.getComponentId(),
-                new KafkaSpout(kafkaRealinfoConfig.getSpoutConfig()),
-                realSpoutNo);
+        final RecordTranslator generalTopicTranslator = new GeneralRecordTranslator();
+        final KafkaSpoutConfig<String, String> generalTopicConfig = KafkaSpoutConfig
+            .builder(SysDefine.KAFKA_BOOTSTRAP_SERVERS, SysDefine.VEH_REALINFO_DATA_TOPIC)
+            .setProp(ConsumerConfig.GROUP_ID_CONFIG, SysDefine.VEH_REALINFO_GROUPID)
+            .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_LATEST)
+            .setProcessingGuarantee(KafkaSpoutConfig.ProcessingGuarantee.AT_MOST_ONCE)
+            .setRecordTranslator(generalTopicTranslator)
+            .build();
+        builder.setSpout(
+            fromGeneralToFilterStream.getComponentId(),
+            new KafkaSpout<>(generalTopicConfig),
+            realSpoutNo
+        );
 
-        final FromPacketToFilterStream fromPacketToFilterStream = FromPacketToFilterStream.getInstance();
-        // KafkaSpout: 原始报文
-        final KafkaConfig kafkaErrordataConfig = buildKafkaConfig(
-            SysDefine.ERROR_DATA_TOPIC,
-            SysDefine.ERROR_DATA_GROUPID,
-            new PacketScheme());
-        builder
-            // kafka原始报文消息
-            .setSpout(
-                fromPacketToFilterStream.getComponentId(),
-                new KafkaSpout(kafkaErrordataConfig.getSpoutConfig()),
-                realSpoutNo);
-
+        // kafka 平台注册报文消息
         final FromRegistToElasticsearchStream fromRegistToElasticsearchStream = FromRegistToElasticsearchStream.getInstance();
-        // KafkaSpout: 平台注册报文
-        final KafkaConfig kafkaRegConfig = buildKafkaConfig(
-            SysDefine.PLAT_REG_TOPIC,
-            SysDefine.PLAT_REG_GROUPID,
-            new RegistScheme());
-        kafkaRegConfig.setOutputStreamId(fromRegistToElasticsearchStream.getStreamId());
-        builder
-            // kafka平台注册报文消息
-            .setSpout(
-                fromRegistToElasticsearchStream.getComponentId(),
-                new KafkaSpout(kafkaRegConfig.getSpoutConfig()),
-                realSpoutNo);
-
+        final RecordTranslator registerTopicTranslator = new RegisterRecordTranslator();
+        final KafkaSpoutConfig<String, String> registerTopicConfig = KafkaSpoutConfig
+            .builder(SysDefine.KAFKA_BOOTSTRAP_SERVERS, SysDefine.PLAT_REG_TOPIC)
+            .setProp(ConsumerConfig.GROUP_ID_CONFIG, SysDefine.PLAT_REG_GROUPID)
+            .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_LATEST)
+            .setProcessingGuarantee(KafkaSpoutConfig.ProcessingGuarantee.AT_LEAST_ONCE)
+            .setRecordTranslator(registerTopicTranslator)
+            .build();
+        builder.setSpout(
+            fromRegistToElasticsearchStream.getComponentId(),
+            new KafkaSpout<>(registerTopicConfig),
+            realSpoutNo
+        );
     }
 
     /**
      * @param builder 拓扑构建器
      * @param boltNo  Blot 基准并行度
      */
-    private static void builderBlots(@NotNull TopologyBuilder builder, int boltNo) {
+    @SuppressWarnings("AlibabaMethodTooLong")
+    private static void builderBlots(@NotNull final TopologyBuilder builder, final int boltNo) {
 
         final FromGeneralToFilterStream fromGeneralToFilterStream = FromGeneralToFilterStream.getInstance();
-        final FromPacketToFilterStream fromPacketToFilterStream = FromPacketToFilterStream.getInstance();
         builder
             .setBolt(
                 SysDefine.CHECK_FILTER_BOLT_ID,
                 new FilterBolt(),
                 boltNo)
             .setNumTasks(boltNo * 3)
-            // 接收车辆错误报文数据
-            .fieldsGrouping(
-                fromPacketToFilterStream.getComponentId(),
-                new Fields(StreamFieldKey.VEHICLE_ID))
             // 接收车辆实时数据
             .fieldsGrouping(
                 fromGeneralToFilterStream.getComponentId(),
@@ -299,19 +287,6 @@ public class TopologiesByConf {
                 fromFilterToCarNoticeStream.getStreamId(),
                 new Fields(DataKey.VEHICLE_ID));
 
-        builder
-            // 雅安用户行为处理
-            .setBolt(
-                SysDefine.YAACTION_BOLT_ID,
-                new UserActionBolt(),
-                boltNo * 3)
-            .setNumTasks(boltNo * 9)
-            // 雅安用户行为实时数据
-            .fieldsGrouping(
-                SysDefine.CHECK_FILTER_BOLT_ID,
-                SysDefine.YAACTION_GROUP,
-                new Fields(DataKey.VEHICLE_ID));
-
         final FromRegistToElasticsearchStream fromRegistToElasticsearchStream = FromRegistToElasticsearchStream.getInstance();
         builder
             // es数据同步处理
@@ -320,11 +295,6 @@ public class TopologiesByConf {
                 new SynEsculBolt(),
                 boltNo * 3)
             .setNumTasks(boltNo * 9)
-//            // 预警信息通知同步数据
-//            .fieldsGrouping(
-//                SysDefine.ALARM_BOLT_ID,
-//                SysDefine.SYNES_GROUP,
-//                new Fields(SysDefine.VEHICLE_ID))
             // 电子围栏告警实时数据
             .fieldsGrouping(
                 SysDefine.CHECK_FILTER_BOLT_ID,
@@ -334,84 +304,67 @@ public class TopologiesByConf {
                 fromRegistToElasticsearchStream.getComponentId(),
                 fromRegistToElasticsearchStream.getStreamId());
 
-//        builder
-//            // 历史补发相关计算
-//            .setBolt(
-//                SysDefine.QUICK_BOLT_ID,
-//                new QuickCacheBolt(),
-//                boltNo * 2)
-//            .setNumTasks(boltNo * 6)
-//            .fieldsGrouping(
-//                SysDefine.CHECK_FILTER_BOLT_ID,
-//                SysDefine.SUPPLY_GROUP,
-//                new Fields(SysDefine.VEHICLE_ID));
+        buildKafkaBolt(builder, boltNo);
+    }
+
+    private static void buildKafkaBolt(
+        @NotNull final TopologyBuilder builder,
+        final int boltNo) {
+
+        final Properties producerProperties = new Properties();
+        producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, SysDefine.KAFKA_BOOTSTRAP_SERVERS);
+        producerProperties.put(ProducerConfig.ACKS_CONFIG, "1");
+        producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getCanonicalName());
+        producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getCanonicalName());
+
+        final KafkaTopicSelector selector = new FieldNameTopicSelector(KafkaStream.TOPIC, null);
+
+        final TupleToKafkaMapper<String, String> mapper = new FieldNameBasedTupleToKafkaMapper<>(
+            KafkaStream.BOLT_KEY,
+            KafkaStream.BOLT_MESSAGE);
+
+        final KafkaBolt<String, String> kafkaBolt = new KafkaBolt<String, String>()
+            .withProducerProperties(producerProperties)
+            .withTopicSelector(selector)
+            .withTupleToKafkaMapper(mapper);
 
         builder
             // 发送kafka消息，必要时可以动态增加线程数以增加发送线程数据
             .setBolt(
                 SysDefine.KAFKASEND_BOLT_ID,
-                new KafkaSendBolt(),
+                kafkaBolt,
                 boltNo * 2)
             .setNumTasks(boltNo * 6)
             // 车辆告警数据
             .fieldsGrouping(
                 SysDefine.ALARM_BOLT_ID,
                 SysDefine.VEH_ALARM,
-                new Fields(DataKey.VEHICLE_ID))
+                new Fields(KafkaStream.BOLT_KEY))
             // 车辆报警状态、实时需要存储的数据
             .fieldsGrouping(
                 SysDefine.ALARM_BOLT_ID,
                 SysDefine.VEH_ALARM_REALINFO_STORE,
-                new Fields(DataKey.VEHICLE_ID))
+                new Fields(KafkaStream.BOLT_KEY))
             // 电子围栏
             .fieldsGrouping(
                 SysDefine.FENCE_BOLT_ID,
                 SysDefine.FENCE_ALARM,
-                new Fields(DataKey.VEHICLE_ID))
+                new Fields(KafkaStream.BOLT_KEY))
             // 故障处理
             .fieldsGrouping(
                 SysDefine.FAULT_BOLT_ID,
                 SysDefine.FAULT_STREAM,
-                new Fields(DataKey.VEHICLE_ID))
-            // 雅安公交驾驶行为
-            .fieldsGrouping(
-                SysDefine.YAACTION_BOLT_ID,
-                SysDefine.YAACTION_NOTICE,
-                new Fields(DataKey.VEHICLE_ID))
+                new Fields(KafkaStream.BOLT_KEY))
             // es 同步推送
             .fieldsGrouping(
                 SysDefine.SYNES_BOLT_ID,
                 SysDefine.SYNES_NOTICE,
-                new Fields(DataKey.VEHICLE_ID))
+                new Fields(KafkaStream.BOLT_KEY))
             // 告警 同步推送
             .fieldsGrouping(
                 SysDefine.CUS_NOTICE_BOLT_ID,
                 SysDefine.CUS_NOTICE,
-                new Fields(DataKey.VEHICLE_ID))
-            // 历史数据直接存储
-            .fieldsGrouping(
-                SysDefine.CHECK_FILTER_BOLT_ID,
-                SysDefine.HISTORY,
-                new Fields(DataKey.VEHICLE_ID));
-    }
-
-    /**
-     * 构建kafkaSpout配置
-     *
-     * @param topic kafka主题
-     * @return kafka配置
-     */
-    private static KafkaConfig buildKafkaConfig(String topic, String spoutId, Scheme scheme) {
-        KafkaConfig kafkaConfig = new KafkaConfig(
-            topic,
-            SysDefine.KAFKA_ZK_ROOT,
-            spoutId,
-            SysDefine.KAFKA_ZK_HOSTS,
-            scheme);
-        kafkaConfig.setZKConfig(
-            SysDefine.KAFKA_ZK_PORT,
-            SysDefine.KAFKA_ZK_SERVERS.split(","));
-        return kafkaConfig;
+                new Fields(KafkaStream.BOLT_KEY));
     }
 
     /**
@@ -422,17 +375,11 @@ public class TopologiesByConf {
     private static void fillKafkaConf(@NotNull Properties properties) {
         // TODO: 转为存储到单例类
 
-        // Zookeeper 主机
-        SysDefine.KAFKA_ZK_SERVERS = properties.getProperty("kafka.zkServers");
-        // Zookeeper 端口
-        SysDefine.KAFKA_ZK_PORT = Integer.valueOf(properties.getProperty("kafka.zkPort"));
-        // Zookeeper 地址
-        SysDefine.KAFKA_ZK_HOSTS = properties.getProperty("kafka.zk.hosts");
-        // Zookeeper 根目录
-        SysDefine.KAFKA_ZK_ROOT = properties.getProperty("kafka.zkroot");
-
-        // 从 kafka 0.10.1开始支持新的消费方式
+        // Kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开. 从 kafka 0.10.1开始支持新的消费方式
         SysDefine.KAFKA_BOOTSTRAP_SERVERS = properties.getProperty("kafka.bootstrap.servers");
+        LOG.info("ConsumerConfig: {}=[{}]", ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, SysDefine.KAFKA_BOOTSTRAP_SERVERS);
+        LOG.info("KafkaStream.Fields({}, {}, {})", KafkaStream.TOPIC, KafkaStream.BOLT_KEY, KafkaStream.BOLT_MESSAGE);
+        LOG.info("ProducerConfig: {}=[{}]", ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, SysDefine.KAFKA_BOOTSTRAP_SERVERS);
 
         // region Spout 输入主题
 

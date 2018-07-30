@@ -8,6 +8,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import org.jetbrains.annotations.NotNull;
 import storm.dto.fence.Coordinate;
 import storm.dto.fence.EleFence;
 import storm.handler.fence.input.Rule;
@@ -15,6 +16,7 @@ import storm.handler.fence.output.Invoke;
 import storm.handler.fence.output.Invoke.Result;
 import storm.handler.fence.output.InvokeCtxMtd;
 import storm.handler.fence.output.InvokeSglMtd;
+import storm.stream.KafkaStream;
 import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.JsonUtils;
@@ -89,7 +91,7 @@ public class EleFenceBolt extends BaseRichBolt {
         }
         if(tuple.getSourceStreamId().equals(SysDefine.FENCE_GROUP)){
             String vid = tuple.getString(0);
-            Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
+            Map<String, String> data = (Map<String, String>) tuple.getValue(1);
             if (null == data.get(DataKey.VEHICLE_ID)) {
                 data.put(DataKey.VEHICLE_ID, vid);
             }
@@ -111,8 +113,9 @@ public class EleFenceBolt extends BaseRichBolt {
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SysDefine.FENCE_ALARM, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
+    public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
+
+        KafkaStream.declareOutputFields(declarer, SysDefine.FENCE_ALARM);
     }
     
     void sendAlarmKafka(String define,String topic,String vid, String message) {

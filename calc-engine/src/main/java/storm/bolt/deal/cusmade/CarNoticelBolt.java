@@ -11,6 +11,7 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
@@ -22,6 +23,7 @@ import storm.handler.cusmade.OnOffInfoNotice;
 import storm.handler.cusmade.ScanRange;
 import storm.protocol.CommandType;
 import storm.stream.FromFilterToCarNoticeStream;
+import storm.stream.KafkaStream;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
@@ -252,7 +254,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
         if (CUS_NOTICE_GROUP_STREAM.isSourceStream(tuple)) {
             String vid = tuple.getString(0);
 
-            final Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
+            final Map<String, String> data = (Map<String, String>) tuple.getValue(1);
 
             if (MapUtils.isEmpty(data)) {
                 return;
@@ -535,8 +537,9 @@ public final class CarNoticelBolt extends BaseRichBolt {
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SysDefine.CUS_NOTICE, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
+    public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
+
+        KafkaStream.declareOutputFields(declarer, SysDefine.CUS_NOTICE);
     }
 
     void sendToKafka(String define, String topic, Object vid, String message) {

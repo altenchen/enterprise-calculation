@@ -328,7 +328,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             }
         }
 
-        String lastUtc = dat.get(SysDefine.ONLINEUTC);
+        String lastUtc = dat.get(SysDefine.ONLINE_UTC);
         String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
 
         //是否为登入报文
@@ -431,7 +431,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 || StringUtils.isEmpty(time)) {
             return null;
         }
-        String lastUtc = dat.get(SysDefine.ONLINEUTC);
+        String lastUtc = dat.get(SysDefine.ONLINE_UTC);
         double lastmileage = -1;
         if (dat.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
             String str = dat.get(DataKey._2202_TOTAL_MILEAGE);
@@ -482,7 +482,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 || StringUtils.isEmpty(time)) {
             return null;
         }
-        String lastUtc = dat.get(SysDefine.ONLINEUTC);
+        String lastUtc = dat.get(SysDefine.ONLINE_UTC);
         String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
         double lastmileage = -1;
         if (dat.containsKey(DataKey._2202_TOTAL_MILEAGE)) {

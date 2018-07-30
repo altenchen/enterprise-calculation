@@ -8,7 +8,9 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import org.jetbrains.annotations.NotNull;
 import storm.handler.fault.ExamineService;
+import storm.stream.KafkaStream;
 import storm.system.DataKey;
 import storm.system.SysDefine;
 
@@ -52,7 +54,7 @@ public class FaultBolt extends BaseRichBolt {
         }
         if(tuple.getSourceStreamId().equals(SysDefine.FAULT_GROUP)){
             String vid = tuple.getString(0);
-            Map<String, String> alarmMsg = (TreeMap<String, String>) tuple.getValue(1);
+            Map<String, String> alarmMsg = (Map<String, String>) tuple.getValue(1);
             if (null == alarmMsg.get(DataKey.VEHICLE_ID)) {
                 alarmMsg.put(DataKey.VEHICLE_ID, vid);
             }
@@ -72,8 +74,9 @@ public class FaultBolt extends BaseRichBolt {
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SysDefine.FAULT_STREAM, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
+    public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
+
+        KafkaStream.declareOutputFields(declarer, SysDefine.FAULT_STREAM);
     }
     
     void sendAlarmKafka(String define,String topic,String vid, String message) {

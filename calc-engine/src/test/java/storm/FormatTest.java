@@ -1,7 +1,9 @@
 package storm;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +38,9 @@ final class FormatTest {
         // 每个测试之前
     }
 
-    @DisplayName("时间格式化和反格式化测试")
+    @Disabled("时间格式化和反格式化测试")
     @Test
-    void testFormat() throws ParseException {
+    void timeFormat() throws ParseException {
 
         final TimeZone utcZone = TimeZone.getTimeZone("GMT");
         final TimeZone chinaZone = TimeZone.getTimeZone("Asia/Shanghai");
@@ -77,9 +79,9 @@ final class FormatTest {
         Assertions.assertNull(key5);
     }
 
-    @DisplayName("时间范围测试")
+    @Disabled("时间范围测试")
     @Test
-    void testRange() {
+    void timeRange() {
         try {
             final long tmp_last = 0;
             final long last = DateUtils.parseDate(String.valueOf(tmp_last), new String[]{FormatConstant.DATE_FORMAT}).getTime();
@@ -88,6 +90,34 @@ final class FormatTest {
             return;
         }
         Assertions.fail();
+    }
+
+    @Disabled("整数转二进制")
+    @Test
+    void integerToBinary() {
+        final int integer = 0xF0F00F0F;
+        final String longBinary = StringUtils.leftPad(Integer.toBinaryString(integer), Long.SIZE, '0');
+        Assertions.assertEquals("0000000000000000000000000000000011110000111100000000111100001111", longBinary);
+        final String shortBinary = StringUtils.leftPad(Integer.toBinaryString(integer), Short.SIZE, '0');
+        Assertions.assertEquals("0000111100001111", shortBinary.substring(shortBinary.length() - Short.SIZE));
+    }
+
+    @Disabled("获取完整类名")
+    @Test
+    void getClassFullName() {
+        final Object args = new TreeMap[4];
+        final Class<?> type = args.getClass();
+        final String name = type.getName();
+        logger.debug("name = {}", name);
+        final String canonicalName = type.getCanonicalName();
+        logger.debug("canonicalName = {}", canonicalName);
+        final String simpleName = type.getSimpleName();
+        logger.debug("simpleName = {}", simpleName);
+        final String typeName = type.getTypeName();
+        logger.debug("typeName = {}", typeName);
+
+        Assertions.assertEquals("org.apache.kafka.common.serialization.StringSerializer", org.apache.kafka.common.serialization.StringSerializer.class.getCanonicalName());
+        Assertions.assertEquals("org.apache.kafka.common.serialization.StringSerializer", org.apache.kafka.common.serialization.StringSerializer.class.getCanonicalName());
     }
 
     @SuppressWarnings("unused")

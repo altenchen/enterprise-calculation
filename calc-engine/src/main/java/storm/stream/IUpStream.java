@@ -3,6 +3,7 @@ package storm.stream;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -23,7 +24,7 @@ public interface IUpStream extends IStreamDeclare {
     }
 
     /**
-     * 获取数据帧发射器
+     * 构建数据帧发射器
      * @param collector 输出采集器
      * @return 数据帧发射器
      */

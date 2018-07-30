@@ -145,8 +145,8 @@ public class SystemCache {
                     String statisId = "";
 
                     if( i == 0){
-                        dataId = SysDefine.IS_ONLINE;
-                        utcId = SysDefine.ONLINEUTC;
+                        dataId = DataKey._10002_IS_ONLINE;
+                        utcId = SysDefine.ONLINE_UTC;
                         statisId = SysDefine.ONLINE_COUNT;
                     }else{
                         dataId = SysDefine.IS_ALARM;

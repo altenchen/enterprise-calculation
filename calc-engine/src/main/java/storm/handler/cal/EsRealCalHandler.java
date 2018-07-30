@@ -379,9 +379,9 @@ public class EsRealCalHandler{
             esmap.put(EsField.gpsValid, 1);
         }
 
-        if (dat.containsKey(SysDefine.ONLINEUTC)) {
+        if (dat.containsKey(SysDefine.ONLINE_UTC)) {
 
-            long lastTime=Long.valueOf(dat.get(SysDefine.ONLINEUTC));
+            long lastTime=Long.valueOf(dat.get(SysDefine.ONLINE_UTC));
             if (now-lastTime< onlinetime){
                 esmap.put(EsField.carStatus, 1);
                 boolean isstop=isStop(dat);
@@ -462,8 +462,8 @@ public class EsRealCalHandler{
                 return false;
             }
             long lastTime=0L;
-            if (dat.containsKey(SysDefine.ONLINEUTC)) {
-                lastTime=Long.valueOf(dat.get(SysDefine.ONLINEUTC));
+            if (dat.containsKey(SysDefine.ONLINE_UTC)) {
+                lastTime=Long.valueOf(dat.get(SysDefine.ONLINE_UTC));
             } else {
                 Date date = inDate(time);
                 if (null != date) {
@@ -510,13 +510,13 @@ public class EsRealCalHandler{
             }
 
             long lastTime=0L;
-            if (dat.containsKey(SysDefine.ONLINEUTC)) {
-                lastTime=Long.valueOf(dat.get(SysDefine.ONLINEUTC));
+            if (dat.containsKey(SysDefine.ONLINE_UTC)) {
+                lastTime=Long.valueOf(dat.get(SysDefine.ONLINE_UTC));
             } else {
                 Date date = inDate(time);
                 if (null != date) {
                     lastTime = date.getTime();
-                    dat.put(SysDefine.ONLINEUTC, ""+lastTime);
+                    dat.put(SysDefine.ONLINE_UTC, ""+lastTime);
                 }
             }
             if(lastTime>0){
@@ -601,8 +601,8 @@ public class EsRealCalHandler{
                 return true;
             }
             long lastTime=-1;
-            if (dat.containsKey(SysDefine.ONLINEUTC)) {
-                lastTime=Long.valueOf(dat.get(SysDefine.ONLINEUTC));
+            if (dat.containsKey(SysDefine.ONLINE_UTC)) {
+                lastTime=Long.valueOf(dat.get(SysDefine.ONLINE_UTC));
 
             } else {
                 Date date = inDate(time);
@@ -629,7 +629,7 @@ public class EsRealCalHandler{
                 return false;
             }
             if ("0".equals(spd) && "20000".equals(rev)){
-                String timelong = map.get(SysDefine.ONLINEUTC);
+                String timelong = map.get(SysDefine.ONLINE_UTC);
                 String lon = map.get(DataKey._2502_LONGITUDE);//经度
                 String lan = map.get(DataKey._2503_LATITUDE);//纬度
 
@@ -640,13 +640,13 @@ public class EsRealCalHandler{
                     startZero.put(DataKey._2201_SPEED, spd);
                     startZero.put(DataKey._2502_LONGITUDE, lon);
                     startZero.put(DataKey._2503_LATITUDE, lan);
-                    startZero.put(SysDefine.ONLINEUTC, timelong);
+                    startZero.put(SysDefine.ONLINE_UTC, timelong);
 
                     zeroCache.put(vid, startZero);
                     return false;
                 } else {
-                    long lastTime=Long.valueOf(map.get(SysDefine.ONLINEUTC));
-                    long starttime=Long.valueOf(startZero.get(SysDefine.ONLINEUTC));
+                    long lastTime=Long.valueOf(map.get(SysDefine.ONLINE_UTC));
+                    long starttime=Long.valueOf(startZero.get(SysDefine.ONLINE_UTC));
                     if (lastTime - starttime >= stoptime) {
                         String slon = startZero.get(DataKey._2502_LONGITUDE);//经度
                         String slan = startZero.get(DataKey._2503_LATITUDE);//纬度

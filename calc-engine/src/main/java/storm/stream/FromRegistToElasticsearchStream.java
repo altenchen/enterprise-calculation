@@ -2,6 +2,7 @@ package storm.stream;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -15,7 +16,7 @@ import storm.constant.StreamFieldKey;
 public class FromRegistToElasticsearchStream implements IStreamBase {
 
     @NotNull
-    private static final Fields fields = new Fields(StreamFieldKey.MSG);
+    private static final Fields fields = new Fields(StreamFieldKey.VEHICLE_ID, StreamFieldKey.MSG);
 
     @NotNull
     private static final String componentId = "regpoutid";
@@ -85,8 +86,18 @@ public class FromRegistToElasticsearchStream implements IStreamBase {
             emiter.emit(values);
         }
 
-        public void emit(@NotNull final String msg) {
-            emiter.emit(new Values(msg));
+        public void emit(@NotNull final String vid, @NotNull final String msg) {
+            emiter.emit(new Values(vid, msg));
         }
+    }
+
+    @NotNull
+    public String getVid(@NotNull Tuple tuple) {
+        return tuple.getStringByField(StreamFieldKey.VEHICLE_ID);
+    }
+
+    @NotNull
+    public static String getMsg(@NotNull Tuple tuple) {
+        return tuple.getStringByField(StreamFieldKey.MSG);
     }
 }

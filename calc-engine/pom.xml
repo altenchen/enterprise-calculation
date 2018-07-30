@@ -57,10 +57,10 @@
             <artifactId>storm-core</artifactId>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-kafka -->
+        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-kafka-client -->
         <dependency>
             <groupId>org.apache.storm</groupId>
-            <artifactId>storm-kafka</artifactId>
+            <artifactId>storm-kafka-client</artifactId>
         </dependency>
 
         <!-- Storm 依赖结束 -->

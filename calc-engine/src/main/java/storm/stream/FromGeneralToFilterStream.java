@@ -2,6 +2,7 @@ package storm.stream;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -24,6 +25,7 @@ public class FromGeneralToFilterStream implements IStreamBase {
     private static final FromGeneralToFilterStream INSTANCE = new FromGeneralToFilterStream();
 
     @Contract(pure = true)
+    @NotNull
     public static FromGeneralToFilterStream getInstance() {
         return INSTANCE;
     }
@@ -80,5 +82,15 @@ public class FromGeneralToFilterStream implements IStreamBase {
         public void emit(@NotNull final String vid, @NotNull String msg) {
             emiter.emit(new Values(vid, msg));
         }
+    }
+
+    @NotNull
+    public String getVid(@NotNull Tuple tuple) {
+        return tuple.getStringByField(StreamFieldKey.VEHICLE_ID);
+    }
+
+    @NotNull
+    public static String getMsg(@NotNull Tuple tuple) {
+        return tuple.getStringByField(StreamFieldKey.MSG);
     }
 }

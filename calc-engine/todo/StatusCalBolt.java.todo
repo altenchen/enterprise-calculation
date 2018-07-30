@@ -37,7 +37,7 @@ public class StatusCalBolt extends BaseRichBolt {
         if (SysDefine.STATUSCAL_GROUP.equals(tuple.getSourceStreamId()) ){
         	
         	String vid = tuple.getString(0);
-            Map<String, String> dat = (TreeMap<String, String>) tuple.getValue(1);
+            Map<String, String> dat = (Map<String, String>) tuple.getValue(1);
             if (null != dat) {
 				
             	//MailCalHandler.addCarCache(dat);

@@ -35,7 +35,7 @@ public class QuickCacheBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
         if(tuple.getSourceStreamId().equals(SysDefine.SUPPLY_GROUP)){
             String vid = tuple.getString(0);
-            Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);
+            Map<String, String> data = (Map<String, String>) tuple.getValue(1);
             //supply
             handle(vid,data);
         }
