@@ -54,6 +54,7 @@
 
         <!-- 编译套件版本开始 -->
         <annotations.version>16.0.2</annotations.version>
+        <maven.assembly.plugin.version>3.1.0</maven.assembly.plugin.version>
         <maven.compiler.plugin.version>3.7.0</maven.compiler.plugin.version>
         <maven.compiler.plugin.configuration.source>1.8</maven.compiler.plugin.configuration.source>
         <maven.compiler.plugin.configuration.target>1.8</maven.compiler.plugin.configuration.target>
@@ -422,6 +423,12 @@
                             </configuration>
                         </execution>
                     </executions>
+                </plugin>
+                <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-assembly-plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>${maven.assembly.plugin.version}</version>
                 </plugin>
                 <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-surefire-plugin -->
                 <plugin>
