@@ -227,7 +227,7 @@ public class TopologiesByConf {
 
         builder
             .setBolt(
-                SysDefine.CHECKFILTER_BOLT_ID,
+                SysDefine.CHECK_FILTER_BOLT_ID,
                 new FilterBolt(),
                 boltNo)
             .setNumTasks(boltNo * 3)
@@ -249,7 +249,7 @@ public class TopologiesByConf {
             .setNumTasks(boltNo * 9)
             // 预警的车辆实时数据
             .fieldsGrouping(
-                SysDefine.CHECKFILTER_BOLT_ID,
+                SysDefine.CHECK_FILTER_BOLT_ID,
                 SysDefine.SPLIT_GROUP,
                 new Fields(DataKey.VEHICLE_ID));
 
@@ -275,7 +275,7 @@ public class TopologiesByConf {
             .setNumTasks(boltNo * 9)
             // 电子围栏告警实时数据
             .fieldsGrouping(
-                SysDefine.CHECKFILTER_BOLT_ID,
+                SysDefine.CHECK_FILTER_BOLT_ID,
                 SysDefine.FENCE_GROUP,
                 new Fields(DataKey.VEHICLE_ID));
 
@@ -288,7 +288,7 @@ public class TopologiesByConf {
             .setNumTasks(boltNo * 9)
             // soc 与超时处理实时数据
             .fieldsGrouping(
-                SysDefine.CHECKFILTER_BOLT_ID,
+                SysDefine.CHECK_FILTER_BOLT_ID,
                 CUS_NOTICE_GROUP.streamId,
                 new Fields(DataKey.VEHICLE_ID));
 
@@ -301,7 +301,7 @@ public class TopologiesByConf {
             .setNumTasks(boltNo*9)
             // 雅安用户行为实时数据
             .fieldsGrouping(
-                SysDefine.CHECKFILTER_BOLT_ID,
+                SysDefine.CHECK_FILTER_BOLT_ID,
                 SysDefine.YAACTION_GROUP,
                 new Fields(DataKey.VEHICLE_ID));
 
@@ -319,7 +319,7 @@ public class TopologiesByConf {
 //                new Fields(SysDefine.VEHICLE_ID))
             // 电子围栏告警实时数据
             .fieldsGrouping(
-                SysDefine.CHECKFILTER_BOLT_ID,
+                SysDefine.CHECK_FILTER_BOLT_ID,
                 SysDefine.SYNES_GROUP,
                 new Fields(DataKey.VEHICLE_ID))
             .noneGrouping(
@@ -334,7 +334,7 @@ public class TopologiesByConf {
 //                boltNo * 2)
 //            .setNumTasks(boltNo * 6)
 //            .fieldsGrouping(
-//                SysDefine.CHECKFILTER_BOLT_ID,
+//                SysDefine.CHECK_FILTER_BOLT_ID,
 //                SysDefine.SUPPLY_GROUP,
 //                new Fields(SysDefine.VEHICLE_ID));
 
@@ -382,7 +382,7 @@ public class TopologiesByConf {
                 new Fields(DataKey.VEHICLE_ID))
             // 历史数据直接存储
             .fieldsGrouping(
-                SysDefine.CHECKFILTER_BOLT_ID,
+                SysDefine.CHECK_FILTER_BOLT_ID,
                 SysDefine.HISTORY,
                 new Fields(DataKey.VEHICLE_ID));
     }

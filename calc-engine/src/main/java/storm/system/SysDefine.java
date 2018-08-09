@@ -82,7 +82,7 @@ public final class SysDefine {
     public static final String REDIS_SPOUT_ID = "redisspoutid";
 
     // 预处理 boltid
-    public static final String CHECKFILTER_BOLT_ID = "checkfilterboltid";
+    public static final String CHECK_FILTER_BOLT_ID = "checkfilterboltid";
 
     //
     public static final String SPLIT_GROUP = "splitgroup";
