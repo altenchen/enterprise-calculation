@@ -52,7 +52,6 @@ public class AlarmBolt extends BaseRichBolt {
     private Map<String, List<String>> filterMap ;
     // 连续多少条报警才发送通知
     private static int alarmNum = 10;
-    private static int printLevel;
 
     /**
      * 告警消息kafka输出topic
@@ -101,7 +100,6 @@ public class AlarmBolt extends BaseRichBolt {
         filterMap = new HashMap<String, List<String>>();
         new DecimalFormat("##0.000000");
 
-        printLevel = Integer.valueOf(stormConf.get("print.log").toString());
         vehAlarmTopic = stormConf.get(SysDefine.KAFKA_TOPIC_ALARM).toString();
         vehAlarmStoreTopic = stormConf.get("kafka.topic.alarmstore").toString();
         recorder =  new WarnningRecorder();
@@ -212,9 +210,6 @@ public class AlarmBolt extends BaseRichBolt {
         if (input.getSourceStreamId().equals(SysDefine.SPLIT_GROUP)) {
             String vid = input.getString(0);
             Map<String, String> dat = (TreeMap<String, String>) input.getValue(1);
-            if (printLevel >= 5) {
-                System.out.println("Receive kafka message REALINFO-------------------------------MSG:" + gson.toJson(dat));
-            }
 
             if (!dat.containsKey(SysDefine.TIME)
                     || StringUtils.isEmpty(dat.get(SysDefine.TIME))) {

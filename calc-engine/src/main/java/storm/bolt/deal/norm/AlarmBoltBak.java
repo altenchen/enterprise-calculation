@@ -43,7 +43,6 @@ public class AlarmBoltBak extends BaseRichBolt {
 
     private Map<String, List<String>> filterMap ;
     private static int alarmNum = 10;
-    private static int printLevel;
     
     private static String vehAlarmTopic;
     private static String vehAlarmStoreTopic;
@@ -66,7 +65,6 @@ public class AlarmBoltBak extends BaseRichBolt {
         filterMap = new HashMap<String, List<String>>();
         new DecimalFormat("##0.000000");
 
-        printLevel = Integer.valueOf(stormConf.get("print.log").toString());
         vehAlarmTopic = stormConf.get(SysDefine.KAFKA_TOPIC_ALARM).toString();
         vehAlarmStoreTopic = stormConf.get("kafka.topic.alarmstore").toString();
         try {
@@ -172,9 +170,6 @@ public class AlarmBoltBak extends BaseRichBolt {
         if (input.getSourceStreamId().equals(SysDefine.SPLIT_GROUP)) {
             String vid = input.getString(0);
             Map<String, String> dat = (TreeMap<String, String>) input.getValue(1);
-            if (printLevel >= 5) {
-                System.out.println("Receive kafka message REALINFO-------------------------------MSG:" + gson.toJson(dat));
-            }
 
             if (!dat.containsKey(SysDefine.TIME)
                     || StringUtils.isEmpty(dat.get(SysDefine.TIME))) {

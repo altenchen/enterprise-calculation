@@ -6,25 +6,27 @@ public final class SysDefine {
     public static final String DB_CACHE_FLUSH_TIME_SECOND = "db.cache.flushtime";
 
     //接收实时数据TOPIC
-    public static String VEH_REALINFO_DATA_TOPIC ;
+    public static String VEH_REALINFO_DATA_TOPIC;
 
     //Zookeeper根目录
-    public static String ZKROOT;
+    public static String KAFKA_ZK_ROOT;
 
     //车辆实时数据组ID
     public static String VEH_REALINFO_GROUPID;
 
-  //kafka数据消费者地址
-    public static String ZK_HOSTS;
-    
     //kafka数据消费者地址
-    public static String BROKER_HOSTS;
+    public static String KAFKA_ZK_HOSTS;
+
+    /**
+     * Kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开.
+     */
+    public static String KAFKA_BOOTSTRAP_SERVERS;
 
     //Zookeeper端口
-    public static int ZKPORT;
+    public static int KAFKA_ZK_PORT;
 
     //Zookeeper地址
-    public static String ZKSERVERS;
+    public static String KAFKA_ZK_SERVERS;
 
     //APP操作，平台到STORM的TOPIC名称
     public static String VEH_TEST_OPTION_TOPIC;
@@ -34,13 +36,13 @@ public final class SysDefine {
 
     //错误报文TOPIC
     public static String ERROR_DATA_TOPIC;
-    
+
     //平台注册报文TOPIC
     public static String PLAT_REG_TOPIC;
 
     //错误报文组名
     public static String ERROR_DATA_GROUPID;
-    
+
     //错误报文组名
     public static String PLAT_REG_GROUPID;
     //
@@ -51,12 +53,12 @@ public final class SysDefine {
     //终端锁车topic
     public static final String DS_CTRLREQ = "ds_ctrlreq";
 
-    
+
     //车辆实时所有数据
     public static final String SYNC_REALINFO_STORE = "vehrealinfostore";
     //告警
     public static final String VEH_ALARM = "vehalarm";
-    
+
     //围栏告警
     public static final String FENCE_ALARM = "fencealarm";
 
@@ -64,7 +66,7 @@ public final class SysDefine {
     public static final String FAULT_STREAM = "faultstreamId";
     //雅安发送
     public static final String YAACTION_NOTICE = "yanotice";
-     //同步 es消息发送
+    //同步 es消息发送
     public static final String SYNES_NOTICE = "synesnotice";
     //
     public static final String VEH_ALARM_REALINFO_STORE = "vehalarmrealinfostore";
@@ -87,7 +89,7 @@ public final class SysDefine {
     //
     public static final String SPLIT_GROUP = "splitgroup";
 
-  //
+    //
     public static final String ALARM_BOLT_ID = "alarmboltid";
 
     //
@@ -109,21 +111,37 @@ public final class SysDefine {
     public static final String TERMINAL_FLAG = "terminalflag";
 
     /*-------------------------------标点符号-------------------------------------*/
-    /** 空格 */
+    /**
+     * 空格
+     */
     public static final String SPACES = " ";
-    /** 空字符串 */
+    /**
+     * 空字符串
+     */
     public static final String EMPTY = "";
-    /** 逗号 */
+    /**
+     * 逗号
+     */
     public static final String COMMA = ",";
-    /** 句号 */
+    /**
+     * 句号
+     */
     public static final String PERIOD = ".";
-    /** 下划线 */
+    /**
+     * 下划线
+     */
     public static final String UNDERLINE = "_";
-    /** 冒号 */
+    /**
+     * 冒号
+     */
     public static final String COLON = ":";
-    /** 换行符 */
+    /**
+     * 换行符
+     */
     public static final String NEWLINE = "\r\n";
-    /** 反斜杠 */
+    /**
+     * 反斜杠
+     */
     public static final String BACKSLASH = "/";
 
     /*-------------------------------内部协议常量-------------------------------------*/
@@ -144,77 +162,133 @@ public final class SysDefine {
     public final static String TID = "tid"; // 终端ID
     public final static String VEHICLENO = "vehicleno"; // 车牌号
 
-  /*-------------------------------指令-------------------------------------*/
-    /** 消息前缀 */
+    /*-------------------------------指令-------------------------------------*/
+    /**
+     * 消息前缀
+     */
     public static final String PREFIX = "PREFIX";
-    /** 消息类型 */
+    /**
+     * 消息类型
+     */
     public static final String MESSAGETYPE = "MESSAGETYPE";
-    /** 时间 */
+    /**
+     * 时间
+     */
     public static final String TIME = "TIME";
-  /** 指令类型 租赁点更新数据 */
+    /**
+     * 指令类型 租赁点更新数据
+     */
     public static final String RENTALSTATION = "RENTALSTATION";
-    /** 指令类型 租赁点更新数据 */
+    /**
+     * 指令类型 租赁点更新数据
+     */
     public static final String CHARGESTATION = "CHARGESTATION";
-    /** 指令类型 租赁数据 */
+    /**
+     * 指令类型 租赁数据
+     */
     public static final String RENTCAR = "RENTCAR";
-    /** 指令类型 充电设施数据 */
+    /**
+     * 指令类型 充电设施数据
+     */
     public static final String CHARGE = "CHARGE";
-    /** 是否有告警 */
+    /**
+     * 是否有告警
+     */
     public static final String IS_ALARM = "10001";
-    /** 定时任务关键字 */
+    /**
+     * 定时任务关键字
+     */
     public static final String IS_ONLINE = "10002";
-    /** 是否充电 */
+    /**
+     * 是否充电
+     */
     public static final String IS_CHARGE = "10003";
-    /** 定时任务关键字, 等于最大里程数值减去最小里程数值. */
+    /**
+     * 定时任务关键字, 等于最大里程数值减去最小里程数值.
+     */
     public static final String MILEAGE = "10004";
-    /** 定时任务关键字 */
+    /**
+     * 定时任务关键字
+     */
     public static final String ONLINEUTC = "10005";
-    /** 定时任务关键字 */
+    /**
+     * 定时任务关键字
+     */
     public static final String ALARMUTC = "ALARMUTC";
-    /** 在线 */
+    /**
+     * 在线
+     */
     public static final String ONLINE_COUNT = "online_count";
-    /** 行驶在线 */
+    /**
+     * 行驶在线
+     */
     public static final String RUNNING_ONLINE = "running_online";
-    /** 停止在线 */
+    /**
+     * 停止在线
+     */
     public static final String STOP_ONLINE = "stop_online";
-    /** 车辆总数 */
+    /**
+     * 车辆总数
+     */
     public static final String CAR_TOTAL = "car_total";
-    /** 车辆数 */
+    /**
+     * 车辆数
+     */
     public static final String CAR_COUNT = "car_count";
-    /** 今日活跃车辆数 */
+    /**
+     * 今日活跃车辆数
+     */
     public static final String CAR_ACTIVE_COUNT = "car_active";
-    /** 监控车辆数 */
+    /**
+     * 监控车辆数
+     */
     public static final String MONITOR_CAR_TOTAL = "monitor_car_count";
-    /** 充电车辆数 */
+    /**
+     * 充电车辆数
+     */
     public static final String CHARGE_CAR_COUNT = "charge_car_count";
-    /** 故障车辆数 */
+    /**
+     * 故障车辆数
+     */
     public static final String FAULT_COUNT = "fault_count";
-    /** 总里程 */
+    /**
+     * 总里程
+     */
     public static final String MILEAGE_TOTAL = "mileage_total";
-    /** 在线比例 */
+    /**
+     * 在线比例
+     */
     public static final String ONLINE_RATIO = "online_ratio";
-    /** 车辆总数 */
+    /**
+     * 车辆总数
+     */
     public static final String VEHICLE_TOTAL = "vehicle_total";
-    /** 指令类型 */
+    /**
+     * 指令类型
+     */
     public static final String ISFILTER = "ISFILTER";
-    
+
     public static final String QUICK_BOLT_ID = "quickboltid";
-    public static final String SUPPLY_GROUP="supplyGroup";
+    public static final String SUPPLY_GROUP = "supplyGroup";
     public static final String FENCE_BOLT_ID = "fenceboltid";
     public static final String FENCE_GROUP = "fenceGroup";
     public static final String FAULT_BOLT_ID = "faultboltid";
     public static final String FAULT_GROUP = "faultGroup";
-    /** 接收告警传送过来的同步es streamId分组 **/
+    /**
+     * 接收告警传送过来的同步es streamId分组
+     **/
     public static final String SYNES_BOLT_ID = "synesboltid";
     public static final String SYNES_GROUP = "synesGroup";
     public static final String YAACTION_BOLT_ID = "yaactionboltid";
     public static final String YAACTION_GROUP = "yaactionGroup";
-    public static final String DIRECT="direct";//直连
-    public static final String FORWARD="forward";//转发
+    public static final String DIRECT = "direct";//直连
+    public static final String FORWARD = "forward";//转发
     public static final String CODE = "code";
     public static final String REG_SPOUT_ID = "regpoutid";
     public static final String REG_STREAM_ID = "regStreamId";
-    /** 接收传送过来的同步es streamId分组 **/
+    /**
+     * 接收传送过来的同步es streamId分组
+     **/
     public static final String CUS_NOTICE_BOLT_ID = "cusnoticeboltid";
     public static final String CUS_NOTICE = "cusnotice";
 
@@ -288,18 +362,18 @@ public final class SysDefine {
     public static final String SOC_NORMAL_JUDGE_NO = "notice.soc.normal.trigger.continue.count";
 
 
-  /**
-   * 未定位开始帧数判断
-   */
-  public static final String GPS_NOVALUE_CONTINUE_NO = "gps.novalue.continue.no";
-  /**
-   * 未定位结束帧数判断
-   */
-  public static final String GPS_HASVALUE_CONTINUE_NO = "gps.hasvalue.continue.no";
-  /**
-   * 未定位开始时间阈值
-   */
-  public static final String GPS_JUDGE_TIME = "gps.judge.time";
+    /**
+     * 未定位开始帧数判断
+     */
+    public static final String GPS_NOVALUE_CONTINUE_NO = "gps.novalue.continue.no";
+    /**
+     * 未定位结束帧数判断
+     */
+    public static final String GPS_HASVALUE_CONTINUE_NO = "gps.hasvalue.continue.no";
+    /**
+     * 未定位开始时间阈值
+     */
+    public static final String GPS_JUDGE_TIME = "gps.judge.time";
 
     /**
      * 车辆车型刷新间隔(秒), 不应大于30分钟

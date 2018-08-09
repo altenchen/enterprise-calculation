@@ -52,18 +52,24 @@ public class KafkaSendUtils {
 
     }
     /**
+     * 如果队列中的生产者数量少于保留
      * 此方法未经测试不知道会不会长久不调用，关闭连接的情况。
      * @return
      */
     public static Producer<byte[], byte[]> getPoolProducer(){
         if(null!=localThread.get()) {
+            // 如果当前线程有, 返回当前线程的.
             return localThread.get();
         }
+
+        // 如果队列中的生产者不大于保留数, 则一次性入队(总数-保留数)个生产者.
         if (queue.size()<=againNo) {
             for (int i = 0; i < poolNo-againNo; i++) {
                 queue.offer(new Producer<byte[], byte[]>(config));
             }
         }
+
+        // 生产者出队
         return queue.poll();
     }
 

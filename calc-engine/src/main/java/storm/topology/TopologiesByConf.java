@@ -78,8 +78,8 @@ public class TopologiesByConf {
         final Config stormConf = new Config();
 
         //region alarm
+        // 连续多少条报警才发送通知
         stormConf.put("alarm.continue.counts", properties.get("alarm.continue.counts"));
-        stormConf.put("alarm.frame.cache", properties.get("alarm.frame.cache"));
         //endregion
 
         //region ctfo
@@ -93,8 +93,6 @@ public class TopologiesByConf {
 
         stormConf.put("es.send.time", properties.get("es.send.time"));
 
-        stormConf.put("inidle.timeOut.check.time", properties.get("inidle.timeOut.check.time"));
-
         //region kafka
         stormConf.put("kafka.customer.hosts", properties.getProperty("kafka.broker.hosts"));
         stormConf.put("kafka.platform.veh.reg", properties.get("kafka.platform.veh.reg"));
@@ -106,12 +104,9 @@ public class TopologiesByConf {
         stormConf.put("kafka.topic.fencealarm", properties.get("kafka.topic.fencealarm"));
         stormConf.put("kafka.topic.notice", properties.get("kafka.topic.notice"));
         stormConf.put("kafka.topic.realinfostore", properties.getProperty("kafka.topic.realinfostore"));
-        stormConf.put("kafka.writer.no", properties.get("kafka.writer.no"));
         //endregion
 
         stormConf.put("offline.check.time", properties.get("offline.check.time"));
-
-        stormConf.put("print.log", properties.getProperty("print.log"));
 
         stormConf.put("producer.againNo", properties.get("producer.againNo"));
         stormConf.put("producer.poolNo", properties.get("producer.poolNo"));
@@ -395,13 +390,13 @@ public class TopologiesByConf {
     private static KafkaConfig buildKafkaConfig(String topic, String spoutId, Scheme scheme) {
         KafkaConfig kafkaConfig = new KafkaConfig(
                 topic,
-                SysDefine.ZKROOT,
+                SysDefine.KAFKA_ZK_ROOT,
                 spoutId,
-                SysDefine.ZK_HOSTS,
+                SysDefine.KAFKA_ZK_HOSTS,
                 scheme);
         kafkaConfig.setZKConfig(
-                SysDefine.ZKPORT,
-                SysDefine.ZKSERVERS.split(","));
+                SysDefine.KAFKA_ZK_PORT,
+                SysDefine.KAFKA_ZK_SERVERS.split(","));
         return kafkaConfig;
     }
 
@@ -411,22 +406,37 @@ public class TopologiesByConf {
      */
     private static void fillKafkaConf(@NotNull Properties properties){
         // TODO: 转为存储到单例类
-        SysDefine.BROKER_HOSTS = properties.getProperty("kafka.broker.hosts");
 
-        SysDefine.ERROR_DATA_GROUPID = properties.getProperty("kafka.metadata.veh_error_groupid");
+        // Zookeeper 主机
+        SysDefine.KAFKA_ZK_SERVERS = properties.getProperty("kafka.zkServers");
+        // Zookeeper 端口
+        SysDefine.KAFKA_ZK_PORT = Integer.valueOf(properties.getProperty("kafka.zkPort"));
+        // Zookeeper 地址
+        SysDefine.KAFKA_ZK_HOSTS = properties.getProperty("kafka.zk.hosts");
+        // Zookeeper 根目录
+        SysDefine.KAFKA_ZK_ROOT = properties.getProperty("kafka.zkroot");
+
+        // 从 kafka 0.10.1开始支持新的消费方式
+        SysDefine.KAFKA_BOOTSTRAP_SERVERS = properties.getProperty("kafka.bootstrap.servers");
+
+        // region Spout 输入主题
+
+        // 原始报文 topic, 依赖上游前置机, 请保持一致. 目前约定为 us_packet.
         SysDefine.ERROR_DATA_TOPIC = properties.getProperty("kafka.topic.errordatatopic");
+        // 原始报文 consumer-group
+        SysDefine.ERROR_DATA_GROUPID = properties.getProperty("kafka.metadata.veh_error_groupid");
 
+        // 车辆实时数据 topic, 依赖上游前置机, 请保持一致. 目前约定为 us_general.
         SysDefine.VEH_REALINFO_DATA_TOPIC = properties.getProperty("kafka.topic.veh_realinfo_data");
+        // 车辆实时数据 consumer-group
         SysDefine.VEH_REALINFO_GROUPID = properties.getProperty("kafka.metadata.veh_realinfo_groupid");
-        SysDefine.VEH_TEST_GROUPID = properties.getProperty("kafka.metadata.veh_test_groupid");
 
-        SysDefine.PLAT_REG_GROUPID = properties.getProperty("kafka.platform.group");
+        // 车辆注册通知 topic, 依赖上游前置机, 请保持一致. 目前约定为 SYNC_VEHICLE_REG.
         SysDefine.PLAT_REG_TOPIC = properties.getProperty("kafka.platform.veh.reg");
+        // 车辆注册通知 consumer-group
+        SysDefine.PLAT_REG_GROUPID = properties.getProperty("kafka.platform.group");
 
-        SysDefine.ZK_HOSTS = properties.getProperty("kafka.zk.hosts");
-        SysDefine.ZKPORT = Integer.valueOf(properties.getProperty("kafka.zkPort"));
-        SysDefine.ZKROOT = properties.getProperty("kafka.zkroot");
-        SysDefine.ZKSERVERS = properties.getProperty("kafka.zkServers");
+        // endregion Spout 输入主题
     }
 }
 
