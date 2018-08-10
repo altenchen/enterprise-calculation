@@ -21,7 +21,7 @@ import storm.handler.cusmade.CarRuleHandler;
 import storm.handler.cusmade.OnOffInfoNotice;
 import storm.handler.cusmade.ScanRange;
 import storm.protocol.CommandType;
-import storm.stream.CUS_NOTICE_GROUP;
+import storm.stream.CusNoticeGroupStream;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
@@ -45,6 +45,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
     private static final JsonUtils gson = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
+    private static final CusNoticeGroupStream CUS_NOTICE_GROUP_STREAM = new CusNoticeGroupStream();
 
     private OutputCollector collector;
 
@@ -248,7 +249,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
         }
         // endregion
 
-        if (CUS_NOTICE_GROUP.streamId.equals(tuple.getSourceStreamId())) {
+        if (CUS_NOTICE_GROUP_STREAM.isSourceStream(tuple)) {
             String vid = tuple.getString(0);
 
             final Map<String, String> data = (TreeMap<String, String>) tuple.getValue(1);

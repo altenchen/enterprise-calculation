@@ -16,7 +16,7 @@ import java.util.Properties;
 
 import storm.kafka.scheme.PacketScheme;
 import storm.kafka.scheme.RegistScheme;
-import storm.stream.CUS_NOTICE_GROUP;
+import storm.stream.CusNoticeGroupStream;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.util.ConfigUtils;
@@ -274,6 +274,7 @@ public class TopologiesByConf {
                 SysDefine.FENCE_GROUP,
                 new Fields(DataKey.VEHICLE_ID));
 
+        final CusNoticeGroupStream cusNoticeGroupStream = new CusNoticeGroupStream();
         builder
             // soc 与超时处理
             .setBolt(
@@ -284,7 +285,7 @@ public class TopologiesByConf {
             // soc 与超时处理实时数据
             .fieldsGrouping(
                 SysDefine.CHECK_FILTER_BOLT_ID,
-                CUS_NOTICE_GROUP.streamId,
+                cusNoticeGroupStream.getStreamId(),
                 new Fields(DataKey.VEHICLE_ID));
 
         builder

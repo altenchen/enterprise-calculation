@@ -17,7 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.protocol.*;
-import storm.stream.CUS_NOTICE_GROUP;
+import storm.stream.CusNoticeGroupStream;
 import storm.system.DataKey;
 import storm.util.*;
 import storm.system.ProtocolItem;
@@ -40,8 +40,9 @@ public class FilterBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(FilterBolt.class);
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
+    private static final CusNoticeGroupStream CUS_NOTICE_GROUP_STREAM = new CusNoticeGroupStream();
     private OutputCollector collector;
-    private CUS_NOTICE_GROUP _cus_notice_group;
+    private CusNoticeGroupStream.Emiter cusNoticeGroupStreamEmiter;
 //    public static long redisUpdateTime = 0L;
     
 //    public static ScheduledExecutorService service;
@@ -68,7 +69,7 @@ public class FilterBolt extends BaseRichBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
-        _cus_notice_group = CUS_NOTICE_GROUP.prepareOnce(collector);
+        cusNoticeGroupStreamEmiter = CUS_NOTICE_GROUP_STREAM.buildStreamEmiter(collector);
 
         maxMileMap = new HashMap<String, Long>();
         minMileMap = new HashMap<String, Long>();
@@ -268,7 +269,7 @@ public class FilterBolt extends BaseRichBolt {
                         || CommandType.SUBMIT_TERMSTATUS.equals(type)
                         || CommandType.SUBMIT_CARSTATUS.equals(type)){
                     // consumer: SOC与超时处理
-                    _cus_notice_group.emit(vid, stateNewKV);
+                    cusNoticeGroupStreamEmiter.emit(vid, stateNewKV);
                 }
                 if (CommandType.SUBMIT_REALTIME.equals(type)
                         || CommandType.SUBMIT_LINKSTATUS.equals(type)
@@ -293,7 +294,7 @@ public class FilterBolt extends BaseRichBolt {
         declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
         declarer.declareStream(SysDefine.YAACTION_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
         declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
-        CUS_NOTICE_GROUP.declareStreamOnce(declarer);
+        CUS_NOTICE_GROUP_STREAM.declareStream(declarer);
         declarer.declareStream(SysDefine.HISTORY, new Fields("TOPIC", DataKey.VEHICLE_ID, "VALUE"));
     }
 
