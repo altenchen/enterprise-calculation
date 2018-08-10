@@ -15,38 +15,54 @@ import java.util.Map;
  * @date: 2018-06-06
  * @description:
  */
-public final class CusNoticeGroupStream implements IStreamBase {
+public final class FromFilterToCarNoticeStream implements IStreamBase {
 
-    /**
-     * 流名称
-     */
-    @NotNull
-    private static final String streamId = "cusnoticeGroup";
-
-    /**
-     * 流字段
-     */
     @NotNull
     private static final Fields fields = new Fields(StreamFieldKey.VEHICLE_ID, StreamFieldKey.DATA);
 
+    @NotNull
+    private static final String componentId = "checkfilterboltid";
+
+    @NotNull
+    private static final String streamId = "cusnoticeGroup";
+
+    @NotNull
+    private static final FromFilterToCarNoticeStream INSTANCE = new FromFilterToCarNoticeStream();
 
     @Contract(pure = true)
-    @Override
-    @NotNull
-    public String getStreamId() {
-        return streamId;
+    public static FromFilterToCarNoticeStream getInstance() {
+        return INSTANCE;
+    }
+
+    private FromFilterToCarNoticeStream() {
+
     }
 
     @Contract(pure = true)
-    @Override
     @NotNull
+    @Override
     public Fields getFields() {
         return fields;
     }
 
+
+    @Contract(pure = true)
+    @NotNull
+    @Override
+    public String getComponentId() {
+        return componentId;
+    }
+
+    @Contract(pure = true)
+    @NotNull
+    @Override
+    public String getStreamId() {
+        return streamId;
+    }
+
     @Contract("_ -> new")
     @Override
-    public @NotNull CusNoticeGroupStream.Emiter buildStreamEmiter(@NotNull final OutputCollector collector) {
+    public @NotNull FromFilterToCarNoticeStream.Emiter buildStreamEmiter(@NotNull final OutputCollector collector) {
         return new Emiter(IStreamBase.super.buildStreamEmiter(collector));
     }
 

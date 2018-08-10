@@ -3,7 +3,6 @@ package storm.stream;
 import org.apache.commons.lang.StringUtils;
 import org.apache.storm.tuple.Tuple;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * @author: xzp

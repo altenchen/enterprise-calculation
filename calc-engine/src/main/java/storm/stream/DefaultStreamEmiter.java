@@ -14,7 +14,10 @@ public final class DefaultStreamEmiter implements IStreamEmiter {
     private final String streamId;
     private final OutputCollector collector;
 
-    public DefaultStreamEmiter(final String streamId, final OutputCollector collector) {
+    public DefaultStreamEmiter(
+        @NotNull final String streamId,
+        @NotNull final OutputCollector collector) {
+
         this.streamId = streamId;
         this.collector = collector;
     }

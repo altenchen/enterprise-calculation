@@ -14,5 +14,9 @@ public final class StreamFieldKey {
 
     public static final String VEHICLE_ID = "VID";
 
+    public static final String MSG = "MSG";
+
     public static final String DATA = "DATA";
+
+    public static final String FLAG = "FLAG";
 }

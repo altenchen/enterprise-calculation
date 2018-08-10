@@ -17,7 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.protocol.*;
-import storm.stream.CusNoticeGroupStream;
+import storm.stream.FromFilterToCarNoticeStream;
 import storm.system.DataKey;
 import storm.util.*;
 import storm.system.ProtocolItem;
@@ -40,9 +40,9 @@ public class FilterBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(FilterBolt.class);
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
-    private static final CusNoticeGroupStream CUS_NOTICE_GROUP_STREAM = new CusNoticeGroupStream();
+    private static final FromFilterToCarNoticeStream CUS_NOTICE_GROUP_STREAM = FromFilterToCarNoticeStream.getInstance();
     private OutputCollector collector;
-    private CusNoticeGroupStream.Emiter cusNoticeGroupStreamEmiter;
+    private FromFilterToCarNoticeStream.Emiter cusNoticeGroupStreamEmiter;
 //    public static long redisUpdateTime = 0L;
     
 //    public static ScheduledExecutorService service;

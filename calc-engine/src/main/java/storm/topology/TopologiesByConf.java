@@ -14,9 +14,13 @@ import storm.bolt.deal.norm.SynEsculBolt;
 
 import java.util.Properties;
 
+import storm.constant.StreamFieldKey;
 import storm.kafka.scheme.PacketScheme;
 import storm.kafka.scheme.RegistScheme;
-import storm.stream.CusNoticeGroupStream;
+import storm.stream.FromFilterToCarNoticeStream;
+import storm.stream.FromGeneralToFilterStream;
+import storm.stream.FromPacketToFilterStream;
+import storm.stream.FromRegistToElasticsearchStream;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.util.ConfigUtils;
@@ -34,7 +38,7 @@ public class TopologiesByConf {
 
     private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 
-    public static void main(String[] args) throws Exception{
+    public static void main(String[] args) throws Exception {
 
         Properties properties = configUtils.sysDefine;
 
@@ -55,7 +59,7 @@ public class TopologiesByConf {
 
     private static Config buildStormConf(@NotNull Properties properties) {
 
-        final int workerNo=Integer.valueOf(properties.getProperty("storm.worker.no"));
+        final int workerNo = Integer.valueOf(properties.getProperty("storm.worker.no"));
 
         final Config stormConf = readStormConf(properties);
         stormConf.setDebug(false);
@@ -70,6 +74,7 @@ public class TopologiesByConf {
 
     /**
      * 读取Storm相关配置
+     *
      * @param properties 配置属性
      * @return Storm相关配置
      */
@@ -152,13 +157,14 @@ public class TopologiesByConf {
 
     /**
      * 创建 Storm 拓扑
+     *
      * @param properties 配置属性
      * @return Storm 拓扑
      */
     private static StormTopology createTopology(@NotNull Properties properties) {
 
-        final int realSpoutNo=Integer.valueOf(properties.getProperty("storm.kafka.spout.no"));
-        final int boltNo=Integer.valueOf(properties.getProperty("storm.worker.bolt.no"));
+        final int realSpoutNo = Integer.valueOf(properties.getProperty("storm.kafka.spout.no"));
+        final int boltNo = Integer.valueOf(properties.getProperty("storm.worker.bolt.no"));
 
         TopologyBuilder builder = new TopologyBuilder();
 
@@ -170,11 +176,12 @@ public class TopologiesByConf {
     }
 
     /**
-     * @param builder 拓扑构建器
+     * @param builder     拓扑构建器
      * @param realSpoutNo Spout 基准并行度
      */
     private static void buildKafkaSpout(@NotNull TopologyBuilder builder, int realSpoutNo) {
 
+        final FromGeneralToFilterStream fromGeneralToFilterStream = FromGeneralToFilterStream.getInstance();
         // KafkaSpout: 实时数据
         final KafkaConfig kafkaRealinfoConfig = buildKafkaConfig(
             SysDefine.VEH_REALINFO_DATA_TOPIC,
@@ -183,43 +190,47 @@ public class TopologiesByConf {
         builder
             // kafka实时报文消息
             .setSpout(
-                SysDefine.REALINFO_SPOUT_ID,
+                fromGeneralToFilterStream.getComponentId(),
                 new KafkaSpout(kafkaRealinfoConfig.getSpoutConfig()),
                 realSpoutNo);
 
-        // KafkaSpout: 错误报文
+        final FromPacketToFilterStream fromPacketToFilterStream = FromPacketToFilterStream.getInstance();
+        // KafkaSpout: 原始报文
         final KafkaConfig kafkaErrordataConfig = buildKafkaConfig(
             SysDefine.ERROR_DATA_TOPIC,
             SysDefine.ERROR_DATA_GROUPID,
             new PacketScheme());
         builder
-            // kafka错误报文消息
+            // kafka原始报文消息
             .setSpout(
-                SysDefine.ERRORDATA_SPOUT_ID,
+                fromPacketToFilterStream.getComponentId(),
                 new KafkaSpout(kafkaErrordataConfig.getSpoutConfig()),
                 realSpoutNo);
 
+        final FromRegistToElasticsearchStream fromRegistToElasticsearchStream = FromRegistToElasticsearchStream.getInstance();
         // KafkaSpout: 平台注册报文
         final KafkaConfig kafkaRegConfig = buildKafkaConfig(
-                SysDefine.PLAT_REG_TOPIC,
-                SysDefine.PLAT_REG_GROUPID,
-                new RegistScheme());
-        kafkaRegConfig.setOutputStreamId(SysDefine.REG_STREAM_ID);
+            SysDefine.PLAT_REG_TOPIC,
+            SysDefine.PLAT_REG_GROUPID,
+            new RegistScheme());
+        kafkaRegConfig.setOutputStreamId(fromRegistToElasticsearchStream.getStreamId());
         builder
-                // kafka平台注册报文消息
-                .setSpout(
-                        SysDefine.REG_SPOUT_ID,
-                        new KafkaSpout(kafkaRegConfig.getSpoutConfig()),
-                        realSpoutNo);
+            // kafka平台注册报文消息
+            .setSpout(
+                fromRegistToElasticsearchStream.getComponentId(),
+                new KafkaSpout(kafkaRegConfig.getSpoutConfig()),
+                realSpoutNo);
 
     }
 
     /**
      * @param builder 拓扑构建器
-     * @param boltNo Blot 基准并行度
+     * @param boltNo  Blot 基准并行度
      */
-    private static void builderBlots(@NotNull TopologyBuilder builder, int boltNo){
+    private static void builderBlots(@NotNull TopologyBuilder builder, int boltNo) {
 
+        final FromGeneralToFilterStream fromGeneralToFilterStream = FromGeneralToFilterStream.getInstance();
+        final FromPacketToFilterStream fromPacketToFilterStream = FromPacketToFilterStream.getInstance();
         builder
             .setBolt(
                 SysDefine.CHECK_FILTER_BOLT_ID,
@@ -228,19 +239,19 @@ public class TopologiesByConf {
             .setNumTasks(boltNo * 3)
             // 接收车辆错误报文数据
             .fieldsGrouping(
-                SysDefine.ERRORDATA_SPOUT_ID,
-                new Fields(DataKey.VEHICLE_ID))
+                fromPacketToFilterStream.getComponentId(),
+                new Fields(StreamFieldKey.VEHICLE_ID))
             // 接收车辆实时数据
             .fieldsGrouping(
-                SysDefine.REALINFO_SPOUT_ID,
-                new Fields(DataKey.VEHICLE_ID));
+                fromGeneralToFilterStream.getComponentId(),
+                new Fields(StreamFieldKey.VEHICLE_ID));
 
         builder
             // 预警处理
             .setBolt(
                 SysDefine.ALARM_BOLT_ID,
                 new AlarmBolt(),
-                boltNo*3)
+                boltNo * 3)
             .setNumTasks(boltNo * 9)
             // 预警的车辆实时数据
             .fieldsGrouping(
@@ -274,7 +285,7 @@ public class TopologiesByConf {
                 SysDefine.FENCE_GROUP,
                 new Fields(DataKey.VEHICLE_ID));
 
-        final CusNoticeGroupStream cusNoticeGroupStream = new CusNoticeGroupStream();
+        final FromFilterToCarNoticeStream fromFilterToCarNoticeStream = FromFilterToCarNoticeStream.getInstance();
         builder
             // soc 与超时处理
             .setBolt(
@@ -284,8 +295,8 @@ public class TopologiesByConf {
             .setNumTasks(boltNo * 9)
             // soc 与超时处理实时数据
             .fieldsGrouping(
-                SysDefine.CHECK_FILTER_BOLT_ID,
-                cusNoticeGroupStream.getStreamId(),
+                fromFilterToCarNoticeStream.getComponentId(),
+                fromFilterToCarNoticeStream.getStreamId(),
                 new Fields(DataKey.VEHICLE_ID));
 
         builder
@@ -294,13 +305,14 @@ public class TopologiesByConf {
                 SysDefine.YAACTION_BOLT_ID,
                 new UserActionBolt(),
                 boltNo * 3)
-            .setNumTasks(boltNo*9)
+            .setNumTasks(boltNo * 9)
             // 雅安用户行为实时数据
             .fieldsGrouping(
                 SysDefine.CHECK_FILTER_BOLT_ID,
                 SysDefine.YAACTION_GROUP,
                 new Fields(DataKey.VEHICLE_ID));
 
+        final FromRegistToElasticsearchStream fromRegistToElasticsearchStream = FromRegistToElasticsearchStream.getInstance();
         builder
             // es数据同步处理
             .setBolt(
@@ -319,8 +331,8 @@ public class TopologiesByConf {
                 SysDefine.SYNES_GROUP,
                 new Fields(DataKey.VEHICLE_ID))
             .noneGrouping(
-                SysDefine.REG_SPOUT_ID,
-                SysDefine.REG_STREAM_ID);
+                fromRegistToElasticsearchStream.getComponentId(),
+                fromRegistToElasticsearchStream.getStreamId());
 
 //        builder
 //            // 历史补发相关计算
@@ -385,27 +397,29 @@ public class TopologiesByConf {
 
     /**
      * 构建kafkaSpout配置
+     *
      * @param topic kafka主题
      * @return kafka配置
      */
     private static KafkaConfig buildKafkaConfig(String topic, String spoutId, Scheme scheme) {
         KafkaConfig kafkaConfig = new KafkaConfig(
-                topic,
-                SysDefine.KAFKA_ZK_ROOT,
-                spoutId,
-                SysDefine.KAFKA_ZK_HOSTS,
-                scheme);
+            topic,
+            SysDefine.KAFKA_ZK_ROOT,
+            spoutId,
+            SysDefine.KAFKA_ZK_HOSTS,
+            scheme);
         kafkaConfig.setZKConfig(
-                SysDefine.KAFKA_ZK_PORT,
-                SysDefine.KAFKA_ZK_SERVERS.split(","));
+            SysDefine.KAFKA_ZK_PORT,
+            SysDefine.KAFKA_ZK_SERVERS.split(","));
         return kafkaConfig;
     }
 
     /**
      * 读取并填充Kafka相关配置
+     *
      * @param properties 配置属性
      */
-    private static void fillKafkaConf(@NotNull Properties properties){
+    private static void fillKafkaConf(@NotNull Properties properties) {
         // TODO: 转为存储到单例类
 
         // Zookeeper 主机

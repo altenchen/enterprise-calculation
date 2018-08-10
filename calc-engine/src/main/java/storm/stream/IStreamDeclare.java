@@ -4,6 +4,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.utils.Utils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
@@ -16,11 +17,11 @@ import java.util.Map;
 public interface IStreamDeclare {
 
     /**
-     * 获取流标识
-     * @return 流标识
+     * 获取组件标识
+     * @return 组件标识
      */
     @NotNull
-    String getStreamId();
+    String getComponentId();
 
     /**
      * 获取流字段
@@ -28,4 +29,12 @@ public interface IStreamDeclare {
      */
     @NotNull
     Fields getFields();
+
+    /**
+     * 获取流标识
+     * @return 流标识
+     */
+    default String getStreamId() {
+        return Utils.DEFAULT_STREAM_ID;
+    }
 }

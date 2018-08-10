@@ -21,7 +21,7 @@ import storm.handler.cusmade.CarRuleHandler;
 import storm.handler.cusmade.OnOffInfoNotice;
 import storm.handler.cusmade.ScanRange;
 import storm.protocol.CommandType;
-import storm.stream.CusNoticeGroupStream;
+import storm.stream.FromFilterToCarNoticeStream;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
@@ -45,7 +45,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
     private static final JsonUtils gson = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
-    private static final CusNoticeGroupStream CUS_NOTICE_GROUP_STREAM = new CusNoticeGroupStream();
+    private static final FromFilterToCarNoticeStream CUS_NOTICE_GROUP_STREAM = FromFilterToCarNoticeStream.getInstance();
 
     private OutputCollector collector;
 
