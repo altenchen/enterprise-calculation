@@ -60,6 +60,7 @@
         <maven.compiler.plugin.configuration.target>1.8</maven.compiler.plugin.configuration.target>
         <maven.compiler.plugin.configuration.encoding>UTF-8</maven.compiler.plugin.configuration.encoding>
         <maven.dependency.plugin.version>3.1.1</maven.dependency.plugin.version>
+        <maven.shade.plugin.version>3.1.1</maven.shade.plugin.version>
         <!-- 编译套件版本结束-->
 
         <!-- 测试套件版本开始 -->
@@ -429,6 +430,12 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-assembly-plugin</artifactId>
                     <version>${maven.assembly.plugin.version}</version>
+                </plugin>
+                <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-shade-plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>${maven.shade.plugin.version}</version>
                 </plugin>
                 <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-surefire-plugin -->
                 <plugin>
