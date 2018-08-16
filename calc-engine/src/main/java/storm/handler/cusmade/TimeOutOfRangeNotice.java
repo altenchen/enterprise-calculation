@@ -22,7 +22,7 @@ import java.util.UUID;
  */
 public final class TimeOutOfRangeNotice {
 
-    private static final Logger logger = LoggerFactory.getLogger(TimeOutOfRangeNotice.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TimeOutOfRangeNotice.class);
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
     private static long timeRangeMillisecond = 1000 * 60 * 10;
@@ -33,7 +33,7 @@ public final class TimeOutOfRangeNotice {
 
     public static void setTimeRangeMillisecond(long timeRangeMillisecond) {
         TimeOutOfRangeNotice.timeRangeMillisecond = timeRangeMillisecond;
-        logger.info("时间数值异常范围被设定为[" + timeRangeMillisecond + "]毫秒");
+        LOG.info("时间数值异常范围被设定为[" + timeRangeMillisecond + "]毫秒");
     }
 
     /**
@@ -50,7 +50,7 @@ public final class TimeOutOfRangeNotice {
         }
 
         if(paramsRedisUtil.isTraceVehicleId(vid)) {
-            logger.warn("VID[" + vid + "]进入时间有效范围通知判定");
+            LOG.warn("VID[" + vid + "]进入时间有效范围通知判定");
         }
 
         final String terminalTimeString = data.get(DataKey._2000_COLLECT_TIME);
@@ -68,7 +68,8 @@ public final class TimeOutOfRangeNotice {
             terminalTime = DateUtils.parseDate(terminalTimeString, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             platformTime = DateUtils.parseDate(platformTimeString, new String[]{FormatConstant.DATE_FORMAT}).getTime();
         } catch (ParseException e) {
-            e.printStackTrace();
+            LOG.warn("时间解析异常", e);
+            LOG.warn("无效的时间格式: 2000=[{}], 9999=[{}]", terminalTimeString, platformTimeString);
             return result;
         }
 
