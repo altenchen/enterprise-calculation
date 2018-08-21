@@ -16,6 +16,9 @@ import storm.dto.area.AreaFence;
 import storm.dto.area.FenceIndex;
 import storm.dto.fence.Coordinate;
 
+/**
+ * GPS区域文件数据源
+ */
 public class FileSource {
 
     public static List<AreaFence> areaFences;

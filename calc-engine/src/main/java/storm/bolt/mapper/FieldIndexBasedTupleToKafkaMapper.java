@@ -2,15 +2,13 @@ package storm.bolt.mapper;
 
 import org.apache.storm.kafka.bolt.mapper.TupleToKafkaMapper;
 import org.apache.storm.tuple.Tuple;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author: xzp
  * @date: 2018-08-12
  * @description:
  */
-public final class IndexNameBasedTupleToKafkaMapper<K,V> implements TupleToKafkaMapper<K, V> {
+public final class FieldIndexBasedTupleToKafkaMapper<K,V> implements TupleToKafkaMapper<K, V> {
 
     private static final long serialVersionUID = -562540927661143309L;
 
@@ -19,11 +17,11 @@ public final class IndexNameBasedTupleToKafkaMapper<K,V> implements TupleToKafka
     public int boltKeyIndex;
     public int boltMessageIndex;
 
-    public IndexNameBasedTupleToKafkaMapper() {
+    public FieldIndexBasedTupleToKafkaMapper() {
         this(BOLT_KEY, BOLT_MESSAGE);
     }
 
-    public IndexNameBasedTupleToKafkaMapper(int boltKeyIndex, int boltMessageIndex) {
+    public FieldIndexBasedTupleToKafkaMapper(int boltKeyIndex, int boltMessageIndex) {
         this.boltKeyIndex = boltKeyIndex;
         this.boltMessageIndex = boltMessageIndex;
     }
@@ -36,7 +34,6 @@ public final class IndexNameBasedTupleToKafkaMapper<K,V> implements TupleToKafka
 
     @Override
     public V getMessageFromTuple(Tuple tuple) {
-        //for backward compatibility, we return null when message is not present.
-        return tuple.size() > boltMessageIndex ? (V) tuple.getValue(boltMessageIndex) : null;
+        return (V) tuple.getValue(boltMessageIndex);
     }
 }
