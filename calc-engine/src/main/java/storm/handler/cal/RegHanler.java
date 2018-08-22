@@ -28,7 +28,7 @@ class RegHanler {
 
         // 平台注册通知类型 0:从未上过线，1:车机终端上线 ，2:车机离线，3:平台上线，4:平台下线
         final String type = msg.get(ProtocolItem.REG_TYPE);
-        String time = msg.get(SysDefine.TIME);
+        String time = msg.get(DataKey.TIME);
 
         try {
             if ("1".equals(type)) {//车辆上线

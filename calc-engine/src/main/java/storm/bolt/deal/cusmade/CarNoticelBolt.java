@@ -495,7 +495,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
             // region 更新实时缓存
             try {
-                String type = data.get(SysDefine.MESSAGETYPE);
+                String type = data.get(DataKey.MESSAGE_TYPE);
                 if (!CommandType.SUBMIT_LINKSTATUS.equals(type)) {
                     SysRealDataCache.updateCache(data, now);
                 }

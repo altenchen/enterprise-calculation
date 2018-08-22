@@ -15,9 +15,7 @@ import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.system.SysDefine;
 
-import java.io.Serializable;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -42,28 +40,28 @@ public class CarLockStatusChangeJudgeTest {
     private static final ImmutableMap DISABLE_UNLOCK = new ImmutableMap.Builder<String, Object>()
         .put(DataKey.VEHICLE_ID, TEST_VID)
         .put(DataKey.TIME, TEST_TIME)
-        .put(SysDefine.MESSAGETYPE, CommandType.SUBMIT_REALTIME)
+        .put(DataKey.MESSAGE_TYPE, CommandType.SUBMIT_REALTIME)
         .put(DataKey._4710061_JILI_LOCK_FUNCTION, DataKey._4710061_JILI_LOCK_FUNCTION_DISABLE)
         .put(DataKey._4710062_JILI_LOCK_STATUS, DataKey._4710062_JILI_LOCK_STATUS_UNLOCK)
         .build();
     private static final ImmutableMap DISABLE_LOCKED = new ImmutableMap.Builder<String, Object>()
         .put(DataKey.VEHICLE_ID, TEST_VID)
         .put(DataKey.TIME, TEST_TIME)
-        .put(SysDefine.MESSAGETYPE, CommandType.SUBMIT_REALTIME)
+        .put(DataKey.MESSAGE_TYPE, CommandType.SUBMIT_REALTIME)
         .put(DataKey._4710061_JILI_LOCK_FUNCTION, DataKey._4710061_JILI_LOCK_FUNCTION_DISABLE)
         .put(DataKey._4710062_JILI_LOCK_STATUS, DataKey._4710062_JILI_LOCK_STATUS_LOCKED)
         .build();
     private static final ImmutableMap ENABLE_UNLOCK = new ImmutableMap.Builder<String, Object>()
         .put(DataKey.VEHICLE_ID, TEST_VID)
         .put(DataKey.TIME, TEST_TIME)
-        .put(SysDefine.MESSAGETYPE, CommandType.SUBMIT_REALTIME)
+        .put(DataKey.MESSAGE_TYPE, CommandType.SUBMIT_REALTIME)
         .put(DataKey._4710061_JILI_LOCK_FUNCTION, DataKey._4710061_JILI_LOCK_FUNCTION_ENABLE)
         .put(DataKey._4710062_JILI_LOCK_STATUS, DataKey._4710062_JILI_LOCK_STATUS_UNLOCK)
         .build();
     private static final ImmutableMap ENABLE_LOCKED = new ImmutableMap.Builder<String, Object>()
         .put(DataKey.VEHICLE_ID, TEST_VID)
         .put(DataKey.TIME, TEST_TIME)
-        .put(SysDefine.MESSAGETYPE, CommandType.SUBMIT_REALTIME)
+        .put(DataKey.MESSAGE_TYPE, CommandType.SUBMIT_REALTIME)
         .put(DataKey._4710061_JILI_LOCK_FUNCTION, DataKey._4710061_JILI_LOCK_FUNCTION_ENABLE)
         .put(DataKey._4710062_JILI_LOCK_STATUS, DataKey._4710062_JILI_LOCK_STATUS_LOCKED)
         .build();
@@ -93,7 +91,7 @@ public class CarLockStatusChangeJudgeTest {
 
         data.put(DataKey.VEHICLE_ID, TEST_VID);
         data.put(DataKey.TIME, DateFormatUtils.format(date, FormatConstant.DATE_FORMAT));
-        data.put(SysDefine.MESSAGETYPE,CommandType.SUBMIT_REALTIME );
+        data.put(DataKey.MESSAGE_TYPE,CommandType.SUBMIT_REALTIME );
         data.put(DataKey._4710061_JILI_LOCK_FUNCTION,"0");
         data.put(DataKey._4710062_JILI_LOCK_STATUS,"2");
 

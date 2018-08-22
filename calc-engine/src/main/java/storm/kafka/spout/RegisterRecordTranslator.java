@@ -38,7 +38,7 @@ public final class RegisterRecordTranslator implements RecordTranslator<String, 
     public List<Object> apply(final ConsumerRecord<String, String> record) {
         final String value = record.value();
 
-        Matcher matcher = PICK_VID.matcher(value);
+        final Matcher matcher = PICK_VID.matcher(value);
         if (!matcher.find()) {
             logger.warn("无法取到VID的非法输入:[{}]", record.toString());
             return null;

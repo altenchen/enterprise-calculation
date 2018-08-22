@@ -45,7 +45,7 @@ public final class CarLockStatusChangeJudge {
             return null;
         }
 
-        final String msgType = data.get(SysDefine.MESSAGETYPE);
+        final String msgType = data.get(DataKey.MESSAGE_TYPE);
         if(!CommandType.SUBMIT_REALTIME.equals(msgType)) {
             return null;
         }

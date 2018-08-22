@@ -141,7 +141,7 @@ class CarRuleHandlerTest {
         data.put(DataKey._2202_TOTAL_MILEAGE,"18888");
         //系统接收报文时间
         data.put(SysDefine.ONLINE_UTC,now_time_yyMMddHHmmss_subtract_10minute);
-        data.put(SysDefine.MESSAGETYPE,"REALTIME");
+        data.put(DataKey.MESSAGE_TYPE,"REALTIME");
 
         SysRealDataCache.addAliveQueue(data.get(DataKey.VEHICLE_ID));
         SysRealDataCache.addLastQueue(data.get(DataKey.VEHICLE_ID));

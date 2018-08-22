@@ -826,7 +826,7 @@ public class CarRuleHandler implements InfoNotice {
         try {
             String vid = dat.get(DataKey.VEHICLE_ID);
             String time = dat.get(DataKey.TIME);
-            String msgType = dat.get(SysDefine.MESSAGETYPE);
+            String msgType = dat.get(DataKey.MESSAGE_TYPE);
             if (StringUtils.isEmpty(vid)
                     || StringUtils.isEmpty(time)
                     || StringUtils.isEmpty(msgType)) {
@@ -1696,7 +1696,7 @@ public class CarRuleHandler implements InfoNotice {
     }
 
     private boolean isOffline(Map<String, String> dat) {
-        String msgType = dat.get(SysDefine.MESSAGETYPE);
+        String msgType = dat.get(DataKey.MESSAGE_TYPE);
         if (CommandType.SUBMIT_LOGIN.equals(msgType)) {
             String type = dat.get(ProtocolItem.REG_TYPE);
             if ("1".equals(type)) {

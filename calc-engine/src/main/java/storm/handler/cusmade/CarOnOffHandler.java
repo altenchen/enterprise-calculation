@@ -241,7 +241,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 
         String vid = dat.get(DataKey.VEHICLE_ID);
         String time = dat.get(DataKey.TIME);
-        String msgType = dat.get(SysDefine.MESSAGETYPE);
+        String msgType = dat.get(DataKey.MESSAGE_TYPE);
         if (StringUtils.isEmpty(vid)
                 || StringUtils.isEmpty(time)) {
             return null;
@@ -332,7 +332,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
         String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
 
         //是否为登入报文
-        boolean isLogin = CommandType.SUBMIT_LOGIN.equals(dat.get(SysDefine.MESSAGETYPE));
+        boolean isLogin = CommandType.SUBMIT_LOGIN.equals(dat.get(DataKey.MESSAGE_TYPE));
         //车辆 是否达到 闲置或者停机 超时的标准
         //判断标准就是当前时间与缓存中的最后一帧报文时间差值是否大于阈值，
         //需要注意的是，此时已经的下线车辆也是在全量数据或者活跃数据缓存中的。
@@ -423,7 +423,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
         if (null == dat || dat.size() ==0) {
             return null;
         }
-        String msgType = dat.get(SysDefine.MESSAGETYPE);
+        String msgType = dat.get(DataKey.MESSAGE_TYPE);
         String vid = dat.get(DataKey.VEHICLE_ID);
         String time = dat.get(DataKey.TIME);
         if (StringUtils.isEmpty(msgType)
@@ -474,7 +474,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
         if (null == dat || dat.size() ==0) {
             return null;
         }
-        String msgType = dat.get(SysDefine.MESSAGETYPE);
+        String msgType = dat.get(DataKey.MESSAGE_TYPE);
         String vid = dat.get(DataKey.VEHICLE_ID);
         String time = dat.get(DataKey.TIME);
         if (StringUtils.isEmpty(msgType)
@@ -566,7 +566,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
      */
 
     private boolean isOffline(Map<String, String> dat){
-        String msgType = dat.get(SysDefine.MESSAGETYPE);
+        String msgType = dat.get(DataKey.MESSAGE_TYPE);
         if (CommandType.SUBMIT_LOGIN.equals(msgType)) {
             //1、先根据自带的TYPE字段进行判断。平台注册通知类型 0:从未上过线，1:车机终端上线 ，2:车机离线，3:平台上线，4:平台下线
             String type = dat.get(ProtocolItem.REG_TYPE);

@@ -348,33 +348,33 @@ public class FilterBolt extends BaseRichBolt {
 
             if (CommandType.SUBMIT_REALTIME.equals(cmd)) {
                 // 如果是实时数据, 则将TIME设置为数据采集时间
-                data.put(SysDefine.TIME, data.get(DataKey._2000_COLLECT_TIME));
+                data.put(DataKey.TIME, data.get(DataKey._2000_COLLECT_TIME));
             } else if (CommandType.SUBMIT_LOGIN.equals(cmd)) {
                 // 如果是注册报文, 则将TIME设置为登入时间或者登出时间或者注册时间
                 if (data.containsKey(SUBMIT_LOGIN.LOGIN_TIME)) {
                     // 将TIME设置为登入时间
-                    data.put(SysDefine.TIME, data.get(SUBMIT_LOGIN.LOGIN_TIME));
+                    data.put(DataKey.TIME, data.get(SUBMIT_LOGIN.LOGIN_TIME));
                 } else if (data.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)) {
                     // 将TIME设置为登出时间
-                    data.put(SysDefine.TIME, data.get(SUBMIT_LOGIN.LOGOUT_TIME));
+                    data.put(DataKey.TIME, data.get(SUBMIT_LOGIN.LOGOUT_TIME));
                 } else {
                     // 将TIME设置为注册时间
-                    data.put(SysDefine.TIME, data.get(SUBMIT_LOGIN.REGIST_TIME));
+                    data.put(DataKey.TIME, data.get(SUBMIT_LOGIN.REGIST_TIME));
                 }
             } else if (CommandType.SUBMIT_TERMSTATUS.equals(cmd)) {
                 // 如果是状态信息上报, 则将TIME设置为采集时间(地标)
-                data.put(SysDefine.TIME, data.get(DataKey._3101_COLLECT_TIME));
+                data.put(DataKey.TIME, data.get(DataKey._3101_COLLECT_TIME));
             } else if (CommandType.SUBMIT_HISTORY.equals(cmd)) {
                 // 如果是补发数据, 则将TIME设置为数据采集时间
-                data.put(SysDefine.TIME, data.get(DataKey._2000_COLLECT_TIME));
+                data.put(DataKey.TIME, data.get(DataKey._2000_COLLECT_TIME));
             } else if (CommandType.SUBMIT_CARSTATUS.equals(cmd)) {
-                data.put(SysDefine.TIME, data.get("3201"));
+                data.put(DataKey.TIME, data.get("3201"));
             } else if (SysDefine.RENTCAR.equals(cmd)) {
                 // 租赁数据
-                data.put(SysDefine.TIME, data.get("4001"));
+                data.put(DataKey.TIME, data.get("4001"));
             } else if (SysDefine.CHARGE.equals(cmd)) {
                 // 充电设施数据
-                data.put(SysDefine.TIME, data.get("4101"));
+                data.put(DataKey.TIME, data.get("4101"));
             }
 
         }

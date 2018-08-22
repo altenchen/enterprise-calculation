@@ -150,18 +150,6 @@ public final class SysDefine {
 
     /*-------------------------------指令-------------------------------------*/
     /**
-     * 消息前缀
-     */
-    public static final String PREFIX = "PREFIX";
-    /**
-     * 消息类型
-     */
-    public static final String MESSAGETYPE = "MESSAGETYPE";
-    /**
-     * 时间
-     */
-    public static final String TIME = "TIME";
-    /**
      * 指令类型 租赁点更新数据
      */
     public static final String RENTALSTATION = "RENTALSTATION";
@@ -178,7 +166,7 @@ public final class SysDefine {
      */
     public static final String CHARGE = "CHARGE";
     /**
-     * 是否有告警
+     * 是否有告警, 1-有告警 2- 无告警
      */
     public static final String IS_ALARM = "10001";
     /**
@@ -270,6 +258,21 @@ public final class SysDefine {
      * 告警消息 kafka 输出 topic
      */
     public static final String KAFKA_TOPIC_ALARM = "kafka.topic.alarm";
+
+    /**
+     * HBase 车辆报警状态存储 kafka 输出 topic
+     */
+    public static final String KAFKA_TOPIC_ALARM_STORE = "kafka.topic.alarm.store";
+
+    /**
+     * AlarmBolt, 连续多少条报警才发送通知
+     */
+    public static final String ALARM_CONTINUE_COUNTS = "alarm.continue.counts";
+
+    /**
+     * 每隔多少时间推送一次,默认一分钟，60000毫秒。如果负数或者0代表实时推送, 单位秒.
+     */
+    public static final String ES_SEND_TIME = "es.send.time";
 
     /**
      * 通知消息 kafka 输出 topic

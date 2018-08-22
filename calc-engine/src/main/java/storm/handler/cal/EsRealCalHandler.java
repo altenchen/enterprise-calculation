@@ -279,9 +279,9 @@ public class EsRealCalHandler{
         }
 
         try {
-            String msgType = dat.get(SysDefine.MESSAGETYPE);
+            String msgType = dat.get(DataKey.MESSAGE_TYPE);
             String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(SysDefine.TIME);
+            String time = dat.get(DataKey.TIME);
             Date date = inDate(time);
             if (StringUtils.isEmpty(msgType) || StringUtils.isEmpty(vid) || null == time || time.length() != 14 || null ==date) {
                 return null;
@@ -453,9 +453,9 @@ public class EsRealCalHandler{
             return false;
         }
         try {
-            String msgType = dat.get(SysDefine.MESSAGETYPE);
+            String msgType = dat.get(DataKey.MESSAGE_TYPE);
             String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(SysDefine.TIME);
+            String time = dat.get(DataKey.TIME);
             if(StringUtils.isEmpty(msgType)
                     || StringUtils.isEmpty(vid)
                     || StringUtils.isEmpty(time)) {
@@ -500,9 +500,9 @@ public class EsRealCalHandler{
             return false;
         }
         try {
-            String msgType = dat.get(SysDefine.MESSAGETYPE);
+            String msgType = dat.get(DataKey.MESSAGE_TYPE);
             String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(SysDefine.TIME);
+            String time = dat.get(DataKey.TIME);
             if(StringUtils.isEmpty(msgType)
                     || StringUtils.isEmpty(vid)
                     || StringUtils.isEmpty(time)) {
@@ -566,9 +566,9 @@ public class EsRealCalHandler{
             return false;
         }
         try {
-            String msgType = dat.get(SysDefine.MESSAGETYPE);
+            String msgType = dat.get(DataKey.MESSAGE_TYPE);
             String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(SysDefine.TIME);
+            String time = dat.get(DataKey.TIME);
             if(StringUtils.isEmpty(msgType)
                     || StringUtils.isEmpty(vid)
                     || StringUtils.isEmpty(time)) {

@@ -89,7 +89,7 @@ public class TopologiesByConf {
 
         //region alarm
         // 连续多少条报警才发送通知
-        stormConf.put("alarm.continue.counts", properties.get("alarm.continue.counts"));
+        stormConf.put(SysDefine.ALARM_CONTINUE_COUNTS, properties.get(SysDefine.ALARM_CONTINUE_COUNTS));
         //endregion
 
         //region ctfo
@@ -101,13 +101,13 @@ public class TopologiesByConf {
 
         stormConf.put(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, properties.get(SysDefine.DB_CACHE_FLUSH_TIME_SECOND));
 
-        stormConf.put("es.send.time", properties.get("es.send.time"));
+        stormConf.put(SysDefine.ES_SEND_TIME, properties.get(SysDefine.ES_SEND_TIME));
 
         //region kafka
         stormConf.put("kafka.customer.hosts", properties.getProperty("kafka.broker.hosts"));
         stormConf.put("kafka.platform.veh.reg", properties.get("kafka.platform.veh.reg"));
         stormConf.put(SysDefine.KAFKA_TOPIC_ALARM, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM));
-        stormConf.put("kafka.topic.alarmstore", properties.getProperty("kafka.topic.alarmstore"));
+        stormConf.put(SysDefine.KAFKA_TOPIC_ALARM_STORE, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM_STORE));
         stormConf.put("kafka.topic.customfault", properties.get("kafka.topic.customfault"));
         stormConf.put("kafka.topic.es.status", properties.get("kafka.topic.es.status"));
         stormConf.put("kafka.topic.fencealarm", properties.get("kafka.topic.fencealarm"));

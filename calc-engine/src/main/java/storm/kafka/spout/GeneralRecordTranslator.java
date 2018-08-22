@@ -40,7 +40,7 @@ public final class GeneralRecordTranslator implements RecordTranslator<String, S
     public List<Object> apply(@NotNull final ConsumerRecord<String, String> record) {
         final String value = record.value();
 
-        Matcher matcher = PICK_VID.matcher(value);
+        final Matcher matcher = PICK_VID.matcher(value);
         if (!matcher.find()) {
             logger.warn("无法取到VID的非法输入:[{}]", record.toString());
             return null;
