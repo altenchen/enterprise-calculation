@@ -8,7 +8,6 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.NotNull;
@@ -33,7 +32,6 @@ import storm.util.ParamsRedisUtil;
 
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -45,7 +43,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
     private static final Logger logger = LoggerFactory.getLogger(CarNoticelBolt.class);
     private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
-    private static final JsonUtils gson = JsonUtils.getInstance();
+    private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
     private static final FromFilterToCarNoticeStream CUS_NOTICE_GROUP_STREAM = FromFilterToCarNoticeStream.getInstance();
 
@@ -97,7 +95,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
 
-        noticeTopic = stormConf.get("kafka.topic.notice").toString();
+        noticeTopic = stormConf.get(SysDefine.KAFKA_TOPIC_NOTICE).toString();
 
         long now = System.currentTimeMillis();
         lastOfflineCheckTimeMillisecond = now;
@@ -150,7 +148,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
                     for (Map<String, Object> map : msgs) {
                         if (null != map && map.size() > 0) {
                             Object vid = map.get("vid");
-                            String json = gson.toJson(map);
+                            String json = JSON_UTILS.toJson(map);
                             sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                         }
                     }
@@ -189,7 +187,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
                             for (Map<String, Object> map : msgs) {
                                 if (null != map && map.size() > 0) {
                                     Object vid = map.get("vid");
-                                    String json = gson.toJson(map);
+                                    String json = JSON_UTILS.toJson(map);
                                     sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                                 }
                             }
@@ -229,7 +227,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
                 for (Map<String, Object> map : msgs) {
                     if (null != map && map.size() > 0) {
                         Object vid = map.get("vid");
-                        String json = gson.toJson(map);
+                        String json = JSON_UTILS.toJson(map);
                         sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                     }
                 }
@@ -241,7 +239,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
                 for (Map<String, Object> map : msgs) {
                     if (null != map && map.size() > 0) {
                         Object vid = map.get("vid");
-                        String json = gson.toJson(map);
+                        String json = JSON_UTILS.toJson(map);
                         sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                     }
                 }
@@ -511,7 +509,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
             List<Map<String, Object>> msgs = carRuleHandler.generateNotices(data);
             for (Map<String, Object> map : msgs) {
                 if (null != map && map.size() > 0) {
-                    String json = gson.toJson(map);
+                    String json = JSON_UTILS.toJson(map);
                     sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                 }
             }
@@ -520,7 +518,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
             if (null != faultCodeMessages && faultCodeMessages.size() > 0) {
                 for (Map<String, Object> map : faultCodeMessages) {
                     if (null != map && map.size() > 0) {
-                        String json = gson.toJson(map);
+                        String json = JSON_UTILS.toJson(map);
                         sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
                     }
                 }
@@ -528,7 +526,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
             //如果下线了，则发送上下线的里程值
             Map<String, Object> map = carOnOffhandler.generateNotices(data, now, offlineTimeMillisecond);
             if (null != map && map.size() > 0) {
-                String json = gson.toJson(map);
+                String json = JSON_UTILS.toJson(map);
                 sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
             }
         }

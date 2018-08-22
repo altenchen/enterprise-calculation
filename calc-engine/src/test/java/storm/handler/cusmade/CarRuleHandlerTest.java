@@ -53,7 +53,6 @@ class CarRuleHandlerTest {
         CarRuleHandler.flyRule = 0;
         CarRuleHandler.onoffRule = 0;
         CarRuleHandler.mileHopRule = 0;
-        CarRuleHandler.enableTimeRule = 0;
         CarRuleHandler.carLockStatueChangeJudgeRule = 0;
 
         CarRuleHandler.setLowSocJudgeNum(3);

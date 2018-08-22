@@ -22,6 +22,11 @@ public final class NoticeType {
     public static final String SOC_ALARM = "SOC_ALARM";
 
     /**
+     * 时间异常通知
+     */
+    public static final String TIME_EXCEPTION_VEH = "TIME_EXCEPTION_VEH";
+
+    /**
      * 车辆锁止状态通知
      */
     public static final String VEH_LOCK_STATUS_CHANGE = "VEH_LOCK_STATUS_CHANGE";

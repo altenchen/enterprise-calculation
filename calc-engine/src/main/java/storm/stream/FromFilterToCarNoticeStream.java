@@ -7,6 +7,7 @@ import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import storm.constant.StreamFieldKey;
+import storm.system.SysDefine;
 
 import java.util.Map;
 
@@ -21,7 +22,7 @@ public final class FromFilterToCarNoticeStream implements IStreamBase {
     private static final Fields fields = new Fields(StreamFieldKey.VEHICLE_ID, StreamFieldKey.DATA);
 
     @NotNull
-    private static final String componentId = "checkfilterboltid";
+    private static final String componentId = SysDefine.CHECK_FILTER_BOLT_ID;
 
     @NotNull
     private static final String streamId = "cusnoticeGroup";

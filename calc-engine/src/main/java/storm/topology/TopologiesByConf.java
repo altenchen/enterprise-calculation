@@ -111,7 +111,7 @@ public class TopologiesByConf {
         stormConf.put("kafka.topic.customfault", properties.get("kafka.topic.customfault"));
         stormConf.put("kafka.topic.es.status", properties.get("kafka.topic.es.status"));
         stormConf.put("kafka.topic.fencealarm", properties.get("kafka.topic.fencealarm"));
-        stormConf.put("kafka.topic.notice", properties.get("kafka.topic.notice"));
+        stormConf.put(SysDefine.KAFKA_TOPIC_NOTICE, properties.get(SysDefine.KAFKA_TOPIC_NOTICE));
         stormConf.put("kafka.topic.realinfostore", properties.getProperty("kafka.topic.realinfostore"));
         //endregion
 
@@ -143,10 +143,6 @@ public class TopologiesByConf {
         stormConf.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND, properties.getProperty(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND));
         stormConf.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT, properties.getProperty(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT));
         stormConf.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, properties.getProperty(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND));
-        // endregion
-
-        // region notice.time
-        stormConf.put(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND, properties.getProperty(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND));
         // endregion
 
         // region jili
@@ -360,9 +356,14 @@ public class TopologiesByConf {
                 SysDefine.SYNES_BOLT_ID,
                 SysDefine.SYNES_NOTICE,
                 new Fields(KafkaStream.BOLT_KEY))
-            // 告警 同步推送
+            // 车辆通知
             .fieldsGrouping(
                 SysDefine.CUS_NOTICE_BOLT_ID,
+                SysDefine.CUS_NOTICE,
+                new Fields(KafkaStream.BOLT_KEY))
+            // 车辆通知(来自FilterBolt)
+            .fieldsGrouping(
+                SysDefine.CHECK_FILTER_BOLT_ID,
                 SysDefine.CUS_NOTICE,
                 new Fields(KafkaStream.BOLT_KEY));
     }
