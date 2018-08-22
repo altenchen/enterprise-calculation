@@ -1,10 +1,12 @@
 package storm.bolt.deal.norm;
 
 import com.google.common.collect.Maps;
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.jetbrains.annotations.Nullable;
 import storm.constant.StreamFieldKey;
-import storm.stream.FromGeneralToFilterStream;
-import storm.util.ConfigUtils;
+import storm.handler.cusmade.TimeOutOfRangeNotice;
 import org.apache.commons.lang.StringUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -17,15 +19,19 @@ import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.kafka.bolt.KafkaBoltTopic;
 import storm.protocol.*;
 import storm.stream.FromFilterToCarNoticeStream;
+import storm.stream.KafkaStream;
 import storm.system.DataKey;
-import storm.util.*;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
+import storm.util.ConfigUtils;
+import storm.util.JsonUtils;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,13 +47,44 @@ public class FilterBolt extends BaseRichBolt {
 
     private static final Logger LOG = LoggerFactory.getLogger(FilterBolt.class);
 
+    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
+
+    private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
+
     private static final FromFilterToCarNoticeStream TO_CAR_NOTICE_STREAM = FromFilterToCarNoticeStream.getInstance();
 
     private static final Pattern MSG_REGEX = Pattern.compile("^([^ ]+) (\\d+) ([^ ]+) ([^ ]+) \\{VID:([^,]*)(?:,([^}]+))*\\}$");
 
+    /**
+     * 是否启用时间异常通知
+     */
+    private static final boolean ENABLE_TIME_OUT_OF_RANGE_NOTICE;
+
+    static {
+
+        final Properties sysDefine = CONFIG_UTILS.sysDefine;
+
+        {
+            final String noticeTimeEnableString = sysDefine.getProperty(SysDefine.NOTICE_TIME_ENABLE);
+            final boolean noticeTimeEnable = BooleanUtils.toBoolean(noticeTimeEnableString);
+            ENABLE_TIME_OUT_OF_RANGE_NOTICE = noticeTimeEnable;
+            if (LOG.isInfoEnabled()) {
+                LOG.info("时间异常通知已{}.", ENABLE_TIME_OUT_OF_RANGE_NOTICE ? "启用" : "禁用");
+            }
+        }
+
+        {
+            final String noticeTimeRangeAbsMillisecondString = sysDefine.getProperty(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND);
+            final long noticeTimeRangeAbsMillisecond = NumberUtils.toLong(noticeTimeRangeAbsMillisecondString, TimeOutOfRangeNotice.DEFAULT_TIME_RANGE_MILLISECOND);
+            TimeOutOfRangeNotice.setTimeRangeMillisecond(noticeTimeRangeAbsMillisecond);
+        }
+    }
+
     // endregion 类常量
 
     // region 对象常量
+
+    private final TimeOutOfRangeNotice timeOutOfRangeNotice = new TimeOutOfRangeNotice();
 
     private final OnlineProcessor onlineProcessor = new OnlineProcessor();
 
@@ -79,6 +116,8 @@ public class FilterBolt extends BaseRichBolt {
 
     @Override
     public void execute(@NotNull final Tuple input) {
+
+        collector.ack(input);
 
         final String msg = input.getStringByField(StreamFieldKey.MSG);
         final Matcher matcher = MSG_REGEX.matcher(msg);
@@ -118,25 +157,21 @@ public class FilterBolt extends BaseRichBolt {
         data.put(DataKey.VEHICLE_ID, vid);
         parseData(data, content);
 
-        // 增加utc字段，插入系统时间
-        data.put(SysDefine.ONLINE_UTC, String.valueOf(System.currentTimeMillis()));
+        if (CommandType.SUBMIT_REALTIME.equals(cmd)) {
 
-        // 计算在线状态(10002)和平台注册通知类型(TYPE)
-        onlineProcessor.fillIsOnline(cmd, data);
+            // 时间异常判断, 如果有时间异常, 则认为是无效帧
+            final Map<String, String> notice = timeOutOfRangeNotice.process(data);
+            if(MapUtils.isNotEmpty(notice)) {
 
-        // 计算时间(TIME)加入data
-        timeProcessor.fillTime(cmd, data);
+                if(ENABLE_TIME_OUT_OF_RANGE_NOTICE) {
+                    sendNotice(vid, notice);
+                }
 
-        final boolean isRealTime = CommandType.SUBMIT_REALTIME.equals(cmd);
+                return;
+            }
 
-        // 判断是否充电
-        if (isRealTime) {
+            // 判断是否充电
             chargeProcessor.fillChargingStatus(data);
-        }
-
-        if (isRealTime
-            || CommandType.SUBMIT_HISTORY.equals(cmd)) {
-
 
             // 北京地标: 动力蓄电池报警标志解析存储, 见表20
             if (NumberUtils.isDigits(data.get(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801))) {
@@ -154,6 +189,15 @@ public class FilterBolt extends BaseRichBolt {
             }
         }
 
+        // 增加utc字段，插入系统时间
+        data.put(SysDefine.ONLINE_UTC, String.valueOf(System.currentTimeMillis()));
+
+        // 计算在线状态(10002)和平台注册通知类型(TYPE)
+        onlineProcessor.fillIsOnline(cmd, data);
+
+        // 计算时间(TIME)加入data
+        timeProcessor.fillTime(cmd, data);
+
         emit(vid, cmd, data);
     }
 
@@ -163,6 +207,8 @@ public class FilterBolt extends BaseRichBolt {
         declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
         declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
         TO_CAR_NOTICE_STREAM.declareStream(declarer);
+
+        KafkaStream.declareOutputFields(declarer, SysDefine.CUS_NOTICE);
     }
 
     private void emit(@NotNull final String vid, @NotNull final String cmd, @NotNull final Map<String, String> data) {
@@ -195,6 +241,27 @@ public class FilterBolt extends BaseRichBolt {
             // 预警处理
             collector.emit(SysDefine.SPLIT_GROUP, new Values(vid, data));
         }
+    }
+
+    void sendNotice(
+        @NotNull final String vid,
+        @Nullable final Map<String, String> notice) {
+
+        if(MapUtils.isEmpty(notice)){
+            return;
+        }
+
+        final String json = JSON_UTILS.toJson(notice);
+        sendToKafka(SysDefine.CUS_NOTICE, KafkaBoltTopic.NOTICE_TOPIC, vid, json);
+    }
+
+    void sendToKafka(
+        @NotNull final String define,
+        @NotNull final String topic,
+        @NotNull final String vid,
+        @Nullable final String message) {
+
+        collector.emit(define, new Values(topic, vid, message));
     }
 
     @NotNull

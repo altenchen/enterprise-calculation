@@ -267,14 +267,14 @@ public final class SysDefine {
     public static final String CUS_NOTICE = "cusnotice";
 
     /**
-     * 是否启用时间异常通知规则, 0-停用, 1-启用
-     */
-    public static final String SYS_TIME_RULE = "sys.time.rule";
-
-    /**
-     * 告警消息kafka输出topic
+     * 告警消息 kafka 输出 topic
      */
     public static final String KAFKA_TOPIC_ALARM = "kafka.topic.alarm";
+
+    /**
+     * 通知消息 kafka 输出 topic
+     */
+    public static final String KAFKA_TOPIC_NOTICE = "kafka.topic.notice";
 
     /**
      * 触发CAN故障需要的连续帧数
@@ -292,6 +292,11 @@ public final class SysDefine {
      * 触发CAN正常需要的持续时长
      */
     public static final String NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND = "notice.can.normal.trigger.timeout.millisecond";
+
+    /**
+     * 是否启用时间异常通知规则
+     */
+    public static final String NOTICE_TIME_ENABLE = "notice.time.enable";
 
     /**
      * 时间数值异常范围

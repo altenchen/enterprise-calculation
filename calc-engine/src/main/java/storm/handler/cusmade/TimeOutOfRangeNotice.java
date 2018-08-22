@@ -2,14 +2,17 @@ package storm.handler.cusmade;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateUtils;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
 import storm.system.DataKey;
+import storm.system.NoticeType;
 import storm.util.DataUtils;
 import storm.util.ParamsRedisUtil;
 
+import java.io.Serializable;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.TreeMap;
@@ -20,18 +23,22 @@ import java.util.UUID;
  * @date: 2018-06-15
  * @description:
  */
-public final class TimeOutOfRangeNotice {
+public final class TimeOutOfRangeNotice implements Serializable {
+
+    private static final long serialVersionUID = -8735877631948355567L;
 
     private static final Logger LOG = LoggerFactory.getLogger(TimeOutOfRangeNotice.class);
-    private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
 
-    private static long timeRangeMillisecond = 1000 * 60 * 10;
+    public static long DEFAULT_TIME_RANGE_MILLISECOND =  1000 * 60 * 10;
 
+    private static long timeRangeMillisecond = DEFAULT_TIME_RANGE_MILLISECOND;
+
+    @Contract(pure = true)
     public static long getTimeRangeMillisecond() {
         return timeRangeMillisecond;
     }
 
-    public static void setTimeRangeMillisecond(long timeRangeMillisecond) {
+    public static void setTimeRangeMillisecond(final long timeRangeMillisecond) {
         TimeOutOfRangeNotice.timeRangeMillisecond = timeRangeMillisecond;
         LOG.info("时间数值异常范围被设定为[" + timeRangeMillisecond + "]毫秒");
     }
@@ -41,16 +48,12 @@ public final class TimeOutOfRangeNotice {
      * @return 如果有异常, 则设置vid, exception
      */
     @NotNull
-    public Map<String, String> process(@NotNull Map<String, String> data) {
+    public final Map<String, String> process(@NotNull final Map<String, String> data) {
         final Map<String, String> result = new TreeMap<>();
 
         final String vid = data.get(DataKey.VEHICLE_ID);
         if(StringUtils.isBlank(vid)) {
             return result;
-        }
-
-        if(paramsRedisUtil.isTraceVehicleId(vid)) {
-            LOG.warn("VID[" + vid + "]进入时间有效范围通知判定");
         }
 
         final String terminalTimeString = data.get(DataKey._2000_COLLECT_TIME);
@@ -75,7 +78,9 @@ public final class TimeOutOfRangeNotice {
 
         // 数值异常
         if(Math.abs(platformTime - terminalTime) > getTimeRangeMillisecond()) {
-            return generateNotice(data, 2);
+            final Map<String, String> notice = generateNotice(data, 2);
+            notice.put("timeRangeMillisecond", String.valueOf(timeRangeMillisecond));
+            return notice;
         }
 
         return result;
@@ -103,7 +108,7 @@ public final class TimeOutOfRangeNotice {
 
         final Map<String, String> notice = new TreeMap<>();
         notice.put("vid", vid);
-        notice.put("msgType", "TIME_EXCEPTION_VEH");
+        notice.put("msgType", NoticeType.TIME_EXCEPTION_VEH);
         notice.put("msgId", UUID.randomUUID().toString());
         notice.put("exceptionType", String.valueOf(exceptionType));
         notice.put("ttime", terminalTimeString);
