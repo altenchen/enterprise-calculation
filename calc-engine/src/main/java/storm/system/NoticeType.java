@@ -7,7 +7,7 @@ package storm.system;
 public final class NoticeType {
 
     /**
-     * 无CAN通知
+     * 无 CAN 通知
      */
     public static final String NO_CAN_VEH = "NO_CAN_VEH";
 
@@ -15,6 +15,11 @@ public final class NoticeType {
      * 未定位通知
      */
     public static final String NO_POSITION_VEH = "NO_POSITION_VEH";
+
+    /**
+     * SOC 过低通知
+     */
+    public static final String SOC_ALARM = "SOC_ALARM";
 
     /**
      * 车辆锁止状态通知

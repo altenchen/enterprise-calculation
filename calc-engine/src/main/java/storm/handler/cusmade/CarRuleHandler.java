@@ -559,8 +559,8 @@ public class CarRuleHandler implements InfoNotice {
             return null;
         }
 
-        String vid = dat.get(DataKey.VEHICLE_ID);
-        String timeString = dat.get(DataKey.TIME);
+        final String vid = dat.get(DataKey.VEHICLE_ID);
+        final String timeString = dat.get(DataKey._9999_SERVER_RECEIVE_TIME);
         if (StringUtils.isBlank(vid)
             || StringUtils.isEmpty(timeString)
             || !StringUtils.isNumeric(timeString)) {
@@ -601,7 +601,7 @@ public class CarRuleHandler implements InfoNotice {
 
             final Map<String, Object> lowSocNotice = vidSocNotice.getOrDefault(vid, new TreeMap<>());
             if(MapUtils.isEmpty(lowSocNotice)) {
-                lowSocNotice.put("msgType", "SOC_ALARM");
+                lowSocNotice.put("msgType", NoticeType.SOC_ALARM);
                 lowSocNotice.put("msgId", UUID.randomUUID().toString());
                 lowSocNotice.put("vid", vid);
                 vidSocNotice.put(vid, lowSocNotice);
