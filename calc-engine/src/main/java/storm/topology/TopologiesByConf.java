@@ -109,7 +109,7 @@ public class TopologiesByConf {
         stormConf.put(SysDefine.KAFKA_TOPIC_ALARM, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM));
         stormConf.put(SysDefine.KAFKA_TOPIC_ALARM_STORE, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM_STORE));
         stormConf.put("kafka.topic.customfault", properties.get("kafka.topic.customfault"));
-        stormConf.put("kafka.topic.es.status", properties.get("kafka.topic.es.status"));
+        stormConf.put(SysDefine.KAFKA_TOPIC_ES_STATUS, properties.get(SysDefine.KAFKA_TOPIC_ES_STATUS));
         stormConf.put("kafka.topic.fencealarm", properties.get("kafka.topic.fencealarm"));
         stormConf.put(SysDefine.KAFKA_TOPIC_NOTICE, properties.get(SysDefine.KAFKA_TOPIC_NOTICE));
         stormConf.put("kafka.topic.realinfostore", properties.getProperty("kafka.topic.realinfostore"));
@@ -291,7 +291,6 @@ public class TopologiesByConf {
                 new SynEsculBolt(),
                 boltNo * 3)
             .setNumTasks(boltNo * 9)
-            // 电子围栏告警实时数据
             .fieldsGrouping(
                 SysDefine.CHECK_FILTER_BOLT_ID,
                 SysDefine.SYNES_GROUP,

@@ -172,7 +172,6 @@ public class EarlyWarnsGetter {
 
                 EarlyWarn warn = new EarlyWarn(id, name, vehModelId, levels, dependId, left1DataItem, leftExpression, left2DataItem, middleExpression, right1Value, right2Value);
 
-//                EarlyWarn warn = new EarlyWarn(id, vehModelId, left1DataItem, leftExpression, left2DataItem, middleExpression, right1Value, right2Value);
                 if (null != dependId) {
                     warn.dependId = dependId;
                 }
@@ -193,45 +192,27 @@ public class EarlyWarnsGetter {
         return typeWarns.get(ALL);
     }
 
-    //synchronized
-    /*public static Set<EarlyWarn> allWarnsByType(String type){
-        boolean buildSucc = bulidSuccessRetryTimes(150);
-        if (!buildSucc) {
-            return null;
-        }
-
-        Set<EarlyWarn> warns = typeAllWarns.get(type);
-        if (null != warns) {
-            return warns;
-        }
-        warns = getAllWarnRules(type);
-        if (null != warns) {
-            typeAllWarns.put(type, warns);
-        }
-        return warns;
-    }*/
-
     /**
-     * @param type
-     * @return
+     * @param vehType 车辆类型, 预警用于匹配约束条件
+     * @return 预警规则列表
      */
-    public static List<EarlyWarn> allWarnArrsByType(String type) {
+    public static List<EarlyWarn> allWarnArrsByType(String vehType) {
         boolean buildSucc = bulidSuccessRetryTimes(150);
         if (!buildSucc) {
             return null;
         }
-        List<EarlyWarn> warns = typeAllWarnArrs.get(type);
+        List<EarlyWarn> warns = typeAllWarnArrs.get(vehType);
         if (null != warns) {
             return warns;
         }
         try {
 
             lock.lock();
-            Set<EarlyWarn> warnSet = getAllWarnRules(type);
+            Set<EarlyWarn> warnSet = getAllWarnRules(vehType);
             if (null != warnSet) {
                 warns = new ArrayList<EarlyWarn>(warnSet.size());
                 warns.addAll(warnSet);
-                typeAllWarnArrs.put(type, warns);
+                typeAllWarnArrs.put(vehType, warns);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -279,7 +260,12 @@ public class EarlyWarnsGetter {
         return earlyWarns.get(dependId);
     }
 
-    private static boolean bulidSuccessRetryTimes(int times) {//尝试次数
+    /**
+     *
+     * @param times 尝试次数
+     * @return
+     */
+    private static boolean bulidSuccessRetryTimes(int times) {
         try {
             int count = 0;
             while (!buildSuccess) {
@@ -295,10 +281,4 @@ public class EarlyWarnsGetter {
         }
         return false;
     }
-
-    public static void main(String[] args) {
-
-        System.out.println("init conn");
-    }
-
 }

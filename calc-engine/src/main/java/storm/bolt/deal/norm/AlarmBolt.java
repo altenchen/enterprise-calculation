@@ -73,6 +73,10 @@ public class AlarmBolt extends BaseRichBolt {
     private String vehAlarmStoreTopic;
 
     private Map<String, String> alarmMap = Maps.newHashMap();
+
+    /**
+     * 车辆最大的数据帧采集时间
+     */
     private Map<String, String> vehDataMap = Maps.newHashMap();
 
     /**
@@ -97,11 +101,6 @@ public class AlarmBolt extends BaseRichBolt {
     private long flushtime = 300;
 
     /**
-     * 每隔多少时间推送ES一次,默认一分钟，60秒。如果负数或者0代表实时推送;
-     */
-    private static long oncesend = 60;
-
-    /**
      * 离线超时时间
      */
     private static long onlineTimeout = 600 * 1000;
@@ -110,16 +109,6 @@ public class AlarmBolt extends BaseRichBolt {
      * 默认预留车辆数, 100万辆
      */
     private final int buffsize = 5000000;
-
-    /**
-     * 准备往ES发最后一帧数据的在线车辆
-     */
-    private final Queue<String> alives = new LinkedBlockingQueue<>(buffsize);
-
-    /**
-     * alives 防重
-     */
-    private final Set<String> aliveSet = new HashSet<>(buffsize / 5);
 
     /**
      * ???
@@ -131,6 +120,7 @@ public class AlarmBolt extends BaseRichBolt {
      */
     private final Set<String> needListenAlarmSet = new HashSet<>(buffsize / 5);
 
+    @SuppressWarnings("AlibabaMethodTooLong")
     @Override
     public void prepare(
         @NotNull final Map stormConf,
@@ -148,10 +138,7 @@ public class AlarmBolt extends BaseRichBolt {
                 String str = alarmObject.toString();
                 alarmNum = NumberUtils.toInt(str, 0);
             }
-            Object oncetime = stormConf.get(SysDefine.ES_SEND_TIME);
-            if (null != oncetime) {
-                oncesend = Long.valueOf(oncetime.toString());
-            }
+
             flushtime = Long.parseLong(stormConf.get(SysDefine.DB_CACHE_FLUSH_TIME_SECOND).toString());
 
             Object offli = stormConf.get(StormConfigKey.REDIS_OFFLINE_SECOND);
@@ -163,53 +150,6 @@ public class AlarmBolt extends BaseRichBolt {
         }
 
         try {
-
-            /**
-             * 将在线车辆 vid 出队, 如果存在对应车辆的最后一帧数据, 则发送到 ElasticSearch.
-             */
-            class AllSendClass implements Runnable {
-
-                @Override
-                public void run() {
-                    int count = 0;
-
-                    try {
-                        if (alives.size() > 0) {
-
-                            String vid = alives.poll();
-                            while (null != vid) {
-                                aliveSet.remove(vid);
-
-                                // 车辆最后一帧数据
-                                final Map<String, String> data = lastCache.get(vid);
-                                if (MapUtils.isNotEmpty(data)) {
-
-                                    final String lastUtc = data.get(SysDefine.ONLINE_UTC);
-                                    if (StringUtils.isNotBlank(lastUtc)) {
-
-                                        sendToNext(vid, data);
-
-                                        // 每发送1000条, 睡1秒钟.
-                                        count++;
-                                        if (count % 1000 == 0) {
-                                            count = 1;
-                                            TimeUnit.MILLISECONDS.sleep(1);
-                                        }
-                                    }
-                                }
-                                vid = alives.poll();
-                            }
-                        }
-
-                    } catch (Exception e) {
-                        LOG.warn("AllSendClass:", e);
-                    }
-                }
-
-            }
-
-            // TODO: 使用storm心跳帧来取代
-            Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new AllSendClass(), 0, oncesend, TimeUnit.SECONDS);
 
             /**
              * 定时重新初始化预警规则和偏移系数规则.
@@ -253,6 +193,7 @@ public class AlarmBolt extends BaseRichBolt {
         }
     }
 
+    @SuppressWarnings("AlibabaMethodTooLong")
     @Override
     public void execute(@NotNull final Tuple input) {
         if (input.getSourceStreamId().equals(SysDefine.SPLIT_GROUP)) {
@@ -263,52 +204,54 @@ public class AlarmBolt extends BaseRichBolt {
                 || StringUtils.isEmpty(data.get(DataKey.TIME))) {
                 return;
             }
-            final String type = data.get(DataKey.MESSAGE_TYPE);
+            final String messageType = data.get(DataKey.MESSAGE_TYPE);
 
             final String linkType = data.get(SUBMIT_LINKSTATUS.LINK_TYPE);
             if (
                 // 实时信息上报
-                CommandType.SUBMIT_REALTIME.equals(type)
+                CommandType.SUBMIT_REALTIME.equals(messageType)
                     || (
                     // 链接状态通知
-                    CommandType.SUBMIT_LINKSTATUS.equals(type)
+                    CommandType.SUBMIT_LINKSTATUS.equals(messageType)
                         // 是否离线通知
-                        && SUBMIT_LINKSTATUS.isOfflineNotice(
-                        linkType
+                        && SUBMIT_LINKSTATUS.isOfflineNotice(linkType)
                     )
-                )
                     || (
                     // 终端注册消息
-                    CommandType.SUBMIT_LOGIN.equals(type)
+                    CommandType.SUBMIT_LOGIN.equals(messageType)
                         && (
                         // 登出流水号
                         data.containsKey(SUBMIT_LOGIN.LOGOUT_SEQ)
                             // 登出时间
-                            || data.containsKey(SUBMIT_LOGIN.LOGOUT_TIME)))
+                            || data.containsKey(SUBMIT_LOGIN.LOGOUT_TIME))
+                    )
             ) {
                 try {
-                    processAlarm(data, type);
+                    // 这里才是干事的入口, 下面只是刷缓存, 不过这个未知似乎少了些状态...
+                    processAlarm(data, messageType);
                 } catch (Exception e) {
                     LOG.warn("软报警分析出错! [{}]", data);
                 }
             }
 
+            // 以下代码计算一些状态之后存更新缓存
             if (
                 // 实时信息上报
-                CommandType.SUBMIT_REALTIME.equals(type)
+                CommandType.SUBMIT_REALTIME.equals(messageType)
                     // 终端注册消息
-                    || CommandType.SUBMIT_LOGIN.equals(type)
+                    || CommandType.SUBMIT_LOGIN.equals(messageType)
                     // 状态信息上报
-                    || CommandType.SUBMIT_TERMSTATUS.equals(type)
+                    || CommandType.SUBMIT_TERMSTATUS.equals(messageType)
                     // 车辆运行状态
-                    || CommandType.SUBMIT_CARSTATUS.equals(type)) {
+                    || CommandType.SUBMIT_CARSTATUS.equals(messageType)) {
 
                 // 更新告警状态和
                 try {
+
                     // 车辆报警信息缓存(vid----是否报警_最后报警时间)
                     final String string = vid2Alarm.get(vid);
                     if (!StringUtils.isEmpty(string)) {
-                        String[] alarmStr = string.split("_", 3);
+                        final String[] alarmStr = string.split("_", 3);
                         data.put(SysDefine.IS_ALARM, alarmStr[0]);
                         data.put(SysDefine.ALARMUTC, alarmStr[1]);
                     }
@@ -318,7 +261,8 @@ public class AlarmBolt extends BaseRichBolt {
                 }
             }
             // 车辆链接状态帧, 更新上下线状态和告警状态
-            else if (CommandType.SUBMIT_LINKSTATUS.equals(type)) {
+            else if (CommandType.SUBMIT_LINKSTATUS.equals(messageType)) {
+
                 final Map<String, String> linkStatusData = Maps.newTreeMap();
 
                 // 上线
@@ -336,43 +280,44 @@ public class AlarmBolt extends BaseRichBolt {
 
             if (
                 // 实时信息上报
-                CommandType.SUBMIT_REALTIME.equals(type)
+                CommandType.SUBMIT_REALTIME.equals(messageType)
                     // 终端注册消息
-                    || CommandType.SUBMIT_LOGIN.equals(type)
+                    || CommandType.SUBMIT_LOGIN.equals(messageType)
                     // 链接状态通知
-                    || CommandType.SUBMIT_LINKSTATUS.equals(type)
+                    || CommandType.SUBMIT_LINKSTATUS.equals(messageType)
                     // 状态信息上报
-                    || CommandType.SUBMIT_TERMSTATUS.equals(type)
+                    || CommandType.SUBMIT_TERMSTATUS.equals(messageType)
                     // 车辆运行状态
-                    || CommandType.SUBMIT_CARSTATUS.equals(type)) {
+                    || CommandType.SUBMIT_CARSTATUS.equals(messageType)) {
 
-                // 缓存最后一帧
-                lastCache.put(vid, data);
-
-                // 标记在线车辆vid, 并将vid添加带在线vid队列中, 用于 AllSendClass, Set用于标记只入队一次, 直到被处理.
-                if (!aliveSet.contains(vid)) {
-                    aliveSet.add(vid);
-                    alives.offer(vid);
-                }
-
-                //实时发送(不缓存)到 实时含告警的报文信息 到es同步服务
-                //sendToNext(SysDefine.SYNES_GROUP,vid, dat);
+                // 更新缓存
+                lastCache.compute(vid, (key, oldValue) -> {
+                    final Map<String, String> newValue = null == oldValue ? Maps.newConcurrentMap() : oldValue;
+                    data.forEach((k, v) -> {
+                        if (StringUtils.isNotBlank(v)) {
+                            newValue.put(k, v);
+                        }
+                    });
+                    return newValue;
+                });
             }
-            if (CommandType.SUBMIT_REALTIME.equals(type)) {
+
+            if (CommandType.SUBMIT_REALTIME.equals(messageType)) {
                 try {
-                    String veh2000 = data.get("2000");
-                    if (!StringUtils.isEmpty(veh2000)) {
-                        String string = vehDataMap.get(vid);
-                        if (null == string || (string.compareTo(veh2000) < 0)) {
-                            vehDataMap.put(vid, veh2000);
+                    final String collectTime = data.get(DataKey._2000_COLLECT_TIME);
+                    if (!StringUtils.isEmpty(collectTime)) {
+                        final String lastCollectTime = vehDataMap.get(vid);
+                        if (null == lastCollectTime || (lastCollectTime.compareTo(collectTime) < 0)) {
+                            vehDataMap.put(vid, collectTime);
                         }
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } catch (final Exception e) {
+                    LOG.warn("更新最大车辆实时数据采集时间异常", e);
                 }
             }
+
         } else {
-            System.out.println("Receive unknown kafka message-------------------StreamID:" + input.getSourceStreamId());
+            LOG.warn("未知的流[{}][{}]", input.getSourceComponent(), input.getSourceStreamId());
         }
     }
 
@@ -382,8 +327,8 @@ public class AlarmBolt extends BaseRichBolt {
         KafkaStream.declareOutputFields(declarer, SysDefine.VEH_ALARM);
         KafkaStream.declareOutputFields(declarer, SysDefine.VEH_ALARM_REALINFO_STORE);
 
+        // 发往 FaultBolt
         declarer.declareStream(SysDefine.FAULT_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
-        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
     }
 
     @Override
@@ -394,62 +339,64 @@ public class AlarmBolt extends BaseRichBolt {
     /**
      * 软报警处理
      */
-    private void processAlarm(Map<String, String> dataMap, String type) {
-        if (MapUtils.isEmpty(dataMap)) {
+    private void processAlarm(@NotNull final Map<String, String> data, @NotNull final String messageType) {
+        if (MapUtils.isEmpty(data)) {
             return;
         }
-        String vid = dataMap.get(DataKey.VEHICLE_ID);
-        String vType = dataMap.get(DataKey.VEHICLE_TYPE);
+
+        final String vid = data.get(DataKey.VEHICLE_ID);
+        final String vehType = data.get(DataKey.VEHICLE_TYPE);
         if (StringUtils.isEmpty(vid)
-            || StringUtils.isEmpty(vType)) {
+            || StringUtils.isEmpty(vehType)) {
             return;
         }
 
-
-        if (CommandType.SUBMIT_LINKSTATUS.equals(type)
-            || CommandType.SUBMIT_LOGIN.equals(type)) {
+        if (CommandType.SUBMIT_LINKSTATUS.equals(messageType)
+            || CommandType.SUBMIT_LOGIN.equals(messageType)) {
             try {
                 sendOverAlarmMessage(vid);
             } catch (Exception e) {
-                System.out.println("---自动发送结束报警异常！" + e);
+                LOG.warn("自动发送结束报警异常", e);
             }
             return;
         }
 
-        List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vType);
+        final List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vehType);
         if (CollectionUtils.isEmpty(warns)) {
             return;
         }
+
         try {
-            int len = warns.size();
-            for (int i = 0; i < len; i++) {
-                EarlyWarn warn = warns.get(i);
+            for (EarlyWarn warn : warns) {
                 if (null == warn) {
                     continue;
                 }
 
-                int ret;
+                int result;
+                // 没有依赖项, 直接处理
                 if (null == warn.dependId) {
 
-                    ret = processSingleAlarm(vid, warn, dataMap);
-                    sendAlarmMessage(ret, vid, warn, dataMap);
+                    result = processSingleAlarm(vid, warn, data);
+                    sendAlarmMessage(result, vid, warn, data);
 
-                } else {
-                    EarlyWarn warndepend = EarlyWarnsGetter.getEarlyByDependId(warn.dependId);
-                    ret = processSingleAlarm(vid, warn, dataMap);
-                    if (ret == 1) {
+                }
+                // TODO: 有依赖项, 如果处理结果为1, 再处理父及约束? 是不是反了?!!
+                else {
+                    final EarlyWarn warndepend = EarlyWarnsGetter.getEarlyByDependId(warn.dependId);
+                    result = processSingleAlarm(vid, warn, data);
+                    if (result == 1) {
 
                         //先判断父级约束是否成立，如果成立则继续判断子级约束
 
                         if (null != warndepend) {
-                            ret = processSingleAlarm(vid, warndepend, dataMap);
+                            result = processSingleAlarm(vid, warndepend, data);
                         }
                     }
-                    sendAlarmMessage(ret, vid, warndepend, dataMap);
+                    sendAlarmMessage(result, vid, warndepend, data);
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.warn("按预警规则处理时异常", e);
         }
     }
 
@@ -501,6 +448,13 @@ public class AlarmBolt extends BaseRichBolt {
         removeByVid(vid);
     }
 
+    /**
+     * 处理单个预警规则
+     * @param vid 车辆Id
+     * @param warn 预警规则
+     * @param dataMap 数据集
+     * @return
+     */
     private int processSingleAlarm(String vid, EarlyWarn warn, Map<String, String> dataMap) {
         int ret = 0;
         try {
@@ -546,8 +500,7 @@ public class AlarmBolt extends BaseRichBolt {
                         left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
                         //判断是否软报警条件(true/false)
                         ret = diffMarkValid(left1_value, midExp, right1, right2);
-                    }
-                    else if (left1CoefficientOffset.isArray()) {
+                    } else if (left1CoefficientOffset.isArray()) {
                         //  判断:单体蓄电池电压值列表    7003 |温度值列表    7103
                         String[] arr = left1Value.split("\\|");
                         for (int i = 0; i < arr.length; i++) {
@@ -896,13 +849,6 @@ public class AlarmBolt extends BaseRichBolt {
         @NotNull final String message) {
 
         collector.emit(streamId, new Values(topic, vid, message));
-    }
-
-    private synchronized void sendToNext(
-        @NotNull final String vid,
-        Object message) {
-
-        collector.emit(SysDefine.SYNES_GROUP, new Values(vid, message));
     }
 
     private int diffMarkValid(double value, int mark, double right1, double right2) {

@@ -275,6 +275,11 @@ public final class SysDefine {
     public static final String ES_SEND_TIME = "es.send.time";
 
     /**
+     * kafka 发往 ElasticSearch 的 topic
+     */
+    public static final String KAFKA_TOPIC_ES_STATUS = "kafka.topic.es.status";
+
+    /**
      * 通知消息 kafka 输出 topic
      */
     public static final String KAFKA_TOPIC_NOTICE = "kafka.topic.notice";

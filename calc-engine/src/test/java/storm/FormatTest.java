@@ -178,6 +178,50 @@ final class FormatTest {
         }
     }
 
+    @Disabled("测试更新Map")
+    @Test
+    void computeMap() {
+
+        final String vid = "vid";
+        final String status = "status";
+
+        final Map<String, Map<String, String>> cacheMap = Maps.newHashMap();
+        Assertions.assertTrue(cacheMap.isEmpty());
+        final Map<String, String> initCache = cacheMap.get(vid);
+        Assertions.assertNull(initCache);
+
+        {
+            final String create = "create";
+            final Map<String, String> createMap = Maps.newHashMap();
+            createMap.put(status, create);
+            cacheMap.compute(vid, (key, oldValue) -> {
+                final Map<String, String> newValue = null == oldValue ? Maps.newConcurrentMap() : oldValue;
+                newValue.putAll(createMap);
+                return newValue;
+            });
+            Assertions.assertTrue(cacheMap.containsKey(vid));
+            final Map<String, String> createCache = cacheMap.get(vid);
+            Assertions.assertNotNull(createCache);
+            Assertions.assertEquals(create, createCache.get(status));
+        }
+
+        {
+            final String update = "update";
+            final Map<String, String> updateMap = Maps.newHashMap();
+            updateMap.put(status, update);
+            cacheMap.compute(vid, (key, oldValue) -> {
+                final Map<String, String> newValue = null == oldValue ? Maps.newConcurrentMap() : oldValue;
+                newValue.putAll(updateMap);
+                return newValue;
+            });
+            Assertions.assertTrue(cacheMap.containsKey(vid));
+            final Map<String, String> updateCache = cacheMap.get(vid);
+            Assertions.assertNotNull(updateCache);
+            Assertions.assertEquals(update, updateCache.get(status));
+        }
+
+    }
+
     @SuppressWarnings("unused")
     @AfterEach
     private void afterEach() {
