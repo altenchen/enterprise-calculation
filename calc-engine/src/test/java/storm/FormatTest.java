@@ -1,9 +1,10 @@
 package storm;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +22,7 @@ import java.util.*;
 final class FormatTest {
 
     @SuppressWarnings("unused")
-    private static final Logger logger = LoggerFactory.getLogger(FormatTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FormatTest.class);
 
     private FormatTest() {
     }
@@ -53,14 +54,14 @@ final class FormatTest {
         final String format = "20180708205233";
 
         final String timeFormat = DateFormatUtils.format(time, FormatConstant.DATE_FORMAT);
-        logger.trace("timeFormat->{}", timeFormat);
+        LOG.trace("timeFormat->{}", timeFormat);
         Assertions.assertEquals(format, timeFormat);
         final String timeInMillisFormat = DateFormatUtils.format(timeInMillis, FormatConstant.DATE_FORMAT);
-        logger.trace("timeInMillisFormat->{}", timeInMillisFormat);
+        LOG.trace("timeInMillisFormat->{}", timeInMillisFormat);
         Assertions.assertEquals(format, timeInMillisFormat);
 
         final Date parseDate = DateUtils.parseDate(format, new String[]{FormatConstant.DATE_FORMAT});
-        logger.trace("parseDate->{}", parseDate);
+        LOG.trace("parseDate->{}", parseDate);
         Assertions.assertEquals(
             time.getTime() / DateUtils.MILLIS_PER_SECOND,
             parseDate.getTime() / DateUtils.MILLIS_PER_SECOND);
@@ -85,7 +86,7 @@ final class FormatTest {
         try {
             final long tmp_last = 0;
             final long last = DateUtils.parseDate(String.valueOf(tmp_last), new String[]{FormatConstant.DATE_FORMAT}).getTime();
-            logger.trace("last={}", last);
+            LOG.trace("last={}", last);
         } catch (ParseException e) {
             return;
         }
@@ -108,16 +109,73 @@ final class FormatTest {
         final Object args = new TreeMap[4];
         final Class<?> type = args.getClass();
         final String name = type.getName();
-        logger.debug("name = {}", name);
+        LOG.debug("name = {}", name);
         final String canonicalName = type.getCanonicalName();
-        logger.debug("canonicalName = {}", canonicalName);
+        LOG.debug("canonicalName = {}", canonicalName);
         final String simpleName = type.getSimpleName();
-        logger.debug("simpleName = {}", simpleName);
+        LOG.debug("simpleName = {}", simpleName);
         final String typeName = type.getTypeName();
-        logger.debug("typeName = {}", typeName);
+        LOG.debug("typeName = {}", typeName);
 
         Assertions.assertEquals("org.apache.kafka.common.serialization.StringSerializer", org.apache.kafka.common.serialization.StringSerializer.class.getCanonicalName());
         Assertions.assertEquals("org.apache.kafka.common.serialization.StringSerializer", org.apache.kafka.common.serialization.StringSerializer.class.getCanonicalName());
+    }
+
+    @Disabled("不可变类")
+    @Test
+    void immutableMap() {
+        final ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder<>();
+
+        builder.put("key1", "value1");
+        builder.put("key2", "value2");
+        builder.put("key3", "value3");
+        {
+            final ImmutableMap<String, String> map1 = builder.build();
+            Assertions.assertEquals(map1.get("key1"), "value1");
+            Assertions.assertEquals(map1.get("key2"), "value2");
+            Assertions.assertEquals(map1.get("key3"), "value3");
+
+            builder.put("key9", "value9");
+            builder.put("key8", "value8");
+            builder.put("key7", "value7");
+
+            Assertions.assertNull(map1.get("key9"));
+            Assertions.assertNull(map1.get("key8"));
+            Assertions.assertNull(map1.get("key7"));
+        }
+
+        {
+            final ImmutableMap<String, String> map2 = builder.build();
+            Assertions.assertEquals(map2.get("key1"), "value1");
+            Assertions.assertEquals(map2.get("key2"), "value2");
+            Assertions.assertEquals(map2.get("key3"), "value3");
+            Assertions.assertEquals(map2.get("key9"), "value9");
+            Assertions.assertEquals(map2.get("key8"), "value8");
+            Assertions.assertEquals(map2.get("key7"), "value7");
+        }
+
+        final HashMap<String, String> hashMap = Maps.newHashMap();
+        hashMap.put("key9", "value99");
+        hashMap.put("key8", "value88");
+        hashMap.put("key7", "value77");
+        Assertions.assertEquals(hashMap.get("key9"), "value99");
+        Assertions.assertEquals(hashMap.get("key8"), "value88");
+        Assertions.assertEquals(hashMap.get("key7"), "value77");
+
+        hashMap.putAll(builder.build());
+        Assertions.assertEquals(hashMap.get("key9"), "value9");
+        Assertions.assertEquals(hashMap.get("key8"), "value8");
+        Assertions.assertEquals(hashMap.get("key7"), "value7");
+
+
+        builder.put("key9", "value99");
+        builder.put("key8", "value88");
+        builder.put("key7", "value77");
+        try {
+            builder.build();
+            Assertions.fail();
+        } catch (Exception e) {
+        }
     }
 
     @SuppressWarnings("unused")

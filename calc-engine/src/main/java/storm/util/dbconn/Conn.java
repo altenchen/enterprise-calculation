@@ -10,7 +10,9 @@ import java.util.*;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.dto.ExceptionSingleBit;
@@ -38,16 +40,16 @@ public final class Conn {
     private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
     private static final SysParams SYS_PARAMS = SysParams.getInstance();
 
-    static String fence_sql = "SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,fe.VALID_TIME FROM SYS_FENCE_ELECTRONIC fe WHERE fe.FENCE_STATE=1";
-    static String fence_rule_only_sql = "SELECT tl.FENCE_ID,tl.ALARM_TYPE_CODE,tl.HEIGHEST_SPEED,tl.MINIMUM_SPEED,tl.STOP_CAR_TIME FROM SYS_FENCE_ALARM_TYPE_LK tl WHERE tl.STATE=1";
-    static String fence_vid_sql = "SELECT FENCE_ID,VEH_ID FROM SYS_FENCE_VEH_LK WHERE STATE=1";
-    static String fence_rule_sql = "SELECT at.FENCE_ALARM_NAME,at.CODE FROM SYS_FENCE_ALARM_TYPE at WHERE at.STATE=1";
-    static String fence_rule_lk_sql = "SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,at.FENCE_ALARM_NAME,at.CODE,tl.FENCE_ID,tl.ALARM_TYPE_CODE FROM SYS_FENCE_ELECTRONIC fe,SYS_FENCE_ALARM_TYPE at,SYS_FENCE_ALARM_TYPE_LK tl WHERE fe.FENCE_STATE=1 AND at.STATE=1 AND tl.STATE=1 AND fe.ID=tl.FENCE_ID AND at.CODE=tl.ALARM_TYPE_CODE";
+    private static String fence_sql = "SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,fe.VALID_TIME FROM SYS_FENCE_ELECTRONIC fe WHERE fe.FENCE_STATE=1";
+    private static String fence_rule_only_sql = "SELECT tl.FENCE_ID,tl.ALARM_TYPE_CODE,tl.HEIGHEST_SPEED,tl.MINIMUM_SPEED,tl.STOP_CAR_TIME FROM SYS_FENCE_ALARM_TYPE_LK tl WHERE tl.STATE=1";
+    private static String fence_vid_sql = "SELECT FENCE_ID,VEH_ID FROM SYS_FENCE_VEH_LK WHERE STATE=1";
+    private static String fence_rule_sql = "SELECT at.FENCE_ALARM_NAME,at.CODE FROM SYS_FENCE_ALARM_TYPE at WHERE at.STATE=1";
+    private static String fence_rule_lk_sql = "SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,at.FENCE_ALARM_NAME,at.CODE,tl.FENCE_ID,tl.ALARM_TYPE_CODE FROM SYS_FENCE_ELECTRONIC fe,SYS_FENCE_ALARM_TYPE at,SYS_FENCE_ALARM_TYPE_LK tl WHERE fe.FENCE_STATE=1 AND at.STATE=1 AND tl.STATE=1 AND fe.ID=tl.FENCE_ID AND at.CODE=tl.ALARM_TYPE_CODE";
 
-    static String fault_rule_sql = "select ID,DEPENDENCY_RULE_ID,FAULT_TYPE,STATISTICAL_TIME from SYS_SAFETY_RULES WHERE IS_DISABLE=0 and STATE='1' ";
-    static String fault_alarm_lk_sql = "select SYS_FAULT_ALARM_ID,SYS_DATA_CONST_ID from SYS_FAULT_ALARM_LK";
-    static String fault_alarm_rule_sql = "select ID,TYPE,LEVELS,NEED_CONFIRD_FLAG,L1_SEQ_NO,L2_SEQ_NO,EXPR_LEFT,EXPR_MID,R1_VAL,R2_VAL,DEPEND_ID,ALL_HOURS,START_TIME,END_TIME from SYS_DATA_CONST where IS_VALID='1'";
-    static String falut_rank_sql = "select ID,SYS_FAULT_ALARM_ID,LEVL,MIN_NUMBER,MAX_NUMBER,MIN_TIME,MAX_TIME from SYS_FAULT_RANK";
+    private static String fault_rule_sql = "select ID,DEPENDENCY_RULE_ID,FAULT_TYPE,STATISTICAL_TIME from SYS_SAFETY_RULES WHERE IS_DISABLE=0 and STATE='1' ";
+    private static String fault_alarm_lk_sql = "select SYS_FAULT_ALARM_ID,SYS_DATA_CONST_ID from SYS_FAULT_ALARM_LK";
+    private static String fault_alarm_rule_sql = "select ID,TYPE,LEVELS,NEED_CONFIRD_FLAG,L1_SEQ_NO,L2_SEQ_NO,EXPR_LEFT,EXPR_MID,R1_VAL,R2_VAL,DEPEND_ID,ALL_HOURS,START_TIME,END_TIME from SYS_DATA_CONST where IS_VALID='1'";
+    private static String falut_rank_sql = "select ID,SYS_FAULT_ALARM_ID,LEVL,MIN_NUMBER,MAX_NUMBER,MIN_TIME,MAX_TIME from SYS_FAULT_RANK";
 
 
     /**
@@ -125,13 +127,11 @@ public final class Conn {
     /**
      * 预警规则
      */
-    static String early_warning_sql = "SELECT ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL FROM SYS_DATA_CONST WHERE TYPE = 1 AND IS_VALID = 1 AND ID is not null AND R1_VAL is not null ";
+    private static String early_warning_sql = "SELECT ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL FROM SYS_DATA_CONST WHERE TYPE = 1 AND IS_VALID = 1 AND ID is not null AND R1_VAL is not null ";
     /**
      * 偏移系数自定义数据项
      */
-    static String item_coef_offset_sql = "SELECT SEQ_NO,IS_ARRAY,FACTOR,OFFSET,IS_CUSTOM FROM SYS_DATA_ITEM WHERE IS_VALID = 1 AND SEQ_NO IS NOT NULL AND (OFFSET is not null OR FACTOR is not null)";
-
-    private Connection conn;
+    private static String item_coef_offset_sql = "SELECT SEQ_NO,IS_ARRAY,FACTOR,OFFSET,IS_CUSTOM FROM SYS_DATA_ITEM WHERE IS_VALID = 1 AND SEQ_NO IS NOT NULL AND (OFFSET is not null OR FACTOR is not null)";
 
     static {
         Properties sysParams = CONFIG_UTILS.sysParams;
@@ -182,36 +182,33 @@ public final class Conn {
             veh_model_sql);
     }
 
-    public Connection getConn() {
+    /**
+     * 创建数据库连接
+     * @return
+     */
+    @Nullable
+    private static Connection getConn() {
+
+        final Properties sysDefine = CONFIG_UTILS.sysDefine;
+
+        final String driver = sysDefine.getProperty("jdbc.driver");
         try {
-            Properties p = CONFIG_UTILS.sysDefine;
-            String driver = p.getProperty("jdbc.driver");
-            String url = p.getProperty("jdbc.url");
-            String username = p.getProperty("jdbc.username");
-            String password = p.getProperty("jdbc.password");
             Class.forName(driver);
-            return DriverManager.getConnection(url, username, password);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            LOG.error("数据库驱动不存在", e);
         }
-        return null;
-    }
 
-    public void get(Connection conn, String sql) {
-        Statement s = null;
-        ResultSet rs = null;
+        final String url = sysDefine.getProperty("jdbc.url");
+        final String username = sysDefine.getProperty("jdbc.username");
+        final String password = sysDefine.getProperty("jdbc.password");
+
         try {
-            s = conn.createStatement();
-            rs = s.executeQuery(sql);
-            while (rs.next()) {
-
-            }
-
+            return DriverManager.getConnection(url, username, password);
         } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            close(rs, s, conn);
+            LOG.warn("创建数据库连接失败.", e);
         }
+
+        return null;
     }
 
     public Collection<FaultRule> getFaultAndDepends() {
@@ -839,6 +836,7 @@ public final class Conn {
         return rules;
     }
 
+    @Nullable
     private Map<String, storm.dto.fault.FaultAlarmRule> getFaultAlarmRules() {
         Map<String, storm.dto.fault.FaultAlarmRule> rules = null;
         Connection conn = null;
@@ -887,6 +885,7 @@ public final class Conn {
         return rules;
     }
 
+    @Nullable
     private List<String[]> getFaultRanks() {
         List<String[]> rules = null;
         Connection conn = null;
@@ -925,6 +924,7 @@ public final class Conn {
      *
      * @return
      */
+    @Nullable
     public List<Object[]> getAllWarns() {
         List<Object[]> rules = null;
         Connection conn = null;
@@ -965,9 +965,9 @@ public final class Conn {
      *
      * @return
      */
-    public List<CoefficientOffset> getAllCoefOffset() {
+    @Nullable
+    public static List<CoefficientOffset> getAllCoefOffset() {
 
-        List<CoefficientOffset> rules = null;
         Connection conn = null;
         Statement s = null;
         ResultSet rs = null;
@@ -980,9 +980,10 @@ public final class Conn {
             if (null == conn) {
                 return null;
             }
-            rules = new LinkedList<>();
             s = conn.createStatement();
             rs = s.executeQuery(item_coef_offset_sql);
+
+            final List<CoefficientOffset> rules = new LinkedList<>();
             while (rs.next()) {
 
                 final String sequencerNumber = rs.getString(1);
@@ -1010,14 +1011,15 @@ public final class Conn {
 
                 rules.add(coefficientOffset);
             }
+            return rules;
 
         } catch (SQLException e) {
-            LOG.warn("查询偏移系数自定义数据项异常", e);
+            LOG.error("查询偏移系数自定义数据项异常", e);
         } finally {
             close(rs, s, conn);
         }
 
-        return rules;
+        return null;
     }
 
     /**
@@ -1025,6 +1027,7 @@ public final class Conn {
      *
      * @return
      */
+    @Nullable
     public Map<String, List<EleFence>> vidFences() {
 
         List<String[]> vidFenceMap = getVidFenceMap();
@@ -1066,6 +1069,7 @@ public final class Conn {
         return vidfences;
     }
 
+    @Nullable
     public Map<String, EleFence> fencesWithId() {
         try {
             List<EleFence> fences = getFences();
@@ -1093,6 +1097,7 @@ public final class Conn {
         return null;
     }
 
+    @Nullable
     private List<EleFence> getFences() {
         List<EleFence> fences = null;
         Connection conn = null;
@@ -1132,6 +1137,7 @@ public final class Conn {
         return fences;
     }
 
+    @Nullable
     private List<String[]> getVidFenceMap() {
         List<String[]> rules = null;
         Connection conn = null;
@@ -1163,6 +1169,7 @@ public final class Conn {
         return rules;
     }
 
+    @Nullable
     private List<Map<String, String>> getRulesMap() {
         List<Map<String, String>> rules = null;
         Connection conn = null;
@@ -1199,6 +1206,7 @@ public final class Conn {
         return rules;
     }
 
+    @Contract("null -> null")
     private Map<String, List<Rule>> groupRulesById(List<Map<String, String>> rules) {
         if (null == rules) {
             return null;
@@ -1278,6 +1286,7 @@ public final class Conn {
         return NumberUtils.toDouble(str, -1);
     }
 
+    @Nullable
     public List<Map<String, Object>> get(String sql, String[] filedName) {
         List<Map<String, Object>> list = null;
         Connection conn = null;
@@ -1314,17 +1323,15 @@ public final class Conn {
 
     /**
      * 释放系统资源
-     *
-     * @param resources
      */
-    private void close(AutoCloseable... resources) {
-        if (null != resources && resources.length > 0) {
+    private static void close(AutoCloseable... resources) {
+        if (ArrayUtils.isNotEmpty(resources)) {
             for (AutoCloseable resource : resources) {
                 if (null != resource) {
                     try {
                         resource.close();
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LOG.warn("释放资源异常.", e);
                     }
                 }
             }

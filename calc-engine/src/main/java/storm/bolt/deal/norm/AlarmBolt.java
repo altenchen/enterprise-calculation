@@ -112,7 +112,7 @@ public class AlarmBolt extends BaseRichBolt {
     private final int buffsize = 5000000;
 
     /**
-     * 准备往ES发最后一帧数据的车辆
+     * 准备往ES发最后一帧数据的在线车辆
      */
     private final Queue<String> alives = new LinkedBlockingQueue<>(buffsize);
 
@@ -165,7 +165,7 @@ public class AlarmBolt extends BaseRichBolt {
         try {
 
             /**
-             * 将 alives 中所有 vid 出队, 如果存在对应车辆的最后一帧数据, 则发送到 ElasticSearch.
+             * 将在线车辆 vid 出队, 如果存在对应车辆的最后一帧数据, 则发送到 ElasticSearch.
              */
             class AllSendClass implements Runnable {
 
@@ -212,7 +212,7 @@ public class AlarmBolt extends BaseRichBolt {
             Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new AllSendClass(), 0, oncesend, TimeUnit.SECONDS);
 
             /**
-             * 定时重新初始化
+             * 定时重新初始化预警规则和偏移系数规则.
              */
             class RebulidClass implements Runnable {
 
@@ -232,7 +232,7 @@ public class AlarmBolt extends BaseRichBolt {
             Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new RebulidClass(), 0, flushtime, TimeUnit.SECONDS);
 
             /**
-             * 将 needListenAlarms 中所有 vid 出队, 如果存在对应车辆的最后一帧数据, 则
+             * 如果车辆下线, 则发送预警, 否则将车辆重新加入监听队列
              */
             class TimeOutClass implements Runnable {
 
@@ -508,7 +508,7 @@ public class AlarmBolt extends BaseRichBolt {
                 //左1数据项ID
                 String left1 = warn.left1DataItem;
                 //偏移系数，
-                CoefficientOffset coefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left1);
+                final CoefficientOffset left1CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left1);
                 String left1Value = dataMap.get(left1);
                 //上传的实时数据包含左1字段 才进行预警判定
                 if (StringUtils.isEmpty(left1Value)) {
@@ -516,13 +516,13 @@ public class AlarmBolt extends BaseRichBolt {
                 }
                 boolean stringIsNum = org.apache.commons.lang.math.NumberUtils.isNumber(left1Value);
 
-                if (null != coefficientOffset
-                    && coefficientOffset.isNumber()
+                if (null != left1CoefficientOffset
+                    && left1CoefficientOffset.isNumber()
                     && !stringIsNum
                 ) {
                     return ret;
                 }
-                if (null == coefficientOffset
+                if (null == left1CoefficientOffset
                     && !stringIsNum) {
                     return ret;
                 }
@@ -537,18 +537,17 @@ public class AlarmBolt extends BaseRichBolt {
                 if (StringUtils.isEmpty(left2)) {
 
                     //不需要处理偏移和系数
-                    if (null == coefficientOffset) {
+                    if (null == left1CoefficientOffset) {
                         double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
                         //判断是否软报警条件(true/false)
                         ret = diffMarkValid(left1_value, midExp, right1, right2);
-                    } else if (coefficientOffset.isNumber()) {
+                    } else if (left1CoefficientOffset.isNumber()) {
                         double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
-                        left1_value = (left1_value - coefficientOffset.offset) / coefficientOffset.coefficient;
+                        left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
                         //判断是否软报警条件(true/false)
                         ret = diffMarkValid(left1_value, midExp, right1, right2);
                     }
-                    // 1代表是数据项是数组
-                    else if (coefficientOffset.isArray()) {
+                    else if (left1CoefficientOffset.isArray()) {
                         //  判断:单体蓄电池电压值列表    7003 |温度值列表    7103
                         String[] arr = left1Value.split("\\|");
                         for (int i = 0; i < arr.length; i++) {
@@ -565,7 +564,7 @@ public class AlarmBolt extends BaseRichBolt {
                                         String[] arr2 = arr2m[1].split("_");
                                         for (int j = 0; j < arr2.length; j++) {
                                             double value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(arr2[j]) ? arr2[j] : "0");
-                                            value = (value - coefficientOffset.offset) / coefficientOffset.coefficient;
+                                            value = (value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
                                             //判断是否软报警条件(true/false)
                                             ret = diffMarkValid(value, midExp, right1, right2);
                                             if (ret == 1) {
@@ -588,11 +587,11 @@ public class AlarmBolt extends BaseRichBolt {
 
                     //L2_ID不为空， L1_ID  EXPR_LEFT  L2_ID
                     if (!left1.equals(left2)) {
-                        if (null != coefficientOffset && coefficientOffset.isArray()) {
+                        if (null != left1CoefficientOffset && left1CoefficientOffset.isArray()) {
                             return ret;
                         }
 
-                        CoefficientOffset left2CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left2);
+                        final CoefficientOffset left2CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left2);
                         if (null != left2CoefficientOffset && left2CoefficientOffset.isArray()) {
                             return ret;
                         }
@@ -603,8 +602,8 @@ public class AlarmBolt extends BaseRichBolt {
                         }
 
                         double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
-                        if (null != coefficientOffset) {
-                            left1_value = (left1_value - coefficientOffset.offset) / coefficientOffset.coefficient;
+                        if (null != left1CoefficientOffset) {
+                            left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
                         }
 
                         double left2_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left2Value) ? left2Value : "0");
@@ -671,9 +670,9 @@ public class AlarmBolt extends BaseRichBolt {
                                                     for (int j = 0; j < arr2.length; j++) {
                                                         double left1_value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(larr2[j]) ? larr2[j] : "0");
                                                         double left2_value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(arr2[j]) ? arr2[j] : "0");
-                                                        if (null != coefficientOffset) {
-                                                            left1_value = (left1_value - coefficientOffset.offset) / coefficientOffset.coefficient;
-                                                            left2_value = (left2_value - coefficientOffset.offset) / coefficientOffset.coefficient;
+                                                        if (null != left1CoefficientOffset) {
+                                                            left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
+                                                            left2_value = (left2_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
                                                         }
                                                         double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
                                                         //判断是否软报警条件(true/false)
@@ -695,9 +694,9 @@ public class AlarmBolt extends BaseRichBolt {
                             }
                             double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(lastData) ? lastData : "0");
                             double left2_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left2Value) ? left2Value : "0");
-                            if (null != coefficientOffset) {
-                                left1_value = (left1_value - coefficientOffset.offset) / coefficientOffset.coefficient;
-                                left2_value = (left2_value - coefficientOffset.offset) / coefficientOffset.coefficient;
+                            if (null != left1CoefficientOffset) {
+                                left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
+                                left2_value = (left2_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
                             }
                             double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
                             //判断是否软报警条件(true/false)
