@@ -12,6 +12,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.util.dbconn.Conn;
 
 /**
@@ -19,57 +21,53 @@ import storm.util.dbconn.Conn;
  * 预警规则获取
  */
 public class EarlyWarnsGetter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EarlyWarnsGetter.class);
+
     final static String ALL = "ALL";
-    private static ConcurrentHashMap<String, EarlyWarn> earlyWarns;
-    private static ConcurrentHashMap<String, Set<EarlyWarn>> typeWarns;
-    //private static ConcurrentHashMap<String, Set<EarlyWarn>> typeAllWarns;
-    private static ConcurrentHashMap<String, List<EarlyWarn>> typeAllWarnArrs;
-    private static Conn conn ;
-    private static List<Object[]>allEarlyWarns;
-    private static boolean bulidSuccess;
-    private static Lock lock;
+
+    private static final ConcurrentHashMap<String, EarlyWarn> earlyWarns = new ConcurrentHashMap<>();
+
+    private static final ConcurrentHashMap<String, Set<EarlyWarn>> typeWarns = new ConcurrentHashMap<>();
+
+    private static final ConcurrentHashMap<String, List<EarlyWarn>> typeAllWarnArrs = new ConcurrentHashMap<>();
+
+    private static final Lock lock = new ReentrantLock();
+
+    private static final Conn conn = new Conn();
+
+    private static List<Object[]> allEarlyWarns;
+
+    private static boolean buildSuccess = false;
+
     static {
-        earlyWarns = new ConcurrentHashMap<String, EarlyWarn>();
-        typeWarns = new ConcurrentHashMap<String, Set<EarlyWarn>>();
-        //typeAllWarns = new ConcurrentHashMap<String, Set<EarlyWarn>>();
-        typeAllWarnArrs = new ConcurrentHashMap<String, List<EarlyWarn>>();
-        lock = new ReentrantLock();
-
-        try {
-
-            bulidSuccess = false;
-            conn = new Conn();
-            allEarlyWarns = conn.getAllWarns();
-            initRules(allEarlyWarns);
-            initTypeRules();
-            bulidSuccess = true;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        rebuild();
     }
 
-    public synchronized static void rebulid(){
+    public synchronized static void rebuild() {
 
         try {
-            if (!bulidSuccess) {
+
+            // 只会成功初始化一次 ?!!
+            if (!buildSuccess) {
                 return;
             }
-            bulidSuccess = false;
-            if (null == conn) {
-                conn = new Conn();
-            }
+
+            buildSuccess = false;
+
             allEarlyWarns = conn.getAllWarns();
             initRules(allEarlyWarns);
             initTypeRules();
-            //typeAllWarns.clear();
             typeAllWarnArrs.clear();
-            bulidSuccess = true;
+
+            buildSuccess = true;
+
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.warn("初始化失败", e);
         }
     }
 
-    static void initRules(List<Object[]>allWarns){
+    static void initRules(List<Object[]> allWarns) {
         try {
             //ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL
             List<String> nowIds = null;
@@ -80,23 +78,23 @@ public class EarlyWarnsGetter {
 
                         EarlyWarn warn = getEarlyByRule(rule);
                         if (null != warn && null != rule[0]) {
-                            String id = (String)rule[0];
+                            String id = (String) rule[0];
                             earlyWarns.put(id, warn);
                             nowIds.add(id);
                         }
                     }
                 }
             }
-            if (null ==nowIds || 0== nowIds.size()) {
+            if (null == nowIds || 0 == nowIds.size()) {
                 earlyWarns.clear();
             } else {
-                if (earlyWarns.size() >0) {
+                if (earlyWarns.size() > 0) {
 
                     Enumeration<String> allKeys = earlyWarns.keys();
                     List<String> needRemovekeys = new LinkedList<String>();
                     while (allKeys.hasMoreElements()) {
                         String key = (String) allKeys.nextElement();
-                        if (! nowIds.contains(key)) {
+                        if (!nowIds.contains(key)) {
                             needRemovekeys.add(key);
                         }
                     }
@@ -112,7 +110,7 @@ public class EarlyWarnsGetter {
 
     }
 
-    static void initTypeRules(){
+    static void initTypeRules() {
         typeWarns.clear();
         if (null != earlyWarns && earlyWarns.size() > 0) {
             Collection<EarlyWarn> warns = earlyWarns.values();
@@ -131,7 +129,7 @@ public class EarlyWarnsGetter {
         }
     }
 
-    private static EarlyWarn getEarlyByRule(Object[] rule){
+    private static EarlyWarn getEarlyByRule(Object[] rule) {
         //ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL
 
         if (null == rule) {
@@ -139,38 +137,38 @@ public class EarlyWarnsGetter {
         }
 
         if (rule.length == 11) {
-            String id = (null == rule[0])? null : (String)rule[0];
+            String id = (null == rule[0]) ? null : (String) rule[0];
             id = (null == id || "".equals(id.trim())) ? null : id;
 
-            String name = (null == rule[1])? null : (String)rule[1];
+            String name = (null == rule[1]) ? null : (String) rule[1];
             name = (null == name || "".equals(name.trim())) ? null : name;
 
-            String vehModelId = (null == rule[2])? null : (String)rule[2];
+            String vehModelId = (null == rule[2]) ? null : (String) rule[2];
             vehModelId = (null == vehModelId || "".equals(vehModelId.trim())) ? null : vehModelId;
 
-            int levels = (null == rule[3])? Integer.MIN_VALUE : (int)rule[3];
+            int levels = (null == rule[3]) ? Integer.MIN_VALUE : (int) rule[3];
 
-            String dependId = (null == rule[4])?null : (String)rule[4];
+            String dependId = (null == rule[4]) ? null : (String) rule[4];
             dependId = (null == dependId || "".equals(dependId.trim())) ? null : dependId;
 
-            String left1DataItem = (null == rule[5])?null : ""+rule[5];
+            String left1DataItem = (null == rule[5]) ? null : "" + rule[5];
             left1DataItem = (null == left1DataItem || "".equals(left1DataItem.trim())) ? null : left1DataItem;
 
-            String leftExpression = (null == rule[6])?null : (String)rule[6];
-            leftExpression = (null == leftExpression || "".equals(leftExpression.trim())) ? null :leftExpression;
+            String leftExpression = (null == rule[6]) ? null : (String) rule[6];
+            leftExpression = (null == leftExpression || "".equals(leftExpression.trim())) ? null : leftExpression;
 
-            String left2DataItem = (null == rule[7])?null : ""+rule[7];
+            String left2DataItem = (null == rule[7]) ? null : "" + rule[7];
             left2DataItem = (null == left2DataItem || "".equals(left2DataItem.trim())) ? null : left2DataItem;
 
-            String middleExpression = (null == rule[8])?null : ""+rule[8];
+            String middleExpression = (null == rule[8]) ? null : "" + rule[8];
             middleExpression = (null == middleExpression || "".equals(middleExpression.trim())) ? null : middleExpression;
 
-            float right1Value = (null == rule[9])? Float.MIN_VALUE : (float)rule[9];
-            float right2Value = (null == rule[10])? Float.MIN_VALUE : (float)rule[10];
+            float right1Value = (null == rule[9]) ? Float.MIN_VALUE : (float) rule[9];
+            float right2Value = (null == rule[10]) ? Float.MIN_VALUE : (float) rule[10];
 
             if (null != id
-                    && null != left1DataItem
-                    && Float.MIN_VALUE != right1Value) {
+                && null != left1DataItem
+                && Float.MIN_VALUE != right1Value) {
 
                 EarlyWarn warn = new EarlyWarn(id, name, vehModelId, levels, dependId, left1DataItem, leftExpression, left2DataItem, middleExpression, right1Value, right2Value);
 
@@ -187,9 +185,10 @@ public class EarlyWarnsGetter {
 
     /**
      * 通用报警，使用所有车型，也包含国标通用报警
+     *
      * @return
      */
-    public static Set<EarlyWarn> commonWarns(){
+    public static Set<EarlyWarn> commonWarns() {
 
         return typeWarns.get(ALL);
     }
@@ -211,12 +210,12 @@ public class EarlyWarnsGetter {
         }
         return warns;
     }*/
+
     /**
-     *
      * @param type
      * @return
      */
-    public static List<EarlyWarn> allWarnArrsByType(String type){
+    public static List<EarlyWarn> allWarnArrsByType(String type) {
         boolean buildSucc = bulidSuccessRetryTimes(150);
         if (!buildSucc) {
             return null;
@@ -245,9 +244,10 @@ public class EarlyWarnsGetter {
 
     /**
      * 所有的报警信息
+     *
      * @return
      */
-    private synchronized static Set<EarlyWarn> getAllWarnRules(String type){
+    private synchronized static Set<EarlyWarn> getAllWarnRules(String type) {
         Set<EarlyWarn> commonWarns = commonWarns();
         Set<EarlyWarn> customWarns = customWarns(type);
         if (null == commonWarns) {
@@ -266,10 +266,11 @@ public class EarlyWarnsGetter {
 
     /**
      * 用户自建的预警规则
+     *
      * @param type
      * @return
      */
-    public static Set<EarlyWarn> customWarns(String type){
+    public static Set<EarlyWarn> customWarns(String type) {
 
         return typeWarns.get(type);
     }
@@ -278,15 +279,15 @@ public class EarlyWarnsGetter {
         return earlyWarns.get(dependId);
     }
 
-    private static boolean bulidSuccessRetryTimes(int times){//尝试次数
+    private static boolean bulidSuccessRetryTimes(int times) {//尝试次数
         try {
             int count = 0;
-            while (!bulidSuccess) {
+            while (!buildSuccess) {
                 TimeUnit.MILLISECONDS.sleep(1);
-                if (count >times) {
+                if (count > times) {
                     return false;
                 }
-                count ++;
+                count++;
             }
             return true;
         } catch (Exception e) {
@@ -294,6 +295,7 @@ public class EarlyWarnsGetter {
         }
         return false;
     }
+
     public static void main(String[] args) {
 
         System.out.println("init conn");

@@ -19,8 +19,8 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
-import storm.dto.alarm.CoefOffset;
-import storm.dto.alarm.CoefOffsetGetter;
+import storm.dto.alarm.CoefficientOffset;
+import storm.dto.alarm.CoefficientOffsetGetter;
 import storm.dto.alarm.EarlyWarn;
 import storm.dto.alarm.EarlyWarnsGetter;
 import storm.protocol.CommandType;
@@ -52,6 +52,9 @@ public class AlarmBolt extends BaseRichBolt {
 
     private OutputCollector collector;
 
+    /**
+     * ???
+     */
     private Map<String, List<String>> filterMap = Maps.newHashMap();
 
     /**
@@ -63,10 +66,12 @@ public class AlarmBolt extends BaseRichBolt {
      * 告警消息 kafka 输出 topic
      */
     private String vehAlarmTopic;
+
     /**
      * HBase 车辆报警状态存储 kafka 输出 topic
      */
     private String vehAlarmStoreTopic;
+
     private Map<String, String> alarmMap = Maps.newHashMap();
     private Map<String, String> vehDataMap = Maps.newHashMap();
 
@@ -80,6 +85,10 @@ public class AlarmBolt extends BaseRichBolt {
     private Map<String, String> vid2AlarmEnd = Maps.newHashMap();
     private Map<String, String> vid2AlarmInfo = Maps.newHashMap();
     private Map<String, Set<String>> vidAlarmIds = Maps.newHashMap();
+
+    /**
+     * 车辆的最后一帧数据
+     */
     private Map<String, Map<String, String>> lastCache = Maps.newHashMap();
 
     /**
@@ -95,33 +104,32 @@ public class AlarmBolt extends BaseRichBolt {
     /**
      * 离线超时时间
      */
-    private static long onlinetime = 180 * 1000;
+    private static long onlineTimeout = 600 * 1000;
 
     /**
-     *
+     * 默认预留车辆数, 100万辆
      */
-    private int buffsize = 5000000;
+    private final int buffsize = 5000000;
 
     /**
-     * 车辆vid队列
-     * LinkedBlockingQueue是线程安全你的阻塞队列
+     * 准备往ES发最后一帧数据的车辆
      */
-    private Queue<String> alives = new LinkedBlockingQueue<>(buffsize);
+    private final Queue<String> alives = new LinkedBlockingQueue<>(buffsize);
 
     /**
-     *
+     * alives 防重
      */
-    private Set<String> aliveSet = new HashSet<>(buffsize / 5);
+    private final Set<String> aliveSet = new HashSet<>(buffsize / 5);
 
     /**
-     *
+     * ???
      */
-    private LinkedBlockingQueue<String> needListenAlarms = new LinkedBlockingQueue<>(buffsize);
+    private final Queue<String> needListenAlarms = new LinkedBlockingQueue<>(buffsize);
 
     /**
-     *
+     * needListenAlarms 防重
      */
-    private Set<String> needListenAlarmSet = new HashSet<>(buffsize / 5);
+    private final Set<String> needListenAlarmSet = new HashSet<>(buffsize / 5);
 
     @Override
     public void prepare(
@@ -148,7 +156,7 @@ public class AlarmBolt extends BaseRichBolt {
 
             Object offli = stormConf.get(StormConfigKey.REDIS_OFFLINE_SECOND);
             if (null != offli) {
-                onlinetime = 1000 * Long.valueOf(offli.toString());
+                onlineTimeout = 1000 * Long.valueOf(offli.toString());
             }
         } catch (Exception e) {
             LOG.warn("初始化配置异常", e);
@@ -156,6 +164,9 @@ public class AlarmBolt extends BaseRichBolt {
 
         try {
 
+            /**
+             * 将 alives 中所有 vid 出队, 如果存在对应车辆的最后一帧数据, 则发送到 ElasticSearch.
+             */
             class AllSendClass implements Runnable {
 
                 @Override
@@ -165,7 +176,6 @@ public class AlarmBolt extends BaseRichBolt {
                     try {
                         if (alives.size() > 0) {
 
-                            // 将alives中所有vid出队, 如果存在对应车辆的最后一帧数据, 则发送到 ElasticSearch.
                             String vid = alives.poll();
                             while (null != vid) {
                                 aliveSet.remove(vid);
@@ -201,13 +211,16 @@ public class AlarmBolt extends BaseRichBolt {
             // TODO: 使用storm心跳帧来取代
             Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new AllSendClass(), 0, oncesend, TimeUnit.SECONDS);
 
+            /**
+             * 定时重新初始化
+             */
             class RebulidClass implements Runnable {
 
                 @Override
                 public void run() {
                     try {
-                        EarlyWarnsGetter.rebulid();
-                        CoefOffsetGetter.rebuild();
+                        EarlyWarnsGetter.rebuild();
+                        CoefficientOffsetGetter.rebuild();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -218,14 +231,17 @@ public class AlarmBolt extends BaseRichBolt {
             // TODO: 使用storm心跳帧来取代
             Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new RebulidClass(), 0, flushtime, TimeUnit.SECONDS);
 
+            /**
+             * 将 needListenAlarms 中所有 vid 出队, 如果存在对应车辆的最后一帧数据, 则
+             */
             class TimeOutClass implements Runnable {
 
                 @Override
                 public void run() {
                     try {
-                        timeOutOver(onlinetime);
+                        timeOutOver();
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LOG.warn("TimeOutClass:", e);
                     }
                 }
 
@@ -303,21 +319,19 @@ public class AlarmBolt extends BaseRichBolt {
             }
             // 车辆链接状态帧, 更新上下线状态和告警状态
             else if (CommandType.SUBMIT_LINKSTATUS.equals(type)) {
-                final Map<String, String> linkmap = Maps.newTreeMap();
+                final Map<String, String> linkStatusData = Maps.newTreeMap();
 
                 // 上线
                 if (SUBMIT_LINKSTATUS.isOnlineNotice(linkType)) {
-                    linkmap.put(DataKey._10002_IS_ONLINE, "1");
+                    linkStatusData.put(DataKey._10002_IS_ONLINE, "1");
                 }
                 // 离线
                 else if (SUBMIT_LINKSTATUS.isOfflineNotice(linkType)) {
-                    linkmap.put(DataKey._10002_IS_ONLINE, "0");
-                    linkmap.put(SysDefine.IS_ALARM, "0");
+                    linkStatusData.put(DataKey._10002_IS_ONLINE, "0");
+                    linkStatusData.put(SysDefine.IS_ALARM, "0");
                 }
-                // 增加utc字段，插入系统时间
-                linkmap.put(SysDefine.ONLINE_UTC, System.currentTimeMillis() + "");
 
-                data.putAll(linkmap);
+                data.putAll(linkStatusData);
             }
 
             if (
@@ -335,7 +349,7 @@ public class AlarmBolt extends BaseRichBolt {
                 // 缓存最后一帧
                 lastCache.put(vid, data);
 
-                // 标记在线车辆vid, 并将vid添加带在线vid队列中, 用于 AllSendClass
+                // 标记在线车辆vid, 并将vid添加带在线vid队列中, 用于 AllSendClass, Set用于标记只入队一次, 直到被处理.
                 if (!aliveSet.contains(vid)) {
                     aliveSet.add(vid);
                     alives.offer(vid);
@@ -385,7 +399,7 @@ public class AlarmBolt extends BaseRichBolt {
             return;
         }
         String vid = dataMap.get(DataKey.VEHICLE_ID);
-        String vType = dataMap.get("VTYPE");
+        String vType = dataMap.get(DataKey.VEHICLE_TYPE);
         if (StringUtils.isEmpty(vid)
             || StringUtils.isEmpty(vType)) {
             return;
@@ -494,7 +508,7 @@ public class AlarmBolt extends BaseRichBolt {
                 //左1数据项ID
                 String left1 = warn.left1DataItem;
                 //偏移系数，
-                CoefOffset coefOffset = CoefOffsetGetter.getCoefOffset(left1);
+                CoefficientOffset coefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left1);
                 String left1Value = dataMap.get(left1);
                 //上传的实时数据包含左1字段 才进行预警判定
                 if (StringUtils.isEmpty(left1Value)) {
@@ -502,13 +516,13 @@ public class AlarmBolt extends BaseRichBolt {
                 }
                 boolean stringIsNum = org.apache.commons.lang.math.NumberUtils.isNumber(left1Value);
 
-                if (null != coefOffset
-                    && 0 == coefOffset.type
+                if (null != coefficientOffset
+                    && coefficientOffset.isNumber()
                     && !stringIsNum
                 ) {
                     return ret;
                 }
-                if (null == coefOffset
+                if (null == coefficientOffset
                     && !stringIsNum) {
                     return ret;
                 }
@@ -523,18 +537,18 @@ public class AlarmBolt extends BaseRichBolt {
                 if (StringUtils.isEmpty(left2)) {
 
                     //不需要处理偏移和系数
-                    if (null == coefOffset) {
+                    if (null == coefficientOffset) {
                         double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
                         //判断是否软报警条件(true/false)
                         ret = diffMarkValid(left1_value, midExp, right1, right2);
-                    } else if (0 == coefOffset.type) {
+                    } else if (coefficientOffset.isNumber()) {
                         double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
-                        left1_value = (left1_value - coefOffset.offset) / coefOffset.coef;
+                        left1_value = (left1_value - coefficientOffset.offset) / coefficientOffset.coefficient;
                         //判断是否软报警条件(true/false)
                         ret = diffMarkValid(left1_value, midExp, right1, right2);
                     }
                     // 1代表是数据项是数组
-                    else if (1 == coefOffset.type) {
+                    else if (coefficientOffset.isArray()) {
                         //  判断:单体蓄电池电压值列表    7003 |温度值列表    7103
                         String[] arr = left1Value.split("\\|");
                         for (int i = 0; i < arr.length; i++) {
@@ -551,7 +565,7 @@ public class AlarmBolt extends BaseRichBolt {
                                         String[] arr2 = arr2m[1].split("_");
                                         for (int j = 0; j < arr2.length; j++) {
                                             double value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(arr2[j]) ? arr2[j] : "0");
-                                            value = (value - coefOffset.offset) / coefOffset.coef;
+                                            value = (value - coefficientOffset.offset) / coefficientOffset.coefficient;
                                             //判断是否软报警条件(true/false)
                                             ret = diffMarkValid(value, midExp, right1, right2);
                                             if (ret == 1) {
@@ -574,12 +588,12 @@ public class AlarmBolt extends BaseRichBolt {
 
                     //L2_ID不为空， L1_ID  EXPR_LEFT  L2_ID
                     if (!left1.equals(left2)) {
-                        if (null != coefOffset && 1 == coefOffset.type) {
+                        if (null != coefficientOffset && coefficientOffset.isArray()) {
                             return ret;
                         }
 
-                        CoefOffset left2coefOffset = CoefOffsetGetter.getCoefOffset(left2);
-                        if (null != left2coefOffset && 1 == left2coefOffset.type) {
+                        CoefficientOffset left2CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left2);
+                        if (null != left2CoefficientOffset && left2CoefficientOffset.isArray()) {
                             return ret;
                         }
 
@@ -589,13 +603,13 @@ public class AlarmBolt extends BaseRichBolt {
                         }
 
                         double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
-                        if (null != coefOffset) {
-                            left1_value = (left1_value - coefOffset.offset) / coefOffset.coef;
+                        if (null != coefficientOffset) {
+                            left1_value = (left1_value - coefficientOffset.offset) / coefficientOffset.coefficient;
                         }
 
                         double left2_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left2Value) ? left2Value : "0");
-                        if (null != left2coefOffset) {
-                            left2_value = (left2_value - left2coefOffset.offset) / left2coefOffset.coef;
+                        if (null != left2CoefficientOffset) {
+                            left2_value = (left2_value - left2CoefficientOffset.offset) / left2CoefficientOffset.coefficient;
                         }
 
                         double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
@@ -606,7 +620,7 @@ public class AlarmBolt extends BaseRichBolt {
 
                     } else {
                         String lastData = "";
-                        Map<String, String> last = lastCache.get(vid);
+                        final Map<String, String> last = lastCache.get(vid);
                         if (null != last) {
                             lastData = last.get(left1);
                         }
@@ -657,9 +671,9 @@ public class AlarmBolt extends BaseRichBolt {
                                                     for (int j = 0; j < arr2.length; j++) {
                                                         double left1_value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(larr2[j]) ? larr2[j] : "0");
                                                         double left2_value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(arr2[j]) ? arr2[j] : "0");
-                                                        if (null != coefOffset) {
-                                                            left1_value = (left1_value - coefOffset.offset) / coefOffset.coef;
-                                                            left2_value = (left2_value - coefOffset.offset) / coefOffset.coef;
+                                                        if (null != coefficientOffset) {
+                                                            left1_value = (left1_value - coefficientOffset.offset) / coefficientOffset.coefficient;
+                                                            left2_value = (left2_value - coefficientOffset.offset) / coefficientOffset.coefficient;
                                                         }
                                                         double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
                                                         //判断是否软报警条件(true/false)
@@ -681,9 +695,9 @@ public class AlarmBolt extends BaseRichBolt {
                             }
                             double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(lastData) ? lastData : "0");
                             double left2_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left2Value) ? left2Value : "0");
-                            if (null != coefOffset) {
-                                left1_value = (left1_value - coefOffset.offset) / coefOffset.coef;
-                                left2_value = (left2_value - coefOffset.offset) / coefOffset.coef;
+                            if (null != coefficientOffset) {
+                                left1_value = (left1_value - coefficientOffset.offset) / coefficientOffset.coefficient;
+                                left2_value = (left2_value - coefficientOffset.offset) / coefficientOffset.coefficient;
                             }
                             double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
                             //判断是否软报警条件(true/false)
@@ -1008,34 +1022,36 @@ public class AlarmBolt extends BaseRichBolt {
         }
     }
 
-    private void timeOutOver(long offtime) {
+    private void timeOutOver() {
         try {
 
             if (needListenAlarms.size() > 0) {
-                List<String> needReListens = new LinkedList<>();
+                final List<String> needReListens = new LinkedList<>();
 
                 String vid = needListenAlarms.poll();
                 while (null != vid) {
                     needListenAlarmSet.remove(vid);
-                    if (null != lastCache && lastCache.size() > 0
-                        && null != filterMap && filterMap.size() > 0) {
-                        long now = System.currentTimeMillis();
+                    if (MapUtils.isNotEmpty(lastCache)
+                        && MapUtils.isNotEmpty(filterMap)) {
+                        final long currentTimeMillis = System.currentTimeMillis();
 
                         if (filterMap.containsKey(vid)) {
 
-                            Map<String, String> dat = lastCache.get(vid);
-                            if (null != dat && dat.size() > 0) {
-                                if (dat.containsKey(SysDefine.ONLINE_UTC)) {
+                            final Map<String, String> data = lastCache.get(vid);
+                            if (MapUtils.isNotEmpty(data)) {
+                                if (data.containsKey(SysDefine.ONLINE_UTC)) {
 
-                                    long timels = Long.parseLong(dat.get(SysDefine.ONLINE_UTC));
-                                    if (now - timels > offtime) {
-                                        String vType = dat.get("VTYPE");
-                                        if (!StringUtils.isEmpty(vid)
-                                            && !StringUtils.isEmpty(vType)) {
+                                    final long onlineUtc = Long.parseLong(data.get(SysDefine.ONLINE_UTC));
 
-                                            List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vType);
+                                    // 如果车辆下线, 则发送预警, 否则将车辆重新加入监听队列
+                                    if (currentTimeMillis - onlineUtc > onlineTimeout) {
+                                        final String vehicleType = data.get(DataKey.VEHICLE_TYPE);
+                                        if (StringUtils.isNotEmpty(vid)
+                                            && StringUtils.isNotEmpty(vehicleType)) {
+
+                                            final List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vehicleType);
                                             if (!CollectionUtils.isEmpty(warns)) {
-
+                                                // 车辆发离线通知，系统自动发送结束报警通知
                                                 sendOverAlarmMessage(vid);
                                             }
                                         }
@@ -1054,7 +1070,8 @@ public class AlarmBolt extends BaseRichBolt {
                     vid = needListenAlarms.poll();
                 }
 
-                if (needReListens.size() > 0) {
+                // 重新加入监听队列
+                if (CollectionUtils.isNotEmpty(needReListens)) {
                     for (String key : needReListens) {
                         if (!needListenAlarmSet.contains(key)) {
                             needListenAlarmSet.add(key);
@@ -1065,7 +1082,7 @@ public class AlarmBolt extends BaseRichBolt {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.warn("下线车辆告警处理异常.", e);
         }
     }
 }
