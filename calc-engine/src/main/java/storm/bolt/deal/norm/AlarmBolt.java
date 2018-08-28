@@ -56,7 +56,7 @@ public class AlarmBolt extends BaseRichBolt {
     /**
      * <vid, [rule]>, 车辆告警中的规则
      */
-    private Map<String, List<String>> ruleMap = Maps.newHashMap();
+    private Map<String, List<String>> vehicleAlarmingRuleList = Maps.newHashMap();
 
     /**
      * 连续多少条报警才发送通知
@@ -74,7 +74,7 @@ public class AlarmBolt extends BaseRichBolt {
     private String vehAlarmStoreTopic;
 
     /**
-     * <vid#ruleId, vid_time_ruleId>
+     * <vid#ruleId, vid_time_ruleId>, 兼容性映射?
      */
     private Map<String, String> alarmMap = Maps.newHashMap();
 
@@ -422,20 +422,31 @@ public class AlarmBolt extends BaseRichBolt {
      * @param vid
      */
     private void sendOverAlarmMessage(@NotNull final String vid) {
-        if (ruleMap.containsKey(vid)) {
-            String time = vid2Alarm.get(vid).split("_")[2];
-            List<String> list = ruleMap.get(vid);
-            for (String filterId : list) {
-                //上条报警，本条不报警，说明是结束报警，发送结束报警报文
-                String alarmId = alarmMap.get(vid + "#" + filterId);
-                EarlyWarn warn = EarlyWarnsGetter.getEarlyByDependId(filterId);
+
+        if (vehicleAlarmingRuleList.containsKey(vid)) {
+            // 这辆车有告警
+
+            // 处理告警的时间
+            final String time = vid2Alarm.get(vid).split("_")[2];
+
+            // 这辆车当前所有未结束的告警
+            final List<String> list = vehicleAlarmingRuleList.get(vid);
+
+            for (final String ruleId : list) {
+                // 发送结束报警报文, 这里与sendAlarmMessage方法中有冗余代码了.
+
+                final String alarmId = alarmMap.get(vid + "#" + ruleId);
+                final EarlyWarn warn = EarlyWarnsGetter.getEarlyByDependId(ruleId);
+                // 报警规则不存在, 则忽略处理?
+                // 要是同步下来这条规则没了, 原来的报警不应该结束吗?
+                // 或许这就是报警规则只初始化一次的原因?
                 if (null == warn) {
                     continue;
                 }
 
-                String alarmName = warn.ruleName;
-                int alarmLevel = warn.levels;
-                String left1 = warn.left1DataKey;
+                final String alarmName = warn.ruleName;
+                final int alarmLevel = warn.levels;
+                final String left1 = warn.left1DataKey;
 
                 //String alarmEnd = "VEHICLE_ID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+time+",CONST_ID:"+filterId;
                 Map<String, Object> sendMsg = new TreeMap<>();
@@ -443,25 +454,38 @@ public class AlarmBolt extends BaseRichBolt {
                 sendMsg.put("ALARM_ID", alarmId);
                 sendMsg.put("STATUS", 3);
                 sendMsg.put("TIME", time);
-                sendMsg.put("CONST_ID", filterId);
-                String alarmEnd = JSON_UTILS.toJson(sendMsg);
+                sendMsg.put("CONST_ID", ruleId);
+
+                final String alarmEnd = JSON_UTILS.toJson(sendMsg);
+                //kafka存储
+                sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmEnd);
 
                 sendMsg.put("ALARM_NAME", alarmName);
                 sendMsg.put("ALARM_LEVEL", alarmLevel);
                 sendMsg.put("LEFT1", left1);
-                String alarmhbase = JSON_UTILS.toJson(sendMsg);
-                //kafka存储
-                sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmEnd);
+                // TODO: 对比一下少了几行......
+
+                final String alarmhbase = JSON_UTILS.toJson(sendMsg);
                 //hbase存储
                 sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE, vehAlarmStoreTopic, vid, alarmhbase);
+
                 //redis存储
                 saveToRedis(vid, "0", time);
-                alarmMap.remove(vid + "#" + filterId);
+                alarmMap.remove(vid + "#" + ruleId);
             }
-            ruleMap.remove(vid);
+            vehicleAlarmingRuleList.remove(vid);
         }
+
         //离线重置所有报警约束
-        removeByVid(vid);
+
+        final Set<String> idSet = vidAlarmIds.get(vid);
+        if (CollectionUtils.isNotEmpty(idSet)) {
+            for (final String id : idSet) {
+                vid2AlarmInfo.remove(id);
+            }
+        }
+
+        // TODO: vidAlarmIds忘记清理了??
     }
 
     /**
@@ -730,7 +754,7 @@ public class AlarmBolt extends BaseRichBolt {
         final String vidRuleId = vid + "_" + ruleId;
 
         // 车辆告警中的规则
-        final List<String> list = ruleMap.get(vid);
+        final List<String> list = vehicleAlarmingRuleList.get(vid);
 
         if (result == 1) {
             //报警缓存包含vid，且vid对应的list含有此约束id，也就是此类型的报警，就说明上一条已报警
@@ -784,9 +808,9 @@ public class AlarmBolt extends BaseRichBolt {
                             alarmMap.put(vid + "#" + ruleId, alarmId);
 
                             // 车辆告警中的规则
-                            final List<String> alarmList = ruleMap.computeIfAbsent(vid, k -> new LinkedList<>());
+                            final List<String> alarmList = vehicleAlarmingRuleList.computeIfAbsent(vid, k -> new LinkedList<>());
                             alarmList.add(ruleId);
-                            ruleMap.put(vid, alarmList);
+                            vehicleAlarmingRuleList.put(vid, alarmList);
 
                             if (!needListenAlarmSet.contains(vid)) {
                                 needListenAlarmSet.add(vid);
@@ -898,7 +922,7 @@ public class AlarmBolt extends BaseRichBolt {
                         // 从报警中的车辆规则里移除
                         alarmMap.remove(vid + "#" + ruleId);
                         // 移除车辆告警中的规则
-                        ruleMap.get(vid).remove(ruleId);
+                        vehicleAlarmingRuleList.get(vid).remove(ruleId);
                         // 移除车辆结束报警信息缓存
                         vid2AlarmEnd.remove(vidRuleId);
                     }
@@ -916,6 +940,7 @@ public class AlarmBolt extends BaseRichBolt {
 
     /**
      * 存储到 vid2Alarm
+     * @param status 1-告警开始, 0-告警结束
      */
     private void saveToRedis(
         @NotNull final String vid,
@@ -1036,21 +1061,6 @@ public class AlarmBolt extends BaseRichBolt {
 
     }
 
-    private void removeByVid(String vid) {
-        try {
-            if (null != vid) {
-                Set<String> idSet = vidAlarmIds.get(vid);
-                if (null != idSet && idSet.size() > 0) {
-                    for (String id : idSet) {
-                        vid2AlarmInfo.remove(id);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     private void timeOutOver() {
         try {
 
@@ -1061,10 +1071,10 @@ public class AlarmBolt extends BaseRichBolt {
                 while (null != vid) {
                     needListenAlarmSet.remove(vid);
                     if (MapUtils.isNotEmpty(lastCache)
-                        && MapUtils.isNotEmpty(ruleMap)) {
+                        && MapUtils.isNotEmpty(vehicleAlarmingRuleList)) {
                         final long currentTimeMillis = System.currentTimeMillis();
 
-                        if (ruleMap.containsKey(vid)) {
+                        if (vehicleAlarmingRuleList.containsKey(vid)) {
 
                             final Map<String, String> data = lastCache.get(vid);
                             if (MapUtils.isNotEmpty(data)) {
