@@ -228,7 +228,7 @@ public class AlarmBolt extends BaseRichBolt {
                     CommandType.SUBMIT_LINKSTATUS.equals(messageType)
                         // 是否离线通知
                         && SUBMIT_LINKSTATUS.isOfflineNotice(linkType)
-                    )
+                )
                     || (
                     // 终端注册消息
                     CommandType.SUBMIT_LOGIN.equals(messageType)
@@ -237,7 +237,7 @@ public class AlarmBolt extends BaseRichBolt {
                         data.containsKey(SUBMIT_LOGIN.LOGOUT_SEQ)
                             // 登出时间
                             || data.containsKey(SUBMIT_LOGIN.LOGOUT_TIME))
-                    )
+                )
             ) {
                 try {
                     // 这里才是干事的入口, 下面只是刷缓存, 不过这个未知似乎少了些状态...
@@ -367,8 +367,8 @@ public class AlarmBolt extends BaseRichBolt {
         if (
             // 链接状态通知
             CommandType.SUBMIT_LINKSTATUS.equals(messageType)
-            // 终端注册消息
-            || CommandType.SUBMIT_LOGIN.equals(messageType)) {
+                // 终端注册消息
+                || CommandType.SUBMIT_LOGIN.equals(messageType)) {
             try {
                 sendOverAlarmMessage(vid);
             } catch (Exception e) {
@@ -490,228 +490,266 @@ public class AlarmBolt extends BaseRichBolt {
 
     /**
      * 处理单个预警规则
-     * @param vid 车辆Id
+     *
+     * @param vid  车辆Id
      * @param warn 预警规则
-     * @param dataMap 数据集
+     * @param data 数据集
      * @return
      */
-    private int processSingleAlarm(String vid, EarlyWarn warn, Map<String, String> dataMap) {
-        int ret = 0;
+    private int processSingleAlarm(final String vid, final EarlyWarn warn, final Map<String, String> data) {
+
+        int result = 0;
+
+        if (null == warn) {
+            return 0;
+        }
+
         try {
-            if (null != warn) {
-                //左1数据项ID
-                String left1 = warn.left1DataKey;
-                //偏移系数，
-                final CoefficientOffset left1CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left1);
-                String left1Value = dataMap.get(left1);
-                //上传的实时数据包含左1字段 才进行预警判定
-                if (StringUtils.isEmpty(left1Value)) {
-                    return ret;
-                }
-                boolean stringIsNum = org.apache.commons.lang.math.NumberUtils.isNumber(left1Value);
 
-                if (null != left1CoefficientOffset
-                    && left1CoefficientOffset.isNumber()
-                    && !stringIsNum
-                ) {
-                    return ret;
-                }
-                if (null == left1CoefficientOffset
-                    && !stringIsNum) {
-                    return ret;
-                }
+            // 左一数据项
+            final String left1 = warn.left1DataKey;
+            // 左一数据值
+            final String left1Value = data.get(left1);
+            //上传的实时数据包含左1字段 才进行预警判定
+            if (StringUtils.isEmpty(left1Value)) {
+                return 0;
+            }
+            boolean stringIsNum = NumberUtils.isNumber(left1Value);
 
-                int leftExp = Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(warn.leftExpression) ? warn.leftExpression : "0");
-                //左2数据项ID
-                String left2 = warn.left2DataKey;
-                int midExp = Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(warn.middleExpression) ? warn.middleExpression : "0");
-                double right1 = warn.right1Value;
-                double right2 = warn.right2Value;
-                //左二字段为空，L2_ID为空  根据EXPR_MID，和R1_VAL, R2_VAL判断
-                if (StringUtils.isEmpty(left2)) {
+            // 左一偏移系数
+            final CoefficientOffset left1CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left1);
+            if (null != left1CoefficientOffset
+                && left1CoefficientOffset.isNumber()
+                && !stringIsNum
+            ) {
+                // 偏移系数规则存在, 但数据不是数值时, 返回0.
+                return 0;
+            }
 
+            if (null == left1CoefficientOffset
+                && !stringIsNum) {
+                // 当偏移系数规则不存在, 但数据不是数值时, 返回0.
+                return 0;
+            }
+
+            // 左表达式
+            final int leftExp = NumberUtils.toInt(warn.leftExpression, 0);
+
+            // 左二数据项ID
+            final String left2 = warn.left2DataKey;
+            // 中间表达式
+            final int midExp = NumberUtils.toInt(warn.middleExpression, 0);
+            // 右一值
+            final double right1 = warn.right1Value;
+            // 右二值
+            final double right2 = warn.right2Value;
+
+            //左二字段为空，L2_ID为空  根据EXPR_MID，和R1_VAL, R2_VAL判断
+            if (StringUtils.isEmpty(left2)) {
+
+                if (null == left1CoefficientOffset) {
                     //不需要处理偏移和系数
-                    if (null == left1CoefficientOffset) {
-                        double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
-                        //判断是否软报警条件(true/false)
-                        ret = diffMarkValid(left1_value, midExp, right1, right2);
-                    } else if (left1CoefficientOffset.isNumber()) {
-                        double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
-                        left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
-                        //判断是否软报警条件(true/false)
-                        ret = diffMarkValid(left1_value, midExp, right1, right2);
-                    } else if (left1CoefficientOffset.isArray()) {
-                        //  判断:单体蓄电池电压值列表    7003 |温度值列表    7103
-                        String[] arr = left1Value.split("\\|");
-                        for (int i = 0; i < arr.length; i++) {
-                            String arri = arr[i];
-                            if (!StringUtils.isEmpty(arri)) {
 
-                                String v = new String(Base64.decode(arri), "GBK");
+                    final double left1_value = NumberUtils.toDouble(left1Value, 0);
 
-                                if (v.contains(":")) {
-                                    String[] arr2m = v.split(":");
-                                    if (arr2m.length == 2
-                                        && !StringUtils.isEmpty(arr2m[1])) {
+                    //判断是否软报警条件(true/false)
+                    result = diffMarkValid(left1_value, midExp, right1, right2);
 
-                                        String[] arr2 = arr2m[1].split("_");
-                                        for (int j = 0; j < arr2.length; j++) {
-                                            double value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(arr2[j]) ? arr2[j] : "0");
-                                            value = (value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
-                                            //判断是否软报警条件(true/false)
-                                            ret = diffMarkValid(value, midExp, right1, right2);
-                                            if (ret == 1) {
-                                                return ret;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                } else if (left1CoefficientOffset.isNumber()) {
+                    // 作为数值处理
+
+                    final double left1_value =
+                        (NumberUtils.toDouble(left1Value, 0) - left1CoefficientOffset.offset)
+                            / left1CoefficientOffset.coefficient;
+
+                    //判断是否软报警条件(true/false)
+                    result = diffMarkValid(left1_value, midExp, right1, right2);
+
+                } else if (left1CoefficientOffset.isArray()) {
+                    // 作为数组处理
+
+                    //  7003_单体电池电压值列表, 国标 "表B.6 每个可充电储能子系统电压数据格式和定义"
+                    //  7103_单体电池温度值列表, 国标 "表B.8 每个可充电储能子系统上温度数据格式和定义"
+
+                    // 以下解析逻辑有误, 不会起作用的......
+
+                    final String[] stringArray1 = left1Value.split("\\|");
+                    for (int i = 0; i < stringArray1.length; i++) {
+
+                        final String stringArray = stringArray1[i];
+                        if (StringUtils.isEmpty(stringArray)) {
+                            continue;
                         }
 
+                        final String decodeGb18030String = new String(Base64.decode(stringArray), "GB18030");
+
+                        if (!decodeGb18030String.contains(":")) {
+                            continue;
+                        }
+
+                        final String[] arr2m = decodeGb18030String.split(":");
+                        if (arr2m.length != 2
+                            || StringUtils.isEmpty(arr2m[1])) {
+                            continue;
+                        }
+
+                        final String[] arr2 = arr2m[1].split("_");
+                        for (int j = 0; j < arr2.length; j++) {
+
+                            final double value = (NumberUtils.toDouble(arr2[j], 0) - left1CoefficientOffset.offset)
+                                / left1CoefficientOffset.coefficient;
+
+                            //判断是否软报警条件(true/false)
+                            result = diffMarkValid(value, midExp, right1, right2);
+
+                            if (result == 1) {
+                                return result;
+                            }
+                        }
                     }
+
+                }
+
+            } else {
+
+                // 左二值
+                final String left2Value = data.get(left2);
+                if (StringUtils.isEmpty(left2Value)) {
+                    return result;
+                }
+
+                //L2_ID不为空， L1_ID  EXPR_LEFT  L2_ID
+                if (!left1.equals(left2)) {
+                    if (null != left1CoefficientOffset && left1CoefficientOffset.isArray()) {
+                        return result;
+                    }
+
+                    final CoefficientOffset left2CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left2);
+                    if (null != left2CoefficientOffset && left2CoefficientOffset.isArray()) {
+                        return result;
+                    }
+
+                    if (!NumberUtils.isNumber(left1Value)
+                        || !NumberUtils.isNumber(left2Value)) {
+                        return result;
+                    }
+
+                    double left1_value = Double.valueOf(NumberUtils.isNumber(left1Value) ? left1Value : "0");
+                    if (null != left1CoefficientOffset) {
+                        left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
+                    }
+
+                    double left2_value = Double.valueOf(NumberUtils.isNumber(left2Value) ? left2Value : "0");
+                    if (null != left2CoefficientOffset) {
+                        left2_value = (left2_value - left2CoefficientOffset.offset) / left2CoefficientOffset.coefficient;
+                    }
+
+                    double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
+
+                    //判断是否软报警条件(true/false)
+                    result = diffMarkValid(left_value, midExp, right1, right2);
+                    return result;
 
                 } else {
-
-                    String left2Value = dataMap.get(left2);
-                    if (StringUtils.isEmpty(left2Value)) {
-                        return ret;
+                    String lastData = "";
+                    final Map<String, String> last = lastCache.get(vid);
+                    if (null != last) {
+                        lastData = last.get(left1);
                     }
+                    //上传的实时数据包含左1字段
+                    if (!StringUtils.isEmpty(lastData)) {
 
-                    //L2_ID不为空， L1_ID  EXPR_LEFT  L2_ID
-                    if (!left1.equals(left2)) {
-                        if (null != left1CoefficientOffset && left1CoefficientOffset.isArray()) {
-                            return ret;
+                        if ((left2Value.contains("|") && !lastData.contains("|"))
+                            || (!left2Value.contains("|") && lastData.contains("|"))
+                            || (left2Value.contains(":") && !lastData.contains(":"))
+                            || (!left2Value.contains(":") && lastData.contains(":"))
+                            || (left2Value.contains("_") && !lastData.contains("_"))
+                            || (!left2Value.contains("_") && lastData.contains("_"))) {
+                            return result;
                         }
 
-                        final CoefficientOffset left2CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left2);
-                        if (null != left2CoefficientOffset && left2CoefficientOffset.isArray()) {
-                            return ret;
-                        }
+                        if (left2Value.contains("|")) {
 
-                        if (!org.apache.commons.lang.math.NumberUtils.isNumber(left1Value)
-                            || !org.apache.commons.lang.math.NumberUtils.isNumber(left2Value)) {
-                            return ret;
-                        }
+                            String[] larr = lastData.split("\\|");
+                            String[] arr = left2Value.split("\\|");
 
-                        double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left1Value) ? left1Value : "0");
-                        if (null != left1CoefficientOffset) {
-                            left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
-                        }
-
-                        double left2_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left2Value) ? left2Value : "0");
-                        if (null != left2CoefficientOffset) {
-                            left2_value = (left2_value - left2CoefficientOffset.offset) / left2CoefficientOffset.coefficient;
-                        }
-
-                        double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
-
-                        //判断是否软报警条件(true/false)
-                        ret = diffMarkValid(left_value, midExp, right1, right2);
-                        return ret;
-
-                    } else {
-                        String lastData = "";
-                        final Map<String, String> last = lastCache.get(vid);
-                        if (null != last) {
-                            lastData = last.get(left1);
-                        }
-                        //上传的实时数据包含左1字段
-                        if (!StringUtils.isEmpty(lastData)) {
-
-                            if ((left2Value.contains("|") && !lastData.contains("|"))
-                                || (!left2Value.contains("|") && lastData.contains("|"))
-                                || (left2Value.contains(":") && !lastData.contains(":"))
-                                || (!left2Value.contains(":") && lastData.contains(":"))
-                                || (left2Value.contains("_") && !lastData.contains("_"))
-                                || (!left2Value.contains("_") && lastData.contains("_"))) {
-                                return ret;
+                            if (arr.length != larr.length) {
+                                return result;
                             }
 
-                            if (left2Value.contains("|")) {
+                            for (int i = 0; i < arr.length; i++) {
+                                String larri = larr[i];
+                                String arri = arr[i];
+                                if (!StringUtils.isEmpty(larri)
+                                    && !StringUtils.isEmpty(arri)) {
 
-                                String[] larr = lastData.split("\\|");
-                                String[] arr = left2Value.split("\\|");
+                                    String lv = new String(Base64.decode(larri), "GBK");
+                                    String v = new String(Base64.decode(arri), "GBK");
 
-                                if (arr.length != larr.length) {
-                                    return ret;
-                                }
+                                    if (lv.contains(":") && v.contains(":")) {
+                                        String[] larr2m = lv.split(":");
+                                        String[] arr2m = v.split(":");
+                                        if (larr2m.length != arr2m.length) {
+                                            return result;
+                                        }
+                                        if (arr2m.length == 2
+                                            && !StringUtils.isEmpty(larr2m[1])
+                                            && !StringUtils.isEmpty(arr2m[1])) {
 
-                                for (int i = 0; i < arr.length; i++) {
-                                    String larri = larr[i];
-                                    String arri = arr[i];
-                                    if (!StringUtils.isEmpty(larri)
-                                        && !StringUtils.isEmpty(arri)) {
+                                            String[] larr2 = larr2m[1].split("_");
+                                            String[] arr2 = arr2m[1].split("_");
+                                            if (larr2.length == arr2.length) {
 
-                                        String lv = new String(Base64.decode(larri), "GBK");
-                                        String v = new String(Base64.decode(arri), "GBK");
-
-                                        if (lv.contains(":") && v.contains(":")) {
-                                            String[] larr2m = lv.split(":");
-                                            String[] arr2m = v.split(":");
-                                            if (larr2m.length != arr2m.length) {
-                                                return ret;
-                                            }
-                                            if (arr2m.length == 2
-                                                && !StringUtils.isEmpty(larr2m[1])
-                                                && !StringUtils.isEmpty(arr2m[1])) {
-
-                                                String[] larr2 = larr2m[1].split("_");
-                                                String[] arr2 = arr2m[1].split("_");
-                                                if (larr2.length == arr2.length) {
-
-                                                    for (int j = 0; j < arr2.length; j++) {
-                                                        double left1_value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(larr2[j]) ? larr2[j] : "0");
-                                                        double left2_value = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(arr2[j]) ? arr2[j] : "0");
-                                                        if (null != left1CoefficientOffset) {
-                                                            left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
-                                                            left2_value = (left2_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
-                                                        }
-                                                        double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
-                                                        //判断是否软报警条件(true/false)
-                                                        ret = diffMarkValid(left_value, midExp, right1, right2);
-                                                        if (ret == 1) {
-                                                            return ret;
-                                                        }
+                                                for (int j = 0; j < arr2.length; j++) {
+                                                    double left1_value = Double.parseDouble(NumberUtils.isNumber(larr2[j]) ? larr2[j] : "0");
+                                                    double left2_value = Double.parseDouble(NumberUtils.isNumber(arr2[j]) ? arr2[j] : "0");
+                                                    if (null != left1CoefficientOffset) {
+                                                        left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
+                                                        left2_value = (left2_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
                                                     }
-
+                                                    double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
+                                                    //判断是否软报警条件(true/false)
+                                                    result = diffMarkValid(left_value, midExp, right1, right2);
+                                                    if (result == 1) {
+                                                        return result;
+                                                    }
                                                 }
+
                                             }
                                         }
-                                    } else {
-                                        return ret;
                                     }
+                                } else {
+                                    return result;
                                 }
+                            }
 
-                                return ret;
-                            }
-                            double left1_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(lastData) ? lastData : "0");
-                            double left2_value = Double.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(left2Value) ? left2Value : "0");
-                            if (null != left1CoefficientOffset) {
-                                left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
-                                left2_value = (left2_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
-                            }
-                            double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
-                            //判断是否软报警条件(true/false)
-                            ret = diffMarkValid(left_value, midExp, right1, right2);
+                            return result;
                         }
+                        double left1_value = Double.valueOf(NumberUtils.isNumber(lastData) ? lastData : "0");
+                        double left2_value = Double.valueOf(NumberUtils.isNumber(left2Value) ? left2Value : "0");
+                        if (null != left1CoefficientOffset) {
+                            left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
+                            left2_value = (left2_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
+                        }
+                        double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
+                        //判断是否软报警条件(true/false)
+                        result = diffMarkValid(left_value, midExp, right1, right2);
                     }
-
                 }
 
             }
+            return result;
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.warn("执行预警规则异常", e);
+            return 0;
         }
-        return ret;
     }
 
     /**
-     *
      * @param result 预警处理结果, 1-告警开始
-     * @param vid 车辆Id
-     * @param warn 预警规则
-     * @param data 数据集
+     * @param vid    车辆Id
+     * @param warn   预警规则
+     * @param data   数据集
      */
     private void sendAlarmMessage(
         final int result,
@@ -940,6 +978,7 @@ public class AlarmBolt extends BaseRichBolt {
 
     /**
      * 存储到 vid2Alarm
+     *
      * @param status 1-告警开始, 0-告警结束
      */
     private void saveToRedis(
@@ -960,77 +999,96 @@ public class AlarmBolt extends BaseRichBolt {
         collector.emit(streamId, new Values(topic, vid, message));
     }
 
-    private int diffMarkValid(double value, int mark, double right1, double right2) {
-        int ret = 0;
-        switch (mark) {
+    /**
+     *
+     * @param left1 左一值
+     * @param midExpress 中间表达式
+     * @param right1 右一值
+     * @param right2 右二值
+     * @return 表达式计算结果, 0-未知, 1-true, 2-false.
+     */
+    private int diffMarkValid(double left1, int midExpress, double right1, double right2) {
+
+        int result = 0;
+
+        switch (midExpress) {
+            // L1 = R1
             case 1:
-                if (value == right1) {
-                    ret = 1;
+                if (left1 == right1) {
+                    result = 1;
                 } else {
-                    ret = 2;
+                    result = 2;
                 }
                 break;
+            // L1 < R1
             case 2:
-                if (value < right1) {
-                    ret = 1;
+                if (left1 < right1) {
+                    result = 1;
                 } else {
-                    ret = 2;
+                    result = 2;
                 }
                 break;
+            // L1 <= R1
             case 3:
-                if (value <= right1) {
-                    ret = 1;
+                if (left1 <= right1) {
+                    result = 1;
                 } else {
-                    ret = 2;
+                    result = 2;
                 }
                 break;
+            // L1 > R1
             case 4:
-                if (value > right1) {
-                    ret = 1;
+                if (left1 > right1) {
+                    result = 1;
                 } else {
-                    ret = 2;
+                    result = 2;
                 }
                 break;
+            // L1 >= R1
             case 5:
-                if (value >= right1) {
-                    ret = 1;
+                if (left1 >= right1) {
+                    result = 1;
                 } else {
-                    ret = 2;
+                    result = 2;
                 }
                 break;
+            // L1 ∈ (R1,R2)
             case 6:
-                if (value > right1 && value < right2) {
-                    ret = 1;
+                if (left1 > right1 && left1 < right2) {
+                    result = 1;
                 } else {
-                    ret = 2;
+                    result = 2;
                 }
                 break;
+            // L1 ∈ [R1, R2)
             case 7:
-                if (value >= right1 && value < right2) {
-                    ret = 1;
+                if (left1 >= right1 && left1 < right2) {
+                    result = 1;
                 } else {
-                    ret = 2;
+                    result = 2;
                 }
                 break;
+            // L1 ∈ (R1, R2]
             case 8:
-                if (value > right1 && value <= right2) {
-                    ret = 1;
+                if (left1 > right1 && left1 <= right2) {
+                    result = 1;
                 } else {
-                    ret = 2;
+                    result = 2;
                 }
                 break;
+            // L1 ∈ [R1, R2]
             case 9:
-                if (value >= right1 && value <= right2) {
-                    ret = 1;
+                if (left1 >= right1 && left1 <= right2) {
+                    result = 1;
                 } else {
-                    ret = 2;
+                    result = 2;
                 }
                 break;
             default:
                 break;
         }
 
-        return ret;
+        return result;
 
     }
 

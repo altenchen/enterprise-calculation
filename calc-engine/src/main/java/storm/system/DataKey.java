@@ -636,7 +636,7 @@ public final class DataKey {
     public static final String _7003_SINGLE_VOLT_ORIG = "7003";
 
     /**
-     * 单体文档原始报文
+     * 单体温度原始报文
      */
     public static final String _7103_SINGLE_TEMP_ORGI = "7103";
 
