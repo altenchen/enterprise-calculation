@@ -115,7 +115,7 @@ public class EarlyWarnsGetter {
         if (null != earlyWarns && earlyWarns.size() > 0) {
             Collection<EarlyWarn> warns = earlyWarns.values();
             for (EarlyWarn warn : warns) {
-                String modelId = warn.vehModelId;
+                String modelId = warn.vehicleModelId;
                 if (warn.isAllCommon) {
                     modelId = ALL;
                 }

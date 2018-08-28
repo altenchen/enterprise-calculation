@@ -1,6 +1,7 @@
 package storm.bolt.deal.norm;
 
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.sun.jersey.core.util.Base64;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -53,14 +54,14 @@ public class AlarmBolt extends BaseRichBolt {
     private OutputCollector collector;
 
     /**
-     * ???
+     * <vid, [rule]>, 车辆告警中的规则
      */
-    private Map<String, List<String>> filterMap = Maps.newHashMap();
+    private Map<String, List<String>> ruleMap = Maps.newHashMap();
 
     /**
      * 连续多少条报警才发送通知
      */
-    private static int alarmNum = 10;
+    private static int alarmContinueMaxCount = 10;
 
     /**
      * 告警消息 kafka 输出 topic
@@ -72,6 +73,9 @@ public class AlarmBolt extends BaseRichBolt {
      */
     private String vehAlarmStoreTopic;
 
+    /**
+     * <vid#ruleId, vid_time_ruleId>
+     */
     private Map<String, String> alarmMap = Maps.newHashMap();
 
     /**
@@ -80,14 +84,23 @@ public class AlarmBolt extends BaseRichBolt {
     private Map<String, String> vehDataMap = Maps.newHashMap();
 
     /**
-     * 车辆报警信息缓存(vid----是否报警_最后报警时间)
+     * 车辆正在报警信息缓存<vid, 是否报警_系统处理时间_最后报警时间>
      */
     private Map<String, String> vid2Alarm = Maps.newHashMap();
+
     /**
-     * 车辆报警信息缓存(vid----报警结束次数)
+     * 车辆结束报警信息缓存 <vid_ruleId, >
      */
     private Map<String, String> vid2AlarmEnd = Maps.newHashMap();
+
+    /**
+     * 车辆开始报警信息缓存, <vid_ruleId, 累计帧数_0_告警开始时间>
+     */
     private Map<String, String> vid2AlarmInfo = Maps.newHashMap();
+
+    /**
+     * <vid, [vid_ruleId]>, 车辆已触发正在报警的规则集合.
+     */
     private Map<String, Set<String>> vidAlarmIds = Maps.newHashMap();
 
     /**
@@ -111,12 +124,12 @@ public class AlarmBolt extends BaseRichBolt {
     private final int buffsize = 5000000;
 
     /**
-     * ???
+     * 需要监听的车辆 <vid>
      */
     private final Queue<String> needListenAlarms = new LinkedBlockingQueue<>(buffsize);
 
     /**
-     * needListenAlarms 防重
+     * needListenAlarms 防重 <vid>
      */
     private final Set<String> needListenAlarmSet = new HashSet<>(buffsize / 5);
 
@@ -136,7 +149,7 @@ public class AlarmBolt extends BaseRichBolt {
             Object alarmObject = stormConf.get(SysDefine.ALARM_CONTINUE_COUNTS);
             if (null != alarmObject) {
                 String str = alarmObject.toString();
-                alarmNum = NumberUtils.toInt(str, 0);
+                alarmContinueMaxCount = NumberUtils.toInt(str, 0);
             }
 
             flushtime = Long.parseLong(stormConf.get(SysDefine.DB_CACHE_FLUSH_TIME_SECOND).toString());
@@ -168,7 +181,7 @@ public class AlarmBolt extends BaseRichBolt {
 
             }
 
-            // TODO: 使用storm心跳帧来取代
+            // TODO: 从专用 Spout 发射过来
             Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new RebulidClass(), 0, flushtime, TimeUnit.SECONDS);
 
             /**
@@ -351,7 +364,10 @@ public class AlarmBolt extends BaseRichBolt {
             return;
         }
 
-        if (CommandType.SUBMIT_LINKSTATUS.equals(messageType)
+        if (
+            // 链接状态通知
+            CommandType.SUBMIT_LINKSTATUS.equals(messageType)
+            // 终端注册消息
             || CommandType.SUBMIT_LOGIN.equals(messageType)) {
             try {
                 sendOverAlarmMessage(vid);
@@ -405,10 +421,10 @@ public class AlarmBolt extends BaseRichBolt {
      *
      * @param vid
      */
-    private void sendOverAlarmMessage(String vid) {
-        if (filterMap.containsKey(vid)) {
+    private void sendOverAlarmMessage(@NotNull final String vid) {
+        if (ruleMap.containsKey(vid)) {
             String time = vid2Alarm.get(vid).split("_")[2];
-            List<String> list = filterMap.get(vid);
+            List<String> list = ruleMap.get(vid);
             for (String filterId : list) {
                 //上条报警，本条不报警，说明是结束报警，发送结束报警报文
                 String alarmId = alarmMap.get(vid + "#" + filterId);
@@ -417,9 +433,9 @@ public class AlarmBolt extends BaseRichBolt {
                     continue;
                 }
 
-                String alarmName = warn.name;
+                String alarmName = warn.ruleName;
                 int alarmLevel = warn.levels;
-                String left1 = warn.left1DataItem;
+                String left1 = warn.left1DataKey;
 
                 //String alarmEnd = "VEHICLE_ID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+time+",CONST_ID:"+filterId;
                 Map<String, Object> sendMsg = new TreeMap<>();
@@ -439,10 +455,10 @@ public class AlarmBolt extends BaseRichBolt {
                 //hbase存储
                 sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE, vehAlarmStoreTopic, vid, alarmhbase);
                 //redis存储
-                saveRedis(vid, "0", time);
+                saveToRedis(vid, "0", time);
                 alarmMap.remove(vid + "#" + filterId);
             }
-            filterMap.remove(vid);
+            ruleMap.remove(vid);
         }
         //离线重置所有报警约束
         removeByVid(vid);
@@ -460,7 +476,7 @@ public class AlarmBolt extends BaseRichBolt {
         try {
             if (null != warn) {
                 //左1数据项ID
-                String left1 = warn.left1DataItem;
+                String left1 = warn.left1DataKey;
                 //偏移系数，
                 final CoefficientOffset left1CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left1);
                 String left1Value = dataMap.get(left1);
@@ -483,7 +499,7 @@ public class AlarmBolt extends BaseRichBolt {
 
                 int leftExp = Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(warn.leftExpression) ? warn.leftExpression : "0");
                 //左2数据项ID
-                String left2 = warn.left2DataItem;
+                String left2 = warn.left2DataKey;
                 int midExp = Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(warn.middleExpression) ? warn.middleExpression : "0");
                 double right1 = warn.right1Value;
                 double right2 = warn.right2Value;
@@ -666,26 +682,41 @@ public class AlarmBolt extends BaseRichBolt {
         return ret;
     }
 
-    private void sendAlarmMessage(int ret, String vid, EarlyWarn warn, Map<String, String> dataMap) {
+    /**
+     *
+     * @param result 预警处理结果, 1-告警开始
+     * @param vid 车辆Id
+     * @param warn 预警规则
+     * @param data 数据集
+     */
+    private void sendAlarmMessage(
+        final int result,
+        final String vid,
+        final EarlyWarn warn,
+        final Map<String, String> data) {
+
         if (null == warn) {
             return;
         }
-        String filterId = warn.id;
-        String alarmName = warn.name;
-        int alarmLevel = warn.levels;
-        //左1数据项ID
-        String left1 = warn.left1DataItem;
-        //左2数据项ID
-        String left2 = warn.left2DataItem;
-        double right1 = warn.right1Value;
-        double right2 = warn.right2Value;
-        String alarmGb = dataMap.get(DataKey._2920_ALARM_STATUS);
-        alarmGb = org.apache.commons.lang.math.NumberUtils.isNumber(alarmGb) ? alarmGb : "0";
-        if (!"0".equals(alarmGb)) {
-            int gbAlarm = Integer.parseInt(alarmGb);
-            alarmLevel = Math.max(alarmLevel, gbAlarm);
-        }
-        String time = dataMap.get(DataKey.TIME);
+
+        // 最高报警等级
+        final int alarmGb = NumberUtils.toInt(data.get(DataKey._2920_ALARM_STATUS), 0);
+
+        final String ruleId = warn.ruleId;
+        final String alarmName = warn.ruleName;
+        final int alarmLevel = Math.max(warn.levels, alarmGb);
+
+        // 左 1 数据项 ID
+        final String left1 = warn.left1DataKey;
+        // 左 2 数据项 ID
+        final String left2 = warn.left2DataKey;
+        // 右 1 数据值
+        final double right1 = warn.right1Value;
+        // 右 2 数据值
+        final double right2 = warn.right2Value;
+
+        final String time = data.get(DataKey.TIME);
+
         long alarmUtc = 0;
         try {
             alarmUtc = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
@@ -695,54 +726,72 @@ public class AlarmBolt extends BaseRichBolt {
         if (0 == alarmUtc) {
             alarmUtc = System.currentTimeMillis();
         }
-        String vidFilterId = vid + "_" + filterId;
-        List<String> list = filterMap.get(vid);
-        if (ret == 1) {
+
+        final String vidRuleId = vid + "_" + ruleId;
+
+        // 车辆告警中的规则
+        final List<String> list = ruleMap.get(vid);
+
+        if (result == 1) {
             //报警缓存包含vid，且vid对应的list含有此约束id，也就是此类型的报警，就说明上一条已报警
 
-            if (!CollectionUtils.isEmpty(list) && list.contains(filterId)) {
-                //上条报警，本条也报警，说明是【报警进行中】，发送报警进行中报文
+            if (!CollectionUtils.isEmpty(list) && list.contains(ruleId)) {
+                //上条报警，本条也报警，说明是【报警进行中】，发送报警进行中报文, 貌似这里啥也没干.
 
                 //redis存储
-                saveRedis(vid, "1", time);
-                vid2AlarmInfo.put(vidFilterId, (alarmNum + 1) + "_0_" + alarmUtc);
+                saveToRedis(vid, "1", time);
+                vid2AlarmInfo.put(vidRuleId, (alarmContinueMaxCount + 1) + "_0_" + alarmUtc);
 
                 // region cache
-                Set<String> infoIds = vidAlarmIds.computeIfAbsent(vid, k -> new HashSet<>());
-                infoIds.add(vidFilterId);
+                final Set<String> infoIds = vidAlarmIds.computeIfAbsent(vid, k -> Sets.newHashSet());
+                infoIds.add(vidRuleId);
                 // endregion cache
 
             } else {
                 //上条不报警，本条报警，说明是【开始报警】，发送开始报警报文
 
-                String string = vid2AlarmInfo.get(vidFilterId);
-                if (!StringUtils.isEmpty(string)) {
-                    String[] infoArr = string.split("_", 3);
+                // 格式化报警开始状态, 报警开始连续帧数_0_报警通知发出时间
+                final String formatString = vid2AlarmInfo.get(vidRuleId);
+
+                if (!StringUtils.isEmpty(formatString)) {
+                    // 有格式化报警状态, 说明是报警开始续帧
+
+                    String[] infoArr = formatString.split("_", 3);
                     if (infoArr.length >= 3) {
-                        int alarmNumThid = Integer.valueOf(infoArr[0]);
-                        long alarmTime = Long.parseLong(infoArr[1]);
-                        long lastAlarmUtc = Long.parseLong(infoArr[2]);
-                        vid2AlarmInfo.put(vidFilterId, (alarmNumThid + 1) + "_" + alarmTime + "_" + lastAlarmUtc);
+
+                        // 报警开始连续帧数
+                        final int alarmContinueCount = Integer.valueOf(infoArr[0]);
+                        // 固定 "0"
+                        final long alarmTime = Long.parseLong(infoArr[1]);
+                        // 报警通知发出时间
+                        final long lastAlarmUtc = Long.parseLong(infoArr[2]);
+
+                        vid2AlarmInfo.put(vidRuleId, (alarmContinueCount + 1) + "_" + alarmTime + "_" + lastAlarmUtc);
 
                         // region cache
-                        Set<String> infoIds = vidAlarmIds.computeIfAbsent(vid, k -> new HashSet<>());
-                        infoIds.add(vidFilterId);
+
+                        // 标记当前车辆正在报警中
+                        final Set<String> infoIds = vidAlarmIds.computeIfAbsent(vid, k -> new HashSet<>());
+                        infoIds.add(vidRuleId);
+
                         // endregion cache
 
-                        //**根据数据项的预警配置进行判断，条件成立针对最后预警发生时间或者个数累计进行进行判定，若超过3分钟或连续累计超过10次的条件方认为成立*//*
-                        if (alarmNumThid + 1 >= alarmNum) {
-                            String alarmId = vid + "_" + time + "_" + filterId;
-                            alarmMap.put(vid + "#" + filterId, alarmId);
-                            List<String> l = filterMap.get(vid);
-                            if (null == l) {
-                                l = new LinkedList<>();
-                            }
-                            l.add(filterId);
+                        // 根据数据项的预警配置进行判断，条件成立针对最后预警发生时间或者个数累计进行进行判定，若超过3分钟或连续累计超过10次的条件方认为成立
+                        if (alarmContinueCount + 1 >= alarmContinueMaxCount) {
+                            // 累计达到 alarmContinueMaxCount 指定的连续帧数条件
+
+                            final String alarmId = vid + "_" + time + "_" + ruleId;
+                            alarmMap.put(vid + "#" + ruleId, alarmId);
+
+                            // 车辆告警中的规则
+                            final List<String> alarmList = ruleMap.computeIfAbsent(vid, k -> new LinkedList<>());
+                            alarmList.add(ruleId);
+                            ruleMap.put(vid, alarmList);
+
                             if (!needListenAlarmSet.contains(vid)) {
                                 needListenAlarmSet.add(vid);
                                 needListenAlarms.offer(vid);
                             }
-                            filterMap.put(vid, l);
 
                             String lastAlarmUtcString;
                             try {
@@ -757,57 +806,80 @@ public class AlarmBolt extends BaseRichBolt {
                             sendMsg.put("ALARM_ID", alarmId);
                             sendMsg.put("STATUS", 1);
                             sendMsg.put("TIME", lastAlarmUtcString);
-                            sendMsg.put("CONST_ID", filterId);
+                            sendMsg.put("CONST_ID", ruleId);
                             sendMsg.put("ALARM_LEVEL", alarmLevel);
-                            String alarmStart = JSON_UTILS.toJson(sendMsg);
+
+                            final String alarmStart = JSON_UTILS.toJson(sendMsg);
+                            //发送kafka提供数据库存储
+                            sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmStart);
 
                             sendMsg.put("ALARM_NAME", alarmName);
                             sendMsg.put("LEFT1", left1);
                             sendMsg.put("LEFT2", left2);
                             sendMsg.put("RIGHT1", right1);
                             sendMsg.put("RIGHT2", right2);
-                            String alarmHbase = JSON_UTILS.toJson(sendMsg);
-                            //发送kafka提供数据库存储
-                            sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmStart);
+
+                            final String alarmHbase = JSON_UTILS.toJson(sendMsg);
                             //hbase存储
                             sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE, vehAlarmStoreTopic, vid, alarmHbase);
 
                             sendMsg.put("UTC_TIME", lastAlarmUtc);
+
                             //redis存储
-                            saveRedis(vid, "1", lastAlarmUtcString);
-                            vid2AlarmInfo.put(vidFilterId, (alarmNumThid + 1) + "_" + alarmTime + "_" + alarmUtc);
+                            saveToRedis(vid, "1", lastAlarmUtcString);
+
+                            // 更新格式化信息中的告警时间(最后一项)
+                            vid2AlarmInfo.put(vidRuleId, (alarmContinueCount + 1) + "_" + alarmTime + "_" + alarmUtc);
                         }
                     }
 
                 } else {
-                    vid2AlarmInfo.put(vidFilterId, "1_0_" + alarmUtc);
+                    // 无格式化报警状态, 说明是报警开始首帧
+
+                    vid2AlarmInfo.put(vidRuleId, "1_0_" + alarmUtc);
 
                     // region cache
-                    Set<String> infoIds = vidAlarmIds.computeIfAbsent(vid, k -> new HashSet<>());
-                    infoIds.add(vidFilterId);
+
+                    // 标记当前车辆正在报警中
+                    final Set<String> infoIds = vidAlarmIds.computeIfAbsent(vid, k -> new HashSet<>());
+                    infoIds.add(vidRuleId);
+
                     // endregion cache
                 }
 
             }
-            vid2AlarmEnd.remove(vidFilterId);
-        } else if (ret == 2) {
-            if (!CollectionUtils.isEmpty(list) && list.contains(filterId)) {
-                String countTime = vid2AlarmEnd.get(vidFilterId);
-                if (!StringUtils.isEmpty(countTime)) {
 
-                    String[] ctArr = countTime.split("_");
-                    vid2AlarmEnd.put(vidFilterId, Integer.valueOf(ctArr[0]) + 1 + "_" + ctArr[1]);
-                    if (Integer.valueOf(ctArr[0]) == (alarmNum - 1)) {
+            // 取消标记当前车辆报警结束
+            vid2AlarmEnd.remove(vidRuleId);
+
+        } else if (result == 2) {
+
+            if (!CollectionUtils.isEmpty(list) && list.contains(ruleId)) {
+                // 当前车辆存在当前告警
+
+                // 格式化报警结束状态, 报警结束连续帧数_报警结束首帧时间
+                final String formatString = vid2AlarmEnd.get(vidRuleId);
+
+                if (!StringUtils.isEmpty(formatString)) {
+                    // 有格式化报警状态, 说明是报警结束续帧
+
+                    final String[] ctArr = formatString.split("_");
+                    vid2AlarmEnd.put(vidRuleId, Integer.valueOf(ctArr[0]) + 1 + "_" + ctArr[1]);
+
+                    if (Integer.valueOf(ctArr[0]) == (alarmContinueMaxCount - 1)) {
                         //上条报警，本条不报警，说明是【结束报警】，发送结束报警报文
-                        String alarmId = alarmMap.get(vid + "#" + filterId);
+                        final String alarmId = alarmMap.get(vid + "#" + ruleId);
 
                         Map<String, Object> sendMsg = new TreeMap<>();
                         sendMsg.put(DataKey.VEHICLE_ID, vid);
                         sendMsg.put("ALARM_ID", alarmId);
                         sendMsg.put("STATUS", 3);
                         sendMsg.put("TIME", ctArr[1]);
-                        sendMsg.put("CONST_ID", filterId);
-                        String alarmEnd = JSON_UTILS.toJson(sendMsg);
+                        sendMsg.put("CONST_ID", ruleId);
+
+                        final String alarmEnd = JSON_UTILS.toJson(sendMsg);
+                        //kafka存储
+                        sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmEnd);
 
                         sendMsg.put("ALARM_NAME", alarmName);
                         sendMsg.put("ALARM_LEVEL", alarmLevel);
@@ -815,30 +887,42 @@ public class AlarmBolt extends BaseRichBolt {
                         sendMsg.put("LEFT2", left2);
                         sendMsg.put("RIGHT1", right1);
                         sendMsg.put("RIGHT2", right2);
-                        String alarmHbase = JSON_UTILS.toJson(sendMsg);
 
-                        //kafka存储
-                        sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmEnd);
+                        final String alarmHbase = JSON_UTILS.toJson(sendMsg);
                         //hbase存储
                         sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE, vehAlarmStoreTopic, vid, alarmHbase);
+
                         //redis存储
-                        saveRedis(vid, "0", ctArr[1]);
-                        alarmMap.remove(vid + "#" + filterId);
-                        filterMap.get(vid).remove(filterId);
-                        vid2AlarmEnd.remove(vidFilterId);
+                        saveToRedis(vid, "0", ctArr[1]);
+
+                        // 从报警中的车辆规则里移除
+                        alarmMap.remove(vid + "#" + ruleId);
+                        // 移除车辆告警中的规则
+                        ruleMap.get(vid).remove(ruleId);
+                        // 移除车辆结束报警信息缓存
+                        vid2AlarmEnd.remove(vidRuleId);
                     }
                 } else {
-                    vid2AlarmEnd.put(vidFilterId, "1_" + time);
+                    // 无格式化报警状态, 说明是报警结束首帧
+
+                    vid2AlarmEnd.put(vidRuleId, "1_" + time);
                 }
             }
-            vid2AlarmInfo.remove(vidFilterId);
+
+            // 清除格式化报警状态
+            vid2AlarmInfo.remove(vidRuleId);
         }
     }
 
     /**
-     * 存储更新redis
+     * 存储到 vid2Alarm
      */
-    private void saveRedis(String vid, String status, String time) {
+    private void saveToRedis(
+        @NotNull final String vid,
+        @NotNull final String status,
+        @NotNull final String time) {
+
+        // TODO: 同步到 redis
         vid2Alarm.put(vid, status + "_" + System.currentTimeMillis() + "_" + time);
     }
 
@@ -977,10 +1061,10 @@ public class AlarmBolt extends BaseRichBolt {
                 while (null != vid) {
                     needListenAlarmSet.remove(vid);
                     if (MapUtils.isNotEmpty(lastCache)
-                        && MapUtils.isNotEmpty(filterMap)) {
+                        && MapUtils.isNotEmpty(ruleMap)) {
                         final long currentTimeMillis = System.currentTimeMillis();
 
-                        if (filterMap.containsKey(vid)) {
+                        if (ruleMap.containsKey(vid)) {
 
                             final Map<String, String> data = lastCache.get(vid);
                             if (MapUtils.isNotEmpty(data)) {

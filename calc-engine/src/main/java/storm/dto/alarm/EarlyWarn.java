@@ -1,5 +1,7 @@
 package storm.dto.alarm;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
@@ -10,68 +12,121 @@ import java.util.List;
  */
 public class EarlyWarn implements Serializable {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = 1999980001L;
-    public String id;//规则Id
-    public String name;//规则名称
-    public String vehModelId;//车辆类型Id
-    public int levels;//告警级别
-    public String dependId;//依赖Id
-    public String left1DataItem;//左一数据项
-    public String leftExpression;//左表达式
-    public String left2DataItem;//左二数据项
-    public String middleExpression;//中间表达式
-    public double right1Value;//右一值
-    public double right2Value;//右二值
 
-    public boolean isAllCommon;//是否适用所有车型
+    /**
+     * 规则Id
+     */
+    public String ruleId;
 
-    /***   暂时不生效，等前端变业务 开始   ***/
-    public List<EarlyWarn> earlyWarns;//依赖规则
-    public int judgeCount = 10;//连续多少次开始结束报警
-    public long judgeTime = -1;//连续发生多少时间开始结束报警
+    /**
+     * 规则名称
+     */
+    public String ruleName;
 
-    /***   暂时不生效，等前端变业务 结束   ***/
+    /**
+     * 车辆类型Id
+     */
+    public String vehicleModelId;
 
-    public EarlyWarn(String id, String name, String vehModelId, int levels, String dependId, String left1DataItem,
-                     String leftExpression, String left2DataItem, String middleExpression, double right1Value,
-                     double right2Value) {
-        super();
-        this.id = id;
-        this.name = name;
-        this.vehModelId = vehModelId;
+    /**
+     * 告警级别
+     */
+    public int levels;
+
+    /**
+     * 依赖Id
+     */
+    public String dependId;
+
+    /**
+     * 左一数据项
+     */
+    public String left1DataKey;
+
+    /**
+     * 左表达式
+     */
+    public String leftExpression;
+
+    /**
+     * 左二数据项
+     */
+    public String left2DataKey;
+
+    /**
+     * 中间表达式
+     */
+    public String middleExpression;
+
+    /**
+     * 右一值
+     */
+    public double right1Value;
+
+    /**
+     * 右二值
+     */
+    public double right2Value;
+
+    /**
+     * 是否适用所有车型
+     */
+    public boolean isAllCommon;
+
+    // region 暂时不生效，等前端变业务
+
+    /**
+     * 依赖规则
+     */
+    public List<EarlyWarn> earlyWarns;
+
+    /**
+     * 连续多少次开始结束报警
+     */
+    public int judgeCount = 10;
+
+    /**
+     * 连续发生多少时间开始结束报警
+     */
+    public long judgeTime = -1;
+
+    // endregion 暂时不生效，等前端变业务
+
+    public EarlyWarn(
+        final String ruleId,
+        final String ruleName,
+        final String vehicleModelId,
+        final int levels,
+        final String dependId,
+        final String left1DataKey,
+        final String leftExpression,
+        final String left2DataKey,
+        final String middleExpression,
+        final double right1Value,
+        final double right2Value) {
+
+        this.ruleId = ruleId;
+        this.ruleName = ruleName;
+        this.vehicleModelId = vehicleModelId;
         this.levels = levels;
         this.dependId = dependId;
-        this.left1DataItem = left1DataItem;
+        this.left1DataKey = left1DataKey;
         this.leftExpression = leftExpression;
-        this.left2DataItem = left2DataItem;
+        this.left2DataKey = left2DataKey;
         this.middleExpression = middleExpression;
         this.right1Value = right1Value;
         this.right2Value = right2Value;
 
-        setCommon(vehModelId);
+        setCommon(vehicleModelId);
     }
 
-    public EarlyWarn(String id, String vehModelId, String left1DataItem, String leftExpression, String left2DataItem,
-                     String middleExpression, double right1Value, double right2Value) {
-        super();
-        this.id = id;
-        this.vehModelId = vehModelId;
-        this.left1DataItem = left1DataItem;
-        this.leftExpression = leftExpression;
-        this.left2DataItem = left2DataItem;
-        this.middleExpression = middleExpression;
-        this.right1Value = right1Value;
-        this.right2Value = right2Value;
-
-        setCommon(vehModelId);
-    }
-
-    void setCommon(String vehModelId) {
-        if (null == vehModelId
-            || "".equals(vehModelId.trim())
+    /**
+     * 判断是否适用所有车型
+     * @param vehModelId
+     */
+    void setCommon(final String vehModelId) {
+        if (StringUtils.isBlank(vehModelId)
             || "ALL".equals(vehModelId.trim())) {
 
             this.isAllCommon = true;
@@ -82,7 +137,8 @@ public class EarlyWarn implements Serializable {
         }
     }
 
-    /***   暂时不生效，等前端变业务 开始   ***/
+    // region 暂时不生效，等前端变业务
+
     /**
      * 此方法暂时不用，等前端业务变了以后再使用
      *
@@ -108,13 +164,14 @@ public class EarlyWarn implements Serializable {
         }
 
         if (null == earlyWarns) {
-            earlyWarns = new LinkedList<EarlyWarn>();
+            earlyWarns = new LinkedList<>();
         }
 
         if (!earlyWarns.contains(warn)) {
             earlyWarns.add(warn);
         }
     }
-    /***   暂时不生效，等前端变业务 结束   ***/
+
+    // endregion 暂时不生效，等前端变业务
 
 }
