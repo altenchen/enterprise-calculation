@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.sun.jersey.core.util.Base64;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.jupiter.api.*;
@@ -11,6 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
@@ -238,12 +242,20 @@ final class FormatTest {
     @Test
     void parse7003() throws UnsupportedEncodingException {
         final String source = "DKsMpgy0DKMMqQysDKEMoAylDKsMoQylDJ4MpQyoDJ0MpAymDJQMoQyYDJcMmAykDKgMugypDJ8MpwybDJ8MqQyjDJgMoAylDKcMpgygDKYMowyoDLAMqAysDJ8MsAysDKIMpgyXDKkMkAywDJEMqgylDMQMpgygDKIMqgy/DKgMrQysDKkMlgyrDKMMkQyuDJkMrgyoDK0MmQyoDJUMrQylDKsMoQymDJQMpAyhDJ0MoAyuDKsMqQycDK0MqQyQDLEMqwynDK0MpwyiDKQMqA==";
-        final String[] splits = source.split("\\|");
-        for (final String split : splits) {
-            final byte[] base64 = Base64.decode(split);
-            final String gb18030 = new String(base64, "GB18030");
-            LOG.debug("gb18030->[{}]", gb18030);
-
+        final byte[] base64 = Base64.decode(source);
+        LOG.debug("单体电池电压数={}", base64.length / 2);
+        final ByteArrayInputStream byteArrayStream = new ByteArrayInputStream(base64);
+        final DataInputStream dataStream = new DataInputStream(byteArrayStream);
+        try {
+            if(dataStream.available() % 2 != 0) {
+                LOG.warn("[7003]数据不完整.");
+            }
+            while(dataStream.available() >= 2) {
+                final int unsignedShort = dataStream.readUnsignedShort();
+                LOG.debug("单体电池电压值={}", unsignedShort);
+            }
+        } catch (IOException e) {
+            LOG.warn("[7003]解析异常.", e);
         }
     }
 
@@ -251,11 +263,17 @@ final class FormatTest {
     @Test
     void parse7103() throws UnsupportedEncodingException {
         final String source = "SklKSkhHSEdHSEhISA==";
-        final String[] splits = source.split("\\|");
-        for (final String split : splits) {
-            final byte[] base64 = Base64.decode(split);
-            final String gb18030 = new String(base64, "GB18030");
-            LOG.debug("gb18030->[{}]", gb18030);
+        final byte[] base64 = Base64.decode(source);
+        LOG.debug("单体电池温度数={}", base64.length);
+        final ByteArrayInputStream byteArrayStream = new ByteArrayInputStream(base64);
+        final DataInputStream dataStream = new DataInputStream(byteArrayStream);
+        try {
+            while(dataStream.available() >= 1) {
+                final int unsignedByte = dataStream.readUnsignedByte();
+                LOG.debug("单体电池温度值={}", unsignedByte);
+            }
+        } catch (IOException e) {
+            LOG.warn("[7103]解析异常.", e);
         }
     }
 
