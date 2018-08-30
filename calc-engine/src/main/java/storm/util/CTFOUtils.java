@@ -16,222 +16,188 @@ public class CTFOUtils implements Serializable {
 
     private static final long serialVersionUID = 193000000001L;
 
-    private static Logger logger = LoggerFactory.getLogger(CTFOUtils.class);
+    private static Logger LOG = LoggerFactory.getLogger(CTFOUtils.class);
 
-    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
-
-    private static final Map<String, CTFOCacheDB> dbMap = new TreeMap<>();
-    private static final Map<String, CTFOCacheTable> tableMap = new TreeMap<>();
+    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
     private static CTFODBManager ctfoDBManager;
     private static CTFOCacheDB ctfoCacheDB;
     private static CTFOCacheTable ctfoCacheTable;
 
+    /**
+     * <year, CTFOCacheDB>
+     */
+    private static final Map<String, CTFOCacheDB> NEAREST_THREE_YEAR_CACHE_DB = new TreeMap<>();
+
+    private static final Map<String, CTFOCacheTable> NEAREST_THREE_YEAR_SUPPLY_CACHE = new TreeMap<>();
+
     static {
-        initCTFO(configUtils.sysDefine);
+        initCTFO(CONFIG_UTILS.sysDefine);
     }
 
     private synchronized static void initCTFO(Properties conf) {
-        logger.info("初始化 CTFO 开始.");
+
+        boolean sucess = false;
+
+        LOG.info("初始化 CTFO 开始.");
 
         try {
-            logger.info("初始化 CTFODBManager 开始.");
+            LOG.info("初始化 CTFODBManager 开始.");
 
+            // 192.168.1.185:6379 -> 0 -> cfg-sys-address -> [192.168.1.104:1001, 192.168.1.104:1002]
             final String address = conf.getProperty("ctfo.cacheHost") + ":" + conf.getProperty("ctfo.cachePort");
-            logger.info("CTFO address is tcp://{}", address);
+            LOG.info("CTFO address is tcp://{}", address);
             ctfoDBManager = DataCenter.newCTFOInstance("cache", address);
 
             if (null != ctfoDBManager) {
-                logger.info("初始化 CTFODBManager 成功.");
+                LOG.info("初始化 CTFODBManager 成功.");
 
                 try {
-                    logger.info("初始化 CTFOCacheDB 开始.");
+                    LOG.info("初始化 CTFOCacheDB 开始.");
 
-                    ctfoCacheDB = ctfoDBManager.openCacheDB(conf.getProperty("ctfo.cacheDB"));
+                    // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> xyn-*
+                    final String dbName = conf.getProperty("ctfo.cacheDB");
+                    ctfoCacheDB = ctfoDBManager.openCacheDB(dbName);
 
                     if (null != ctfoCacheDB) {
-                        logger.info("初始化 CTFOCacheDB 成功.");
+                        LOG.info("初始化 CTFOCacheDB 成功.");
 
                         try {
-                            logger.info("初始化 CTFOCacheTable 开始.");
+                            LOG.info("初始化 CTFOCacheTable 开始.");
 
-                            ctfoCacheTable = ctfoCacheDB.getTable(conf.getProperty("ctfo.cacheTable"));
+                            // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> xyn-realInfo-*
+                            final String tableName = conf.getProperty("ctfo.cacheTable");
+                            ctfoCacheTable = ctfoCacheDB.getTable(tableName);
+
                             if (null != ctfoCacheTable) {
-                                logger.info("初始化 CTFOCacheTable 成功, 开始加载数据表.");
+                                LOG.info("初始化 CTFOCacheTable 成功, 开始加载数据表.");
 
                                 initDBTables();
-                                logger.info("初始化 CTFO 成功.");
-                                return;
+
+                                LOG.info("初始化 CTFO 成功.");
+                                sucess = true;
                             } else {
-                                logger.warn("初始化 CTFOCacheTable 失败.");
+                                LOG.warn("初始化 CTFOCacheTable 失败.");
                             }
                         } catch (DataCenterException e) {
-                            logger.warn("初始化 CTFOCacheTable 异常", e);
+                            LOG.warn("初始化 CTFOCacheTable 异常", e);
                         }
                     } else {
-                        logger.warn("初始化 CTFOCacheDB 失败.");
+                        LOG.warn("初始化 CTFOCacheDB 失败.");
                     }
                 } catch (DataCenterException e) {
-                    logger.warn("初始化 CTFOCacheDB 异常", e);
+                    LOG.warn("初始化 CTFOCacheDB 异常", e);
                 }
             } else {
-                logger.warn("初始化 CTFODBManager 失败.");
+                LOG.warn("初始化 CTFODBManager 失败.");
             }
         } catch (Exception e) {
-            logger.warn("初始化 CTFODBManager 异常", e);
+            LOG.warn("初始化 CTFODBManager 异常", e);
         }
 
-        logger.info("初始化 CTFO 失败, 重连到默认Redis");
-        reconnectionDefaultRedis(conf);
+        if(!sucess) {
+            LOG.info("初始化 CTFO 失败, 重连到默认Redis");
+            reconnectionDefaultRedis(conf);
+        }
     }
 
     private static void reconnectionDefaultRedis(Properties conf) {
-        int retry = 0;
+        int retryCount = 0;
         while (true) {
             try {
-                retry++;
-                if (null != ctfoCacheDB) {
-                    ctfoCacheTable = ctfoCacheDB.getTable(conf.getProperty("ctfo.cacheTable"));
-                } else {
+                retryCount++;
+                if (null == ctfoCacheDB) {
                     try {
-                        String addr = conf.getProperty("ctfo.cacheHost") + ":" + conf.getProperty("ctfo.cachePort");
-                        ctfoDBManager = DataCenter.newCTFOInstance("cache", addr);
+                        final String address = conf.getProperty("ctfo.cacheHost") + ":" + conf.getProperty("ctfo.cachePort");
+                        ctfoDBManager = DataCenter.newCTFOInstance("cache", address);
                     } catch (Exception e) {
-                        e.printStackTrace();
-                        System.out.println(e);
+                        LOG.warn("初始化 CTFODBManager 异常.", e);
                     }
+
                     if (null != ctfoDBManager) {
 
-                        ctfoCacheDB = ctfoDBManager.openCacheDB(conf.getProperty("ctfo.cacheDB"));
-                        ctfoCacheTable = ctfoCacheDB.getTable(conf.getProperty("ctfo.cacheTable"));
-                        System.out.println("------ CTFOUtils relink success...");
-                        logger.info("重连 CTFO 成功...");
+                        final String dbName = conf.getProperty("ctfo.cacheDB");
+                        ctfoCacheDB = ctfoDBManager.openCacheDB(dbName);
                     }
-                    if (null != ctfoCacheDB) {
-                        ctfoCacheTable = ctfoCacheDB.getTable(conf.getProperty("ctfo.cacheTable"));
-                    }
-
                 }
-                if (ctfoCacheTable != null) {
-                    logger.warn("----------redis重连成功！");
+
+                if (null != ctfoCacheDB) {
+
+                    final String tableName = conf.getProperty("ctfo.cacheTable");
+                    ctfoCacheTable = ctfoCacheDB.getTable(tableName);
+                }
+
+                if(null != ctfoCacheTable) {
+
+                    LOG.info("重连 CTFO 成功...");
                     break;
                 }
-                if (30 < retry) {
+
+                if (retryCount > 30) {
+                    LOG.warn("重试超过30次");
                     try {
                         TimeUnit.SECONDS.sleep(5);
-                    } catch (InterruptedException e1) {
-                        e1.printStackTrace();
+                    } catch (InterruptedException ie) {
+                        LOG.warn("休眠异常", ie);
                     }
                 }
-                if (50 < retry) {
-                    System.out.println("------ CTFOUtils relink fault...");
-                    logger.warn("----------Ctfo redis重连失败！");
-                    break;
+
+                if (retryCount > 50) {
+                    LOG.error("CTFO 重连超过50次");
+                    LOG.error("CTFO 重连失败");
+                    return;
                 }
-                logger.info("----------正在进行redis重连....");
+
+                LOG.info("正在进行 CTFO 重连....");
+
             } catch (DataCenterException e) {
-                logger.warn("----------redis重连失败,3s后继续重连....");
+                LOG.warn("CTFO 重连失败,3秒后继续重连....");
+
                 try {
                     TimeUnit.SECONDS.sleep(3);
-                } catch (InterruptedException e1) {
-                    e1.printStackTrace();
+                } catch (InterruptedException ie) {
+                    LOG.warn("休眠异常", ie);
                 }
             }
         }
-    }
-
-    public static final CTFOCacheTable getDefaultCTFOCacheTable() {
-        try {
-            if (null == ctfoCacheTable) {
-                reconnectionDefaultRedis(configUtils.sysDefine);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return ctfoCacheTable;
     }
 
     private static void initDBTables() {
-        Calendar calendar = Calendar.getInstance();
+        final Calendar calendar = Calendar.getInstance();
         calendar.setTime(new Date());
-        int year = calendar.get(Calendar.YEAR);
-        String table = configUtils.sysDefine.getProperty("ctfo.supplyTable");
+        final int year = calendar.get(Calendar.YEAR);
+        final String supplyTable = CONFIG_UTILS.sysDefine.getProperty("ctfo.supplyTable");
+
         for (int y = year; y > year - 3; y--) {
             try {
-                initDBTable(ctfoDBManager, y + "", table);
+                initDBTable(ctfoDBManager, y + "", supplyTable);
             } catch (Exception e) {
-                logger.warn("", e);
+                LOG.warn("", e);
             }
         }
     }
 
-    private static void initDBTable(CTFODBManager manager, String db, String table)
+    private static void initDBTable(final CTFODBManager dBManager, final String year, final String supplyTable)
         throws DataCenterException {
 
-        CTFOCacheDB cacheDB = manager.openCacheDB(db);
-        CTFOCacheTable cacheTable = cacheDB.getTable(table);
-        dbMap.put(db, cacheDB);
-        tableMap.put(db, cacheTable);
+        // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> 2018-supply-*
+        // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> 2017-supply-*
+        // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> 2016-supply-*
+
+        final CTFOCacheDB cacheDB = dBManager.openCacheDB(year);
+        final CTFOCacheTable cacheTable = cacheDB.getTable(supplyTable);
+
+        NEAREST_THREE_YEAR_CACHE_DB.put(year, cacheDB);
+        NEAREST_THREE_YEAR_SUPPLY_CACHE.put(year, cacheTable);
     }
 
-    private static CTFOCacheDB getDB(String name) {
-        CTFOCacheDB cacheDB = dbMap.get(name);
-        try {
-            if (null == cacheDB) {
-                cacheDB = ctfoDBManager.openCacheDB(name);
-                dbMap.put(name, cacheDB);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            logger.warn("----------redis重连失败,3s后继续重连....");
-            try {
-                TimeUnit.SECONDS.sleep(3);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
-        }
-        return cacheDB;
-    }
+    public static final CTFOCacheTable getDefaultCTFOCacheTable() {
 
-    private static void reconnection(Properties conf, String name) {
-        while (true) {
-            try {
-                CTFOCacheDB cacheDB = getDB(name);
-                CTFOCacheTable cacheTable = cacheDB.getTable(conf.getProperty("ctfo.supplyTable"));
-                if (cacheTable != null) {
-                    logger.warn("----------supply redis重连成功！");
-                    tableMap.put(name, cacheTable);
-                    break;
-                }
-                try {
-                    TimeUnit.SECONDS.sleep(3);
-                } catch (InterruptedException e1) {
-                    e1.printStackTrace();
-                }
-                logger.info("----------正在进行supply redis重连....");
-            } catch (Exception e) {
-                logger.warn("----------redis重连失败,3s后继续重连....");
-                try {
-                    TimeUnit.SECONDS.sleep(3);
-                } catch (InterruptedException e1) {
-                    e1.printStackTrace();
-                }
-            }
-        }
-    }
-
-    public static final CTFOCacheTable getCacheTable(String name) {
-        CTFOCacheTable cacheTable = null;
-        try {
-            cacheTable = tableMap.get(name);
-            if (null == cacheTable) {
-                reconnection(configUtils.sysDefine, name);
-                cacheTable = tableMap.get(name);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (null == ctfoCacheTable) {
+            reconnectionDefaultRedis(CONFIG_UTILS.sysDefine);
         }
 
-        return cacheTable;
+        return ctfoCacheTable;
     }
+
 }
