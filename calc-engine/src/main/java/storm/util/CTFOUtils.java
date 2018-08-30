@@ -24,13 +24,6 @@ public class CTFOUtils implements Serializable {
     private static CTFOCacheDB ctfoCacheDB;
     private static CTFOCacheTable ctfoCacheTable;
 
-    /**
-     * <year, CTFOCacheDB>
-     */
-    private static final Map<String, CTFOCacheDB> NEAREST_THREE_YEAR_CACHE_DB = new TreeMap<>();
-
-    private static final Map<String, CTFOCacheTable> NEAREST_THREE_YEAR_SUPPLY_CACHE = new TreeMap<>();
-
     static {
         initCTFO(CONFIG_UTILS.sysDefine);
     }
@@ -71,8 +64,6 @@ public class CTFOUtils implements Serializable {
 
                             if (null != ctfoCacheTable) {
                                 LOG.info("初始化 CTFOCacheTable 成功, 开始加载数据表.");
-
-                                initDBTables();
 
                                 LOG.info("初始化 CTFO 成功.");
                                 sucess = true;
@@ -160,35 +151,6 @@ public class CTFOUtils implements Serializable {
                 }
             }
         }
-    }
-
-    private static void initDBTables() {
-        final Calendar calendar = Calendar.getInstance();
-        calendar.setTime(new Date());
-        final int year = calendar.get(Calendar.YEAR);
-        final String supplyTable = CONFIG_UTILS.sysDefine.getProperty("ctfo.supplyTable");
-
-        for (int y = year; y > year - 3; y--) {
-            try {
-                initDBTable(ctfoDBManager, y + "", supplyTable);
-            } catch (Exception e) {
-                LOG.warn("", e);
-            }
-        }
-    }
-
-    private static void initDBTable(final CTFODBManager dBManager, final String year, final String supplyTable)
-        throws DataCenterException {
-
-        // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> 2018-supply-*
-        // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> 2017-supply-*
-        // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> 2016-supply-*
-
-        final CTFOCacheDB cacheDB = dBManager.openCacheDB(year);
-        final CTFOCacheTable cacheTable = cacheDB.getTable(supplyTable);
-
-        NEAREST_THREE_YEAR_CACHE_DB.put(year, cacheDB);
-        NEAREST_THREE_YEAR_SUPPLY_CACHE.put(year, cacheTable);
     }
 
     public static final CTFOCacheTable getDefaultCTFOCacheTable() {
