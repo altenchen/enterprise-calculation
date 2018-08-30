@@ -10,7 +10,7 @@ import java.util.Set;
 
 import storm.dto.area.AreaFence;
 import storm.dto.fence.Coordinate;
-import storm.util.FileSource;
+import storm.util.GpsFileSource;
 
 public class AreaFenceHandler {
 
@@ -18,9 +18,9 @@ public class AreaFenceHandler {
     Map<String,AreaFence> areaIdFenceCache;
     void build(){
         //areafences为区域围栏，为areaFence的列表，areaFence包括区域id、区域名字、一个矩形（区域的最大最小经度，最大最小纬度四个值）。
-        areaFences =FileSource.areaFences;
+        areaFences = GpsFileSource.areaFences;
         //areaIdFenceCache中为（区域id，areafence对象）列表
-        areaIdFenceCache =FileSource.areaIdFenceCache;
+        areaIdFenceCache = GpsFileSource.areaIdFenceCache;
     }
     {
         build();

@@ -393,6 +393,7 @@ public class AlarmBolt extends BaseRichBolt {
                     sendAlarmMessage(result, vid, warn, data);
 
                 }
+                // TODO: 李祥东: 按照系统原始逻辑，且运算，生成两条报警，依赖与被依赖各一条
                 // TODO: 有依赖项, 如果处理结果为1, 再处理父及约束? 是不是反了?!!
                 else {
                     final EarlyWarn warndepend = EarlyWarnsGetter.getEarlyByDependId(warn.dependId);
@@ -487,6 +488,7 @@ public class AlarmBolt extends BaseRichBolt {
 
     /**
      * 处理单个预警规则
+     * TODO: 李祥东: 对于非简单数值类型的数据, 均不予处理(包括通过各种形式将简单数值拼接的复杂类型).
      *
      * @param vid  车辆Id
      * @param warn 预警规则
@@ -570,7 +572,7 @@ public class AlarmBolt extends BaseRichBolt {
                     //  7003_单体电池电压值列表, 国标 "表B.6 每个可充电储能子系统电压数据格式和定义"
                     //  7103_单体电池温度值列表, 国标 "表B.8 每个可充电储能子系统上温度数据格式和定义"
 
-                    // TODO: 对于7003和7103, 以下解析逻辑有误, 不会起作用的......其它的待分析
+                    // TODO: 对于7003和7103, 以下解析逻辑有误, 不会起作用的......其它的待分析, 以下疑似4001, 雅安驾驶行为数据表
 
                     final String[] stringArray1 = left1Value.split("\\|");
                     for (int i = 0; i < stringArray1.length; i++) {

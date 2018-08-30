@@ -20,8 +20,6 @@ import storm.dto.FaultCodeByte;
 import storm.dto.FaultCodeByteRule;
 import storm.dto.FaultTypeSingleBit;
 import storm.dto.alarm.CoefficientOffset;
-import storm.dto.fault.FaultRule;
-import storm.dto.fault.RiskDef;
 import storm.dto.fence.EleFence;
 import storm.handler.fence.input.AlarmRule;
 import storm.handler.fence.input.Rule;
@@ -43,13 +41,6 @@ public final class Conn {
     private static String fence_sql = "SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,fe.VALID_TIME FROM SYS_FENCE_ELECTRONIC fe WHERE fe.FENCE_STATE=1";
     private static String fence_rule_only_sql = "SELECT tl.FENCE_ID,tl.ALARM_TYPE_CODE,tl.HEIGHEST_SPEED,tl.MINIMUM_SPEED,tl.STOP_CAR_TIME FROM SYS_FENCE_ALARM_TYPE_LK tl WHERE tl.STATE=1";
     private static String fence_vid_sql = "SELECT FENCE_ID,VEH_ID FROM SYS_FENCE_VEH_LK WHERE STATE=1";
-    private static String fence_rule_sql = "SELECT at.FENCE_ALARM_NAME,at.CODE FROM SYS_FENCE_ALARM_TYPE at WHERE at.STATE=1";
-    private static String fence_rule_lk_sql = "SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,at.FENCE_ALARM_NAME,at.CODE,tl.FENCE_ID,tl.ALARM_TYPE_CODE FROM SYS_FENCE_ELECTRONIC fe,SYS_FENCE_ALARM_TYPE at,SYS_FENCE_ALARM_TYPE_LK tl WHERE fe.FENCE_STATE=1 AND at.STATE=1 AND tl.STATE=1 AND fe.ID=tl.FENCE_ID AND at.CODE=tl.ALARM_TYPE_CODE";
-
-    private static String fault_rule_sql = "select ID,DEPENDENCY_RULE_ID,FAULT_TYPE,STATISTICAL_TIME from SYS_SAFETY_RULES WHERE IS_DISABLE=0 and STATE='1' ";
-    private static String fault_alarm_lk_sql = "select SYS_FAULT_ALARM_ID,SYS_DATA_CONST_ID from SYS_FAULT_ALARM_LK";
-    private static String fault_alarm_rule_sql = "select ID,TYPE,LEVELS,NEED_CONFIRD_FLAG,L1_SEQ_NO,L2_SEQ_NO,EXPR_LEFT,EXPR_MID,R1_VAL,R2_VAL,DEPEND_ID,ALL_HOURS,START_TIME,END_TIME from SYS_DATA_CONST where IS_VALID='1'";
-    private static String falut_rank_sql = "select ID,SYS_FAULT_ALARM_ID,LEVL,MIN_NUMBER,MAX_NUMBER,MIN_TIME,MAX_TIME from SYS_FAULT_RANK";
 
 
     /**
@@ -144,28 +135,10 @@ public final class Conn {
         if (sysParams.containsKey("fence.vid.sql")) {
             fence_vid_sql = sysParams.getProperty("fence.vid.sql");
         }
-        if (sysParams.containsKey("fence.rule.sql")) {
-            fence_rule_sql = sysParams.getProperty("fence.rule.sql");
-        }
-        if (sysParams.containsKey("fence.rule.lk.sql")) {
-            fence_rule_lk_sql = sysParams.getProperty("fence.rule.lk.sql");
-        }
 
         final String alarmCodeSql = Conn.SYS_PARAMS.getAlarmCodeSql();
         if (null != alarmCodeSql) {
             alarm_code_sql = alarmCodeSql;
-        }
-        if (sysParams.containsKey("fault.rule.sql")) {
-            fault_rule_sql = sysParams.getProperty("fault.rule.sql");
-        }
-        if (sysParams.containsKey("fault.alarm.lk.sql")) {
-            fault_alarm_lk_sql = sysParams.getProperty("fault.alarm.lk.sql");
-        }
-        if (sysParams.containsKey("fault.alarm.rule.sql")) {
-            fault_alarm_rule_sql = sysParams.getProperty("fault.alarm.rule.sql");
-        }
-        if (sysParams.containsKey("falut.rank.sql")) {
-            falut_rank_sql = sysParams.getProperty("falut.rank.sql");
         }
         if (sysParams.containsKey("early.warning.sql")) {
             early_warning_sql = sysParams.getProperty("early.warning.sql");
@@ -208,73 +181,6 @@ public final class Conn {
             LOG.warn("创建数据库连接失败.", e);
         }
 
-        return null;
-    }
-
-    public Collection<FaultRule> getFaultAndDepends() {
-        try {
-            Map<String, FaultRule> faultMaps = getFaults();
-            List<String[]> faultLkAlarm = getFaultLkAlarm();
-            Map<String, storm.dto.fault.FaultAlarmRule> alarmRules = getFaultAlarmRules();
-            List<String[]> rankDefs = getFaultRanks();
-            if (null == faultMaps
-                || null == faultLkAlarm
-                || null == alarmRules
-                || null == rankDefs) {
-                return null;
-            }
-            for (String[] alarmlks : faultLkAlarm) {
-                if (StringUtils.isBlank(alarmlks[0])
-                    || StringUtils.isBlank(alarmlks[1])) {
-                    continue;
-                }
-                FaultRule faultRule = faultMaps.get(alarmlks[0]);
-                if (null != faultRule) {
-
-                    storm.dto.fault.FaultAlarmRule alarmRule = alarmRules.get(alarmlks[1]);
-                    faultRule.addFaultAlarmRule(alarmRule);
-                    faultMaps.put(alarmlks[0], faultRule);
-                }
-            }
-
-            for (String[] srs : rankDefs) {
-                if (null != srs) {
-                    boolean isNull = false;
-                    for (String string : srs) {
-                        if (StringUtils.isBlank(string)) {
-                            isNull = true;
-                            break;
-                        }
-                    }
-                    if (!isNull) {
-                        RiskDef def = new RiskDef(srs[0], srs[1], Integer.valueOf(srs[2]), Integer.valueOf(srs[3]), Integer.valueOf(srs[4]), Integer.valueOf(srs[5]), Integer.valueOf(srs[6]));
-                        FaultRule faultRule = faultMaps.get(def.faultRuleId);
-                        if (null != faultRule) {
-                            faultRule.addDef(def);
-                            faultMaps.put(def.faultRuleId, faultRule);
-                        }
-                    }
-                }
-            }
-            for (Map.Entry<String, FaultRule> entry : faultMaps.entrySet()) {
-                String faultId = entry.getKey();
-                FaultRule rule = entry.getValue();
-                rule.build();
-                faultMaps.put(faultId, rule);
-            }
-            for (Map.Entry<String, FaultRule> entry : faultMaps.entrySet()) {
-                String faultId = entry.getKey();
-                FaultRule rule = entry.getValue();
-                if (!StringUtils.isBlank(rule.dependId)) {
-                    FaultRule dependRule = faultMaps.get(rule.dependId);
-                    rule.addFaultRule(dependRule);
-                }
-                faultMaps.put(faultId, rule);
-            }
-            return faultMaps.values();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         return null;
     }
 
@@ -401,72 +307,6 @@ public final class Conn {
         LOG.info("更新获取到[{}]条按值解析故障码规则, 其中[{}]条有效.", count, codeIds.size());
 
         return result.values();
-    }
-
-    private Map<String, FaultRule> getFaults() {
-        Map<String, FaultRule> faults = null;
-        Connection conn = null;
-        Statement s = null;
-        ResultSet rs = null;
-        try {
-            if (StringUtils.isEmpty(fault_rule_sql)) {
-                return null;
-            }
-            if (null == conn || conn.isClosed()) {
-                conn = getConn();
-            }
-            if (null == conn) {
-                return null;
-            }
-            faults = new TreeMap<String, FaultRule>();
-            s = conn.createStatement();
-            rs = s.executeQuery(fault_rule_sql);
-            while (rs.next()) {
-                FaultRule rule = new FaultRule();
-                rule.id = rs.getString(1);
-                rule.dependId = rs.getString(2);
-                rule.type = rs.getString(3);
-                rule.statisticalTime = rs.getString(4);
-                faults.put(rule.id, rule);
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            close(rs, s, conn);
-        }
-        return faults;
-    }
-
-    private List<String[]> getFaultLkAlarm() {
-        List<String[]> rules = null;
-        Connection conn = null;
-        Statement s = null;
-        ResultSet rs = null;
-        try {
-            if (StringUtils.isEmpty(fault_alarm_lk_sql)) {
-                return null;
-            }
-            if (null == conn || conn.isClosed()) {
-                conn = getConn();
-            }
-            if (null == conn) {
-                return null;
-            }
-            rules = new LinkedList<String[]>();
-            s = conn.createStatement();
-            rs = s.executeQuery(fault_alarm_lk_sql);
-            while (rs.next()) {
-                String[] strings = new String[]{rs.getString(1), rs.getString(2)};
-                rules.add(strings);
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            close(rs, s, conn);
-        }
-        return rules;
     }
 
 
@@ -832,89 +672,6 @@ public final class Conn {
             LOG.warn("更新按值解析故障码规则异常", e);
         } finally {
             close(resultSet, statement, connection);
-        }
-        return rules;
-    }
-
-    @Nullable
-    private Map<String, storm.dto.fault.FaultAlarmRule> getFaultAlarmRules() {
-        Map<String, storm.dto.fault.FaultAlarmRule> rules = null;
-        Connection conn = null;
-        Statement s = null;
-        ResultSet rs = null;
-        try {
-            if (StringUtils.isEmpty(fault_alarm_rule_sql)) {
-                return null;
-            }
-            if (null == conn || conn.isClosed()) {
-                conn = getConn();
-            }
-            if (null == conn) {
-                return null;
-            }
-            rules = new TreeMap<String, storm.dto.fault.FaultAlarmRule>();
-            s = conn.createStatement();
-            rs = s.executeQuery(fault_alarm_rule_sql);
-            while (rs.next()) {
-                // ID,TYPE,LEVELS,NEED_CONFIRD_FLAG,L1_SEQ_NO,L2_SEQ_NO,EXPR_LEFT,EXPR_MID,R1_VAL,R2_VAL,DEPEND_ID,ALL_HOURS,START_TIME,END_TIME
-                String ruleId = rs.getString(1);
-                if (!StringUtils.isBlank(ruleId)) {
-
-                    storm.dto.fault.FaultAlarmRule rule = new storm.dto.fault.FaultAlarmRule();
-                    rule.id = ruleId;
-                    rule.type = rs.getInt(2);
-                    rule.risk = rs.getInt(3);
-                    rule.leftField1 = rs.getString(5);
-                    rule.leftField2 = rs.getString(6);
-                    rule.leftOper1 = rs.getString(7);
-                    rule.leftOper2 = rs.getString(8);
-                    rule.rightVal1 = rs.getFloat(9);
-                    rule.rightVal1 = rs.getFloat(10);
-                    rule.dependId = rs.getString(11);
-                    rule.timeString = rs.getString(12) + "|" + rs.getString(13) + "|" + rs.getString(14);
-                    rule.bulid();
-                    rules.put(ruleId, rule);
-                }
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            close(rs, s, conn);
-        }
-        return rules;
-    }
-
-    @Nullable
-    private List<String[]> getFaultRanks() {
-        List<String[]> rules = null;
-        Connection conn = null;
-        Statement s = null;
-        ResultSet rs = null;
-        try {
-            if (StringUtils.isEmpty(falut_rank_sql)) {
-                return null;
-            }
-            if (null == conn || conn.isClosed()) {
-                conn = getConn();
-            }
-            if (null == conn) {
-                return null;
-            }
-            rules = new LinkedList<String[]>();
-            s = conn.createStatement();
-            rs = s.executeQuery(falut_rank_sql);
-            while (rs.next()) {
-                String[] strings = new String[]{rs.getString(1), rs.getString(2),
-                    "" + rs.getInt(3), rs.getString(4), rs.getString(5),
-                    rs.getString(6), rs.getString(7)};
-                rules.add(strings);
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            close(rs, s, conn);
         }
         return rules;
     }

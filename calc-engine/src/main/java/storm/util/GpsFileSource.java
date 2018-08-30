@@ -19,7 +19,7 @@ import storm.dto.fence.Coordinate;
 /**
  * GPS区域文件数据源
  */
-public class FileSource {
+public class GpsFileSource {
 
     public static List<AreaFence> areaFences;
     public static Map<String,AreaFence> areaIdFenceCache = null;
@@ -39,7 +39,7 @@ public class FileSource {
         List<String> lines = new LinkedList<String>();
         try {
 
-            in = FileSource.class.getClassLoader().getResourceAsStream("area.gps");
+            in = GpsFileSource.class.getClassLoader().getResourceAsStream("area.gps");
             BufferedReader reader =  new BufferedReader(new InputStreamReader(in, "UTF-8"));
             String line = null;
 
