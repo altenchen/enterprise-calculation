@@ -108,7 +108,6 @@ public class TopologiesByConf {
         stormConf.put("kafka.platform.veh.reg", properties.get("kafka.platform.veh.reg"));
         stormConf.put(SysDefine.KAFKA_TOPIC_ALARM, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM));
         stormConf.put(SysDefine.KAFKA_TOPIC_ALARM_STORE, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM_STORE));
-        stormConf.put("kafka.topic.customfault", properties.get("kafka.topic.customfault"));
         stormConf.put(SysDefine.KAFKA_TOPIC_ES_STATUS, properties.get(SysDefine.KAFKA_TOPIC_ES_STATUS));
         stormConf.put("kafka.topic.fencealarm", properties.get("kafka.topic.fencealarm"));
         stormConf.put(SysDefine.KAFKA_TOPIC_NOTICE, properties.get(SysDefine.KAFKA_TOPIC_NOTICE));
@@ -129,7 +128,7 @@ public class TopologiesByConf {
         stormConf.put("redis.timeInterval", properties.getProperty("redis.timeInterval"));
         stormConf.put("redis.timeOut", properties.getProperty("redis.timeOut"));
         stormConf.put("redis.offline.checktime", properties.get("redis.offline.checktime"));
-        stormConf.put("redis.offline.time", properties.get(StormConfigKey.REDIS_OFFLINE_SECOND));
+        stormConf.put(StormConfigKey.REDIS_OFFLINE_SECOND, properties.get(StormConfigKey.REDIS_OFFLINE_SECOND));
         //endregion
 
         //region storm
@@ -244,19 +243,6 @@ public class TopologiesByConf {
                 new Fields(DataKey.VEHICLE_ID));
 
         builder
-            // 故障处理
-            .setBolt(
-                SysDefine.FAULT_BOLT_ID,
-                new FaultBolt(),
-                boltNo * 3)
-            .setNumTasks(boltNo * 9)
-            // 故障实时数据
-            .fieldsGrouping(
-                SysDefine.ALARM_BOLT_ID,
-                SysDefine.FAULT_GROUP,
-                new Fields(DataKey.VEHICLE_ID));
-
-        builder
             // 电子围栏告警处理
             .setBolt(
                 SysDefine.FENCE_BOLT_ID,
@@ -271,7 +257,7 @@ public class TopologiesByConf {
 
         final FromFilterToCarNoticeStream fromFilterToCarNoticeStream = FromFilterToCarNoticeStream.getInstance();
         builder
-            // soc 与超时处理
+            // 通知处理、故障码处理
             .setBolt(
                 SysDefine.CUS_NOTICE_BOLT_ID,
                 new CarNoticelBolt(),
@@ -345,17 +331,12 @@ public class TopologiesByConf {
                 SysDefine.FENCE_BOLT_ID,
                 SysDefine.FENCE_ALARM,
                 new Fields(KafkaStream.BOLT_KEY))
-            // 故障处理
-            .fieldsGrouping(
-                SysDefine.FAULT_BOLT_ID,
-                SysDefine.FAULT_STREAM,
-                new Fields(KafkaStream.BOLT_KEY))
             // es 同步推送
             .fieldsGrouping(
                 SysDefine.SYNES_BOLT_ID,
                 SysDefine.SYNES_NOTICE,
                 new Fields(KafkaStream.BOLT_KEY))
-            // 车辆通知
+            // 车辆通知、故障处理
             .fieldsGrouping(
                 SysDefine.CUS_NOTICE_BOLT_ID,
                 SysDefine.CUS_NOTICE,

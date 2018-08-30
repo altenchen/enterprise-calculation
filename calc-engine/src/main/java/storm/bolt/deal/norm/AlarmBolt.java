@@ -339,9 +339,6 @@ public class AlarmBolt extends BaseRichBolt {
 
         KafkaStream.declareOutputFields(declarer, SysDefine.VEH_ALARM);
         KafkaStream.declareOutputFields(declarer, SysDefine.VEH_ALARM_REALINFO_STORE);
-
-        // 发往 FaultBolt
-        declarer.declareStream(SysDefine.FAULT_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
     }
 
     @Override

@@ -16,12 +16,6 @@ public final class SysDefine {
      */
     public static String KAFKA_BOOTSTRAP_SERVERS;
 
-    //APP操作，平台到STORM的TOPIC名称
-    public static String VEH_TEST_OPTION_TOPIC;
-
-    //APP操作，平台到STORM的消息组ID
-    public static String VEH_TEST_GROUPID;
-
     //错误报文TOPIC
     public static String ERROR_DATA_TOPIC;
 
@@ -33,41 +27,18 @@ public final class SysDefine {
 
     //错误报文组名
     public static String PLAT_REG_GROUPID;
-    //
-    public static final String HISTORY = "history";
-
-    //终端锁车组名
-    public static String DS_CTRLREQ_GROUPID;
-    //终端锁车topic
-    public static final String DS_CTRLREQ = "ds_ctrlreq";
 
 
-    //车辆实时所有数据
-    public static final String SYNC_REALINFO_STORE = "vehrealinfostore";
     //告警
     public static final String VEH_ALARM = "vehalarm";
 
     //围栏告警
     public static final String FENCE_ALARM = "fencealarm";
 
-    //故障发送kafkaStream id
-    public static final String FAULT_STREAM = "faultstreamId";
     //同步 es消息发送
     public static final String SYNES_NOTICE = "synesnotice";
     //
     public static final String VEH_ALARM_REALINFO_STORE = "vehalarmrealinfostore";
-
-    //实时数据 kafka stream id
-    public static final String REALINFO_SPOUT_ID = "realinfospoutid";
-
-    //
-    public static final String VEHTESTCMD_SPOUT_ID = "vehtestcmdspoutid";
-
-    //
-    public static final String VEHTESTCMD_BOLT_ID = "vehtestcmdboltid";
-
-    //
-    public static final String REDIS_SPOUT_ID = "redisspoutid";
 
     // 预处理 boltid
     public static final String CHECK_FILTER_BOLT_ID = "checkfilterboltid";
@@ -79,22 +50,7 @@ public final class SysDefine {
     public static final String ALARM_BOLT_ID = "alarmboltid";
 
     //
-    public static final String REDIS_DATACONST = "redisdataconst";
-
-    //
     public static final String KAFKASEND_BOLT_ID = "kafkasendboltid";
-
-    //
-    public static final String TEST_VEH_ACK = "testvehack";
-
-    //
-    public static final String TEST_VEH_CMD = "testvehcmd";
-
-    //
-    public static final String ERRORDATA_SPOUT_ID = "errordataspoutid";
-
-    //
-    public static final String TERMINAL_FLAG = "terminalflag";
 
     /*-------------------------------标点符号-------------------------------------*/
     /**
@@ -150,14 +106,6 @@ public final class SysDefine {
 
     /*-------------------------------指令-------------------------------------*/
     /**
-     * 指令类型 租赁点更新数据
-     */
-    public static final String RENTALSTATION = "RENTALSTATION";
-    /**
-     * 指令类型 充电站更新数据
-     */
-    public static final String CHARGESTATION = "CHARGESTATION";
-    /**
      * 指令类型 租赁数据
      */
     public static final String RENTCAR = "RENTCAR";
@@ -202,10 +150,6 @@ public final class SysDefine {
      */
     public static final String CAR_COUNT = "car_count";
     /**
-     * 今日活跃车辆数
-     */
-    public static final String CAR_ACTIVE_COUNT = "car_active";
-    /**
      * 监控车辆数
      */
     public static final String MONITOR_CAR_TOTAL = "monitor_car_count";
@@ -221,32 +165,14 @@ public final class SysDefine {
      * 总里程
      */
     public static final String MILEAGE_TOTAL = "mileage_total";
-    /**
-     * 在线比例
-     */
-    public static final String ONLINE_RATIO = "online_ratio";
-    /**
-     * 车辆总数
-     */
-    public static final String VEHICLE_TOTAL = "vehicle_total";
-    /**
-     * 指令类型
-     */
-    public static final String ISFILTER = "ISFILTER";
 
-    public static final String QUICK_BOLT_ID = "quickboltid";
-    public static final String SUPPLY_GROUP = "supplyGroup";
     public static final String FENCE_BOLT_ID = "fenceboltid";
     public static final String FENCE_GROUP = "fenceGroup";
-    public static final String FAULT_BOLT_ID = "faultboltid";
-    public static final String FAULT_GROUP = "faultGroup";
     /**
      * 接收告警传送过来的同步es streamId分组
      **/
     public static final String SYNES_BOLT_ID = "synesboltid";
     public static final String SYNES_GROUP = "synesGroup";
-    public static final String DIRECT = "direct";//直连
-    public static final String FORWARD = "forward";//转发
     public static final String CODE = "code";
     /**
      * 接收传送过来的同步es streamId分组
