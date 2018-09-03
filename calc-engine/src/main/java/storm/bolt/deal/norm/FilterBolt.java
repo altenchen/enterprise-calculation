@@ -1,5 +1,6 @@
 package storm.bolt.deal.norm;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.BooleanUtils;
@@ -19,6 +20,7 @@ import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.handler.cusmade.VehicleIdleHandler;
 import storm.kafka.bolt.KafkaBoltTopic;
 import storm.protocol.*;
 import storm.stream.FromFilterToCarNoticeStream;
@@ -84,6 +86,8 @@ public class FilterBolt extends BaseRichBolt {
 
     // region 对象常量
 
+    private final Map<String, Map<String, String>> vehicleCache = Maps.newHashMap();
+
     private final TimeOutOfRangeNotice timeOutOfRangeNotice = new TimeOutOfRangeNotice();
 
     private final OnlineProcessor onlineProcessor = new OnlineProcessor();
@@ -97,6 +101,11 @@ public class FilterBolt extends BaseRichBolt {
     private final AlarmProcessor alarmProcessor = new AlarmProcessor();
 
     private final StatusFlagsProcessor statusFlagsProcessor = new StatusFlagsProcessor();
+
+    /**
+     * 闲置车辆处理
+     */
+    private final VehicleIdleHandler vehicleIdleHandler = new VehicleIdleHandler();
 
     // endregion 对象常量
 
@@ -198,7 +207,13 @@ public class FilterBolt extends BaseRichBolt {
         // 计算时间(TIME)加入data
         timeProcessor.fillTime(cmd, data);
 
-        emit(vid, cmd, data);
+        final ImmutableMap<String, String> immutableData = ImmutableMap.copyOf(data);
+
+        emit(vid, cmd, immutableData);
+
+        if (CommandType.SUBMIT_REALTIME.equals(cmd)) {
+            vehicleIdleHandler.processRealtimeData(immutableData);
+        }
     }
 
     @Override
@@ -211,7 +226,10 @@ public class FilterBolt extends BaseRichBolt {
         KafkaStream.declareOutputFields(declarer, SysDefine.CUS_NOTICE);
     }
 
-    private void emit(@NotNull final String vid, @NotNull final String cmd, @NotNull final Map<String, String> data) {
+    private void emit(
+        @NotNull final String vid,
+        @NotNull final String cmd,
+        @NotNull final ImmutableMap<String, String> data) {
 
         if (CommandType.SUBMIT_LINKSTATUS.equals(cmd)
             || CommandType.SUBMIT_LOGIN.equals(cmd)

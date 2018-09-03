@@ -19,6 +19,9 @@ import org.apache.commons.lang.StringUtils;
 import storm.dao.DataToRedis;
 import storm.util.CTFOUtils;
 
+/**
+ * 加载CTFO缓存的数据
+ */
 public class RedisClusterLoaderUseCtfo {
 
     private static Cache<String, Map<String, String>> carLastRecord = CacheBuilder.newBuilder()
@@ -31,7 +34,7 @@ public class RedisClusterLoaderUseCtfo {
         .build();
     private static boolean redisclusterIsload = false;
     private static boolean carinfoIsload = false;
-    static LinkedBlockingQueue<String> carVids = new LinkedBlockingQueue<String>(20000000);
+    static LinkedBlockingQueue<String> carVids = new LinkedBlockingQueue<>(20000000);
 
     private synchronized static void initDatByCluster() {
         redisclusterIsload = loadLastrecordByRediscluster();

@@ -77,20 +77,20 @@ public class SysRealDataCache {
      */
     private static final int buffsize = 5000000;
     /**
-     *
+     * 活跃车辆队列
      */
     public static LinkedBlockingQueue<String> alives = new LinkedBlockingQueue<>(buffsize);
     /**
-     *
+     * 活跃车辆队列防重
      */
     static Set<String> aliveSet = new HashSet<>(buffsize/5);
 
     /**
-     * ???
+     * 所有车辆队列
      */
     public static LinkedBlockingQueue<String> lasts = new LinkedBlockingQueue<>(buffsize);
     /**
-     * ???
+     * 所有车辆队列防重
      */
     static Set<String> lastSet = new HashSet<>(buffsize/5);
 

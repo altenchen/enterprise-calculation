@@ -1,5 +1,7 @@
 package storm.handler.cusmade;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -78,12 +80,13 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 cluster=SysRealDataCache.getLivelyCache().asMap();
                 vids = SysRealDataCache.alives;
             }
-            if (null != cluster && cluster.size()>0
-                    && null !=vids && vids.size() >0) {
-                List<Map<String, Object>> list = new LinkedList<Map<String, Object>>();
-                List<String> markDel =  new LinkedList<String>();
-                List<String> markAlives =  new LinkedList<String>();
-                List<String> allCars =  new LinkedList<String>();
+            if (MapUtils.isNotEmpty(cluster)
+                    && CollectionUtils.isNotEmpty(vids)) {
+
+                List<Map<String, Object>> list = new LinkedList<>();
+                List<String> markDel = new LinkedList<>();
+                List<String> markAlives = new LinkedList<>();
+                final List<String> allCars = new LinkedList<>();
 
                 //循环访问队列中的vid，并清空队列
                 String vid = vids.poll();
@@ -94,7 +97,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                     }else if (ScanRange.AliveData == status) {
                         SysRealDataCache.removeAliveQueue(vid);
                     }
-                    Map<String,String> dat = cluster.get(vid);
+                    final Map<String,String> dat = cluster.get(vid);
                     //闲置车辆通知
                     Map<String, Object> notice = inidle(dat, now, timeout,markDel,markAlives);
                     if (null != notice) {
@@ -175,8 +178,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             if (null != cluster && cluster.size()>0
                     && null !=vids && vids.size() >0) {
 
-                List<String> allCars =  new LinkedList<String>();
-                List<String> markAlives =  new LinkedList<String>();
+                List<String> allCars = new LinkedList<>();
+                List<String> markAlives = new LinkedList<>();
                 //poll是队列数据结构实现类的方法，从队首获取元素，同时获取的这个元素将从原队列删除；
                 String vid = vids.poll();
                 //循环访问队列中的vid，并清空队列
@@ -221,42 +224,50 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
     /**
      * 判断是否为闲置或者停机车辆。（重要）
      *
-     * 车辆在系统中的最后一帧有效数据
-     * @param dat
-     * 系统当前时间
+     * 车辆在系统中的最后一帧数据, 可能是各种类型的.....比如登录帧
+     * @param data
+     * 定时任务本次触发开始的时间
      * @param now
-     * 超时时间，（通过判断系统当前时间与最后一帧有效数据的时间差是否大于超时时间）
+     * 超时闲置时长，（通过判断系统当前时间与最后一帧有效数据的时间差是否大于超时时间）
      * @param timeout
-     * 需要从活跃车辆列表中删除的活跃车辆
+     * 需要从活跃车辆列表中删除的闲置车辆
      * @param markDel
-     * 状态变为活跃的车辆
+     * 需要加入到活跃车辆列表中的活跃车辆
      * @param markAlive
      *
      * @return 闲置开始通知或者闲置结束通知，或者null
      *
      */
-    private Map<String, Object> inidle(Map<String, String> dat,long now,long timeout,List<String> markDel,List<String> markAlive){
-        if (null == dat || dat.size() ==0) {
+    private Map<String, Object> inidle(
+        final Map<String, String> data,
+        final long now,
+        final long timeout,
+        final List<String> markDel,
+        final List<String> markAlive){
+
+        if (MapUtils.isEmpty(data)) {
             return null;
         }
 
-        String vid = dat.get(DataKey.VEHICLE_ID);
-        String time = dat.get(DataKey.TIME);
-        String msgType = dat.get(DataKey.MESSAGE_TYPE);
+        final String vid = data.get(DataKey.VEHICLE_ID);
+        final String time = data.get(DataKey.TIME);
+        final String msgType = data.get(DataKey.MESSAGE_TYPE);
         if (StringUtils.isEmpty(vid)
                 || StringUtils.isEmpty(time)) {
             return null;
         }
+
         //速度和soc为预留字段，当前没有用到
         int numSpeed = -1;
         int numSoc = -1;
         int numMileage = -1;
+        // 如果是实时数据, 则缓存 车速 SOC 累计里程, 否则从缓存中读出这些值.
         try {
             if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 
-                String speed = dat.get(DataKey._2201_SPEED);
-                String soc = dat.get(DataKey._7615_STATE_OF_CHARGE);
-                String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
+                String speed = data.get(DataKey._2201_SPEED);
+                String soc = data.get(DataKey._7615_STATE_OF_CHARGE);
+                String mileage = data.get(DataKey._2202_TOTAL_MILEAGE);
                 //下面三个if类似，都是校验一下，增强健壮性然后将vid和最后一帧的数据存入
                 if (null !=speed && !"".equals(speed)) {
                     speed = org.apache.commons.lang.math.NumberUtils.isNumber(speed) ? speed : "0";
@@ -329,19 +340,20 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             }
         }
 
-        String lastUtc = dat.get(SysDefine.ONLINE_UTC);
-        String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
+        final String lastUtc = data.get(SysDefine.ONLINE_UTC);
+        final String noticeTime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
 
         //是否为登入报文
-        boolean isLogin = CommandType.SUBMIT_LOGIN.equals(dat.get(DataKey.MESSAGE_TYPE));
+        final boolean isLogin = CommandType.SUBMIT_LOGIN.equals(data.get(DataKey.MESSAGE_TYPE));
+
         //车辆 是否达到 闲置或者停机 超时的标准
         //判断标准就是当前时间与缓存中的最后一帧报文时间差值是否大于阈值，
         //需要注意的是，此时已经的下线车辆也是在全量数据或者活跃数据缓存中的。
-        boolean isout = isTimeout(time, lastUtc, now, timeout);
-        if (isout) {//是闲置车辆
+        final boolean isIdle = isTimeout(time, lastUtc, now, timeout);
+        if (isIdle) {//是闲置车辆
             Map<String, Object> notice = vidIdleNotice.get(vid);
             if (null == notice) {
-                notice =  new TreeMap<String, Object>();
+                notice = new TreeMap<>();
                 notice.put("msgType", NoticeType.IDLE_VEH);
                 notice.put("vid", vid);
                 notice.put("msgId", UUID.randomUUID().toString());
@@ -360,7 +372,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 }
                 notice.put("status", 2);
             }
-            notice.put("noticetime", noticetime);
+            notice.put("noticetime", noticeTime);
             vidIdleNotice.put(vid, notice);
             /**
              * 添加删除标记从 cache 移除
@@ -398,7 +410,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 if (null != notice) {
                     notice.put("status", 3);
                     notice.put("etime", time);
-                    notice.put("noticetime", noticetime);
+                    notice.put("noticetime", noticeTime);
                     notice.put("soc", lastSoc);
                     notice.put("mileage", lastMileage);
                     //吉利要求，新增
@@ -450,7 +462,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             if (null != timeMileage
                     && timeMileage.mileage>0
                     && !onOffMileNotice.containsKey(vid)) {
-                Map<String, Object> notice =  new TreeMap<String, Object>();
+                Map<String, Object> notice = new TreeMap<>();
                 notice.put("msgType", NoticeType.ON_OFF_MILE);
                 notice.put("vid", vid);
                 notice.put("stime", time);
@@ -505,7 +517,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             if (null != timeMileage
                     && timeMileage.mileage>0
                     && !onOffMileNotice.containsKey(vid)) {
-                Map<String, Object> notice =  new TreeMap<String, Object>();
+                Map<String, Object> notice = new TreeMap<>();
                 notice.put("msgType", NoticeType.ON_OFF_MILE);
                 notice.put("vid", vid);
                 notice.put("stime", time);
@@ -535,26 +547,28 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
     /**
      * 车辆 是否达到 闲置或者停机 超时的标准
      */
-    private boolean isTimeout(String time, String lastUtc, long now, long timeout){
+    private boolean isTimeout(final String time, final String lastUtc, final long now, final long idleTimeout){
 
-        long last = 0;
+        long utcValue = 0;
         if(NumberUtils.isDigits(lastUtc)) {
             try {
-                last = DateUtils.parseDate(lastUtc, new String[]{FormatConstant.DATE_FORMAT}).getTime();
+                utcValue = DateUtils.parseDate(lastUtc, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             } catch (ParseException e) {
                 logger.warn("闲置时间是否超时判断中报出异常", e);
             }
         }
-        long terTime = 0;
+
+        long timeValue = 0;
         if(NumberUtils.isDigits(time)) {
             try {
-                terTime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
+                timeValue = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             } catch (ParseException e) {
                 logger.warn("闲置时间是否超时判断中报出异常", e);
             }
         }
-        final long maxTime = Math.max(last, terTime);
-        if (maxTime > 0 && now - maxTime > timeout) {
+
+        final long maxTime = Math.max(utcValue, timeValue);
+        if (maxTime > 0 && now - maxTime > idleTimeout) {
             return true;
         }
         return false;

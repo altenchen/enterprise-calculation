@@ -136,10 +136,10 @@ public final class CarNoticelBolt extends BaseRichBolt {
                 Object precp = stormConf.get(StormConfigKey.REDIS_CLUSTER_DATA_SYN);
                 if (null != precp && !"".equals(precp.toString().trim())) {
                     String str = precp.toString();
-                    ispreCp = Integer.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0");
+                    ispreCp = Integer.valueOf(NumberUtils.isNumber(str) ? str : "0");
                 }
             }
-            //2代表着读取历史车辆数据，即全部车辆
+            //2代表着读取历史车辆数据，即全部车辆, 默认配置为1, 不会触发全量扫描.
             if (2 == ispreCp) {
                 carOnOffhandler.onOffCheck("TIMEOUT", 0, now, offlineTimeMillisecond);
                 List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
@@ -181,7 +181,8 @@ public final class CarNoticelBolt extends BaseRichBolt {
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-                        //车辆长期离线（闲置车辆）通知
+                        // 车辆长期离线（闲置车辆）通知
+                        // 这里容易出现的问题是, 判断线程和数据刷新线程没有做到线程安全, 在判断逻辑执行过程中, 状态是不断刷新的, 容易引起线程冲突或者上下文不一致等诡异的问题.
                         List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AliveData, System.currentTimeMillis(), idleTimeoutMillsecond);
                         if (null != msgs && msgs.size() > 0) {
                             for (Map<String, Object> map : msgs) {
