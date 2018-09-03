@@ -16,6 +16,7 @@ import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
+import storm.system.NoticeType;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 
@@ -341,7 +342,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             Map<String, Object> notice = vidIdleNotice.get(vid);
             if (null == notice) {
                 notice =  new TreeMap<String, Object>();
-                notice.put("msgType", "IDLE_VEH");
+                notice.put("msgType", NoticeType.IDLE_VEH);
                 notice.put("vid", vid);
                 notice.put("msgId", UUID.randomUUID().toString());
                 notice.put("stime", time);
@@ -450,7 +451,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                     && timeMileage.mileage>0
                     && !onOffMileNotice.containsKey(vid)) {
                 Map<String, Object> notice =  new TreeMap<String, Object>();
-                notice.put("msgType", "ON_OFF_MILE");
+                notice.put("msgType", NoticeType.ON_OFF_MILE);
                 notice.put("vid", vid);
                 notice.put("stime", time);
                 notice.put("smileage", timeMileage.mileage);
@@ -505,7 +506,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                     && timeMileage.mileage>0
                     && !onOffMileNotice.containsKey(vid)) {
                 Map<String, Object> notice =  new TreeMap<String, Object>();
-                notice.put("msgType", "ON_OFF_MILE");
+                notice.put("msgType", NoticeType.ON_OFF_MILE);
                 notice.put("vid", vid);
                 notice.put("stime", time);
                 notice.put("smileage", timeMileage.mileage);

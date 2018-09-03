@@ -765,7 +765,7 @@ public class CarRuleHandler implements InfoNotice {
             if (chargeCars.size() > 0) {
 
                 chargeMap.put("vid", vid);
-                chargeMap.put("msgType", "CHARGE_CAR_NOTICE");
+                chargeMap.put("msgType", NoticeType.CHARGE_CAR_NOTICE);
                 chargeMap.put("location", longitude * 1000000 + "," + latitude * 1000000);
                 chargeMap.put("fillChargeCars", chargeCars);
                 return chargeMap;
@@ -850,7 +850,7 @@ public class CarRuleHandler implements InfoNotice {
                             String lastTime = (String) lastMap.get(DataKey.TIME);//上一帧的时间即为跳变的开始时间
                             String vin = dat.get(DataKey.VEHICLE_NUMBER);
                             notice = new TreeMap<>();
-                            notice.put("msgType", "HOP_MILE");//这些字段是前端方面要求的。
+                            notice.put("msgType", NoticeType.HOP_MILE);//这些字段是前端方面要求的。
                             notice.put("vid", vid);
                             notice.put("vin", vin);
                             notice.put("stime", lastTime);
@@ -976,7 +976,7 @@ public class CarRuleHandler implements InfoNotice {
                     Map<String, Object> notice = vidIgniteShutNotice.get(vid);
                     if (null == notice) {
                         notice = new TreeMap<>();
-                        notice.put("msgType", "IGNITE_SHUT_MESSAGE");
+                        notice.put("msgType", NoticeType.IGNITE_SHUT_MESSAGE);
                         notice.put("vid", vid);
                         notice.put("vin", vin);
                         notice.put("msgId", UUID.randomUUID().toString());
@@ -1081,7 +1081,7 @@ public class CarRuleHandler implements InfoNotice {
                     Map<String, Object> notice = vidFlyNotice.get(vid);
                     if (null == notice) {
                         notice = new TreeMap<>();
-                        notice.put("msgType", "FLY_RECORD");
+                        notice.put("msgType", NoticeType.FLY_RECORD);
                         notice.put("vid", vid);
                         notice.put("msgId", UUID.randomUUID().toString());
                         notice.put("stime", time);
@@ -1167,7 +1167,7 @@ public class CarRuleHandler implements InfoNotice {
                     Map<String, Object> notice = vidSpeedGtZeroNotice.get(vid);
                     if (null == notice) {
                         notice = new TreeMap<>();
-                        notice.put("msgType", "ABNORMAL_USE_VEH");
+                        notice.put("msgType", NoticeType.ABNORMAL_USE_VEH);
                         notice.put("vid", vid);
                         notice.put("msgId", UUID.randomUUID().toString());
                         notice.put("stime", time);
@@ -1657,7 +1657,7 @@ public class CarRuleHandler implements InfoNotice {
                 if (null == notice) {
                     String noticetime = DateFormatUtils.format(new Date(), FormatConstant.DATE_FORMAT);
                     notice = new TreeMap<>();
-                    notice.put("msgType", "ON_OFF");
+                    notice.put("msgType", NoticeType.ON_OFF);
                     notice.put("vid", vid);
                     notice.put("vin", vin);
                     notice.put("msgId", UUID.randomUUID().toString());
