@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.Map;
 
 /**
@@ -14,7 +15,9 @@ import java.util.Map;
  * @description:
  * 车辆闲置处理, 用于判断车辆是否闲置.
  */
-public final class VehicleIdleHandler {
+public final class VehicleIdleHandler implements Serializable {
+
+    private static final long serialVersionUID = -7534407274883592332L;
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(VehicleIdleHandler.class);

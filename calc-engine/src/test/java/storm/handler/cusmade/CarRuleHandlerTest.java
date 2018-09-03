@@ -1,5 +1,6 @@
 package storm.handler.cusmade;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.junit.jupiter.api.Assertions;
@@ -78,19 +79,19 @@ class CarRuleHandlerTest {
         //连续三帧soc过低，第三帧产生通知
         Date date1 = new Date(date .getTime() + 1000);
         data.put(DataKey.TIME, DateFormatUtils.format(date1, FormatConstant.DATE_FORMAT));
-        List<Map<String, Object>> result_1 = CarRuleHandler.generateNotices(data);
+        List<Map<String, Object>> result_1 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
         Assertions.assertTrue(result_1.isEmpty(),"第1帧不该出现故障通知");
 
 
         Date date2 = new Date(date .getTime() + 2000);
         data.put(DataKey.TIME, DateFormatUtils.format(date2, FormatConstant.DATE_FORMAT));
-        List<Map<String, Object>> result_2 = CarRuleHandler.generateNotices(data);
+        List<Map<String, Object>> result_2 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
         Assertions.assertTrue(result_2.isEmpty(),"第2帧不该出现故障通知");
 
 
         Date date3 = new Date(date .getTime() + 3000);
         data.put(DataKey.TIME, DateFormatUtils.format(date3, FormatConstant.DATE_FORMAT));
-        List<Map<String, Object>> result_3 = CarRuleHandler.generateNotices(data);
+        List<Map<String, Object>> result_3 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
         Assertions.assertTrue(0 != result_3.size(),"第3帧出现故障通知");
 
         data.put(DataKey._7615_STATE_OF_CHARGE, "90");
@@ -98,18 +99,18 @@ class CarRuleHandlerTest {
         //连续三帧soc正常，第三帧发送结束soc过低通知
         Date date4 = new Date(date .getTime() + 1000);
         data.put(DataKey.TIME, DateFormatUtils.format(date4, FormatConstant.DATE_FORMAT));
-        List<Map<String, Object>> result_4 = CarRuleHandler.generateNotices(data);
+        List<Map<String, Object>> result_4 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
         Assertions.assertTrue(0 != result_4.size(),"第4帧应该该恢复通知");
 //
 //        Date date5 = new Date(date .getTime() + 2000);
 //        data.put(DataKey.TIME, DateFormatUtils.format(date5, FormatConstant.DATE_FORMAT));
-//        List<Map<String, Object>> result_5 = CarRuleHandler.generateNotices(data);
+//        List<Map<String, Object>> result_5 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
 //        Assertions.assertTrue(result_5.isEmpty(),"第5帧不该恢复通知");
 //
 //
 //        Date date6 = new Date(date .getTime() + 3000);
 //        data.put(DataKey.TIME, DateFormatUtils.format(date6, FormatConstant.DATE_FORMAT));
-//        List<Map<String, Object>> result_6 = CarRuleHandler.generateNotices(data);
+//        List<Map<String, Object>> result_6 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
 //        System.out.println(result_6.size());
 //        Assertions.assertTrue(0 != result_6.size(),"第6帧恢复通知");
 
@@ -146,7 +147,7 @@ class CarRuleHandlerTest {
         SysRealDataCache.addAliveQueue(data.get(DataKey.VEHICLE_ID));
         SysRealDataCache.addLastQueue(data.get(DataKey.VEHICLE_ID));
         SysRealDataCache.livelyCarCache.put(DataKey.VEHICLE_ID,data);
-        SysRealDataCache.updateCache(data,time);
+        SysRealDataCache.updateCache(ImmutableMap.copyOf(data),time);
 
         List<Map<String, Object>> notice_start = CarOnOffHandler.fulldoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
         Assertions.assertTrue(0 != notice_start.size(),"有问题，没有产生闲置开始通知");
@@ -166,7 +167,7 @@ class CarRuleHandlerTest {
         SysRealDataCache.addAliveQueue(data.get(DataKey.VEHICLE_ID));
         SysRealDataCache.addLastQueue(data.get(DataKey.VEHICLE_ID));
         SysRealDataCache.livelyCarCache.put(DataKey.VEHICLE_ID,data);
-        SysRealDataCache.updateCache(data,time);
+        SysRealDataCache.updateCache(ImmutableMap.copyOf(data),time);
 
         List<Map<String, Object>> notice_end = CarOnOffHandler.fulldoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
         Assertions.assertTrue(0 != notice_end.size(),"有问题，没有产生闲置结束通知");

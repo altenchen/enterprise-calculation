@@ -1,5 +1,8 @@
 package storm.handler;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -214,12 +217,14 @@ public class FaultCodeHandler {
     }
 
     @NotNull
-    public List<Map<String, Object>> generateNotice(@NotNull Map<String, String> data) {
+    public List<Map<String, Object>> generateNotice(@NotNull ImmutableMap<String, String> immutableMap) {
         final List<Map<String, Object>> notices = new LinkedList<>();
 
-        if (MapUtils.isEmpty(data)) {
+        if (MapUtils.isEmpty(immutableMap)) {
             return notices;
         }
+
+        final Map<String, String> data = Maps.newHashMap(immutableMap);
 
         final String vid = data.get(DataKey.VEHICLE_ID);
         final String time = data.get(DataKey.TIME);

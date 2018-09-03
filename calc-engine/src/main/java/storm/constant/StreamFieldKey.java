@@ -1,5 +1,6 @@
 package storm.constant;
 
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.jetbrains.annotations.Contract;
 
 import org.slf4j.Logger;
@@ -14,7 +15,7 @@ public final class StreamFieldKey {
 
     public static final String VEHICLE_ID = "VID";
 
-    public static final String MSG = "MSG";
+    public static final String KAFKA_MESSAGE = FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE;
 
     public static final String DATA = "DATA";
 

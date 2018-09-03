@@ -12,21 +12,20 @@ import org.apache.storm.kafka.bolt.mapper.TupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.FieldNameTopicSelector;
 import org.apache.storm.kafka.bolt.selector.KafkaTopicSelector;
 import org.apache.storm.kafka.spout.KafkaSpout;
-import org.apache.storm.kafka.spout.KafkaSpoutConfig;
-import org.apache.storm.kafka.spout.RecordTranslator;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.bolt.deal.cusmade.CarNoticelBolt;
-import storm.bolt.deal.norm.*;
+import storm.bolt.deal.norm.AlarmBolt;
+import storm.bolt.deal.norm.EleFenceBolt;
+import storm.bolt.deal.norm.FilterBolt;
+import storm.bolt.deal.norm.SynEsculBolt;
 import storm.constant.StreamFieldKey;
-import storm.kafka.spout.GeneralRecordTranslator;
-import storm.kafka.spout.RegisterRecordTranslator;
-import storm.stream.FromFilterToCarNoticeStream;
-import storm.stream.FromGeneralToFilterStream;
-import storm.stream.FromRegistToElasticsearchStream;
+import storm.kafka.bolt.KafkaSendBolt;
+import storm.kafka.spout.GeneralKafkaSpout;
+import storm.kafka.spout.RegisterKafkaSpout;
 import storm.stream.KafkaStream;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
@@ -178,34 +177,26 @@ public class TopologiesByConf {
     private static void buildKafkaSpout(@NotNull TopologyBuilder builder, int realSpoutNo) {
 
         // kafka 实时报文消息
-        final FromGeneralToFilterStream fromGeneralToFilterStream = FromGeneralToFilterStream.getInstance();
-        final RecordTranslator generalTopicTranslator = new GeneralRecordTranslator();
-        final KafkaSpoutConfig<String, String> generalTopicConfig = KafkaSpoutConfig
-            .builder(SysDefine.KAFKA_BOOTSTRAP_SERVERS, SysDefine.VEH_REALINFO_DATA_TOPIC)
-            .setProp(ConsumerConfig.GROUP_ID_CONFIG, SysDefine.VEH_REALINFO_GROUPID)
-            .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_LATEST)
-            .setProcessingGuarantee(KafkaSpoutConfig.ProcessingGuarantee.AT_MOST_ONCE)
-            .setRecordTranslator(generalTopicTranslator)
-            .build();
+        final KafkaSpout<String, String> generalKafkaSpout = new GeneralKafkaSpout(
+            SysDefine.KAFKA_BOOTSTRAP_SERVERS,
+            SysDefine.VEH_REALINFO_DATA_TOPIC,
+            SysDefine.VEH_REALINFO_GROUPID
+        );
         builder.setSpout(
-            fromGeneralToFilterStream.getComponentId(),
-            new KafkaSpout<>(generalTopicConfig),
+            GeneralKafkaSpout.getComponentId(),
+            generalKafkaSpout,
             realSpoutNo
         );
 
         // kafka 平台注册报文消息
-        final FromRegistToElasticsearchStream fromRegistToElasticsearchStream = FromRegistToElasticsearchStream.getInstance();
-        final RecordTranslator registerTopicTranslator = new RegisterRecordTranslator();
-        final KafkaSpoutConfig<String, String> registerTopicConfig = KafkaSpoutConfig
-            .builder(SysDefine.KAFKA_BOOTSTRAP_SERVERS, SysDefine.PLAT_REG_TOPIC)
-            .setProp(ConsumerConfig.GROUP_ID_CONFIG, SysDefine.PLAT_REG_GROUPID)
-            .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_LATEST)
-            .setProcessingGuarantee(KafkaSpoutConfig.ProcessingGuarantee.AT_LEAST_ONCE)
-            .setRecordTranslator(registerTopicTranslator)
-            .build();
+        final KafkaSpout<String, String> registerKafkaSpout = new RegisterKafkaSpout(
+            SysDefine.KAFKA_BOOTSTRAP_SERVERS,
+            SysDefine.PLAT_REG_TOPIC,
+            SysDefine.PLAT_REG_GROUPID
+        );
         builder.setSpout(
-            fromRegistToElasticsearchStream.getComponentId(),
-            new KafkaSpout<>(registerTopicConfig),
+            RegisterKafkaSpout.getComponentId(),
+            registerKafkaSpout,
             realSpoutNo
         );
     }
@@ -217,73 +208,71 @@ public class TopologiesByConf {
     @SuppressWarnings("AlibabaMethodTooLong")
     private static void builderBlots(@NotNull final TopologyBuilder builder, final int boltNo) {
 
-        final FromGeneralToFilterStream fromGeneralToFilterStream = FromGeneralToFilterStream.getInstance();
         builder
             .setBolt(
-                SysDefine.CHECK_FILTER_BOLT_ID,
+                FilterBolt.getComponentId(),
                 new FilterBolt(),
                 boltNo)
             .setNumTasks(boltNo * 3)
             // 接收车辆实时数据
             .fieldsGrouping(
-                fromGeneralToFilterStream.getComponentId(),
+                GeneralKafkaSpout.getComponentId(),
+                GeneralKafkaSpout.getGeneralStreamId(),
                 new Fields(StreamFieldKey.VEHICLE_ID));
 
         builder
             // 预警处理
             .setBolt(
-                SysDefine.ALARM_BOLT_ID,
+                AlarmBolt.getComponentId(),
                 new AlarmBolt(),
                 boltNo * 3)
             .setNumTasks(boltNo * 9)
             // 预警的车辆实时数据
             .fieldsGrouping(
-                SysDefine.CHECK_FILTER_BOLT_ID,
+                FilterBolt.getComponentId(),
                 SysDefine.SPLIT_GROUP,
                 new Fields(DataKey.VEHICLE_ID));
 
         builder
             // 电子围栏告警处理
             .setBolt(
-                SysDefine.FENCE_BOLT_ID,
+                EleFenceBolt.getComponentId(),
                 new EleFenceBolt(),
                 boltNo * 3)
             .setNumTasks(boltNo * 9)
             // 电子围栏告警实时数据
             .fieldsGrouping(
-                SysDefine.CHECK_FILTER_BOLT_ID,
+                FilterBolt.getComponentId(),
                 SysDefine.FENCE_GROUP,
                 new Fields(DataKey.VEHICLE_ID));
 
-        final FromFilterToCarNoticeStream fromFilterToCarNoticeStream = FromFilterToCarNoticeStream.getInstance();
         builder
             // 通知处理、故障码处理
             .setBolt(
-                SysDefine.CUS_NOTICE_BOLT_ID,
+                CarNoticelBolt.getComponentId(),
                 new CarNoticelBolt(),
                 boltNo * 3)
             .setNumTasks(boltNo * 9)
             // soc 与超时处理实时数据
             .fieldsGrouping(
-                fromFilterToCarNoticeStream.getComponentId(),
-                fromFilterToCarNoticeStream.getStreamId(),
+                FilterBolt.getComponentId(),
+                FilterBolt.getDataStreamId(),
                 new Fields(DataKey.VEHICLE_ID));
 
-        final FromRegistToElasticsearchStream fromRegistToElasticsearchStream = FromRegistToElasticsearchStream.getInstance();
         builder
             // es数据同步处理
             .setBolt(
-                SysDefine.SYNES_BOLT_ID,
+                SynEsculBolt.getComponentId(),
                 new SynEsculBolt(),
                 boltNo * 3)
             .setNumTasks(boltNo * 9)
             .fieldsGrouping(
-                SysDefine.CHECK_FILTER_BOLT_ID,
+                FilterBolt.getComponentId(),
                 SysDefine.SYNES_GROUP,
                 new Fields(DataKey.VEHICLE_ID))
             .noneGrouping(
-                fromRegistToElasticsearchStream.getComponentId(),
-                fromRegistToElasticsearchStream.getStreamId());
+                RegisterKafkaSpout.getComponentId(),
+                RegisterKafkaSpout.getRegisterStreamId());
 
         buildKafkaBolt(builder, boltNo);
     }
@@ -292,59 +281,39 @@ public class TopologiesByConf {
         @NotNull final TopologyBuilder builder,
         final int boltNo) {
 
-        final Properties producerProperties = new Properties();
-        producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, SysDefine.KAFKA_BOOTSTRAP_SERVERS);
-        producerProperties.put(ProducerConfig.ACKS_CONFIG, "1");
-        producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getCanonicalName());
-        producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getCanonicalName());
-
-        final KafkaTopicSelector selector = new FieldNameTopicSelector(KafkaStream.TOPIC, null);
-
-        final TupleToKafkaMapper<String, String> mapper = new FieldNameBasedTupleToKafkaMapper<>(
-            KafkaStream.BOLT_KEY,
-            KafkaStream.BOLT_MESSAGE);
-
-        final KafkaBolt<String, String> kafkaBolt = new KafkaBolt<String, String>()
-            .withProducerProperties(producerProperties)
-            .withTopicSelector(selector)
-            .withTupleToKafkaMapper(mapper);
+        final KafkaBolt<String, String> kafkaBolt = new KafkaSendBolt(SysDefine.KAFKA_BOOTSTRAP_SERVERS);
 
         builder
-            // 发送kafka消息，必要时可以动态增加线程数以增加发送线程数据
+            // 发送 kafka 消息
             .setBolt(
-                SysDefine.KAFKASEND_BOLT_ID,
+                KafkaSendBolt.getComponentId(),
                 kafkaBolt,
                 boltNo * 2)
             .setNumTasks(boltNo * 6)
-            // 车辆告警数据
+            // 车辆平台报警状态、实时需要存储的数据
             .fieldsGrouping(
-                SysDefine.ALARM_BOLT_ID,
-                SysDefine.VEH_ALARM,
-                new Fields(KafkaStream.BOLT_KEY))
-            // 车辆报警状态、实时需要存储的数据
-            .fieldsGrouping(
-                SysDefine.ALARM_BOLT_ID,
-                SysDefine.VEH_ALARM_REALINFO_STORE,
+                AlarmBolt.getComponentId(),
+                AlarmBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY))
             // 电子围栏
             .fieldsGrouping(
-                SysDefine.FENCE_BOLT_ID,
-                SysDefine.FENCE_ALARM,
+                EleFenceBolt.getComponentId(),
+                EleFenceBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY))
             // es 同步推送
             .fieldsGrouping(
-                SysDefine.SYNES_BOLT_ID,
-                SysDefine.SYNES_NOTICE,
+                SynEsculBolt.getComponentId(),
+                SynEsculBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY))
             // 车辆通知、故障处理
             .fieldsGrouping(
-                SysDefine.CUS_NOTICE_BOLT_ID,
-                SysDefine.CUS_NOTICE,
+                CarNoticelBolt.getComponentId(),
+                CarNoticelBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY))
-            // 车辆通知(来自FilterBolt)
+            // 车辆通知
             .fieldsGrouping(
-                SysDefine.CHECK_FILTER_BOLT_ID,
-                SysDefine.CUS_NOTICE,
+                FilterBolt.getComponentId(),
+                FilterBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY));
     }
 

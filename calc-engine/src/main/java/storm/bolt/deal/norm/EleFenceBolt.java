@@ -1,13 +1,13 @@
 package storm.bolt.deal.norm;
 
+import com.google.common.collect.Maps;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import storm.dto.fence.Coordinate;
 import storm.dto.fence.EleFence;
@@ -34,8 +34,43 @@ import java.util.concurrent.ScheduledExecutorService;
 public class EleFenceBolt extends BaseRichBolt {
 
     private static final long serialVersionUID = 1700001L;
-    private static final JsonUtils gson = JsonUtils.getInstance();
+
+    // region Component
+
+    @NotNull
+    private static final String COMPONENT_ID = EleFenceBolt.class.getSimpleName();
+
+    @NotNull
+    @Contract(pure = true)
+    public static String getComponentId() {
+        return COMPONENT_ID;
+    }
+
+    // endregion Component
+
+    // region KafkaStream
+
+    @NotNull
+    private static final KafkaStream KAFKA_STREAM = KafkaStream.getInstance();
+
+    @NotNull
+    private static final String KAFKA_STREAM_ID = KAFKA_STREAM.getStreamId(COMPONENT_ID);
+
+    @NotNull
+    @Contract(pure = true)
+    public static String getKafkaStreamId() {
+        return KAFKA_STREAM_ID;
+    }
+
+    // endregion KafkaStream
+
+    private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
+
     private OutputCollector collector;
+
+    private KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
+    private KafkaStream.Sender kafkaStreamFenceAlarmSender;
+
     private Map<String, EleFence>fenceCache;//key:fenceId,value:EleFence
     private Map<String, List<EleFence>>vidFenceCache;//key:vid,value:
     private List<EleFence> defaultfences;//默认围栏，对所有车子都有效
@@ -48,13 +83,19 @@ public class EleFenceBolt extends BaseRichBolt {
     Map<String, Boolean> vidInfence;
     Map<String, Boolean> vidOutfence;
     public static ScheduledExecutorService service;
+
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+
         this.collector = collector;
+        
+        fenceAlarmTopic = stormConf.get("kafka.topic.fencealarm").toString();
+
+        prepareStreamSender(collector);
+
         initFence();
         singleInvoke=new InvokeSglMtd();
         ctxInvoke=new InvokeCtxMtd();
-        fenceAlarmTopic = stormConf.get("kafka.topic.fencealarm").toString();
         vidInfence = new HashMap<String, Boolean>();
         vidOutfence = new HashMap<String, Boolean>();
         try {
@@ -78,6 +119,15 @@ public class EleFenceBolt extends BaseRichBolt {
         lastExeTime=System.currentTimeMillis();
         flushtime=1000*Long.parseLong(stormConf.get(SysDefine.DB_CACHE_FLUSH_TIME_SECOND).toString());
     }
+
+    private void prepareStreamSender(
+        @NotNull final OutputCollector collector) {
+
+        kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
+
+        kafkaStreamFenceAlarmSender = kafkaStreamSenderBuilder.build(fenceAlarmTopic);
+    }
+
     @Override
     public void execute(Tuple tuple) {
         try {
@@ -91,7 +141,7 @@ public class EleFenceBolt extends BaseRichBolt {
         }
         if(tuple.getSourceStreamId().equals(SysDefine.FENCE_GROUP)){
             String vid = tuple.getString(0);
-            Map<String, String> data = (Map<String, String>) tuple.getValue(1);
+            Map<String, String> data = Maps.newHashMap((Map < String, String >) tuple.getValue(1));
             if (null == data.get(DataKey.VEHICLE_ID)) {
                 data.put(DataKey.VEHICLE_ID, vid);
             }
@@ -102,9 +152,9 @@ public class EleFenceBolt extends BaseRichBolt {
                 for (Map<String, Object> map : resuts) {
                     if(null != map && map.size()>0){
 
-                        String jsonString= gson.toJson(map);
+                        String jsonString= JSON_UTILS.toJson(map);
                         //kafka存储
-                        sendAlarmKafka(SysDefine.FENCE_ALARM,fenceAlarmTopic,vid, jsonString);
+                        kafkaStreamFenceAlarmSender.emit(vid, jsonString);
                     }
                 }
             }
@@ -115,13 +165,9 @@ public class EleFenceBolt extends BaseRichBolt {
     @Override
     public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
 
-        KafkaStream.declareOutputFields(declarer, SysDefine.FENCE_ALARM);
+        KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
     }
-    
-    void sendAlarmKafka(String define,String topic,String vid, String message) {
-        collector.emit(define, new Values(topic, vid, message));
-    }
-    
+
     private void initFence(){
         defaultfences = new LinkedList<EleFence>();
         //init defaultfences

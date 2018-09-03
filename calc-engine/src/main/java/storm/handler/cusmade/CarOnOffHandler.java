@@ -1,5 +1,7 @@
 package storm.handler.cusmade;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -51,8 +53,8 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
     }
 
     @Override
-    public Map<String, Object> generateNotices(@NotNull Map<String, String> dat, long now, long timeout) {
-        Map<String, Object> notice = onoffMile(dat, now, timeout);
+    public Map<String, Object> generateNotices(@NotNull final ImmutableMap<String, String> data, long now, long timeout) {
+        Map<String, Object> notice = onoffMile(data, now, timeout);
         return notice;
     }
 
@@ -478,28 +480,31 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
     }
     /**
      *
-     * @param dat
+     * @param immutableMap
      * @param now
      * @param timeout
      * @return
      */
-    private Map<String, Object> onoffMile(Map<String, String> dat,long now,long timeout){
-        if (null == dat || dat.size() ==0) {
+    private Map<String, Object> onoffMile(@NotNull final ImmutableMap<String, String> immutableMap,long now,long timeout){
+        if (null == immutableMap || immutableMap.size() ==0) {
             return null;
         }
-        String msgType = dat.get(DataKey.MESSAGE_TYPE);
-        String vid = dat.get(DataKey.VEHICLE_ID);
-        String time = dat.get(DataKey.TIME);
+
+        final Map<String, String> data = Maps.newHashMap(immutableMap);
+
+        String msgType = data.get(DataKey.MESSAGE_TYPE);
+        String vid = data.get(DataKey.VEHICLE_ID);
+        String time = data.get(DataKey.TIME);
         if (StringUtils.isEmpty(msgType)
                 || StringUtils.isEmpty(vid)
                 || StringUtils.isEmpty(time)) {
             return null;
         }
-        String lastUtc = dat.get(SysDefine.ONLINE_UTC);
+        String lastUtc = data.get(SysDefine.ONLINE_UTC);
         String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
         double lastmileage = -1;
-        if (dat.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
-            String str = dat.get(DataKey._2202_TOTAL_MILEAGE);
+        if (data.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
+            String str = data.get(DataKey._2202_TOTAL_MILEAGE);
             String mileage = org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0";
             if (! "0".equals(mileage)) {
 
@@ -509,7 +514,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 }
             }
         }
-        boolean isoff = isOffline(dat);
+        boolean isoff = isOffline(data);
         boolean isout = isTimeout(time, lastUtc, now, timeout);
         //根据报文判断离线了，或者，很长时间没发报文了，判断为离线
         if (isoff || isout) {

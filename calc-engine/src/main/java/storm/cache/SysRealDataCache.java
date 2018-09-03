@@ -1,18 +1,17 @@
 package storm.cache;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -195,30 +194,30 @@ public class SysRealDataCache {
 
     /**
      * 更新缓存
-     * @param dat 数据
+     * @param data 数据
      * @param now CarNoticelBolt收到数据的时间
      */
-    public static void updateCache(Map<String, String> dat, long now){
+    public static void updateCache(ImmutableMap<String, String> data, long now){
         // 更新充电车信息
-        addChargeCar(dat);
+        addChargeCar(data);
 
         // 缓存收到最后一帧数据, 不管时间如何
-        addCarCache(dat);
+        addCarCache(data);
 
         // 缓存收到最后一帧数据, 对报文上传时间和处理时间有时间范围要求.
-        addLivelyCar(dat, now, timeouttime);
+        addLivelyCar(data, now, timeouttime);
     }
     //补电车信息缓存
-    private static void addChargeCar(Map<String, String> dat){
-        if (null == dat || dat.size() ==0) {
+    private static void addChargeCar(final ImmutableMap<String, String> data){
+        if (null == data || data.size() ==0) {
             return;
         }
-        if ( !dat.containsKey(DataKey.VEHICLE_ID)
-                || !dat.containsKey(DataKey.VEHICLE_NUMBER)) {
+        if ( !data.containsKey(DataKey.VEHICLE_ID)
+                || !data.containsKey(DataKey.VEHICLE_NUMBER)) {
             return;
         }
-        String vid = dat.get(DataKey.VEHICLE_ID);
-        String vin = dat.get(DataKey.VEHICLE_NUMBER);
+        String vid = data.get(DataKey.VEHICLE_ID);
+        String vin = data.get(DataKey.VEHICLE_NUMBER);
         String[] strings = carInfoByVin(vin);
         if(null ==strings || strings.length != 15) {
             return ;
@@ -229,9 +228,9 @@ public class SysRealDataCache {
             return;
         }
         if (chargeTypes.contains(cartypeId.trim())) {
-            String time = dat.get(DataKey.TIME);
-            String latit = dat.get(DataKey._2503_LATITUDE);
-            String longi = dat.get(DataKey._2502_LONGITUDE);
+            String time = data.get(DataKey.TIME);
+            String latit = data.get(DataKey._2503_LATITUDE);
+            String longi = data.get(DataKey._2502_LONGITUDE);
 
             if (!StringUtils.isEmpty(time)
                     && !StringUtils.isEmpty(latit)
@@ -247,17 +246,17 @@ public class SysRealDataCache {
     }
 
     //车辆数据（最原始的数据）缓存
-    private static void addCarCache(Map<String, String> dat){
-        if (MapUtils.isEmpty(dat)) {
+    private static void addCarCache(ImmutableMap<String, String> data){
+        if (MapUtils.isEmpty(data)) {
             return;
         }
-        if (!dat.containsKey(DataKey.VEHICLE_ID)) {
+        if (!data.containsKey(DataKey.VEHICLE_ID)) {
             return;
         }
         try {
             Map<String, String> newmap =  new TreeMap<>();
             //不缓存无用的数据项，减小缓存大小
-            for (Map.Entry<String, String> entry : dat.entrySet()) {
+            for (Map.Entry<String, String> entry : data.entrySet()) {
                 final String mapkey = entry.getKey();
                 final String value = entry.getValue();
 
@@ -295,18 +294,19 @@ public class SysRealDataCache {
 
     /**
      * 最近 onlinetime 毫秒内的车辆报文加入到 statusAliveCars 中
-     * @param dat
+     * @param immutableMap
      * @param now
      * @return
      */
-    private static boolean addLivelyCar(Map<String, String> dat, long now, long timeout){
-        if(null == dat) {
+    private static boolean addLivelyCar(final ImmutableMap<String, String> immutableMap, long now, long timeout){
+        if(null == immutableMap) {
             return false;
         }
+        final HashMap<String, String> data = Maps.newHashMap(immutableMap);
         try {
-            String msgType = dat.get(DataKey.MESSAGE_TYPE);
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(DataKey.TIME);
+            String msgType = data.get(DataKey.MESSAGE_TYPE);
+            String vid = data.get(DataKey.VEHICLE_ID);
+            String time = data.get(DataKey.TIME);
             if(StringUtils.isEmpty(msgType)
                     || StringUtils.isEmpty(vid)
                     || StringUtils.isEmpty(time)) {
@@ -314,22 +314,22 @@ public class SysRealDataCache {
             }
             //吉利厂商，当为实时报文且为自动唤醒报文时，忽略
             if(CommandType.SUBMIT_REALTIME.equals(msgType)){
-                if(DataUtils.judgeAutoWake(dat)){
+                if(DataUtils.judgeAutoWake(data)){
                     return false;
                 }
             }
 
-            String utc = dat.get(SysDefine.ONLINE_UTC);
-            long utctime = Long.valueOf(org.apache.commons.lang.math.NumberUtils.isNumber(utc) ? utc : "0");
+            String utc = data.get(SysDefine.ONLINE_UTC);
+            long utctime = NumberUtils.toLong(utc, 0);
             long tertime = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             long lastTime = Math.max(utctime, tertime);
-            if (! dat.containsKey(SysDefine.ONLINE_UTC)) {
-                dat.put(SysDefine.ONLINE_UTC, ""+lastTime);
+            if (! data.containsKey(SysDefine.ONLINE_UTC)) {
+                data.put(SysDefine.ONLINE_UTC, ""+lastTime);
             }
             if(lastTime>0){
                 if (now-lastTime <= timeout ){//最后一条报文时间小于当前系统时间 + 30秒的误差
                     addAliveQueue(vid);
-                    livelyCarCache.put(vid, dat);
+                    livelyCarCache.put(vid, data);
                     return true;
                 }
             }
@@ -433,9 +433,9 @@ public class SysRealDataCache {
     private static void initChargeCarCache(long now ){
         Map<String,Map<String,String>> cluster=getDataCache().asMap();
         for (Map.Entry<String,Map<String,String>> entry : cluster.entrySet()) {
-            Map<String,String> dat = entry.getValue();
-            addChargeCar(dat);
-            addLivelyCar(dat, now, timeouttime);
+            ImmutableMap<String,String> data = ImmutableMap.copyOf(entry.getValue());
+            addChargeCar(data);
+            addLivelyCar(data, now, timeouttime);
         }
     }
     public static void init(){}

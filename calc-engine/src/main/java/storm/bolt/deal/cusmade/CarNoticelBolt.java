@@ -9,10 +9,11 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.bolt.deal.norm.FilterBolt;
 import storm.cache.SysRealDataCache;
 import storm.cache.VehicleCache;
 import storm.handler.FaultCodeHandler;
@@ -21,7 +22,7 @@ import storm.handler.cusmade.CarRuleHandler;
 import storm.handler.cusmade.OnOffInfoNotice;
 import storm.handler.cusmade.ScanRange;
 import storm.protocol.CommandType;
-import storm.stream.FromFilterToCarNoticeStream;
+import storm.stream.IStreamReceiver;
 import storm.stream.KafkaStream;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
@@ -41,13 +42,49 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
     private static final long serialVersionUID = 1700001L;
 
-    private static final Logger logger = LoggerFactory.getLogger(CarNoticelBolt.class);
-    private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
+    private static final Logger LOG = LoggerFactory.getLogger(CarNoticelBolt.class);
+
+
+    // region Component
+
+    @NotNull
+    private static final String COMPONENT_ID = CarNoticelBolt.class.getSimpleName();
+
+    @NotNull
+    @Contract(pure = true)
+    public static String getComponentId() {
+        return COMPONENT_ID;
+    }
+
+    // endregion Component
+
+    // region KafkaStream
+
+    @NotNull
+    private static final KafkaStream KAFKA_STREAM = KafkaStream.getInstance();
+
+    @NotNull
+    private static final String KAFKA_STREAM_ID = KAFKA_STREAM.getStreamId(COMPONENT_ID);
+
+    @NotNull
+    @Contract(pure = true)
+    public static String getKafkaStreamId() {
+        return KAFKA_STREAM_ID;
+    }
+
+    // endregion KafkaStream
+
+    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
-    private static final FromFilterToCarNoticeStream CUS_NOTICE_GROUP_STREAM = FromFilterToCarNoticeStream.getInstance();
 
     private OutputCollector collector;
+
+    private IStreamReceiver dataStreamReceiver;
+
+    private KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
+
+    private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
 
     /**
      * 输出到Kafka的主题
@@ -92,10 +129,18 @@ public final class CarNoticelBolt extends BaseRichBolt {
     private static int ispreCp = 0;
 
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+    public void prepare(
+        @NotNull final Map stormConf,
+        @NotNull final TopologyContext context,
+        @NotNull final OutputCollector collector) {
+
         this.collector = collector;
 
         noticeTopic = stormConf.get(SysDefine.KAFKA_TOPIC_NOTICE).toString();
+
+        prepareStreamSender(collector);
+
+        prepareStreamReceiver();
 
         long now = System.currentTimeMillis();
         lastOfflineCheckTimeMillisecond = now;
@@ -149,7 +194,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
                         if (null != map && map.size() > 0) {
                             Object vid = map.get("vid");
                             String json = JSON_UTILS.toJson(map);
-                            sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
+                            kafkaStreamVehicleNoticeSender.emit((String) vid, json);
                         }
                     }
                 }
@@ -189,7 +234,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
                                 if (null != map && map.size() > 0) {
                                     Object vid = map.get("vid");
                                     String json = JSON_UTILS.toJson(map);
-                                    sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
+                                    kafkaStreamVehicleNoticeSender.emit((String) vid, json);
                                 }
                             }
                         }
@@ -214,8 +259,32 @@ public final class CarNoticelBolt extends BaseRichBolt {
         }
     }
 
+    private void prepareStreamSender(
+        @NotNull final OutputCollector collector) {
+
+        kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
+
+        kafkaStreamVehicleNoticeSender = kafkaStreamSenderBuilder.build(noticeTopic);
+    }
+
+    private void prepareStreamReceiver() {
+
+        dataStreamReceiver = FilterBolt.prepareDataStreamReceiver(this::executeFromDataStream);
+    }
+
     @Override
-    public void execute(Tuple tuple) {
+    public void execute(@NotNull final Tuple input) {
+
+        dataStreamReceiver.execute(input);
+    }
+
+    private void executeFromDataStream(
+        @NotNull final Tuple input,
+        @NotNull final String vid,
+        @NotNull final ImmutableMap<String, String> data) {
+
+        collector.ack(input);
+
         final long now = System.currentTimeMillis();
 
         // region 离线判断: 如果时间差大于离线检查时间，则进行离线检查, 如果车辆离线，则发送此车辆的所有故障码结束通知
@@ -227,9 +296,9 @@ public final class CarNoticelBolt extends BaseRichBolt {
             if (null != msgs && msgs.size() > 0) {
                 for (Map<String, Object> map : msgs) {
                     if (null != map && map.size() > 0) {
-                        Object vid = map.get("vid");
+                        Object vid2 = map.get("vid");
                         String json = JSON_UTILS.toJson(map);
-                        sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
+                        kafkaStreamVehicleNoticeSender.emit((String) vid2, json);
                     }
                 }
             }
@@ -239,9 +308,9 @@ public final class CarNoticelBolt extends BaseRichBolt {
             if (null != msgs && msgs.size() > 0) {
                 for (Map<String, Object> map : msgs) {
                     if (null != map && map.size() > 0) {
-                        Object vid = map.get("vid");
+                        Object vid2 = map.get("vid");
                         String json = JSON_UTILS.toJson(map);
-                        sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
+                        kafkaStreamVehicleNoticeSender.emit((String) vid2, json);
                     }
                 }
             }
@@ -250,298 +319,283 @@ public final class CarNoticelBolt extends BaseRichBolt {
         }
         // endregion
 
-        if (CUS_NOTICE_GROUP_STREAM.isSourceStream(tuple)) {
-            String vid = tuple.getString(0);
+        if (MapUtils.isEmpty(data)) {
+            return;
+        }
 
-            final Map<String, String> data = (Map<String, String>) tuple.getValue(1);
+        PARAMS_REDIS_UTIL.autoLog(vid, () -> LOG.warn("VID[{}]进入车辆通知处理", vid));
 
-            if (MapUtils.isEmpty(data)) {
-                return;
+        final String collectTime = data.get(DataKey._2000_COLLECT_TIME);
+        final String serverReceiveTime = data.get(DataKey._9999_SERVER_RECEIVE_TIME);
+        boolean timeEffective = false;
+        if(NumberUtils.isDigits(serverReceiveTime) && NumberUtils.isDigits(collectTime)) {
+            try {
+                // 误差10分钟内有效
+                if (Math.abs(NumberUtils.toLong(serverReceiveTime) - NumberUtils.toLong(collectTime)) <= 1000 * 60 * 10) {
+                    timeEffective = true;
+                }
+            } catch (Exception e) {
+                LOG.debug("时间格式异常", e);
             }
 
-            if (null == data.get(DataKey.VEHICLE_ID)) {
-                data.put(DataKey.VEHICLE_ID, vid);
-            }
+        }
 
-            paramsRedisUtil.autoLog(vid, () -> logger.warn("VID[{}]进入车辆通知处理", vid));
+        // region 缓存累计里程有效值
+        if(timeEffective) {
+            final String totalMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
 
-            final String collectTime = data.get(DataKey._2000_COLLECT_TIME);
-            final String serverReceiveTime = data.get(DataKey._9999_SERVER_RECEIVE_TIME);
-            boolean timeEffective = false;
-            if(NumberUtils.isDigits(serverReceiveTime) && NumberUtils.isDigits(collectTime)) {
+            PARAMS_REDIS_UTIL.autoLog(vid, () -> LOG.warn("VID[{}][{}][{}]有效累计里程缓存处理", vid, collectTime, totalMileage));
+
+            if (NumberUtils.isDigits(totalMileage)) {
+
                 try {
-                    // 误差10分钟内有效
-                    if (Math.abs(NumberUtils.toLong(serverReceiveTime) - NumberUtils.toLong(collectTime)) <= 1000 * 60 * 10) {
-                        timeEffective = true;
+
+                    final ImmutableMap<String, String> usefulTotalMileage =
+                        VEHICLE_CACHE.getField(
+                            vid,
+                            VehicleCache.TOTAL_MILEAGE_FIELD);
+                    final String oldTime = usefulTotalMileage.get(VehicleCache.VALUE_TIME_KEY);
+
+                    if (NumberUtils.toLong(oldTime) < NumberUtils.toLong(collectTime)) {
+
+                        final ImmutableMap<String, String> update = new ImmutableMap.Builder<String, String>()
+                            .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                            .put(VehicleCache.VALUE_DATA_KEY, totalMileage)
+                            .build();
+                        VEHICLE_CACHE.putField(
+                            vid,
+                            VehicleCache.TOTAL_MILEAGE_FIELD,
+                            update);
+                        PARAMS_REDIS_UTIL.autoLog(
+                            vid,
+                            () -> LOG.info(
+                                "VID[{}]更新有效累计里程缓存[{}]",
+                                vid,
+                                update));
+                    } else {
+                        PARAMS_REDIS_UTIL.autoLog(
+                            vid,
+                            () -> LOG.info(
+                                "VID[{}]保持有效累计里程值缓存[{}]",
+                                vid,
+                                usefulTotalMileage));
                     }
-                } catch (Exception e) {
-                    logger.debug("时间格式异常", e);
+
+                } catch (ExecutionException e) {
+                    LOG.warn("获取有效累计里程缓存异常", e);
                 }
-
+            } else {
+                PARAMS_REDIS_UTIL.autoLog(vid, () -> LOG.warn("无效的累计里程[{}]", totalMileage));
             }
+        }
+        // endregion
 
-            // region 缓存持续里程有效值
-            if(timeEffective) {
-                final String totalMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
+        // region 缓存GPS定位有效值
+        if(timeEffective) {
+            final String orientationString = data.get(DataKey._2501_ORIENTATION);
 
-                paramsRedisUtil.autoLog(vid, () -> logger.warn("VID[{}][{}][{}]有效累计里程缓存处理", vid, collectTime, totalMileage));
-
-                if (NumberUtils.isDigits(totalMileage)) {
-
-                    try {
-
-                        final ImmutableMap<String, String> usefulTotalMileage =
-                            VEHICLE_CACHE.getField(
-                                vid,
-                                VehicleCache.TOTAL_MILEAGE_FIELD);
-                        final String oldTime = usefulTotalMileage.get(VehicleCache.VALUE_TIME_KEY);
-
-                        if (NumberUtils.toLong(oldTime) < NumberUtils.toLong(collectTime)) {
-
-                            final ImmutableMap<String, String> update = new ImmutableMap.Builder<String, String>()
-                                .put(VehicleCache.VALUE_TIME_KEY, collectTime)
-                                .put(VehicleCache.VALUE_DATA_KEY, totalMileage)
-                                .build();
-                            VEHICLE_CACHE.putField(
-                                vid,
-                                VehicleCache.TOTAL_MILEAGE_FIELD,
-                                update);
-                            paramsRedisUtil.autoLog(
-                                vid,
-                                () -> logger.info(
-                                    "VID[{}]更新有效累计里程缓存[{}]",
-                                    vid,
-                                    update));
-                        } else {
-                            paramsRedisUtil.autoLog(
-                                vid,
-                                () -> logger.info(
-                                    "VID[{}]保持有效累计里程值缓存[{}]",
-                                    vid,
-                                    usefulTotalMileage));
-                        }
-
-                    } catch (ExecutionException e) {
-                        logger.warn("获取有效累计里程缓存异常", e);
-                    }
-                } else {
-                    paramsRedisUtil.autoLog(vid, () -> logger.warn("无效的累计里程[{}]", totalMileage));
-                }
-            }
-            // endregion
-
-            // region 缓存GPS定位有效值
-            if(timeEffective) {
-                final String orientationString = data.get(DataKey._2501_ORIENTATION);
-
-                paramsRedisUtil.autoLog(
+            PARAMS_REDIS_UTIL.autoLog(
+                vid,
+                () -> LOG.warn(
+                    "VID[{}][{}][{}]有效定位缓存处理",
                     vid,
-                    () -> logger.warn(
-                        "VID[{}][{}][{}]有效定位缓存处理",
-                        vid,
-                        collectTime,
-                        orientationString));
+                    collectTime,
+                    orientationString));
 
 
-                if (NumberUtils.isDigits(orientationString)) {
+            if (NumberUtils.isDigits(orientationString)) {
 
-                    final int orientationValue = NumberUtils.toInt(orientationString);
-                    if (DataUtils.isOrientationUseful(orientationValue)) {
+                final int orientationValue = NumberUtils.toInt(orientationString);
+                if (DataUtils.isOrientationUseful(orientationValue)) {
 
-                        final String longitudeString = data.get(DataKey._2502_LONGITUDE);
-                        final String latitudeString = data.get(DataKey._2503_LATITUDE);
+                    final String longitudeString = data.get(DataKey._2502_LONGITUDE);
+                    final String latitudeString = data.get(DataKey._2503_LATITUDE);
 
-                        if(NumberUtils.isDigits(orientationString)
-                            && NumberUtils.isDigits(orientationString)) {
+                    if(NumberUtils.isDigits(orientationString)
+                        && NumberUtils.isDigits(orientationString)) {
 
 
-                            final int longitudeValue = NumberUtils.toInt(longitudeString);
-                            final int latitudeValue = NumberUtils.toInt(latitudeString);
+                        final int longitudeValue = NumberUtils.toInt(longitudeString);
+                        final int latitudeValue = NumberUtils.toInt(latitudeString);
 
-                            if(DataUtils.isOrientationLongitudeUseful(longitudeValue)
-                                && DataUtils.isOrientationLatitudeUseful(latitudeValue)) {
+                        if(DataUtils.isOrientationLongitudeUseful(longitudeValue)
+                            && DataUtils.isOrientationLatitudeUseful(latitudeValue)) {
 
-                                try {
-                                    final ImmutableMap<String, String> usefulOrientation =
-                                        VEHICLE_CACHE.getField(
-                                            vid,
-                                            VehicleCache.ORIENTATION_FIELD);
-                                    final String oldOrientationTime = usefulOrientation.get(VehicleCache.VALUE_TIME_KEY);
-
-                                    final ImmutableMap<String, String> usefulLongitude =
-                                        VEHICLE_CACHE.getField(
-                                            vid,
-                                            VehicleCache.LONGITUDE_FIELD);
-                                    final String oldLongitudeTime = usefulLongitude.get(VehicleCache.VALUE_TIME_KEY);
-
-                                    final ImmutableMap<String, String> usefulLatitude =
-                                        VEHICLE_CACHE.getField(
-                                            vid,
-                                            VehicleCache.LATITUDE_FIELD);
-                                    final String oldLatitudeTime = usefulLatitude.get(VehicleCache.VALUE_TIME_KEY);
-
-                                    if (NumberUtils.toLong(oldOrientationTime) < NumberUtils.toLong(collectTime)) {
-
-                                        final ImmutableMap<String, String> updateOrientation = new ImmutableMap.Builder<String, String>()
-                                            .put(VehicleCache.VALUE_TIME_KEY, collectTime)
-                                            .put(VehicleCache.VALUE_DATA_KEY, orientationString)
-                                            .build();
-                                        VEHICLE_CACHE.putField(
-                                            vid,
-                                            VehicleCache.ORIENTATION_FIELD,
-                                            updateOrientation);
-                                        paramsRedisUtil.autoLog(
-                                            vid,
-                                            () -> logger.info(
-                                                "VID[{}]更新有效定位缓存[{}]",
-                                                vid,
-                                                updateOrientation));
-                                    } else {
-                                        paramsRedisUtil.autoLog(
-                                            vid,
-                                            () -> logger.info(
-                                                "VID[{}]保持有效定位缓存[{}]",
-                                                vid,
-                                                usefulOrientation));
-                                    }
-
-                                    if (NumberUtils.toLong(oldLongitudeTime) < NumberUtils.toLong(collectTime)) {
-
-                                        final ImmutableMap<String, String> updateLongitude = new ImmutableMap.Builder<String, String>()
-                                            .put(VehicleCache.VALUE_TIME_KEY, collectTime)
-                                            .put(VehicleCache.VALUE_DATA_KEY, longitudeString)
-                                            .build();
-                                        VEHICLE_CACHE.putField(
-                                            vid,
-                                            VehicleCache.LONGITUDE_FIELD,
-                                            updateLongitude);
-                                        paramsRedisUtil.autoLog(
-                                            vid,
-                                            () -> logger.info(
-                                                "VID[{}]更新有效经度缓存[{}]",
-                                                vid,
-                                                updateLongitude));
-                                    } else {
-                                        paramsRedisUtil.autoLog(
-                                            vid,
-                                            () -> logger.info(
-                                                "VID[{}]保持有效经度缓存[{}]",
-                                                vid,
-                                                usefulLongitude));
-                                    }
-
-                                    if (NumberUtils.toLong(oldLatitudeTime) < NumberUtils.toLong(collectTime)) {
-
-                                        final ImmutableMap<String, String> updateLatitude = new ImmutableMap.Builder<String, String>()
-                                            .put(VehicleCache.VALUE_TIME_KEY, collectTime)
-                                            .put(VehicleCache.VALUE_DATA_KEY, latitudeString)
-                                            .build();
-                                        VEHICLE_CACHE.putField(
-                                            vid,
-                                            VehicleCache.LATITUDE_FIELD,
-                                            updateLatitude);
-                                        paramsRedisUtil.autoLog(
-                                            vid,
-                                            () -> logger.info(
-                                                "VID[{}]更新有效纬度缓存[{}]",
-                                                vid,
-                                                updateLatitude));
-                                    } else {
-                                        paramsRedisUtil.autoLog(
-                                            vid,
-                                            () -> logger.info(
-                                                "VID[{}]保持有效纬度缓存[{}]",
-                                                vid,
-                                                usefulLatitude));
-                                    }
-                                } catch (ExecutionException e) {
-                                    e.printStackTrace();
-                                }
-                            } else {
-                                paramsRedisUtil.autoLog(
-                                    vid,
-                                    () -> logger.warn(
-                                        "VID[{}]经纬度超出范围[{}, {}]",
+                            try {
+                                final ImmutableMap<String, String> usefulOrientation =
+                                    VEHICLE_CACHE.getField(
                                         vid,
-                                        longitudeString,
-                                        latitudeValue));
+                                        VehicleCache.ORIENTATION_FIELD);
+                                final String oldOrientationTime = usefulOrientation.get(VehicleCache.VALUE_TIME_KEY);
+
+                                final ImmutableMap<String, String> usefulLongitude =
+                                    VEHICLE_CACHE.getField(
+                                        vid,
+                                        VehicleCache.LONGITUDE_FIELD);
+                                final String oldLongitudeTime = usefulLongitude.get(VehicleCache.VALUE_TIME_KEY);
+
+                                final ImmutableMap<String, String> usefulLatitude =
+                                    VEHICLE_CACHE.getField(
+                                        vid,
+                                        VehicleCache.LATITUDE_FIELD);
+                                final String oldLatitudeTime = usefulLatitude.get(VehicleCache.VALUE_TIME_KEY);
+
+                                if (NumberUtils.toLong(oldOrientationTime) < NumberUtils.toLong(collectTime)) {
+
+                                    final ImmutableMap<String, String> updateOrientation = new ImmutableMap.Builder<String, String>()
+                                        .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                        .put(VehicleCache.VALUE_DATA_KEY, orientationString)
+                                        .build();
+                                    VEHICLE_CACHE.putField(
+                                        vid,
+                                        VehicleCache.ORIENTATION_FIELD,
+                                        updateOrientation);
+                                    PARAMS_REDIS_UTIL.autoLog(
+                                        vid,
+                                        () -> LOG.info(
+                                            "VID[{}]更新有效定位缓存[{}]",
+                                            vid,
+                                            updateOrientation));
+                                } else {
+                                    PARAMS_REDIS_UTIL.autoLog(
+                                        vid,
+                                        () -> LOG.info(
+                                            "VID[{}]保持有效定位缓存[{}]",
+                                            vid,
+                                            usefulOrientation));
+                                }
+
+                                if (NumberUtils.toLong(oldLongitudeTime) < NumberUtils.toLong(collectTime)) {
+
+                                    final ImmutableMap<String, String> updateLongitude = new ImmutableMap.Builder<String, String>()
+                                        .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                        .put(VehicleCache.VALUE_DATA_KEY, longitudeString)
+                                        .build();
+                                    VEHICLE_CACHE.putField(
+                                        vid,
+                                        VehicleCache.LONGITUDE_FIELD,
+                                        updateLongitude);
+                                    PARAMS_REDIS_UTIL.autoLog(
+                                        vid,
+                                        () -> LOG.info(
+                                            "VID[{}]更新有效经度缓存[{}]",
+                                            vid,
+                                            updateLongitude));
+                                } else {
+                                    PARAMS_REDIS_UTIL.autoLog(
+                                        vid,
+                                        () -> LOG.info(
+                                            "VID[{}]保持有效经度缓存[{}]",
+                                            vid,
+                                            usefulLongitude));
+                                }
+
+                                if (NumberUtils.toLong(oldLatitudeTime) < NumberUtils.toLong(collectTime)) {
+
+                                    final ImmutableMap<String, String> updateLatitude = new ImmutableMap.Builder<String, String>()
+                                        .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                        .put(VehicleCache.VALUE_DATA_KEY, latitudeString)
+                                        .build();
+                                    VEHICLE_CACHE.putField(
+                                        vid,
+                                        VehicleCache.LATITUDE_FIELD,
+                                        updateLatitude);
+                                    PARAMS_REDIS_UTIL.autoLog(
+                                        vid,
+                                        () -> LOG.info(
+                                            "VID[{}]更新有效纬度缓存[{}]",
+                                            vid,
+                                            updateLatitude));
+                                } else {
+                                    PARAMS_REDIS_UTIL.autoLog(
+                                        vid,
+                                        () -> LOG.info(
+                                            "VID[{}]保持有效纬度缓存[{}]",
+                                            vid,
+                                            usefulLatitude));
+                                }
+                            } catch (ExecutionException e) {
+                                e.printStackTrace();
                             }
                         } else {
-                            paramsRedisUtil.autoLog(
+                            PARAMS_REDIS_UTIL.autoLog(
                                 vid,
-                                () -> logger.warn(
-                                    "VID[{}]经纬度格式错误[{}][{}]",
+                                () -> LOG.warn(
+                                    "VID[{}]经纬度超出范围[{}, {}]",
                                     vid,
                                     longitudeString,
-                                    latitudeString));
+                                    latitudeValue));
                         }
                     } else {
-                        paramsRedisUtil.autoLog(
+                        PARAMS_REDIS_UTIL.autoLog(
                             vid,
-                            () -> logger.warn(
-                                "VID[{}]定位无效[{}]",
+                            () -> LOG.warn(
+                                "VID[{}]经纬度格式错误[{}][{}]",
                                 vid,
-                                orientationString));
+                                longitudeString,
+                                latitudeString));
                     }
                 } else {
-                    paramsRedisUtil.autoLog(
+                    PARAMS_REDIS_UTIL.autoLog(
                         vid,
-                        () -> logger.warn(
-                            "VID[{}]定位状态格式错误[{}]",
+                        () -> LOG.warn(
+                            "VID[{}]定位无效[{}]",
                             vid,
                             orientationString));
                 }
+            } else {
+                PARAMS_REDIS_UTIL.autoLog(
+                    vid,
+                    () -> LOG.warn(
+                        "VID[{}]定位状态格式错误[{}]",
+                        vid,
+                        orientationString));
             }
-            // endregion
+        }
+        // endregion
 
-            // region 更新实时缓存
-            try {
-                String type = data.get(DataKey.MESSAGE_TYPE);
-                if (!CommandType.SUBMIT_LINKSTATUS.equals(type)) {
-                    SysRealDataCache.updateCache(data, now);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+        // region 更新实时缓存
+        try {
+            String type = data.get(DataKey.MESSAGE_TYPE);
+            if (!CommandType.SUBMIT_LINKSTATUS.equals(type)) {
+                SysRealDataCache.updateCache(data, now);
             }
-            // endregion
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        // endregion
 
-            //返回车辆通知,(重要)
-            //先检查规则是否启用，启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
-            List<Map<String, Object>> msgs = carRuleHandler.generateNotices(data);
-            for (Map<String, Object> map : msgs) {
-                if (null != map && map.size() > 0) {
-                    String json = JSON_UTILS.toJson(map);
-                    sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
-                }
-            }
-
-            List<Map<String, Object>> faultCodeMessages = faultCodeHandler.generateNotice(data);
-            if (null != faultCodeMessages && faultCodeMessages.size() > 0) {
-                for (Map<String, Object> map : faultCodeMessages) {
-                    if (null != map && map.size() > 0) {
-                        String json = JSON_UTILS.toJson(map);
-                        sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
-                    }
-                }
-            }
-            //如果下线了，则发送上下线的里程值
-            Map<String, Object> map = carOnOffhandler.generateNotices(data, now, offlineTimeMillisecond);
+        //返回车辆通知,(重要)
+        //先检查规则是否启用，启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
+        List<Map<String, Object>> msgs = carRuleHandler.generateNotices(data);
+        for (Map<String, Object> map : msgs) {
             if (null != map && map.size() > 0) {
                 String json = JSON_UTILS.toJson(map);
-                sendToKafka(SysDefine.CUS_NOTICE, noticeTopic, vid, json);
+                kafkaStreamVehicleNoticeSender.emit(vid, json);
             }
         }
 
-
+        List<Map<String, Object>> faultCodeMessages = faultCodeHandler.generateNotice(data);
+        if (null != faultCodeMessages && faultCodeMessages.size() > 0) {
+            for (Map<String, Object> map : faultCodeMessages) {
+                if (null != map && map.size() > 0) {
+                    String json = JSON_UTILS.toJson(map);
+                    kafkaStreamVehicleNoticeSender.emit(vid, json);
+                }
+            }
+        }
+        //如果下线了，则发送上下线的里程值
+        Map<String, Object> map = carOnOffhandler.generateNotices(data, now, offlineTimeMillisecond);
+        if (null != map && map.size() > 0) {
+            String json = JSON_UTILS.toJson(map);
+            kafkaStreamVehicleNoticeSender.emit(vid, json);
+        }
     }
 
     @Override
     public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
 
-        KafkaStream.declareOutputFields(declarer, SysDefine.CUS_NOTICE);
+        KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
     }
 
-    void sendToKafka(String define, String topic, Object vid, String message) {
-        collector.emit(define, new Values(topic, vid, message));
-    }
 }

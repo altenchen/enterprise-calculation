@@ -29,28 +29,8 @@ public final class SysDefine {
     public static String PLAT_REG_GROUPID;
 
 
-    //告警
-    public static final String VEH_ALARM = "vehalarm";
-
-    //围栏告警
-    public static final String FENCE_ALARM = "fencealarm";
-
-    //同步 es消息发送
-    public static final String SYNES_NOTICE = "synesnotice";
-    //
-    public static final String VEH_ALARM_REALINFO_STORE = "vehalarmrealinfostore";
-
-    // 预处理 boltid
-    public static final String CHECK_FILTER_BOLT_ID = "checkfilterboltid";
-
     //
     public static final String SPLIT_GROUP = "splitgroup";
-
-    //
-    public static final String ALARM_BOLT_ID = "alarmboltid";
-
-    //
-    public static final String KAFKASEND_BOLT_ID = "kafkasendboltid";
 
     /*-------------------------------标点符号-------------------------------------*/
     /**
@@ -166,19 +146,9 @@ public final class SysDefine {
      */
     public static final String MILEAGE_TOTAL = "mileage_total";
 
-    public static final String FENCE_BOLT_ID = "fenceboltid";
     public static final String FENCE_GROUP = "fenceGroup";
-    /**
-     * 接收告警传送过来的同步es streamId分组
-     **/
-    public static final String SYNES_BOLT_ID = "synesboltid";
     public static final String SYNES_GROUP = "synesGroup";
     public static final String CODE = "code";
-    /**
-     * 接收传送过来的同步es streamId分组
-     **/
-    public static final String CUS_NOTICE_BOLT_ID = "cusnoticeboltid";
-    public static final String CUS_NOTICE = "cusnotice";
 
     /**
      * 告警消息 kafka 输出 topic
