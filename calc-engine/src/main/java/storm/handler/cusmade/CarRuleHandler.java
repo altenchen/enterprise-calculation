@@ -1,6 +1,7 @@
 package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -410,20 +411,23 @@ public class CarRuleHandler implements InfoNotice {
     /**
      * 生成通知
      *
-     * @param data
+     * @param immutableMap
      * @return
      */
     @NotNull
-    public List<Map<String, Object>> generateNotices(@NotNull Map<String, String> data) {
+    public List<Map<String, Object>> generateNotices(@NotNull final ImmutableMap<String, String> immutableMap) {
+
         // 为下面的方法做准备，生成相应的容器。
         final List<Map<String, Object>> list = new LinkedList<>();
 
         // 验证data的有效性
-        if (MapUtils.isEmpty(data)
-                || !data.containsKey(DataKey.VEHICLE_ID)
-                || !data.containsKey(DataKey.TIME)) {
+        if (MapUtils.isEmpty(immutableMap)
+                || !immutableMap.containsKey(DataKey.VEHICLE_ID)
+                || !immutableMap.containsKey(DataKey.TIME)) {
             return list;
         }
+
+        final Map<String, String> data = Maps.newHashMap(immutableMap);
 
         String vid = data.get(DataKey.VEHICLE_ID);
         if (StringUtils.isEmpty(vid)

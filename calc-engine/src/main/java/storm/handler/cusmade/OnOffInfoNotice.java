@@ -1,5 +1,7 @@
 package storm.handler.cusmade;
 
+import com.google.common.collect.ImmutableMap;
+
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +27,7 @@ public interface OnOffInfoNotice extends InfoNotice {
      * @param timeout
      * @return
      */
-    Map<String, Object> generateNotices(Map<String, String> dat, long now, long timeout);
+    Map<String, Object> generateNotices(ImmutableMap<String, String> dat, long now, long timeout);
 
     /**
      * 此方法检查离线

@@ -1,14 +1,13 @@
 package storm.kafka.spout;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.storm.kafka.spout.KafkaTuple;
 import org.apache.storm.kafka.spout.RecordTranslator;
 import org.apache.storm.tuple.Fields;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.stream.FromRegistToElasticsearchStream;
+import storm.stream.RegisterStream;
 
 import java.util.Arrays;
 import java.util.List;
@@ -25,7 +24,13 @@ public final class RegisterRecordTranslator implements RecordTranslator<String, 
     @SuppressWarnings("unused")
     private static final Logger logger = LoggerFactory.getLogger(RegisterRecordTranslator.class);
 
-    private static final FromRegistToElasticsearchStream declare = FromRegistToElasticsearchStream.getInstance();
+    // region RegisterStream
+
+    @NotNull
+    private final RegisterStream.Sender registerStreamSender;
+
+    // endregion RegisterStream
+
     /**
      * 提取VID
      * 消息结构：消息前缀 序列号 VIN码 命令标识 参数集
@@ -33,9 +38,17 @@ public final class RegisterRecordTranslator implements RecordTranslator<String, 
     @NotNull
     private static final Pattern PICK_VID = Pattern.compile("VID:([^:,]+)");
 
+    public RegisterRecordTranslator(
+        @NotNull final RegisterStream.Sender registerStreamSender) {
+
+        this.registerStreamSender = registerStreamSender;
+    }
+
     @Nullable
     @Override
-    public List<Object> apply(final ConsumerRecord<String, String> record) {
+    public List<Object> apply(
+        @NotNull final ConsumerRecord<String, String> record) {
+
         final String value = record.value();
 
         final Matcher matcher = PICK_VID.matcher(value);
@@ -45,18 +58,22 @@ public final class RegisterRecordTranslator implements RecordTranslator<String, 
         }
 
         final String vid = matcher.group(1);
-        return new KafkaTuple(vid, value).routedTo(declare.getStreamId());
+        return registerStreamSender.emit(vid, value);
     }
 
     @NotNull
     @Override
-    public Fields getFieldsFor(final String streamId) {
-        return declare.getFields();
+    public Fields getFieldsFor(
+        @NotNull final String streamId) {
+
+        return registerStreamSender.getFields();
     }
 
     @NotNull
     @Override
     public List<String> streams() {
-        return Arrays.asList(declare.getStreamId());
+
+        return Arrays.asList(
+            registerStreamSender.getStreamId());
     }
 }

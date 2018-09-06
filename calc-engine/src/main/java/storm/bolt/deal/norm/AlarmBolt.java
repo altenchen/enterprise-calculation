@@ -13,9 +13,8 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,9 +48,44 @@ public class AlarmBolt extends BaseRichBolt {
 
     private static final Logger LOG = LoggerFactory.getLogger(AlarmBolt.class);
 
+    // region Component
+
+    @NotNull
+    private static final String COMPONENT_ID = AlarmBolt.class.getSimpleName();
+
+    @NotNull
+    @Contract(pure = true)
+    public static String getComponentId() {
+        return COMPONENT_ID;
+    }
+
+    // endregion Component
+
+    // region KafkaStream
+
+    @NotNull
+    private static final KafkaStream KAFKA_STREAM = KafkaStream.getInstance();
+
+    @NotNull
+    private static final String KAFKA_STREAM_ID = KAFKA_STREAM.getStreamId(COMPONENT_ID);
+
+    @NotNull
+    @Contract(pure = true)
+    public static String getKafkaStreamId() {
+        return KAFKA_STREAM_ID;
+    }
+
+    // endregion KafkaStream
+
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
     private OutputCollector collector;
+
+    private KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
+
+    private KafkaStream.Sender kafkaStreamVehicleAlarmSender;
+
+    private KafkaStream.Sender kafkaStreamVehicleAlarmStoreSender;
 
     /**
      * <vid, [rule]>, 车辆告警中的规则
@@ -145,6 +179,8 @@ public class AlarmBolt extends BaseRichBolt {
         vehAlarmTopic = stormConf.get(SysDefine.KAFKA_TOPIC_ALARM).toString();
         vehAlarmStoreTopic = stormConf.get(SysDefine.KAFKA_TOPIC_ALARM_STORE).toString();
 
+        prepareStreamSender(collector);
+
         try {
             Object alarmObject = stormConf.get(SysDefine.ALARM_CONTINUE_COUNTS);
             if (null != alarmObject) {
@@ -206,12 +242,22 @@ public class AlarmBolt extends BaseRichBolt {
         }
     }
 
+    private void prepareStreamSender(
+        @NotNull final OutputCollector collector) {
+
+        kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
+
+        kafkaStreamVehicleAlarmSender = kafkaStreamSenderBuilder.build(vehAlarmTopic);
+        kafkaStreamVehicleAlarmStoreSender = kafkaStreamSenderBuilder.build(vehAlarmStoreTopic);
+    }
+
     @SuppressWarnings("AlibabaMethodTooLong")
     @Override
     public void execute(@NotNull final Tuple input) {
+
         if (input.getSourceStreamId().equals(SysDefine.SPLIT_GROUP)) {
             final String vid = input.getString(0);
-            final Map<String, String> data = (Map<String, String>) input.getValue(1);
+            final Map<String, String> data = Maps.newHashMap((Map<String, String>) input.getValue(1));
 
             if (!data.containsKey(DataKey.TIME)
                 || StringUtils.isEmpty(data.get(DataKey.TIME))) {
@@ -337,8 +383,7 @@ public class AlarmBolt extends BaseRichBolt {
     @Override
     public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
 
-        KafkaStream.declareOutputFields(declarer, SysDefine.VEH_ALARM);
-        KafkaStream.declareOutputFields(declarer, SysDefine.VEH_ALARM_REALINFO_STORE);
+        KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
     }
 
     @Override
@@ -456,7 +501,7 @@ public class AlarmBolt extends BaseRichBolt {
 
                 final String alarmEnd = JSON_UTILS.toJson(sendMsg);
                 //kafka存储
-                sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmEnd);
+                sendAlarmKafka(vehAlarmTopic, vid, alarmEnd);
 
                 sendMsg.put("ALARM_NAME", alarmName);
                 sendMsg.put("ALARM_LEVEL", alarmLevel);
@@ -465,7 +510,7 @@ public class AlarmBolt extends BaseRichBolt {
 
                 final String alarmhbase = JSON_UTILS.toJson(sendMsg);
                 //hbase存储
-                sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE, vehAlarmStoreTopic, vid, alarmhbase);
+                sendAlarmKafka(vehAlarmStoreTopic, vid, alarmhbase);
 
                 //redis存储
                 saveToRedis(vid, "0", time);
@@ -914,7 +959,7 @@ public class AlarmBolt extends BaseRichBolt {
 
                             final String alarmStart = JSON_UTILS.toJson(sendMsg);
                             //发送kafka提供数据库存储
-                            sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmStart);
+                            sendAlarmKafka(vehAlarmTopic, vid, alarmStart);
 
                             sendMsg.put("ALARM_NAME", alarmName);
                             sendMsg.put("LEFT1", left1);
@@ -924,7 +969,7 @@ public class AlarmBolt extends BaseRichBolt {
 
                             final String alarmHbase = JSON_UTILS.toJson(sendMsg);
                             //hbase存储
-                            sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE, vehAlarmStoreTopic, vid, alarmHbase);
+                            sendAlarmKafka(vehAlarmStoreTopic, vid, alarmHbase);
 
                             sendMsg.put("UTC_TIME", lastAlarmUtc);
 
@@ -982,7 +1027,7 @@ public class AlarmBolt extends BaseRichBolt {
 
                         final String alarmEnd = JSON_UTILS.toJson(sendMsg);
                         //kafka存储
-                        sendAlarmKafka(SysDefine.VEH_ALARM, vehAlarmTopic, vid, alarmEnd);
+                        sendAlarmKafka(vehAlarmTopic, vid, alarmEnd);
 
                         sendMsg.put("ALARM_NAME", alarmName);
                         sendMsg.put("ALARM_LEVEL", alarmLevel);
@@ -993,7 +1038,7 @@ public class AlarmBolt extends BaseRichBolt {
 
                         final String alarmHbase = JSON_UTILS.toJson(sendMsg);
                         //hbase存储
-                        sendAlarmKafka(SysDefine.VEH_ALARM_REALINFO_STORE, vehAlarmStoreTopic, vid, alarmHbase);
+                        sendAlarmKafka(vehAlarmStoreTopic, vid, alarmHbase);
 
                         //redis存储
                         saveToRedis(vid, "0", ctArr[1]);
@@ -1032,12 +1077,11 @@ public class AlarmBolt extends BaseRichBolt {
     }
 
     private synchronized void sendAlarmKafka(
-        @NotNull final String streamId,
         @NotNull final String topic,
         @NotNull final String vid,
         @NotNull final String message) {
 
-        collector.emit(streamId, new Values(topic, vid, message));
+        kafkaStreamSenderBuilder.emit(topic, vid, message);
     }
 
     /**

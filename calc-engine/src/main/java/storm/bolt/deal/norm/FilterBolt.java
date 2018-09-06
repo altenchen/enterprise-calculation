@@ -4,11 +4,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.BooleanUtils;
-import org.apache.commons.lang.math.NumberUtils;
-import org.jetbrains.annotations.Nullable;
-import storm.constant.StreamFieldKey;
-import storm.handler.cusmade.TimeOutOfRangeNotice;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -16,14 +13,20 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.constant.StreamFieldKey;
+import storm.handler.cusmade.TimeOutOfRangeNotice;
 import storm.handler.cusmade.VehicleIdleHandler;
 import storm.kafka.bolt.KafkaBoltTopic;
-import storm.protocol.*;
-import storm.stream.FromFilterToCarNoticeStream;
+import storm.kafka.spout.GeneralKafkaSpout;
+import storm.protocol.CommandType;
+import storm.protocol.SUBMIT_LOGIN;
+import storm.stream.DataStream;
+import storm.stream.IStreamReceiver;
 import storm.stream.KafkaStream;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
@@ -49,11 +52,66 @@ public class FilterBolt extends BaseRichBolt {
 
     private static final Logger LOG = LoggerFactory.getLogger(FilterBolt.class);
 
+    // region Component
+
+    @NotNull
+    private static final String COMPONENT_ID = FilterBolt.class.getSimpleName();
+
+    @NotNull
+    @Contract(pure = true)
+    public static String getComponentId() {
+        return COMPONENT_ID;
+    }
+
+    // endregion Component
+
+    // region DataStream
+
+    @NotNull
+    private static final DataStream DATA_STREAM = DataStream.getInstance();
+
+    @NotNull
+    private static final String DATA_STREAM_ID = DATA_STREAM.getStreamId(COMPONENT_ID);
+
+    @NotNull
+    @Contract(pure = true)
+    public static String getDataStreamId() {
+        return DATA_STREAM_ID;
+    }
+
+    @NotNull
+    public static IStreamReceiver prepareDataStreamReceiver(
+        @NotNull final DataStream.IProcessor processor) {
+
+        return DATA_STREAM
+            .prepareReceiver(
+                processor)
+            .filter(
+                COMPONENT_ID,
+                DATA_STREAM_ID);
+    }
+
+    // endregion DataStream
+
+    // region KafkaStream
+
+    @NotNull
+    private static final KafkaStream KAFKA_STREAM = KafkaStream.getInstance();
+
+    @NotNull
+    private static final String KAFKA_STREAM_ID = KAFKA_STREAM.getStreamId(COMPONENT_ID);
+
+    @NotNull
+    @Contract(pure = true)
+    public static String getKafkaStreamId() {
+        return KAFKA_STREAM_ID;
+    }
+
+    // endregion KafkaStream
+
     private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
-
-    private static final FromFilterToCarNoticeStream TO_CAR_NOTICE_STREAM = FromFilterToCarNoticeStream.getInstance();
 
     private static final Pattern MSG_REGEX = Pattern.compile("^([^ ]+) (\\d+) ([^ ]+) ([^ ]+) \\{VID:([^,]*)(?:,([^}]+))*\\}$");
 
@@ -113,23 +171,59 @@ public class FilterBolt extends BaseRichBolt {
 
     private OutputCollector collector;
 
-    private FromFilterToCarNoticeStream.Emiter toCarNoticeStreamEmiter;
+    private IStreamReceiver generalStreamReceiver;
+
+    private DataStream.Sender dataStreamSender;
+
+    private KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
+
+    private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
 
     // endregion 对象变量
 
     @Override
-    public void prepare(@NotNull final Map stormConf, @NotNull final TopologyContext context, @NotNull final OutputCollector collector) {
+    public void prepare(
+        @NotNull final Map stormConf,
+        @NotNull final TopologyContext context,
+        @NotNull final OutputCollector collector) {
+
         this.collector = collector;
-        toCarNoticeStreamEmiter = TO_CAR_NOTICE_STREAM.buildStreamEmiter(collector);
+
+        prepareStreamSender(collector);
+
+        prepareStreamReceiver();
+    }
+
+    private void prepareStreamSender(
+        @NotNull final OutputCollector collector) {
+
+        dataStreamSender = DATA_STREAM.prepareSender(DATA_STREAM_ID, collector);
+
+        kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
+
+        kafkaStreamVehicleNoticeSender = kafkaStreamSenderBuilder.build(KafkaBoltTopic.NOTICE_TOPIC);
+    }
+
+    private void prepareStreamReceiver() {
+
+        generalStreamReceiver = GeneralKafkaSpout.prepareGeneralStreamReceiver(this::executeFromKafkaGeneralStream);
     }
 
     @Override
-    public void execute(@NotNull final Tuple input) {
+    public void execute(
+        @NotNull final Tuple input) {
+
+        generalStreamReceiver.execute(input);
+    }
+
+    private void executeFromKafkaGeneralStream(
+        @NotNull final Tuple input,
+        @NotNull final String vehicleId,
+        @NotNull final String frame) {
 
         collector.ack(input);
 
-        final String msg = input.getStringByField(StreamFieldKey.MSG);
-        final Matcher matcher = MSG_REGEX.matcher(msg);
+        final Matcher matcher = MSG_REGEX.matcher(frame);
         if (!matcher.find()) {
             LOG.warn("无效的元组[{}]", input.toString());
             return;
@@ -144,6 +238,11 @@ public class FilterBolt extends BaseRichBolt {
 
         // 只处理主动发送数据
         if(!CommandType.SUBMIT.equals(prefix)) {
+            return;
+        }
+
+        if(!StringUtils.equals(vehicleId, vid)) {
+            LOG.error("分组VID[{}]与解析VID[{}]不一致", vehicleId, vid);
             return;
         }
 
@@ -209,7 +308,7 @@ public class FilterBolt extends BaseRichBolt {
 
         final ImmutableMap<String, String> immutableData = ImmutableMap.copyOf(data);
 
-        emit(vid, cmd, immutableData);
+        emit(input, vid, cmd, immutableData);
 
         if (CommandType.SUBMIT_REALTIME.equals(cmd)) {
             vehicleIdleHandler.processRealtimeData(immutableData);
@@ -218,15 +317,17 @@ public class FilterBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
-        declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
-        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, "DATA"));
-        TO_CAR_NOTICE_STREAM.declareStream(declarer);
+        declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
+        declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
+        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
 
-        KafkaStream.declareOutputFields(declarer, SysDefine.CUS_NOTICE);
+        DATA_STREAM.declareOutputFields(DATA_STREAM_ID, declarer);
+
+        KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
     }
 
     private void emit(
+        @NotNull final Tuple anchors,
         @NotNull final String vid,
         @NotNull final String cmd,
         @NotNull final ImmutableMap<String, String> data) {
@@ -250,7 +351,7 @@ public class FilterBolt extends BaseRichBolt {
             || CommandType.SUBMIT_TERMSTATUS.equals(cmd)
             || CommandType.SUBMIT_CARSTATUS.equals(cmd)) {
             // consumer: 车辆通知处理
-            toCarNoticeStreamEmiter.emit(vid, data);
+            dataStreamSender.emit(anchors, vid, data);
         }
 
         if (CommandType.SUBMIT_REALTIME.equals(cmd)
@@ -270,16 +371,8 @@ public class FilterBolt extends BaseRichBolt {
         }
 
         final String json = JSON_UTILS.toJson(notice);
-        sendToKafka(SysDefine.CUS_NOTICE, KafkaBoltTopic.NOTICE_TOPIC, vid, json);
-    }
 
-    void sendToKafka(
-        @NotNull final String define,
-        @NotNull final String topic,
-        @NotNull final String vid,
-        @Nullable final String message) {
-
-        collector.emit(define, new Values(topic, vid, message));
+        kafkaStreamVehicleNoticeSender.emit(vid, json);
     }
 
     @NotNull
