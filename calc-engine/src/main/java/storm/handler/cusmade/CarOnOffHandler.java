@@ -32,7 +32,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 /**
  * 车辆上下线及相关处理
  */
-public final class CarOnOffHandler implements OnOffInfoNotice {
+public final class CarOnOffHandler {
 
     private final Map<String, Map<String, Object>> vidIdleNotice = new HashMap<>();
     private final Map<String, Map<String, Object>> onOffMileNotice = new HashMap<>();
@@ -52,7 +52,13 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
         restartInit(true);
     }
 
-    @Override
+    /**
+     * 生成通知
+     * @param data
+     * @param now
+     * @param timeout
+     * @return
+     */
     public Map<String, Object> generateNotices(@NotNull final ImmutableMap<String, String> data, long now, long timeout) {
         Map<String, Object> notice = onoffMile(data, now, timeout);
         return notice;
@@ -62,93 +68,101 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
      * 扫描所有车辆数据，找出闲置车辆，车辆闲置通知，并返回从缓存中清除。
      * 注意：此处定义的所有车辆可以理解为只有两种状态，（闲置和活跃），下线了也还属于活跃，只有下线时间超过阈值才归为闲置
      * 闲置车辆将从活跃缓存车辆中删除
-     * @param type
-     * @param status
-     * @param now
-     * @param timeout
+     * @param type 处理类型, 目前只支持 TIMEOUT 一个.
+     * @param status 扫描类型 0-全量数据 1-活跃数据 status:2-其他定义
+     * @param now 开始处理这一帧数据的时间
+     * @param idleTimeoutMillisecond 判断为闲置车辆的时长
      * @return 闲置车辆通知
      */
-    @Override
-    public List<Map<String, Object>> fulldoseNotice(String type, ScanRange status, long now, long timeout) {//status:0全量数据，status:1活跃数据，status:2其他定义
-        if ("TIMEOUT".equals(type)) {
-            Map<String,Map<String,String>> cluster = null;
-            //使用这个队列是为了防止在访问vids时，发生修改，引发错误。
-            LinkedBlockingQueue<String> vids = null;
-            //1、先从队列中把数据拿出来，进行是否为闲置的判断。缓存的是整条车辆报文
-            if (ScanRange.AllData == status) {
-                cluster=SysRealDataCache.getDataCache().asMap();
-                vids = SysRealDataCache.lasts;
-            } else if (ScanRange.AliveData == status) {
-                cluster=SysRealDataCache.getLivelyCache().asMap();
-                vids = SysRealDataCache.alives;
+    public List<Map<String, Object>> fullDoseNotice(final String type, final ScanRange status, final long now, final long idleTimeoutMillisecond) {
+
+        if (!"TIMEOUT".equals(type)) {
+            return null;
+        }
+
+        final Map<String,Map<String,String>> cluster;
+        //使用这个队列是为了防止在访问vids时，发生修改，引发错误。
+        final LinkedBlockingQueue<String> vids;
+
+        //1、先从队列中把数据拿出来，进行是否为闲置的判断。缓存的是整条车辆报文
+        if (ScanRange.AllData == status) {
+
+            cluster=SysRealDataCache.getLastDataCache().asMap();
+            vids = SysRealDataCache.LAST_DATA_QUEUE;
+        } else if (ScanRange.AliveData == status) {
+
+            cluster=SysRealDataCache.getAliveCarCache().asMap();
+            vids = SysRealDataCache.ALIVE_CAR_QUEUE;
+        } else {
+            return null;
+        }
+
+        if (MapUtils.isNotEmpty(cluster)
+                && CollectionUtils.isNotEmpty(vids)) {
+
+            List<Map<String, Object>> list = new LinkedList<>();
+            List<String> markDel = new LinkedList<>();
+            List<String> markAlives = new LinkedList<>();
+            final List<String> allCars = new LinkedList<>();
+
+            //循环访问队列中的vid，并清空队列
+            String vid = vids.poll();
+            while(null != vid){
+                if (ScanRange.AllData == status){
+                    SysRealDataCache.removeFromLastDataSet(vid);
+                    allCars.add(vid);
+                }else if (ScanRange.AliveData == status) {
+                    SysRealDataCache.removeFromAliveSet(vid);
+                }
+                final Map<String,String> dat = cluster.get(vid);
+                //闲置车辆通知
+                Map<String, Object> notice = inidle(dat, now, idleTimeoutMillisecond,markDel,markAlives);
+                if (null != notice) {
+                    list.add(notice);
+                }
+                vid = vids.poll();
             }
-            if (MapUtils.isNotEmpty(cluster)
-                    && CollectionUtils.isNotEmpty(vids)) {
 
-                List<Map<String, Object>> list = new LinkedList<>();
-                List<String> markDel = new LinkedList<>();
-                List<String> markAlives = new LinkedList<>();
-                final List<String> allCars = new LinkedList<>();
+            //2、根据上面的判断，把闲置的车辆从活跃车辆列表中剔除，活跃车辆再次放入队列
 
-                //循环访问队列中的vid，并清空队列
-                String vid = vids.poll();
-                while(null != vid){
-                    if (ScanRange.AllData == status){
-                        SysRealDataCache.removeLastQueue(vid);
-                        allCars.add(vid);
-                    }else if (ScanRange.AliveData == status) {
-                        SysRealDataCache.removeAliveQueue(vid);
-                    }
-                    final Map<String,String> dat = cluster.get(vid);
-                    //闲置车辆通知
-                    Map<String, Object> notice = inidle(dat, now, timeout,markDel,markAlives);
-                    if (null != notice) {
-                        list.add(notice);
-                    }
-                    vid = vids.poll();
+            /**
+             * remove cache
+             */
+            if (markDel.size() > 0) {
+                for (String key : markDel) {
+                    cluster.remove(key);
+                    SysRealDataCache.removeFromAliveSet(key);
                 }
+            }
 
-                //2、根据上面的判断，把闲置的车辆从活跃车辆列表中剔除，活跃车辆再次放入队列
+            /**
+             * 活跃车辆再次加入队列
+             */
+            if (markAlives.size() > 0) {
+                for (String key : markAlives) {
 
-                /**
-                 * remove cache
-                 */
-                if (markDel.size() > 0) {
-                    for (String key : markDel) {
-                        cluster.remove(key);
-                        SysRealDataCache.removeAliveQueue(key);
-                    }
+                    SysRealDataCache.addToAliveCarQueue(key);
                 }
+            }
 
-                /**
-                 * 活跃车辆再次加入队列
-                 */
-                if (markAlives.size() > 0) {
-                    for (String key : markAlives) {
+            //3、在把所有的数据放回实时数据缓存，当然也包括已经闲置的车辆。
 
-                        SysRealDataCache.addAliveQueue(key);
-                    }
+            /**
+             * 最后一帧车辆再次加入队列
+             */
+            if (ScanRange.AllData == status && allCars.size() > 0) {
+
+                for (String key : allCars) {
+
+                    SysRealDataCache.addToLastDataQueue(key);
                 }
+            }
 
-                //3、在把所有的数据放回实时数据缓存，当然也包括已经闲置的车辆。
-
-                /**
-                 * 最后一帧车辆再次加入队列
-                 */
-                if (ScanRange.AllData == status && allCars.size() > 0) {
-
-                    for (String key : allCars) {
-
-                        SysRealDataCache.addLastQueue(key);
-                    }
-                }
-
-                /**
-                 * return result
-                 */
-                if (list.size() > 0) {
-                    return list;
-                }
+            /**
+             * return result
+             */
+            if (list.size() > 0) {
+                return list;
             }
         }
         return null;
@@ -163,7 +177,6 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
      * @param timeout
      * @return
      */
-    @Override
     public void onOffCheck(String type, int status, long now, long timeout) {
         if ("TIMEOUT".equals(type)) {
             Map<String,Map<String,String>> cluster = null;
@@ -171,11 +184,11 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
             LinkedBlockingQueue<String> vids = null;
             if (0 == status) {
                 //获取集群中车辆最后一条数据
-                cluster=SysRealDataCache.getDataCache().asMap();
-                vids = SysRealDataCache.lasts;
+                cluster=SysRealDataCache.getLastDataCache().asMap();
+                vids = SysRealDataCache.LAST_DATA_QUEUE;
             } else if (1 == status) {
-                cluster=SysRealDataCache.getLivelyCache().asMap();
-                vids = SysRealDataCache.alives;
+                cluster=SysRealDataCache.getAliveCarCache().asMap();
+                vids = SysRealDataCache.ALIVE_CAR_QUEUE;
             }
             if (null != cluster && cluster.size()>0
                     && null !=vids && vids.size() >0) {
@@ -188,9 +201,9 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 while(null != vid){
 
                     if (0 == status){
-                        SysRealDataCache.removeLastQueue(vid);
+                        SysRealDataCache.removeFromLastDataSet(vid);
                     }else if (1 == status) {
-                        SysRealDataCache.removeAliveQueue(vid);
+                        SysRealDataCache.removeFromAliveSet(vid);
                     }
                     allCars.add(vid);
 
@@ -205,7 +218,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
                 if (markAlives.size() > 0) {
                     for (String key : markAlives) {
 
-                        SysRealDataCache.addAliveQueue(key);
+                        SysRealDataCache.addToAliveCarQueue(key);
                     }
                 }
                 /**
@@ -215,7 +228,7 @@ public final class CarOnOffHandler implements OnOffInfoNotice {
 
                     for (String key : allCars) {
 
-                        SysRealDataCache.addLastQueue(key);
+                        SysRealDataCache.addToLastDataQueue(key);
                     }
                 }
 

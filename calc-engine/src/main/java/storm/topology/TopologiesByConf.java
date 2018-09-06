@@ -2,22 +2,17 @@ package storm.topology;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.kafka.bolt.mapper.TupleToKafkaMapper;
-import org.apache.storm.kafka.bolt.selector.FieldNameTopicSelector;
-import org.apache.storm.kafka.bolt.selector.KafkaTopicSelector;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.bolt.deal.cusmade.CarNoticelBolt;
+import storm.bolt.deal.cusmade.CarNoticeBolt;
 import storm.bolt.deal.norm.AlarmBolt;
 import storm.bolt.deal.norm.EleFenceBolt;
 import storm.bolt.deal.norm.FilterBolt;
@@ -249,8 +244,8 @@ public class TopologiesByConf {
         builder
             // 通知处理、故障码处理
             .setBolt(
-                CarNoticelBolt.getComponentId(),
-                new CarNoticelBolt(),
+                CarNoticeBolt.getComponentId(),
+                new CarNoticeBolt(),
                 boltNo * 3)
             .setNumTasks(boltNo * 9)
             // soc 与超时处理实时数据
@@ -307,8 +302,8 @@ public class TopologiesByConf {
                 new Fields(KafkaStream.BOLT_KEY))
             // 车辆通知、故障处理
             .fieldsGrouping(
-                CarNoticelBolt.getComponentId(),
-                CarNoticelBolt.getKafkaStreamId(),
+                CarNoticeBolt.getComponentId(),
+                CarNoticeBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY))
             // 车辆通知
             .fieldsGrouping(

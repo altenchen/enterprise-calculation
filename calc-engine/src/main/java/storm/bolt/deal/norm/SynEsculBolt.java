@@ -105,7 +105,7 @@ public class SynEsculBolt extends BaseRichBolt {
             handler = new EsRealCalHandler();
             if (5 == ispreCp || 2 == ispreCp) {
                 // carinfo中车辆的注册信息 是否可以监控并推送 es, 此方法在系统启动的时候调用一次
-                List<Map<String, Object>> monitormsgs = handler.redisCarinfoSendMsgs();
+                List<Map<String, Object>> monitormsgs = handler.redisCarInfoSendMsgs();
                 if (null != monitormsgs && monitormsgs.size() > 0) {
                     System.out.println("---------------syn car is monitor or no--------total size:" + monitormsgs.size());
                     for (Map<String, Object> map : monitormsgs) {

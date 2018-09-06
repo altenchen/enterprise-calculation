@@ -79,7 +79,7 @@ public final class RedisRecorder implements Recorder {
         if (null == this.redis) {
             this.redis = new DataToRedis();
         }
-        Map<String, String> redisCache = redis.hgetallMapByKeyAndDb(type, dbIndex);
+        Map<String, String> redisCache = redis.hashGetAllMapByKeyAndDb(type, dbIndex);
         if (MapUtils.isNotEmpty(redisCache)) {
 
             for (Map.Entry<String, String> entry : redisCache.entrySet()) {

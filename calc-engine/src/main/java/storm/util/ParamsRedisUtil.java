@@ -24,9 +24,9 @@ public final class ParamsRedisUtil {
     /**
      * 日志组件
      */
-    private static final Logger logger = LoggerFactory.getLogger(ParamsRedisUtil.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ParamsRedisUtil.class);
 
-    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
+    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
     /**
      * SOC百分值
@@ -131,7 +131,7 @@ public final class ParamsRedisUtil {
         PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, 0);
         PARAMS.put(TRACE_VEHICLE_ID, "test\\d+");
 
-        final Properties properties = configUtils.sysDefine;
+        final Properties properties = CONFIG_UTILS.sysDefine;
         if(properties != null) {
             // region 规则覆盖
             {
@@ -197,7 +197,7 @@ public final class ParamsRedisUtil {
             final String traceVehicleId = (String) PARAMS.get(TRACE_VEHICLE_ID);
             if (!StringUtils.isBlank(traceVehicleId)) {
                 final String message = "[" + TRACE_VEHICLE_ID + "]初始化为[" + traceVehicleId + "]";
-                logger.info(message);
+                LOG.info(message);
             }
         }
     }
@@ -263,19 +263,5 @@ public final class ParamsRedisUtil {
      */
     public void rebulid(){
         initParams();
-    }
-
-    public static void main(String[] args) {
-        final Map<String, String> paramCache = new TreeMap<>();
-        paramCache.put("lt.alarm.soc", "10");
-        paramCache.put("gt.inidle.timeOut.time", "120");
-        paramCache.put("gps.novalue.continue.no", "10");
-        paramCache.put("can.novalue.continue.no", "10");
-        paramCache.put("mile.hop.num", "2");
-        paramCache.put(SysDefine.GPS_JUDGE_TIME, "600");
-        paramCache.put("can.judge.time", "600");
-
-        final ParamsRedisUtil instance = ParamsRedisUtil.getInstance();
-        instance.initParams(paramCache);
     }
 }

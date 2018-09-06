@@ -725,7 +725,7 @@ public class CarRuleHandler implements InfoNotice {
      * @param latitude
      */
     private Map<String, Object> chargeCarNotice(String vid, double longitude, double latitude) {
-        Map<String, FillChargeCar> fillvidgps = SysRealDataCache.chargeCars();
+        Map<String, FillChargeCar> fillvidgps = SysRealDataCache.getChargeCarCache();
         Map<Double, FillChargeCar> chargeCarInfo = findNearFill(longitude, latitude, fillvidgps);
 
         if (null != chargeCarInfo) {

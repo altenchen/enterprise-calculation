@@ -17,6 +17,7 @@ import storm.system.SysDefine;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Disabled
 @DisplayName("SOC过低通知测试和闲置车辆通知")
@@ -144,12 +145,12 @@ class CarRuleHandlerTest {
         data.put(SysDefine.ONLINE_UTC,now_time_yyMMddHHmmss_subtract_10minute);
         data.put(DataKey.MESSAGE_TYPE,"REALTIME");
 
-        SysRealDataCache.addAliveQueue(data.get(DataKey.VEHICLE_ID));
-        SysRealDataCache.addLastQueue(data.get(DataKey.VEHICLE_ID));
-        SysRealDataCache.livelyCarCache.put(DataKey.VEHICLE_ID,data);
-        SysRealDataCache.updateCache(ImmutableMap.copyOf(data),time);
+        SysRealDataCache.addToAliveCarQueue(data.get(DataKey.VEHICLE_ID));
+        SysRealDataCache.addToLastDataQueue(data.get(DataKey.VEHICLE_ID));
+        SysRealDataCache.ALIVE_CAR_CACHE.put(DataKey.VEHICLE_ID,data);
+        SysRealDataCache.updateCache(ImmutableMap.copyOf(data),time, TimeUnit.DAYS.toMillis(1));
 
-        List<Map<String, Object>> notice_start = CarOnOffHandler.fulldoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
+        List<Map<String, Object>> notice_start = CarOnOffHandler.fullDoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
         Assertions.assertTrue(0 != notice_start.size(),"有问题，没有产生闲置开始通知");
         System.out.println(notice_start.get(0).get("smileage"));
         Assertions.assertTrue(notice_start.get(0).get("smileage").equals(18888),"有问题，闲置开始通知中的里程值有问题");
@@ -164,12 +165,12 @@ class CarRuleHandlerTest {
         data.put(SysDefine.ONLINE_UTC,now_time_yyMMddHHmmss);
         //闲置车辆通知
 
-        SysRealDataCache.addAliveQueue(data.get(DataKey.VEHICLE_ID));
-        SysRealDataCache.addLastQueue(data.get(DataKey.VEHICLE_ID));
-        SysRealDataCache.livelyCarCache.put(DataKey.VEHICLE_ID,data);
-        SysRealDataCache.updateCache(ImmutableMap.copyOf(data),time);
+        SysRealDataCache.addToAliveCarQueue(data.get(DataKey.VEHICLE_ID));
+        SysRealDataCache.addToLastDataQueue(data.get(DataKey.VEHICLE_ID));
+        SysRealDataCache.ALIVE_CAR_CACHE.put(DataKey.VEHICLE_ID,data);
+        SysRealDataCache.updateCache(ImmutableMap.copyOf(data),time, TimeUnit.DAYS.toMillis(1));
 
-        List<Map<String, Object>> notice_end = CarOnOffHandler.fulldoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
+        List<Map<String, Object>> notice_end = CarOnOffHandler.fullDoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
         Assertions.assertTrue(0 != notice_end.size(),"有问题，没有产生闲置结束通知");
 
     }

@@ -19,7 +19,6 @@ import storm.cache.VehicleCache;
 import storm.handler.FaultCodeHandler;
 import storm.handler.cusmade.CarOnOffHandler;
 import storm.handler.cusmade.CarRuleHandler;
-import storm.handler.cusmade.OnOffInfoNotice;
 import storm.handler.cusmade.ScanRange;
 import storm.protocol.CommandType;
 import storm.stream.IStreamReceiver;
@@ -35,20 +34,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public final class CarNoticelBolt extends BaseRichBolt {
+/**
+ * @author xzp
+ */
+public final class CarNoticeBolt extends BaseRichBolt {
 
     private static final long serialVersionUID = 1700001L;
 
-    private static final Logger LOG = LoggerFactory.getLogger(CarNoticelBolt.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CarNoticeBolt.class);
 
 
     // region Component
 
     @NotNull
-    private static final String COMPONENT_ID = CarNoticelBolt.class.getSimpleName();
+    private static final String COMPONENT_ID = CarNoticeBolt.class.getSimpleName();
 
     @NotNull
     @Contract(pure = true)
@@ -94,7 +95,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
     /**
      * 闲置车辆判定, 达到闲置状态时长, 默认1天
      */
-    private long idleTimeoutMillsecond = 86400000;
+    private long idleTimeoutMillisecond = 86400000L;
     /**
      * 最后进行离线检查的时间, 用于离线判断
      */
@@ -114,15 +115,12 @@ public final class CarNoticelBolt extends BaseRichBolt {
     /**
      * 车辆上下线及相关处理
      */
-    private OnOffInfoNotice carOnOffhandler;
+    private final CarOnOffHandler carOnOffhandler = new CarOnOffHandler();
     /**
      * 故障码处理
      */
-    private FaultCodeHandler faultCodeHandler;
-    /**
-     *
-     */
-    public static ScheduledExecutorService service;
+    private final FaultCodeHandler faultCodeHandler = new FaultCodeHandler();
+
     /**
      * prepare时值为2则进行一次全量数据扫描并修改值为1,
      */
@@ -151,7 +149,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
             // 从Redis读取超时时间
             Object outbyconf = paramsRedisUtil.PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
             if (null != outbyconf) {
-                idleTimeoutMillsecond = 1000 * (int) outbyconf;
+                idleTimeoutMillisecond = 1000 * (int) outbyconf;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -173,8 +171,6 @@ public final class CarNoticelBolt extends BaseRichBolt {
         //闲置车辆判断，发送闲置车辆通知
         try {
             SysRealDataCache.init();
-            faultCodeHandler = new FaultCodeHandler();
-            carOnOffhandler = new CarOnOffHandler();
 
             // region 如果从配置读到ispreCp为2, 则进行一次全量数据扫描, 并将告警数据发送到kafka
             if (stormConf.containsKey(StormConfigKey.REDIS_CLUSTER_DATA_SYN)) {
@@ -187,7 +183,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
             //2代表着读取历史车辆数据，即全部车辆, 默认配置为1, 不会触发全量扫描.
             if (2 == ispreCp) {
                 carOnOffhandler.onOffCheck("TIMEOUT", 0, now, offlineTimeMillisecond);
-                List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillsecond);
+                List<Map<String, Object>> msgs = carOnOffhandler.fullDoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillisecond);
                 if (null != msgs && msgs.size() > 0) {
                     System.out.println("---------------syn redis cluster data--------");
                     for (Map<String, Object> map : msgs) {
@@ -221,14 +217,14 @@ public final class CarNoticelBolt extends BaseRichBolt {
                             //从配置文件中读出超时时间
                             Object outbyconf = ParamsRedisUtil.getInstance().PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
                             if (null != outbyconf) {
-                                idleTimeoutMillsecond = 1000 * (int) outbyconf;
+                                idleTimeoutMillisecond = 1000 * (int) outbyconf;
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
                         // 车辆长期离线（闲置车辆）通知
                         // 这里容易出现的问题是, 判断线程和数据刷新线程没有做到线程安全, 在判断逻辑执行过程中, 状态是不断刷新的, 容易引起线程冲突或者上下文不一致等诡异的问题.
-                        List<Map<String, Object>> msgs = carOnOffhandler.fulldoseNotice("TIMEOUT", ScanRange.AliveData, System.currentTimeMillis(), idleTimeoutMillsecond);
+                        List<Map<String, Object>> msgs = carOnOffhandler.fullDoseNotice("TIMEOUT", ScanRange.AliveData, System.currentTimeMillis(), idleTimeoutMillisecond);
                         if (null != msgs && msgs.size() > 0) {
                             for (Map<String, Object> map : msgs) {
                                 if (null != map && map.size() > 0) {
@@ -250,7 +246,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
                 .scheduleAtFixedRate(
                     new TimeOutClass(),
                     0,
-                    300,
+                    60 * 5,
                     TimeUnit.SECONDS);
             // endregion
 
@@ -285,13 +281,13 @@ public final class CarNoticelBolt extends BaseRichBolt {
 
         collector.ack(input);
 
-        final long now = System.currentTimeMillis();
+        final long currentTimeMillis = System.currentTimeMillis();
 
         // region 离线判断: 如果时间差大于离线检查时间，则进行离线检查, 如果车辆离线，则发送此车辆的所有故障码结束通知
-        if (now - lastOfflineCheckTimeMillisecond >= offlineCheckSpanMillisecond) {
+        if (currentTimeMillis - lastOfflineCheckTimeMillisecond >= offlineCheckSpanMillisecond) {
 
-            lastOfflineCheckTimeMillisecond = now;
-            List<Map<String, Object>> msgs = faultCodeHandler.generateNotice(now);
+            lastOfflineCheckTimeMillisecond = currentTimeMillis;
+            List<Map<String, Object>> msgs = faultCodeHandler.generateNotice(currentTimeMillis);
 
             if (null != msgs && msgs.size() > 0) {
                 for (Map<String, Object> map : msgs) {
@@ -304,7 +300,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
             }
 
             //检查所有车辆是否离线，离线则发送离线通知。
-            msgs = carRuleHandler.offlineMethod(now);
+            msgs = carRuleHandler.offlineMethod(currentTimeMillis);
             if (null != msgs && msgs.size() > 0) {
                 for (Map<String, Object> map : msgs) {
                     if (null != map && map.size() > 0) {
@@ -315,7 +311,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
                 }
             }
 
-            carOnOffhandler.onOffCheck("TIMEOUT", 1, now, offlineTimeMillisecond);
+            carOnOffhandler.onOffCheck("TIMEOUT", 1, currentTimeMillis, offlineTimeMillisecond);
         }
         // endregion
 
@@ -558,7 +554,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
         try {
             String type = data.get(DataKey.MESSAGE_TYPE);
             if (!CommandType.SUBMIT_LINKSTATUS.equals(type)) {
-                SysRealDataCache.updateCache(data, now);
+                SysRealDataCache.updateCache(data, currentTimeMillis, idleTimeoutMillisecond);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -585,7 +581,7 @@ public final class CarNoticelBolt extends BaseRichBolt {
             }
         }
         //如果下线了，则发送上下线的里程值
-        Map<String, Object> map = carOnOffhandler.generateNotices(data, now, offlineTimeMillisecond);
+        Map<String, Object> map = carOnOffhandler.generateNotices(data, currentTimeMillis, offlineTimeMillisecond);
         if (null != map && map.size() > 0) {
             String json = JSON_UTILS.toJson(map);
             kafkaStreamVehicleNoticeSender.emit(vid, json);

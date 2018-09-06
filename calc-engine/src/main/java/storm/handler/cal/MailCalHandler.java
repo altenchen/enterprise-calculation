@@ -70,7 +70,7 @@ public class MailCalHandler {
     static{
         setTime();
         redis=new DataToRedis();
-        Map<String, String> map = redis.hgetallMapByKeyAndDb("XNY.CARINFO", 0);
+        Map<String, String> map = redis.hashGetAllMapByKeyAndDb("XNY.CARINFO", 0);
         Map<String,Set<String>> carUsers = RedisOrganizationUtil.getCarUser(false);
         carUserCache.putAll(carUsers);
         for (Map.Entry<String, String> entry : map.entrySet()) {
@@ -100,7 +100,7 @@ public class MailCalHandler {
         if (null != carInfoArray) {
             carInfoArray.cleanUp();
         }
-        Map<String, String> map = redis.hgetallMapByKeyAndDb("XNY.CARINFO", 0);
+        Map<String, String> map = redis.hashGetAllMapByKeyAndDb("XNY.CARINFO", 0);
         for (Map.Entry<String, String> entry : map.entrySet()) {
             try {
                 String key = entry.getKey();

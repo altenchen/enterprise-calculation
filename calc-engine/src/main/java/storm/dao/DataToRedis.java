@@ -4,6 +4,8 @@ import java.util.*;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +17,8 @@ import storm.util.JedisPoolUtils;
 /**
  * Redis 数据访问对象
  * 历史版本中有遗留的Redis存储格式
+ *
+ * TODO: 通用抽象合并到 JedisPoolUtils
  *
  * @author xzp
  */
@@ -51,7 +55,9 @@ public final class DataToRedis {
 
     }
 
-    public Map<String, String> hgetallMapByKeyAndDb(String key, int db) {
+    @Nullable
+    public Map<String, String> hashGetAllMapByKeyAndDb(@NotNull final String key, final int db) {
+
         Map<String, String> map = null;
         try {
             map = JEDIS_POOL_UTILS.useResource(jedis -> {
@@ -67,6 +73,7 @@ public final class DataToRedis {
         if (MapUtils.isNotEmpty(map)) {
             return map;
         }
+
         return null;
     }
 
