@@ -1,6 +1,6 @@
 package storm.stream;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.storm.spout.SpoutOutputCollector;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -8,54 +8,50 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.StreamFieldKey;
 
-import java.io.Serializable;
-
 /**
  * @author: xzp
- * @date: 2018-09-05
- * @description: 车辆实时数据流
+ * @date: 2018-09-07
+ * @description: 车辆标识流
  */
-public class DataStream implements IStreamFields, Serializable {
-
-    private static final long serialVersionUID = 8672249921073108932L;
+public final class VehicleIdentityStream implements IStreamFields {
 
     @SuppressWarnings("unused")
-    private static final Logger LOG = LoggerFactory.getLogger(DataStream.class);
+    private static final Logger LOG = LoggerFactory.getLogger(VehicleIdentityStream.class);
 
     @NotNull
-    private static final DataStream SINGLETON = new DataStream();
+    private static final VehicleIdentityStream SINGLETON = new VehicleIdentityStream();
 
     @Contract(pure = true)
-    public static DataStream getInstance() {
+    public static VehicleIdentityStream getInstance() {
         return SINGLETON;
     }
 
-    private DataStream() {
+    private VehicleIdentityStream() {
     }
 
     @NotNull
-    private static final Fields FIELDS = new Fields(StreamFieldKey.VEHICLE_ID, StreamFieldKey.DATA);
+    private static final Fields FIELDS = new Fields(StreamFieldKey.VEHICLE_ID);
 
-    @Override
-    @NotNull
     @Contract(pure = true)
-    public final Fields getFields() {
+    @Override
+    public @NotNull Fields getFields() {
         return FIELDS;
     }
 
     @Override
     @NotNull
-    public final String getStreamId(
+    public String getStreamId(
         @NotNull final String componentId) {
 
         return new StringBuilder(64)
             .append(componentId)
             .append('-')
-            .append(DataStream.class.getSimpleName())
+            .append(VehicleIdentityStream.class.getSimpleName())
             .toString();
     }
 
@@ -67,8 +63,18 @@ public class DataStream implements IStreamFields, Serializable {
         declarer.declareStream(streamId, FIELDS);
     }
 
+    @Contract("_, _ -> new")
     @NotNull
-    public DataStream.BoltSender prepareSender(
+    public SpoutSender openSender(
+        @NotNull final String streamId,
+        @NotNull final SpoutOutputCollector collector) {
+
+        return new SpoutSender(streamId, collector);
+    }
+
+    @Contract("_, _ -> new")
+    @NotNull
+    public BoltSender prepareSender(
         @NotNull final String streamId,
         @NotNull final OutputCollector collector) {
 
@@ -80,7 +86,38 @@ public class DataStream implements IStreamFields, Serializable {
     public IStreamReceiver prepareReceiver(
         @NotNull final IProcessor processor) {
 
-        return new DataStream.Receiver(processor);
+        return new Receiver(processor);
+    }
+
+
+    public static class SpoutSender {
+
+        @NotNull
+        private final String streamId;
+
+        @NotNull
+        private final SpoutOutputCollector collector;
+
+        public SpoutSender(
+            @NotNull final String streamId,
+            @NotNull final SpoutOutputCollector collector) {
+
+            this.streamId = streamId;
+            this.collector = collector;
+        }
+
+        public void emit(
+            @NotNull final String vid) {
+
+            collector.emit(streamId, new Values(vid));
+        }
+
+        public <T> void emit(
+            @NotNull final MessageId<T> messageId,
+            @NotNull final String vid) {
+
+            collector.emit(streamId, new Values(vid), messageId);
+        }
     }
 
     public static class BoltSender {
@@ -101,16 +138,13 @@ public class DataStream implements IStreamFields, Serializable {
 
         public void emit(
             @NotNull final Tuple anchors,
-            @NotNull final String vid,
-            @NotNull final ImmutableMap<String, String> data) {
+            @NotNull final String vid) {
 
-            collector.emit(streamId, anchors, new Values(vid, data));
+            collector.emit(streamId, anchors, new Values(vid));
         }
     }
 
-    private static class Receiver implements IStreamReceiver, Serializable {
-
-        private static final long serialVersionUID = -1534115171552343866L;
+    private static class Receiver implements IStreamReceiver {
 
         private final IProcessor processor;
 
@@ -126,10 +160,8 @@ public class DataStream implements IStreamFields, Serializable {
             final @NotNull Tuple input) {
 
             final String vid = input.getStringByField(StreamFieldKey.VEHICLE_ID);
-            final ImmutableMap<String, String> data =
-                ((ImmutableMap<String, String>) input.getValueByField(StreamFieldKey.DATA));
 
-            processor.execute(input, vid, data);
+            processor.execute(input, vid);
         }
     }
 
@@ -138,13 +170,12 @@ public class DataStream implements IStreamFields, Serializable {
 
         /**
          * 处理元组
+         *
          * @param input 输入元组
-         * @param vid 车辆标识
-         * @param data 数据字典
+         * @param vid   车辆标识
          */
         void execute(
             @NotNull final Tuple input,
-            @NotNull final String vid,
-            @NotNull final ImmutableMap<String, String> data);
+            @NotNull final String vid);
     }
 }

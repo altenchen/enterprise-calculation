@@ -1,10 +1,8 @@
 package storm.util;
 
 import com.ctfo.datacenter.cache.exception.DataCenterException;
-import com.ctfo.datacenter.cache.handle.CTFOCacheDB;
-import com.ctfo.datacenter.cache.handle.CTFOCacheTable;
-import com.ctfo.datacenter.cache.handle.CTFODBManager;
-import com.ctfo.datacenter.cache.handle.DataCenter;
+import com.ctfo.datacenter.cache.handle.*;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,9 +18,43 @@ public class CTFOUtils implements Serializable {
 
     private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
+    /**
+     * RedisUtil.getConfigKey("address") -> "cfg-sys-address"
+     * 1. 从控制库 cfg-sys-address 键下获取集群字典, 字典键为连接名, 字典值为主机地址和端口.
+     * 2. 通过集群字典初始化 ShardedJedisPool
+     */
     private static CTFODBManager ctfoDBManager;
+
+    /**
+     * RedisUtil.getConfigUserKey({dbName}) -> RedisUtil.getConfigUserKey("xny") -> "cfg-usr-xny"
+     * 1. 计算表配置键
+     * 2. 将尝试获取的逻辑表名作为 field 写入配置键, 值为0.
+     */
     private static CTFOCacheDB ctfoCacheDB;
+
+    /**
+     * 1. getCTFOCacheKeys() 创建一次性使用的 CTFOCacheKeys
+     * 2. queryHash(String key) 从集群查询结果
+     * 2.1 RedisUtil.getKey({dbName}, {tableName}, {key}) -> RedisUtil.getKey("xyn", "realInfo", "vid") -> xyn-realInfo-{vid} => {tableKey}
+     * 2.2 ShardControl.queryHash({tableKey}) -> ShardedJedis.hgetAll({tableKey})
+     *
+     * 3. 对数据的增删改查都是基于 ShardedJedisPool
+     * 3.1 ConnectionPoolFactory.getShardedJedisPool 创建 ShardedJedisPool
+     * 3.1.1 使用 Hash 算法为 MD5
+     * 3.1.2 使用默认的键提取模式 Pattern.compile("\\{(.+?)\\}")
+     */
     private static CTFOCacheTable ctfoCacheTable;
+
+    /**
+     * 1. 建立连接池
+     * 2. RedisUtil.getDataPatternKey({dbName}, {tableName}) -> RedisUtil.getDataPatternKey("xyn", "realInfo") -> "xyn-realInfo-*"
+     * 3. next() 每次调用从一个连接中查询一批键(默认一次最大10000)并替换暂存区, 如果取到0个则跳转到下一个连接
+     * 3.1 调用 next() 返回 true 表示还有后续数据, 返回 false 表示集群全部查询完毕, 并且关闭所有连接, 方法不再可用.
+     * 3.1 每次调用 next() 之后, 要立即调用 getKeys() 方法获取结果, 再次调用 next() 会丢失原来的结果
+     */
+    @SuppressWarnings("unused")
+    @Deprecated
+    private final CTFOCacheKeys ctfoCacheKeys = null;
 
     static {
         initCTFO(CONFIG_UTILS.sysDefine);
@@ -48,8 +80,19 @@ public class CTFOUtils implements Serializable {
                 try {
                     LOG.info("初始化 CTFOCacheDB 开始.");
 
+                    final String dbNameKey = "ctfo.cacheDB";
                     // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> xyn-*
-                    final String dbName = conf.getProperty("ctfo.cacheDB");
+                    final String dbName = conf.getProperty(dbNameKey);
+                    if(StringUtils.isEmpty(dbName)) {
+                        LOG.error("配置[{}]不能为空", dbNameKey);
+                        return;
+                    }
+                    if("cfg".equals(dbName)) {
+                        LOG.warn("配置[{}]不能为cfg", dbNameKey);
+                    }
+                    if(dbName.indexOf("-") != -1) {
+                        LOG.warn("配置[{}]不能为包含[-]", dbNameKey);
+                    }
                     ctfoCacheDB = ctfoDBManager.openCacheDB(dbName);
 
                     if (null != ctfoCacheDB) {
@@ -58,8 +101,16 @@ public class CTFOUtils implements Serializable {
                         try {
                             LOG.info("初始化 CTFOCacheTable 开始.");
 
+                            final String tableNameKey = "ctfo.cacheTable";
                             // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> xyn-realInfo-*
-                            final String tableName = conf.getProperty("ctfo.cacheTable");
+                            final String tableName = conf.getProperty(tableNameKey);
+                            if(StringUtils.isEmpty(dbName)) {
+                                LOG.error("配置[{}]不能为空", tableNameKey);
+                                return;
+                            }
+                            if(dbName.indexOf("-") != -1) {
+                                LOG.warn("配置[{}]不能为包含[-]", tableNameKey);
+                            }
                             ctfoCacheTable = ctfoCacheDB.getTable(tableName);
 
                             if (null != ctfoCacheTable) {
@@ -87,7 +138,7 @@ public class CTFOUtils implements Serializable {
         }
 
         if(!sucess) {
-            LOG.info("初始化 CTFO 失败, 重连到默认Redis");
+            LOG.info("初始化 CTFO 失败, 尝试重连.");
             reconnectionDefaultRedis(conf);
         }
     }

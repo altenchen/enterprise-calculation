@@ -15,6 +15,7 @@ import storm.handler.cal.EsRealCalHandler;
 import storm.kafka.spout.RegisterKafkaSpout;
 import storm.stream.IStreamReceiver;
 import storm.stream.KafkaStream;
+import storm.stream.StreamReceiverFilter;
 import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
@@ -78,7 +79,7 @@ public class SynEsculBolt extends BaseRichBolt {
     private static int ispreCp = 0;
 
 
-    private IStreamReceiver registerStreamReceiver;
+    private StreamReceiverFilter registerStreamReceiver;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {

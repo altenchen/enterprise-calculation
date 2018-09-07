@@ -12,6 +12,7 @@ import org.apache.storm.tuple.Fields;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.bolt.CtfoDataBolt;
 import storm.bolt.deal.cusmade.CarNoticeBolt;
 import storm.bolt.deal.norm.AlarmBolt;
 import storm.bolt.deal.norm.EleFenceBolt;
@@ -21,6 +22,8 @@ import storm.constant.StreamFieldKey;
 import storm.kafka.bolt.KafkaSendBolt;
 import storm.kafka.spout.GeneralKafkaSpout;
 import storm.kafka.spout.RegisterKafkaSpout;
+import storm.spout.CtfoKeySpout;
+import storm.spout.IdleVehicleNoticeSpout;
 import storm.stream.KafkaStream;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
@@ -158,18 +161,37 @@ public class TopologiesByConf {
 
         TopologyBuilder builder = new TopologyBuilder();
 
+        buildSingleSpout(builder);
+
         buildKafkaSpout(builder, realSpoutNo);
 
-        builderBlots(builder, boltNo);
+        buildBlots(builder, boltNo);
 
         return builder.createTopology();
+    }
+
+    private static void buildSingleSpout(@NotNull final TopologyBuilder builder) {
+
+        builder
+            .setSpout(
+                IdleVehicleNoticeSpout.getComponentId(),
+                new IdleVehicleNoticeSpout(),
+                1
+            );
+
+        builder
+            .setSpout(
+                CtfoKeySpout.getComponentId(),
+                new CtfoKeySpout(),
+                1
+            );
     }
 
     /**
      * @param builder     拓扑构建器
      * @param realSpoutNo Spout 基准并行度
      */
-    private static void buildKafkaSpout(@NotNull TopologyBuilder builder, int realSpoutNo) {
+    private static void buildKafkaSpout(@NotNull final TopologyBuilder builder, final int realSpoutNo) {
 
         // kafka 实时报文消息
         final KafkaSpout<String, String> generalKafkaSpout = new GeneralKafkaSpout(
@@ -201,7 +223,17 @@ public class TopologiesByConf {
      * @param boltNo  Blot 基准并行度
      */
     @SuppressWarnings("AlibabaMethodTooLong")
-    private static void builderBlots(@NotNull final TopologyBuilder builder, final int boltNo) {
+    private static void buildBlots(@NotNull final TopologyBuilder builder, final int boltNo) {
+
+        builder
+            .setBolt(
+                CtfoDataBolt.getComponentId(),
+                new CtfoDataBolt(),
+                boltNo)
+            .setNumTasks(boltNo * 3)
+            .shuffleGrouping(
+                CtfoKeySpout.getComponentId(),
+                CtfoKeySpout.getVehicleIdentityStreamId());
 
         builder
             .setBolt(
@@ -213,7 +245,16 @@ public class TopologiesByConf {
             .fieldsGrouping(
                 GeneralKafkaSpout.getComponentId(),
                 GeneralKafkaSpout.getGeneralStreamId(),
-                new Fields(StreamFieldKey.VEHICLE_ID));
+                new Fields(StreamFieldKey.VEHICLE_ID))
+            .fieldsGrouping(
+                IdleVehicleNoticeSpout.getComponentId(),
+                IdleVehicleNoticeSpout.getNoticeStreamId(),
+                new Fields(StreamFieldKey.VEHICLE_ID))
+            .fieldsGrouping(
+                CtfoDataBolt.getComponentId(),
+                CtfoDataBolt.getDataStreamId(),
+                new Fields(StreamFieldKey.VEHICLE_ID)
+            );
 
         builder
             // 预警处理
@@ -317,7 +358,7 @@ public class TopologiesByConf {
      *
      * @param properties 配置属性
      */
-    private static void fillKafkaConf(@NotNull Properties properties) {
+    private static void fillKafkaConf(@NotNull final Properties properties) {
         // TODO: 转为存储到单例类
 
         // Kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开. 从 kafka 0.10.1开始支持新的消费方式

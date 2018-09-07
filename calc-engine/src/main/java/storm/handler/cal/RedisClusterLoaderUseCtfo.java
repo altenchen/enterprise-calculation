@@ -168,6 +168,7 @@ public class RedisClusterLoaderUseCtfo {
 
             while (ctfoCacheKeys.next()) {
 
+                // 这一批键是在同一个 redis 节点上的
                 final List<String> clusterKeys = ctfoCacheKeys.getKeys();
                 if(CollectionUtils.isNotEmpty(clusterKeys)) {
 

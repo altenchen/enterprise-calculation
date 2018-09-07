@@ -25,6 +25,7 @@ import storm.handler.cusmade.ScanRange;
 import storm.protocol.CommandType;
 import storm.stream.IStreamReceiver;
 import storm.stream.KafkaStream;
+import storm.stream.StreamReceiverFilter;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
@@ -84,7 +85,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
     private OutputCollector collector;
 
-    private IStreamReceiver dataStreamReceiver;
+    private StreamReceiverFilter dataStreamReceiver;
 
     private KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
 

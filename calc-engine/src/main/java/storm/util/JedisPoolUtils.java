@@ -15,6 +15,7 @@ import storm.system.SysDefine;
 
 import java.util.Objects;
 import java.util.Properties;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -146,6 +147,16 @@ public final class JedisPoolUtils {
         useResourceInternal(function).accept(JEDIS_POOL);
     }
 
+    public final <A> void useResource(
+        @NotNull final BiConsumer<? super Jedis, ? super A> function,
+        @Nullable final A argument)
+        throws JedisException {
+
+        Objects.requireNonNull(function);
+
+        useResourceInternal(function).accept(JEDIS_POOL, argument);
+    }
+
     public final <R> R useResource(
         @NotNull final Function<? super Jedis, ? extends R> function)
         throws JedisException {
@@ -175,6 +186,24 @@ public final class JedisPoolUtils {
             final Jedis jedis = jedisPool.getResource();
             try {
                 function.accept(jedis);
+                jedisPool.returnResource(jedis);
+            } catch (JedisException e) {
+                jedisPool.returnBrokenResource(jedis);
+                throw e;
+            }
+        };
+    }
+
+    @NotNull
+    @Contract(pure = true)
+    private static <A> BiConsumer<? super JedisPool, ? super A> useResourceInternal(
+        @NotNull final BiConsumer<? super Jedis, ? super A> function)
+        throws JedisException {
+
+        return (jedisPool, argument) -> {
+            final Jedis jedis = jedisPool.getResource();
+            try {
+                function.accept(jedis, argument);
                 jedisPool.returnResource(jedis);
             } catch (JedisException e) {
                 jedisPool.returnBrokenResource(jedis);

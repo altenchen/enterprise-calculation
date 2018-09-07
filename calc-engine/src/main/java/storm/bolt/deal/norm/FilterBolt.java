@@ -6,6 +6,8 @@ import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang.time.DateFormatUtils;
+import org.apache.storm.Config;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -13,11 +15,14 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.apache.storm.utils.TupleUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.bolt.CtfoDataBolt;
+import storm.constant.FormatConstant;
 import storm.constant.StreamFieldKey;
 import storm.handler.cusmade.TimeOutOfRangeNotice;
 import storm.handler.cusmade.VehicleIdleHandler;
@@ -25,16 +30,14 @@ import storm.kafka.bolt.KafkaBoltTopic;
 import storm.kafka.spout.GeneralKafkaSpout;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.stream.DataStream;
-import storm.stream.IStreamReceiver;
-import storm.stream.KafkaStream;
+import storm.spout.IdleVehicleNoticeSpout;
+import storm.stream.*;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.JsonUtils;
 
-import java.io.Serializable;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -80,7 +83,7 @@ public class FilterBolt extends BaseRichBolt {
     }
 
     @NotNull
-    public static IStreamReceiver prepareDataStreamReceiver(
+    public static StreamReceiverFilter prepareDataStreamReceiver(
         @NotNull final DataStream.IProcessor processor) {
 
         return DATA_STREAM
@@ -142,7 +145,7 @@ public class FilterBolt extends BaseRichBolt {
 
     // endregion 类常量
 
-    // region 对象常量
+    // region 对象变量
 
     private transient TimeOutOfRangeNotice timeOutOfRangeNotice;
 
@@ -165,21 +168,47 @@ public class FilterBolt extends BaseRichBolt {
 
     private transient Map<String, Map<String, String>> vehicleCache;
 
-    // endregion 对象常量
+    private transient int taskId;
 
-    // region 对象变量
+    private transient OutputCollector collector;
 
-    private OutputCollector collector;
+    private transient DataStream.BoltSender dataStreamSender;
 
-    private IStreamReceiver generalStreamReceiver;
+    private transient KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
 
-    private DataStream.Sender dataStreamSender;
+    private transient KafkaStream.Sender kafkaStreamVehicleNoticeSender;
 
-    private KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
+    private transient StreamReceiverFilter generalStreamReceiver;
 
-    private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
+    private transient StreamReceiverFilter noticeStreamReceiver;
+
+    private transient StreamReceiverFilter ctfoBoltDataStreamReceiver;
 
     // endregion 对象变量
+
+    // region IComponent
+
+    @Override
+    public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
+        declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
+        declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
+        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
+
+        DATA_STREAM.declareOutputFields(DATA_STREAM_ID, declarer);
+
+        KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
+    }
+
+    @Override
+    public Map<String, Object> getComponentConfiguration() {
+        final Config config = new Config();
+        config.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, 10);
+        return config;
+    }
+
+    // endregion IComponent
+
+    // region IBolt
 
     @Override
     public void prepare(
@@ -187,6 +216,7 @@ public class FilterBolt extends BaseRichBolt {
         @NotNull final TopologyContext context,
         @NotNull final OutputCollector collector) {
 
+        taskId = context.getThisTaskId();
         this.collector = collector;
 
         timeOutOfRangeNotice = new TimeOutOfRangeNotice();
@@ -204,6 +234,8 @@ public class FilterBolt extends BaseRichBolt {
         prepareStreamReceiver();
     }
 
+    // region prepare
+
     private void prepareStreamSender(
         @NotNull final OutputCollector collector) {
 
@@ -217,15 +249,51 @@ public class FilterBolt extends BaseRichBolt {
     private void prepareStreamReceiver() {
 
         generalStreamReceiver = GeneralKafkaSpout.prepareGeneralStreamReceiver(this::executeFromKafkaGeneralStream);
+
+        noticeStreamReceiver = IdleVehicleNoticeSpout.prepareNoticeStreamReceiver(this::executeFromIdleVehicleNoticeStream);
+
+        ctfoBoltDataStreamReceiver = CtfoDataBolt.prepareDataStreamReceiver(this::executeFromCtfoBoltDataStream);
     }
+
+    // endregion prepare
 
     @Override
     public void execute(
         @NotNull final Tuple input) {
 
-        generalStreamReceiver.execute(input);
+        if (TupleUtils.isTick(input)) {
+            final long rateSeconds = input.getLongByField("rate_secs");
+            executeFromSystemTickStream(input, rateSeconds);
+            return;
+        }
+
+        if (generalStreamReceiver.execute(input)) {
+            return;
+        }
+
+        if (noticeStreamReceiver.execute(input)) {
+            return;
+        }
+
+        if (ctfoBoltDataStreamReceiver.execute(input)) {
+            return;
+        }
+
+        collector.fail(input);
     }
 
+    // region execute
+
+    private void executeFromSystemTickStream(
+        @NotNull final Tuple input,
+        final long rateSeconds) {
+
+        collector.ack(input);
+
+        LOG.info("[{}][{}]收到心跳[rateSeconds={}]", taskId, DateFormatUtils.format(System.currentTimeMillis(), FormatConstant.DATE_FORMAT), rateSeconds);
+    }
+
+    @SuppressWarnings("AlibabaMethodTooLong")
     private void executeFromKafkaGeneralStream(
         @NotNull final Tuple input,
         @NotNull final String vehicleId,
@@ -325,16 +393,32 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    @Override
-    public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
-        declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
-        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
+    private void executeFromIdleVehicleNoticeStream(
+        @NotNull final Tuple input,
+        @NotNull final String vid,
+        @NotNull final ImmutableMap<String, String> notice) {
 
-        DATA_STREAM.declareOutputFields(DATA_STREAM_ID, declarer);
+        collector.ack(input);
 
-        KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
+        LOG.info("[{}]收到闲置车辆通知[{}][{}]", taskId, vid, notice);
+
     }
+
+    private void executeFromCtfoBoltDataStream(
+        @NotNull final Tuple input,
+        @NotNull final String vehicleId,
+        @NotNull final ImmutableMap<String, String> data) {
+
+        collector.ack(input);
+
+        final String serverReceiveTime = data.get(DataKey._9999_SERVER_RECEIVE_TIME);
+
+        LOG.info("[{}]收到分布式车辆[{}][{}]缓存[{}]", taskId, vehicleId, serverReceiveTime, data);
+    }
+
+    // endregion execute
+
+    // endregion IBolt
 
     private void emit(
         @NotNull final Tuple anchors,
@@ -372,7 +456,7 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    void sendNotice(
+    private void sendNotice(
         @NotNull final String vid,
         @Nullable final Map<String, String> notice) {
 
