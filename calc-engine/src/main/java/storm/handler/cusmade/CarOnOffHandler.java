@@ -1,6 +1,7 @@
 package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -9,6 +10,7 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
@@ -73,101 +75,128 @@ public final class CarOnOffHandler implements Serializable {
      * 闲置车辆将从活跃缓存车辆中删除
      * @param type 处理类型, 目前只支持 TIMEOUT 一个.
      * @param status 扫描类型 0-全量数据 1-活跃数据 status:2-其他定义
-     * @param now 开始处理这一帧数据的时间
+     * @param currentTimeMillis 开始处理这一帧数据的时间
      * @param idleTimeoutMillisecond 判断为闲置车辆的时长
      * @return 闲置车辆通知
      */
-    public List<Map<String, Object>> fullDoseNotice(final String type, final ScanRange status, final long now, final long idleTimeoutMillisecond) {
+    public List<Map<String, Object>> fullDoesNotice(
+        final String type,
+        final ScanRange status,
+        final long currentTimeMillis,
+        final long idleTimeoutMillisecond) {
 
         if (!"TIMEOUT".equals(type)) {
             return null;
         }
 
-        final Map<String,Map<String,String>> cluster;
-        //使用这个队列是为了防止在访问vids时，发生修改，引发错误。
-        final LinkedBlockingQueue<String> vids;
+        final Map<String,Map<String,String>> vehicleDataCache;
+        final LinkedBlockingQueue<String> vehicleIdQueue;
 
-        //1、先从队列中把数据拿出来，进行是否为闲置的判断。缓存的是整条车辆报文
+        //1、先从队列中把数据拿出来，进行是否为闲置的判断。
         if (ScanRange.AllData == status) {
 
-            cluster=SysRealDataCache.getLastDataCache().asMap();
-            vids = SysRealDataCache.LAST_DATA_QUEUE;
+            vehicleDataCache=SysRealDataCache.getLastDataCache();
+            vehicleIdQueue = SysRealDataCache.LAST_DATA_QUEUE;
         } else if (ScanRange.AliveData == status) {
 
-            cluster=SysRealDataCache.getAliveCarCache().asMap();
-            vids = SysRealDataCache.ALIVE_CAR_QUEUE;
+            vehicleDataCache=SysRealDataCache.getAliveCarCache();
+            vehicleIdQueue = SysRealDataCache.ALIVE_CAR_QUEUE;
         } else {
+
             return null;
         }
 
-        if (MapUtils.isNotEmpty(cluster)
-                && CollectionUtils.isNotEmpty(vids)) {
+        if (MapUtils.isEmpty(vehicleDataCache)
+            || CollectionUtils.isEmpty(vehicleIdQueue)) {
 
-            List<Map<String, Object>> list = new LinkedList<>();
-            List<String> markDel = new LinkedList<>();
-            List<String> markAlives = new LinkedList<>();
-            final List<String> allCars = new LinkedList<>();
+            return null;
+        }
 
-            //循环访问队列中的vid，并清空队列
-            String vid = vids.poll();
-            while(null != vid){
-                if (ScanRange.AllData == status){
-                    SysRealDataCache.removeFromLastDataSet(vid);
-                    allCars.add(vid);
-                }else if (ScanRange.AliveData == status) {
-                    SysRealDataCache.removeFromAliveSet(vid);
-                }
-                final Map<String,String> dat = cluster.get(vid);
-                //闲置车辆通知
-                Map<String, Object> notice = inidle(dat, now, idleTimeoutMillisecond,markDel,markAlives);
-                if (null != notice) {
-                    list.add(notice);
-                }
-                vid = vids.poll();
+        // 车辆闲置/活跃通知.
+        final List<Map<String, Object>> idleNotices = Lists.newLinkedList();
+        // 闲置车辆
+        final List<String> idleVehicles = Lists.newLinkedList();
+        // 活跃车辆
+        final List<String> aliveVehicles = Lists.newLinkedList();
+
+        // 如果是做全量同步, 已经出队的车辆还要重新入队.
+        final List<String> allCars = Lists.newLinkedList();
+
+        // 循环访问队列中的vid，并清空队列
+        do {
+
+            final String vid = vehicleIdQueue.poll();
+            if (null == vid) {
+                break;
             }
 
-            //2、根据上面的判断，把闲置的车辆从活跃车辆列表中剔除，活跃车辆再次放入队列
+            if (ScanRange.AllData == status) {
 
-            /**
-             * remove cache
-             */
-            if (markDel.size() > 0) {
-                for (String key : markDel) {
-                    cluster.remove(key);
-                    SysRealDataCache.removeFromAliveSet(key);
-                }
+                SysRealDataCache.removeFromLastDataSet(vid);
+                allCars.add(vid);
+            } else if (ScanRange.AliveData == status) {
+
+                SysRealDataCache.removeFromAliveSet(vid);
             }
 
-            /**
-             * 活跃车辆再次加入队列
-             */
-            if (markAlives.size() > 0) {
-                for (String key : markAlives) {
+            final Map<String,String> data = vehicleDataCache.get(vid);
 
-                    SysRealDataCache.addToAliveCarQueue(key);
-                }
+            //闲置车辆通知
+            final Map<String, Object> notice = inIdle(
+                data,
+                currentTimeMillis,
+                idleTimeoutMillisecond,
+                idleVehicles,
+                aliveVehicles);
+
+            if (MapUtils.isNotEmpty(notice)) {
+                idleNotices.add(notice);
             }
 
-            //3、在把所有的数据放回实时数据缓存，当然也包括已经闲置的车辆。
+        } while (true);
 
-            /**
-             * 最后一帧车辆再次加入队列
-             */
-            if (ScanRange.AllData == status && allCars.size() > 0) {
+        //2、根据上面的判断，把闲置的车辆从活跃车辆列表中剔除，活跃车辆再次放入队列
 
-                for (String key : allCars) {
-
-                    SysRealDataCache.addToLastDataQueue(key);
-                }
-            }
-
-            /**
-             * return result
-             */
-            if (list.size() > 0) {
-                return list;
+        /**
+         * remove cache
+         */
+        if (idleVehicles.size() > 0) {
+            for (final String vid : idleVehicles) {
+                vehicleDataCache.remove(vid);
+                SysRealDataCache.removeFromAliveSet(vid);
             }
         }
+
+        /**
+         * 活跃车辆再次加入队列
+         */
+        if (aliveVehicles.size() > 0) {
+            for (String key : aliveVehicles) {
+
+                SysRealDataCache.addToAliveCarQueue(key);
+            }
+        }
+
+        //3、在把所有的数据放回实时数据缓存，当然也包括已经闲置的车辆。
+
+        /**
+         * 最后一帧车辆再次加入队列
+         */
+        if (ScanRange.AllData == status && allCars.size() > 0) {
+
+            for (String key : allCars) {
+
+                SysRealDataCache.addToLastDataQueue(key);
+            }
+        }
+
+        /**
+         * return result
+         */
+        if (idleNotices.size() > 0) {
+            return idleNotices;
+        }
+
         return null;
     }
 
@@ -187,10 +216,10 @@ public final class CarOnOffHandler implements Serializable {
             LinkedBlockingQueue<String> vids = null;
             if (0 == status) {
                 //获取集群中车辆最后一条数据
-                cluster=SysRealDataCache.getLastDataCache().asMap();
+                cluster=SysRealDataCache.getLastDataCache();
                 vids = SysRealDataCache.LAST_DATA_QUEUE;
             } else if (1 == status) {
-                cluster=SysRealDataCache.getAliveCarCache().asMap();
+                cluster=SysRealDataCache.getAliveCarCache();
                 vids = SysRealDataCache.ALIVE_CAR_QUEUE;
             }
             if (null != cluster && cluster.size()>0
@@ -245,23 +274,24 @@ public final class CarOnOffHandler implements Serializable {
      * 车辆在系统中的最后一帧数据, 可能是各种类型的.....比如登录帧
      * @param data
      * 定时任务本次触发开始的时间
-     * @param now
+     * @param currentTimeMillis
      * 超时闲置时长，（通过判断系统当前时间与最后一帧有效数据的时间差是否大于超时时间）
-     * @param timeout
+     * @param idleTimeoutMillisecond
      * 需要从活跃车辆列表中删除的闲置车辆
-     * @param markDel
+     * @param idleVehicles
      * 需要加入到活跃车辆列表中的活跃车辆
-     * @param markAlive
+     * @param aliveVehicles
      *
      * @return 闲置开始通知或者闲置结束通知，或者null
      *
      */
-    private Map<String, Object> inidle(
+    @Nullable
+    private Map<String, Object> inIdle(
         final Map<String, String> data,
-        final long now,
-        final long timeout,
-        final List<String> markDel,
-        final List<String> markAlive){
+        final long currentTimeMillis,
+        final long idleTimeoutMillisecond,
+        final List<String> idleVehicles,
+        final List<String> aliveVehicles){
 
         if (MapUtils.isEmpty(data)) {
             return null;
@@ -275,11 +305,13 @@ public final class CarOnOffHandler implements Serializable {
             return null;
         }
 
-        //速度和soc为预留字段，当前没有用到
+        // region 如果是实时数据, 则缓存 车速 SOC 累计里程, 否则从缓存中读出这些值.
+
+        // 速度和soc为预留字段，当前没有用到
         int numSpeed = -1;
         int numSoc = -1;
         int numMileage = -1;
-        // 如果是实时数据, 则缓存 车速 SOC 累计里程, 否则从缓存中读出这些值.
+
         try {
             if (CommandType.SUBMIT_REALTIME.equals(msgType)){
 
@@ -358,17 +390,25 @@ public final class CarOnOffHandler implements Serializable {
             }
         }
 
+        // endregion
+
         final String lastUtc = data.get(SysDefine.ONLINE_UTC);
-        final String noticeTime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
+        final String noticeTime = DateFormatUtils.format(new Date(currentTimeMillis), FormatConstant.DATE_FORMAT);
 
         //是否为登入报文
         final boolean isLogin = CommandType.SUBMIT_LOGIN.equals(data.get(DataKey.MESSAGE_TYPE));
 
-        //车辆 是否达到 闲置或者停机 超时的标准
-        //判断标准就是当前时间与缓存中的最后一帧报文时间差值是否大于阈值，
-        //需要注意的是，此时已经的下线车辆也是在全量数据或者活跃数据缓存中的。
-        final boolean isIdle = isTimeout(time, lastUtc, now, timeout);
-        if (isIdle) {//是闲置车辆
+        // 车辆 是否达到 闲置或者停机 超时的标准
+        // 判断标准就是当前时间与缓存中的最后一帧报文时间差值是否大于阈值，
+        // 需要注意的是，此时已经的下线车辆也是在全量数据或者活跃数据缓存中的。
+        final boolean isIdle = isTimeout(
+            time,
+            lastUtc,
+            currentTimeMillis,
+            idleTimeoutMillisecond);
+
+        if (isIdle) {
+            //是闲置车辆
             Map<String, Object> notice = vidIdleNotice.get(vid);
             if (null == notice) {
                 notice = new TreeMap<>();
@@ -382,7 +422,7 @@ public final class CarOnOffHandler implements Serializable {
                 notice.put("speed", numSpeed);
                 notice.put("status", 1);
                 //吉利要求，新增
-                notice.put("offlineMillisecondsThreshold", timeout);
+                notice.put("offlineMillisecondsThreshold", idleTimeoutMillisecond);
             }else{
                 final Object smileage = notice.get("smileage");
                 if(smileage == null || "-1".equals(smileage.toString())) {
@@ -395,13 +435,13 @@ public final class CarOnOffHandler implements Serializable {
             /**
              * 添加删除标记从 cache 移除
              */
-            markDel.add(vid);
+            idleVehicles.add(vid);
             if (1 == (int)notice.get("status")) {
                 recorder.save(REDIS_DB_INDEX, IDLE_REDIS_KEYS,vid, notice);
                 return notice;
             }
         } else {//不是闲置车辆
-            markAlive.add(vid);
+            aliveVehicles.add(vid);
             //如果是登入报文，则返回null。针对吉利自动唤醒报文
             if(isLogin){
                 return null;
@@ -568,16 +608,7 @@ public final class CarOnOffHandler implements Serializable {
     /**
      * 车辆 是否达到 闲置或者停机 超时的标准
      */
-    private boolean isTimeout(final String time, final String lastUtc, final long now, final long idleTimeout){
-
-        long utcValue = 0;
-        if(NumberUtils.isDigits(lastUtc)) {
-            try {
-                utcValue = DateUtils.parseDate(lastUtc, new String[]{FormatConstant.DATE_FORMAT}).getTime();
-            } catch (ParseException e) {
-                logger.warn("闲置时间是否超时判断中报出异常", e);
-            }
-        }
+    private boolean isTimeout(final String time, final String lastUtc, final long currentTimeMillis, final long idleTimeout){
 
         long timeValue = 0;
         if(NumberUtils.isDigits(time)) {
@@ -588,8 +619,15 @@ public final class CarOnOffHandler implements Serializable {
             }
         }
 
-        final long maxTime = Math.max(utcValue, timeValue);
-        if (maxTime > 0 && now - maxTime > idleTimeout) {
+        final long utcValue = NumberUtils.toLong(lastUtc, 0);
+
+        // 车辆TIME数据时间 和 数据帧到达 storm 时间(utc) 中更大的值.
+        // 这里有点问题:
+        // 1. 几乎总是使用utc时间, 而这个时间做闲置条件并不合适
+        // 2. TIME 在实时数据中来源于车载终端采集时间, 这个值误差很大.
+        final long maxTime = Math.max(timeValue, utcValue);
+
+        if (maxTime > 0 && currentTimeMillis - maxTime > idleTimeout) {
             return true;
         }
         return false;

@@ -199,7 +199,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
                     // 2代表着读取历史车辆数据，即全部车辆, 默认配置为1, 不会触发全量扫描.
                     if (2 == isPrepareCarProcess) {
                         carOnOffhandler.onOffCheck("TIMEOUT", 0, currentTimeMillis, offlineTimeMillisecond);
-                        List<Map<String, Object>> notices = carOnOffhandler.fullDoseNotice("TIMEOUT", ScanRange.AllData, currentTimeMillis, idleTimeoutMillisecond);
+                        final List<Map<String, Object>> notices = carOnOffhandler.fullDoesNotice("TIMEOUT", ScanRange.AllData, currentTimeMillis, idleTimeoutMillisecond);
                         if (CollectionUtils.isNotEmpty(notices)) {
                             LOG.info("---------------syn redis cluster data--------");
                             for (final Map<String, Object> notice : notices) {
@@ -243,10 +243,10 @@ public final class CarNoticeBolt extends BaseRichBolt {
                         }
                         // 车辆长期离线（闲置车辆）通知
                         // 这里容易出现的问题是, 判断线程和数据刷新线程没有做到线程安全, 在判断逻辑执行过程中, 状态是不断刷新的, 容易引起线程冲突或者上下文不一致等诡异的问题.
-                        List<Map<String, Object>> msgs = carOnOffhandler.fullDoseNotice("TIMEOUT", ScanRange.AliveData, System.currentTimeMillis(), idleTimeoutMillisecond);
-                        if (null != msgs && msgs.size() > 0) {
+                        final List<Map<String, Object>> msgs = carOnOffhandler.fullDoesNotice("TIMEOUT", ScanRange.AliveData, System.currentTimeMillis(), idleTimeoutMillisecond);
+                        if (CollectionUtils.isNotEmpty(msgs)) {
                             for (Map<String, Object> map : msgs) {
-                                if (null != map && map.size() > 0) {
+                                if (MapUtils.isNotEmpty(map)) {
                                     Object vid = map.get("vid");
                                     String json = JSON_UTILS.toJson(map);
                                     kafkaStreamVehicleNoticeSender.emit((String) vid, json);
@@ -560,7 +560,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
         // region 更新实时缓存
         try {
-            String type = data.get(DataKey.MESSAGE_TYPE);
+            final String type = data.get(DataKey.MESSAGE_TYPE);
             if (!CommandType.SUBMIT_LINKSTATUS.equals(type)) {
                 SysRealDataCache.updateCache(data, currentTimeMillis, idleTimeoutMillisecond);
             }

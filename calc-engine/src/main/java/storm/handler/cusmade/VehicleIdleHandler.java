@@ -15,9 +15,7 @@ import java.util.Map;
  * @description:
  * 车辆闲置处理, 用于判断车辆是否闲置.
  */
-public final class VehicleIdleHandler implements Serializable {
-
-    private static final long serialVersionUID = -7534407274883592332L;
+public final class VehicleIdleHandler {
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(VehicleIdleHandler.class);

@@ -64,9 +64,9 @@ public class SysRealDataCache {
     private static final Cache<String,Map<String,String>> LAST_DATA_CACHE = RedisClusterLoaderUseCtfo.getLastDataCache();
 
     @Contract(pure = true)
-    public static Cache<String,Map<String,String>> getLastDataCache(){
+    public static Map<String,Map<String,String>> getLastDataCache(){
 
-        return LAST_DATA_CACHE;
+        return LAST_DATA_CACHE.asMap();
     }
 
     /**
@@ -86,6 +86,10 @@ public class SysRealDataCache {
         }
     }
 
+    /**
+     * LAST_DATA_QUEUE 出队之后, 防重标记也要去掉, 这里没有封装好.
+     * @param vid
+     */
     public static void removeFromLastDataSet(@NotNull final String vid){
         if (LAST_DATA_SET.contains(vid)) {
             LAST_DATA_SET.remove(vid);
@@ -104,41 +108,43 @@ public class SysRealDataCache {
             return;
         }
         try {
-            Map<String, String> newmap =  new TreeMap<>();
-            //不缓存无用的数据项，减小缓存大小
-            for (Map.Entry<String, String> entry : data.entrySet()) {
-                final String mapkey = entry.getKey();
+            final Map<String, String> thinData =  Maps.newHashMapWithExpectedSize(data.size());
+
+            // 不缓存无用的数据项，减小缓存大小
+            for (final Map.Entry<String, String> entry : data.entrySet()) {
+                final String key = entry.getKey();
                 final String value = entry.getValue();
 
-                if (null != mapkey && null != value
-                    && !mapkey.startsWith("useful")
-                    && !mapkey.startsWith("newest")
+                if (StringUtils.isNotBlank(key)
+                    && StringUtils.isNotEmpty(value)
+                    && !key.startsWith("useful")
+                    && !key.startsWith("newest")
                     // 单体蓄电池总数
-                    && !"2001".equals(mapkey)
+                    && !"2001".equals(key)
                     // 动力蓄电池包总数
-                    && !"2002".equals(mapkey)
+                    && !"2002".equals(key)
                     // 单体蓄电池电压值列表
-                    && !"2003".equals(mapkey)
+                    && !"2003".equals(key)
                     // 蓄电池包温度探针总数
-                    && !"2101".equals(mapkey)
+                    && !"2101".equals(key)
                     // 单体温度值列表
-                    && !"2103".equals(mapkey)
+                    && !"2103".equals(key)
                     //
-                    && !"7001".equals(mapkey)
+                    && !"7001".equals(key)
                     // 单体电压原始报文
-                    && !"7003".equals(mapkey)
-                    && !"7101".equals(mapkey)
+                    && !"7003".equals(key)
+                    && !"7101".equals(key)
                     // 单体文档原始报文
-                    && !"7103".equals(mapkey)) {
+                    && !"7103".equals(key)) {
 
-                    newmap.put(mapkey, value);
+                    thinData.put(key, value);
                 }
             }
-            final String vid = newmap.get(DataKey.VEHICLE_ID);
-            LAST_DATA_CACHE.put(vid, newmap);
+            final String vid = thinData.get(DataKey.VEHICLE_ID);
+            LAST_DATA_CACHE.put(vid, thinData);
             addToLastDataQueue(vid);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.warn("更新车辆最后一帧数据异常",  e);
         }
     }
 
@@ -147,29 +153,31 @@ public class SysRealDataCache {
     // region AliveCar
 
     /**
-     * 缓存30天, 最多1000万条, 活跃车辆最近一帧数据<vid, <key, value>>
-     * 活跃车辆是指最近30秒(可配置)内有实时数据传过来的车辆
+     * 活跃车辆最近一帧数据<vid, <key, value>>
+     *
+     * 活跃车辆是指实时数据处理时间距离数据接收时间不超过闲置车辆判定时间范围的车
+     * 数据会在这里缓存30天, 最大一千万条记录.
      */
     public static final Cache<String,Map<String,String>> ALIVE_CAR_CACHE = CacheBuilder.newBuilder()
-        .expireAfterAccess(30,TimeUnit.DAYS)
+        .expireAfterAccess(30, TimeUnit.DAYS)
         .maximumSize(10000000)
         .build();
 
     @Contract(pure = true)
-    public static Cache<String,Map<String,String>> getAliveCarCache(){
+    public static Map<String,Map<String,String>> getAliveCarCache(){
 
-        return ALIVE_CAR_CACHE;
+        return ALIVE_CAR_CACHE.asMap();
     }
 
     /**
      * 活跃车辆已更新未处理队列
      */
-    public static LinkedBlockingQueue<String> ALIVE_CAR_QUEUE = Queues.newLinkedBlockingQueue(BUFFER_SIZE);
+    public static final LinkedBlockingQueue<String> ALIVE_CAR_QUEUE = Queues.newLinkedBlockingQueue(BUFFER_SIZE);
 
     /**
      * 活跃车辆已更新未处理队列防重
      */
-    private static Set<String> ALIVE_CAR_SET = Sets.newConcurrentHashSet();
+    private static final Set<String> ALIVE_CAR_SET = Sets.newConcurrentHashSet();
 
 
     public static void addToAliveCarQueue(@NotNull final String vid){
@@ -179,6 +187,10 @@ public class SysRealDataCache {
         }
     }
 
+    /**
+     * ALIVE_CAR_QUEUE 出队之后, 防重也要去掉, 这里没有封装好.
+     * @param vid
+     */
     public static void removeFromAliveSet(@NotNull final String vid){
         if (ALIVE_CAR_SET.contains(vid)) {
             ALIVE_CAR_SET.remove(vid);
@@ -188,13 +200,13 @@ public class SysRealDataCache {
     /**
      * 最近 idleTimeoutMillisecond 毫秒内的车辆报文加入到 ALIVE_CAR_CACHE 中
      * @param data 数据帧
-     * @param now
+     * @param currentTimeMillis
      * @param idleTimeoutMillisecond
      * @return 是否活跃车辆
      */
     private static boolean updateAliveCar(
         final ImmutableMap<String, String> data,
-        final long now,
+        final long currentTimeMillis,
         final long idleTimeoutMillisecond){
 
         if(MapUtils.isEmpty(data)) {
@@ -226,7 +238,7 @@ public class SysRealDataCache {
             final long lastTime = Math.max(utcTime, terminalTime);
 
             if (lastTime > 0) {
-                if (now - lastTime <= idleTimeoutMillisecond) {
+                if (currentTimeMillis - lastTime <= idleTimeoutMillisecond) {
                     addToAliveCarQueue(vid);
                     ALIVE_CAR_CACHE.put(vid, data);
                     return true;
@@ -471,7 +483,7 @@ public class SysRealDataCache {
             idleTimeoutMillisecond = 86400000L;
         }
 
-        final Map<String, Map<String, String>> cluster = getLastDataCache().asMap();
+        final Map<String, Map<String, String>> cluster = getLastDataCache();
 
         for (final Map.Entry<String, Map<String, String>> entry : cluster.entrySet()) {
 
