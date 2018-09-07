@@ -144,26 +144,26 @@ public class FilterBolt extends BaseRichBolt {
 
     // region 对象常量
 
-    private final Map<String, Map<String, String>> vehicleCache = Maps.newHashMap();
+    private transient TimeOutOfRangeNotice timeOutOfRangeNotice;
 
-    private final TimeOutOfRangeNotice timeOutOfRangeNotice = new TimeOutOfRangeNotice();
+    private transient OnlineProcessor onlineProcessor;
 
-    private final OnlineProcessor onlineProcessor = new OnlineProcessor();
+    private transient TimeProcessor timeProcessor;
 
-    private final TimeProcessor timeProcessor = new TimeProcessor();
+    private transient ChargeProcessor chargeProcessor;
 
-    private final ChargeProcessor chargeProcessor = new ChargeProcessor();
+    private transient PowerBatteryAlarmFlagProcessor powerBatteryAlarmFlagProcessor;
 
-    private final PowerBatteryAlarmFlagProcessor powerBatteryAlarmFlagProcessor = new PowerBatteryAlarmFlagProcessor();
+    private transient AlarmProcessor alarmProcessor;
 
-    private final AlarmProcessor alarmProcessor = new AlarmProcessor();
-
-    private final StatusFlagsProcessor statusFlagsProcessor = new StatusFlagsProcessor();
+    private transient StatusFlagsProcessor statusFlagsProcessor;
 
     /**
      * 闲置车辆处理
      */
-    private final VehicleIdleHandler vehicleIdleHandler = new VehicleIdleHandler();
+    private transient VehicleIdleHandler vehicleIdleHandler;
+
+    private transient Map<String, Map<String, String>> vehicleCache;
 
     // endregion 对象常量
 
@@ -188,6 +188,16 @@ public class FilterBolt extends BaseRichBolt {
         @NotNull final OutputCollector collector) {
 
         this.collector = collector;
+
+        timeOutOfRangeNotice = new TimeOutOfRangeNotice();
+        onlineProcessor = new OnlineProcessor();
+        timeProcessor = new TimeProcessor();
+        chargeProcessor = new ChargeProcessor();
+        powerBatteryAlarmFlagProcessor = new PowerBatteryAlarmFlagProcessor();
+        alarmProcessor = new AlarmProcessor();
+        statusFlagsProcessor = new StatusFlagsProcessor();
+        vehicleIdleHandler = new VehicleIdleHandler();
+        vehicleCache = Maps.newHashMap();
 
         prepareStreamSender(collector);
 
@@ -401,9 +411,7 @@ public class FilterBolt extends BaseRichBolt {
         } while (true);
     }
 
-    private static class OnlineProcessor implements Serializable {
-
-        private static final long serialVersionUID = 52118788960816896L;
+    private static class OnlineProcessor {
 
         /**
          * 计算在线状态(10002)和平台注册通知类型(TYPE)
@@ -446,9 +454,7 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    private static class TimeProcessor implements Serializable {
-
-        private static final long serialVersionUID = -1001473285507342121L;
+    private static class TimeProcessor {
 
         /**
          * 计算时间(TIME)加入data
@@ -491,9 +497,8 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    private static class ChargeProcessor implements Serializable {
+    private static class ChargeProcessor {
 
-        private static final long serialVersionUID = 2317874526520165477L;
         /**
          * 每辆车的连续充电报文计次
          */
@@ -531,9 +536,7 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    private static class PowerBatteryAlarmFlagProcessor implements Serializable {
-
-        private static final long serialVersionUID = 962973199549443550L;
+    private static class PowerBatteryAlarmFlagProcessor {
 
         /**
          * 北京地标: 动力蓄电池报警标志解析存储, 见表20
@@ -570,9 +573,7 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    private static class AlarmProcessor implements Serializable {
-
-        private static final long serialVersionUID = 9087497673175781559L;
+    private static class AlarmProcessor {
 
         /**
          * 中国国标: 通用报警标志值, 见表18
@@ -623,9 +624,7 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    private static class StatusFlagsProcessor implements Serializable {
-
-        private static final long serialVersionUID = -7702552036611826880L;
+    private static class StatusFlagsProcessor {
 
         /**
          * 北京地标: 车载终端状态解析存储, 见表23

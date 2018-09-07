@@ -1,7 +1,9 @@
 package storm.bolt.deal.cusmade;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.storm.task.OutputCollector;
@@ -41,10 +43,9 @@ import java.util.concurrent.TimeUnit;
  */
 public final class CarNoticeBolt extends BaseRichBolt {
 
-    private static final long serialVersionUID = 1700001L;
+    private static final long serialVersionUID = -1010194368397854277L;
 
     private static final Logger LOG = LoggerFactory.getLogger(CarNoticeBolt.class);
-
 
     // region Component
 
@@ -76,7 +77,9 @@ public final class CarNoticeBolt extends BaseRichBolt {
     // endregion KafkaStream
 
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
+
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
+
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
     private OutputCollector collector;
@@ -88,43 +91,36 @@ public final class CarNoticeBolt extends BaseRichBolt {
     private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
 
     /**
-     * 输出到Kafka的主题
-     */
-    private String noticeTopic;
-
-    /**
      * 闲置车辆判定, 达到闲置状态时长, 默认1天
      */
     private long idleTimeoutMillisecond = 86400000L;
     /**
-     * 最后进行离线检查的时间, 用于离线判断
-     */
-    private long lastOfflineCheckTimeMillisecond;
-    /**
      * 离线检查, 多长时间检查一下是否离线, 默认2分钟
      */
-    private long offlineCheckSpanMillisecond = 120000;
+    private long offlineCheckSpanMillisecond = 120000L;
     /**
      * 离线判定, 多长时间算是离线, 默认10分钟
      */
-    private static long offlineTimeMillisecond = 600000;
+    private long offlineTimeMillisecond = 600000L;
+    /**
+     * 最后进行离线检查的时间, 用于离线判断
+     */
+    private long lastOfflineCheckTimeMillisecond;
+
     /**
      * 车辆规则处理
      */
-    private CarRuleHandler carRuleHandler;
+    private transient CarRuleHandler carRuleHandler;
+
     /**
      * 车辆上下线及相关处理
      */
-    private final CarOnOffHandler carOnOffhandler = new CarOnOffHandler();
+    private transient CarOnOffHandler carOnOffhandler;
+
     /**
      * 故障码处理
      */
-    private final FaultCodeHandler faultCodeHandler = new FaultCodeHandler();
-
-    /**
-     * prepare时值为2则进行一次全量数据扫描并修改值为1,
-     */
-    private static int ispreCp = 0;
+    private transient FaultCodeHandler faultCodeHandler;
 
     @Override
     public void prepare(
@@ -134,72 +130,95 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
         this.collector = collector;
 
-        noticeTopic = stormConf.get(SysDefine.KAFKA_TOPIC_NOTICE).toString();
+        carRuleHandler = new CarRuleHandler();
+        carOnOffhandler = new CarOnOffHandler();
+        faultCodeHandler = new FaultCodeHandler();
 
-        prepareStreamSender(collector);
+        prepareStreamSender(stormConf, collector);
 
         prepareStreamReceiver();
 
-        long now = System.currentTimeMillis();
-        lastOfflineCheckTimeMillisecond = now;
+        prepareIdleVehicleThread(stormConf);
+    }
 
-        try {
-            final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
-            paramsRedisUtil.rebulid();
-            // 从Redis读取超时时间
-            Object outbyconf = paramsRedisUtil.PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
-            if (null != outbyconf) {
-                idleTimeoutMillisecond = 1000 * (int) outbyconf;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+    private void prepareStreamSender(
+        @NotNull final Map stormConf,
+        @NotNull final OutputCollector collector) {
+
+        kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
+
+        // 输出到Kafka的主题
+        final String noticeTopic = stormConf.get(SysDefine.KAFKA_TOPIC_NOTICE).toString();
+
+        kafkaStreamVehicleNoticeSender = kafkaStreamSenderBuilder.build(noticeTopic);
+    }
+
+    private void prepareStreamReceiver() {
+
+        dataStreamReceiver = FilterBolt.prepareDataStreamReceiver(this::executeFromDataStream);
+    }
+
+    @SuppressWarnings("AlibabaMethodTooLong")
+    private void prepareIdleVehicleThread(
+        @NotNull final Map stormConf) {
+
+        final long currentTimeMillis = System.currentTimeMillis();
+        lastOfflineCheckTimeMillisecond = currentTimeMillis;
+
+        final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
+        paramsRedisUtil.rebulid();
+        // 从Redis读取车辆闲置超时时间
+        final Object idleTimeoutMillisecondFromRedis = paramsRedisUtil.PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
+        if (null != idleTimeoutMillisecondFromRedis) {
+            idleTimeoutMillisecond = 1000 * (int) idleTimeoutMillisecondFromRedis;
         }
 
         // 多长时间算是离线
-        String offLineSecond = MapUtils.getString(stormConf, StormConfigKey.REDIS_OFFLINE_SECOND);
+        final String offLineSecond = MapUtils.getString(stormConf, StormConfigKey.REDIS_OFFLINE_SECOND);
         if (!StringUtils.isEmpty(offLineSecond)) {
             offlineTimeMillisecond = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(offLineSecond) ? offLineSecond : "0") * 1000;
         }
 
         // 多长时间检查一下是否离线
-        String offLineCheckSpanSecond = MapUtils.getString(stormConf, StormConfigKey.REDIS_OFFLINE_CHECK_SPAN_SECOND);
+        final String offLineCheckSpanSecond = MapUtils.getString(stormConf, StormConfigKey.REDIS_OFFLINE_CHECK_SPAN_SECOND);
         if (!StringUtils.isEmpty(offLineCheckSpanSecond)) {
             offlineCheckSpanMillisecond = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(offLineCheckSpanSecond) ? offLineCheckSpanSecond : "0") * 1000;
         }
 
-        carRuleHandler = new CarRuleHandler();
         //闲置车辆判断，发送闲置车辆通知
         try {
             SysRealDataCache.init();
 
-            // region 如果从配置读到ispreCp为2, 则进行一次全量数据扫描, 并将告警数据发送到kafka
+            // region 如果从配置读到 isPrepareCarProcess 为2, 则进行一次全量数据扫描, 并将告警数据发送到kafka
+
             if (stormConf.containsKey(StormConfigKey.REDIS_CLUSTER_DATA_SYN)) {
-                Object precp = stormConf.get(StormConfigKey.REDIS_CLUSTER_DATA_SYN);
-                if (null != precp && !"".equals(precp.toString().trim())) {
-                    String str = precp.toString();
-                    ispreCp = Integer.valueOf(NumberUtils.isNumber(str) ? str : "0");
-                }
-            }
-            //2代表着读取历史车辆数据，即全部车辆, 默认配置为1, 不会触发全量扫描.
-            if (2 == ispreCp) {
-                carOnOffhandler.onOffCheck("TIMEOUT", 0, now, offlineTimeMillisecond);
-                List<Map<String, Object>> msgs = carOnOffhandler.fullDoseNotice("TIMEOUT", ScanRange.AllData, now, idleTimeoutMillisecond);
-                if (null != msgs && msgs.size() > 0) {
-                    System.out.println("---------------syn redis cluster data--------");
-                    for (Map<String, Object> map : msgs) {
-                        if (null != map && map.size() > 0) {
-                            Object vid = map.get("vid");
-                            String json = JSON_UTILS.toJson(map);
-                            kafkaStreamVehicleNoticeSender.emit((String) vid, json);
+                final String isPrepareCarProcessFromRedis = ObjectUtils.toString(stormConf.get(StormConfigKey.REDIS_CLUSTER_DATA_SYN));
+                if (StringUtils.isNotBlank(isPrepareCarProcessFromRedis)) {
+                    final int isPrepareCarProcess = NumberUtils.toInt(isPrepareCarProcessFromRedis, 0);
+
+                    // 2代表着读取历史车辆数据，即全部车辆, 默认配置为1, 不会触发全量扫描.
+                    if (2 == isPrepareCarProcess) {
+                        carOnOffhandler.onOffCheck("TIMEOUT", 0, currentTimeMillis, offlineTimeMillisecond);
+                        List<Map<String, Object>> notices = carOnOffhandler.fullDoseNotice("TIMEOUT", ScanRange.AllData, currentTimeMillis, idleTimeoutMillisecond);
+                        if (CollectionUtils.isNotEmpty(notices)) {
+                            LOG.info("---------------syn redis cluster data--------");
+                            for (final Map<String, Object> notice : notices) {
+                                if (MapUtils.isNotEmpty(notice)) {
+                                    final Object vid = notice.get("vid");
+                                    final String json = JSON_UTILS.toJson(notice);
+                                    kafkaStreamVehicleNoticeSender.emit((String) vid, json);
+                                }
+                            }
                         }
+
                     }
                 }
-
             }
-            ispreCp = 1;
+
             // endregion
 
-            // region 每5分钟执行一次活跃数据扫描，将闲置车辆告警发到kafka中。
+            // region 每5分钟执行一次活跃数据扫描，将闲置车辆告警发到kafka中
+
             class TimeOutClass implements Runnable {
 
                 @Override
@@ -251,29 +270,18 @@ public final class CarNoticeBolt extends BaseRichBolt {
             // endregion
 
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("初始化闲置车辆判断异常", e);
         }
     }
 
-    private void prepareStreamSender(
-        @NotNull final OutputCollector collector) {
-
-        kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
-
-        kafkaStreamVehicleNoticeSender = kafkaStreamSenderBuilder.build(noticeTopic);
-    }
-
-    private void prepareStreamReceiver() {
-
-        dataStreamReceiver = FilterBolt.prepareDataStreamReceiver(this::executeFromDataStream);
-    }
-
     @Override
-    public void execute(@NotNull final Tuple input) {
+    public void execute(
+        @NotNull final Tuple input) {
 
         dataStreamReceiver.execute(input);
     }
 
+    @SuppressWarnings("AlibabaMethodTooLong")
     private void executeFromDataStream(
         @NotNull final Tuple input,
         @NotNull final String vid,
@@ -589,7 +597,8 @@ public final class CarNoticeBolt extends BaseRichBolt {
     }
 
     @Override
-    public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
+    public void declareOutputFields(
+        @NotNull final OutputFieldsDeclarer declarer) {
 
         KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
     }

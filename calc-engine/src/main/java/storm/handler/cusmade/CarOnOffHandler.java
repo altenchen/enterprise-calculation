@@ -24,6 +24,7 @@ import storm.system.NoticeType;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
 
+import java.io.Serializable;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -32,7 +33,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 /**
  * 车辆上下线及相关处理
  */
-public final class CarOnOffHandler {
+public final class CarOnOffHandler implements Serializable {
+
+    private static final long serialVersionUID = 3816584437913891275L;
 
     private final Map<String, Map<String, Object>> vidIdleNotice = new HashMap<>();
     private final Map<String, Map<String, Object>> onOffMileNotice = new HashMap<>();
