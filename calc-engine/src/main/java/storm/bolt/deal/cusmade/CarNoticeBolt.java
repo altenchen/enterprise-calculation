@@ -6,11 +6,13 @@ import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.storm.Config;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.utils.TupleUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -123,6 +125,11 @@ public final class CarNoticeBolt extends BaseRichBolt {
      */
     private transient FaultCodeHandler faultCodeHandler;
 
+    /**
+     * 最后一次同步配置时间
+     */
+    private transient long lastUpdateConfigTime = 0;
+
     @Override
     public void prepare(
         @NotNull final Map stormConf,
@@ -172,7 +179,9 @@ public final class CarNoticeBolt extends BaseRichBolt {
         final Object idleTimeoutMillisecond = paramsRedisUtil.PARAMS.get(
             ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
         if (null != idleTimeoutMillisecond) {
-            this.idleTimeoutMillisecond = (int) idleTimeoutMillisecond;
+            this.idleTimeoutMillisecond = NumberUtils.toLong(
+                idleTimeoutMillisecond.toString()
+            );
         }
 
         // 多长时间算是离线
@@ -187,100 +196,55 @@ public final class CarNoticeBolt extends BaseRichBolt {
             offlineCheckSpanMillisecond = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(offLineCheckSpanSecond) ? offLineCheckSpanSecond : "0") * 1000;
         }
 
-        //闲置车辆判断，发送闲置车辆通知
-        try {
-            SysRealDataCache.init();
-
-            // region 如果从配置读到 isPrepareCarProcess 为2, 则进行一次全量数据扫描, 并将告警数据发送到kafka
-
-            if (stormConf.containsKey(StormConfigKey.REDIS_CLUSTER_DATA_SYN)) {
-                final String isPrepareCarProcessFromRedis = ObjectUtils.toString(stormConf.get(StormConfigKey.REDIS_CLUSTER_DATA_SYN));
-                if (StringUtils.isNotBlank(isPrepareCarProcessFromRedis)) {
-                    final int isPrepareCarProcess = NumberUtils.toInt(isPrepareCarProcessFromRedis, 0);
-
-                    // 2代表着读取历史车辆数据，即全部车辆, 默认配置为1, 不会触发全量扫描.
-                    if (2 == isPrepareCarProcess) {
-                        carOnOffhandler.onOffCheck("TIMEOUT", 0, currentTimeMillis, offlineTimeMillisecond);
-                        final List<Map<String, Object>> notices = carOnOffhandler.fullDoesNotice("TIMEOUT", ScanRange.AllData, currentTimeMillis, this.idleTimeoutMillisecond);
-                        if (CollectionUtils.isNotEmpty(notices)) {
-                            LOG.info("---------------syn redis cluster data--------");
-                            for (final Map<String, Object> notice : notices) {
-                                if (MapUtils.isNotEmpty(notice)) {
-                                    final Object vid = notice.get("vid");
-                                    final String json = JSON_UTILS.toJson(notice);
-                                    kafkaStreamVehicleNoticeSender.emit((String) vid, json);
-                                }
-                            }
-                        }
-
-                    }
-                }
-            }
-
-            // endregion
-
-            // region 每5分钟执行一次活跃数据扫描，将闲置车辆告警发到kafka中
-
-            class TimeOutClass implements Runnable {
-
-                @Override
-                public void run() {
-                    try {
-
-                        try {
-//                            ParamsRedis.rebulid();
-                            /**
-                             * 重新初始化 配置参数，里程跳变数字、未定位的 判断次数等
-                             * 由于此方法内部已经调用了 ParamsRedis.rebulid()
-                             * 因此可以省略 ParamsRedis 重新初始化方法
-                             */
-                            CarRuleHandler.rebulid();
-                            //从配置文件中读出超时时间
-                            Object idleTimeoutMillisecond = ParamsRedisUtil.getInstance().PARAMS.get(ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
-                            if (null != idleTimeoutMillisecond) {
-                                CarNoticeBolt.this.idleTimeoutMillisecond = (int) idleTimeoutMillisecond;
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        // 车辆长期离线（闲置车辆）通知
-                        // 这里容易出现的问题是, 判断线程和数据刷新线程没有做到线程安全, 在判断逻辑执行过程中, 状态是不断刷新的, 容易引起线程冲突或者上下文不一致等诡异的问题.
-                        final List<Map<String, Object>> msgs = carOnOffhandler.fullDoesNotice("TIMEOUT", ScanRange.AliveData, System.currentTimeMillis(), CarNoticeBolt.this.idleTimeoutMillisecond);
-                        if (CollectionUtils.isNotEmpty(msgs)) {
-                            for (Map<String, Object> map : msgs) {
-                                if (MapUtils.isNotEmpty(map)) {
-                                    Object vid = map.get("vid");
-                                    String json = JSON_UTILS.toJson(map);
-                                    kafkaStreamVehicleNoticeSender.emit((String) vid, json);
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-
-            }
-            // 每5分钟执行一次
-            Executors
-                .newScheduledThreadPool(1)
-                .scheduleAtFixedRate(
-                    new TimeOutClass(),
-                    0,
-                    60 * 5,
-                    TimeUnit.SECONDS);
-            // endregion
-
-        } catch (Exception e) {
-            LOG.error("初始化闲置车辆判断异常", e);
-        }
+        SysRealDataCache.init();
     }
 
     @Override
     public void execute(
         @NotNull final Tuple input) {
 
-        dataStreamReceiver.execute(input);
+        if(TupleUtils.isTick(input)) {
+            executeFromSystemTickStream(input);
+            return;
+        }
+
+        if (dataStreamReceiver.execute(input)) {
+            return;
+        }
+    }
+
+    /**
+     * Bolt 时钟, 当前配置为每分钟执行一次.
+     * @param input
+     */
+    private void executeFromSystemTickStream(
+        @NotNull final Tuple input) {
+
+        collector.ack(input);
+
+        final long currentTimeMillis = System.currentTimeMillis();
+
+        // 每分钟同步一次配置
+        if(currentTimeMillis - lastUpdateConfigTime > TimeUnit.MINUTES.toMillis(1)) {
+
+            lastUpdateConfigTime = currentTimeMillis;
+
+            try {
+                // 更新配置
+                CarRuleHandler.rebulid();
+                //从配置文件中读出超时时间
+                Object idleTimeoutMillisecond = ParamsRedisUtil.getInstance().PARAMS.get(
+                    ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
+                if (null != idleTimeoutMillisecond) {
+                    this.idleTimeoutMillisecond = NumberUtils.toLong(
+                        idleTimeoutMillisecond.toString()
+                    );
+                }
+            } catch (Exception e) {
+                LOG.error("同步配置异常", e);
+            }
+        }
+
     }
 
     @SuppressWarnings("AlibabaMethodTooLong")
@@ -385,4 +349,10 @@ public final class CarNoticeBolt extends BaseRichBolt {
         KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
     }
 
+    @Override
+    public Map<String, Object> getComponentConfiguration() {
+        final Config config = new Config();
+        config.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, TimeUnit.MINUTES.toSeconds(1));
+        return config;
+    }
 }

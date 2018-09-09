@@ -39,6 +39,7 @@ import storm.util.*;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -334,8 +335,7 @@ public class FilterBolt extends BaseRichBolt {
 
             vehicleIdleHandler
                 .computeNotice()
-                .forEach((vid, notice) -> {
-                    final String json = JSON_UTILS.toJson(notice);
+                .forEach((vid, json) -> {
                     kafkaStreamVehicleNoticeSender.emit(input, vid, json);
                 });
         }
@@ -474,13 +474,40 @@ public class FilterBolt extends BaseRichBolt {
 
         collector.ack(input);
 
+        long platformReceiveTime = 0;
+
         final String platformReceiveTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+        if (StringUtils.isNotBlank(platformReceiveTimeString)) {
+            try {
+                platformReceiveTime = DataUtils.parseFormatTime(platformReceiveTimeString);
+            } catch (final ParseException e) {
+                LOG.warn("时间解析异常", e);
+                LOG.warn("无效的服务器接收时间: [{}]", platformReceiveTimeString);
+            }
+        } else {
+            LOG.warn("空白的服务器接收时间: [{}]", platformReceiveTimeString);
+        }
+
         try {
-            final long platformReceiveTime = DataUtils.parseFormatTime(platformReceiveTimeString);
+            final ImmutableMap<String, String> totalMileageCache = VEHICLE_CACHE.getField(
+                vehicleId,
+                VehicleCache.TOTAL_MILEAGE_FIELD);
+            final String totalMileageCacheTimeString = totalMileageCache.get(VehicleCache.VALUE_TIME_KEY);
+            if (StringUtils.isNotBlank(totalMileageCacheTimeString)) {
+                try {
+                    final long totalMileageCacheTime = DataUtils.parseFormatTime(totalMileageCacheTimeString);
+                    platformReceiveTime = Math.max(platformReceiveTime, totalMileageCacheTime);
+                } catch (final ParseException e) {
+                    LOG.warn("时间解析异常", e);
+                    LOG.warn("无效的服务器接收时间: [{}]", platformReceiveTimeString);
+                }
+            }
+        } catch (ExecutionException e) {
+            LOG.warn("从缓存获取有效累计里程异常", e);
+        }
+
+        if (platformReceiveTime > 0) {
             vehicleIdleHandler.updatePlatformReceiveTime(vehicleId, platformReceiveTime);
-        } catch (final ParseException e) {
-            LOG.warn("时间解析异常", e);
-            LOG.warn("无效的服务器接收时间: [{}]", platformReceiveTimeString);
         }
     }
 

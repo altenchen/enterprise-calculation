@@ -101,14 +101,22 @@ public class TopologiesByConf {
         stormConf.put(SysDefine.ES_SEND_TIME, properties.get(SysDefine.ES_SEND_TIME));
 
         //region kafka
-        stormConf.put("kafka.customer.hosts", properties.getProperty("kafka.broker.hosts"));
+
+        stormConf.put(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY, properties.get(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY));
+
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_TOPIC, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_TOPIC));
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP));
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_TOPIC, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_TOPIC));
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP));
         stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC));
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP));
+
         stormConf.put(SysDefine.KAFKA_TOPIC_ALARM, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM));
         stormConf.put(SysDefine.KAFKA_TOPIC_ALARM_STORE, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM_STORE));
-        stormConf.put(SysDefine.KAFKA_TOPIC_ES_STATUS, properties.get(SysDefine.KAFKA_TOPIC_ES_STATUS));
         stormConf.put(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC, properties.get(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC));
         stormConf.put(SysDefine.KAFKA_TOPIC_NOTICE, properties.get(SysDefine.KAFKA_TOPIC_NOTICE));
-        stormConf.put("kafka.topic.realinfostore", properties.getProperty("kafka.topic.realinfostore"));
+        stormConf.put(SysDefine.KAFKA_TOPIC_ES_STATUS, properties.get(SysDefine.KAFKA_TOPIC_ES_STATUS));
+
         //endregion
 
         stormConf.put("offline.check.time", properties.get("offline.check.time"));
@@ -362,7 +370,7 @@ public class TopologiesByConf {
         // TODO: 转为存储到单例类
 
         // Kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开. 从 kafka 0.10.1开始支持新的消费方式
-        SysDefine.KAFKA_BOOTSTRAP_SERVERS = properties.getProperty("kafka.bootstrap.servers");
+        SysDefine.KAFKA_BOOTSTRAP_SERVERS = properties.getProperty(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY);
         LOG.info("ConsumerConfig: {}=[{}]", ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, SysDefine.KAFKA_BOOTSTRAP_SERVERS);
         LOG.info("KafkaStream.Fields({}, {}, {})", KafkaStream.TOPIC, KafkaStream.BOLT_KEY, KafkaStream.BOLT_MESSAGE);
         LOG.info("ProducerConfig: {}=[{}]", ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, SysDefine.KAFKA_BOOTSTRAP_SERVERS);

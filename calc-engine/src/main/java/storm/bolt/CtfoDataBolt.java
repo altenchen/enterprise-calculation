@@ -123,12 +123,11 @@ public final class CtfoDataBolt extends BaseRichBolt {
             dataStreamSender.emit(input, vid, ImmutableMap.copyOf(data));
 
             collector.ack(input);
-
-            LOG.info("成功获取CTFO实时缓存[{}]", vid);
+            return;
         } catch (DataCenterException e) {
             LOG.warn("获取CTFO实时数据缓存值异常", e);
-            collector.fail(input);
         }
+        collector.fail(input);
     }
 
     @Override

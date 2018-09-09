@@ -473,12 +473,15 @@ public class SysRealDataCache {
 
     private static void initChargeCarCache() {
 
-        final Object idleTimeoutMillisecondFromRedis = ParamsRedisUtil.getInstance().PARAMS.get(ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
+        final Object idleTimeoutMillisecondFromRedis = ParamsRedisUtil.getInstance().PARAMS.get(
+            ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
 
         final long idleTimeoutMillisecond;
         if (null != idleTimeoutMillisecondFromRedis) {
 
-            idleTimeoutMillisecond = (int) idleTimeoutMillisecondFromRedis;
+            idleTimeoutMillisecond = NumberUtils.toLong(
+                idleTimeoutMillisecondFromRedis.toString()
+            );
         } else {
             idleTimeoutMillisecond = TimeUnit.DAYS.toMillis(1);
         }
@@ -495,7 +498,11 @@ public class SysRealDataCache {
         }
     }
 
-    public static void init(){}
+    /**
+     * 触发类构造函数, 连锁触发 RedisClusterLoaderUseCtfo 类初始化
+     */
+    public static void init(){
+    }
 
     // endregion Static Init
 

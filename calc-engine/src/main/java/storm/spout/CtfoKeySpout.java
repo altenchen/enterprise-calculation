@@ -126,7 +126,6 @@ public final class CtfoKeySpout extends BaseRichSpout {
 
                         // xny-realInfo-{vid}
                         final String[] splits = clusterKey.split("-", CLUSTER_KEY_ITEM_COUNT);
-                        LOG.warn("成功获取CTFO实时数据缓存物理键[{}]", clusterKey);
                         if(splits.length < CLUSTER_KEY_ITEM_COUNT) {
                             return;
                         }
@@ -137,7 +136,6 @@ public final class CtfoKeySpout extends BaseRichSpout {
                         }
 
                         vehicleIdentityStreamSender.emit(new MessageId<>(vid), vid);
-                        LOG.warn("成功发射CTFO实时数据缓存逻辑键[{}]", vid);
                     });
                 }
             }
