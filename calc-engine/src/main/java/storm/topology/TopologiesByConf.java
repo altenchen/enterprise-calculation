@@ -102,11 +102,11 @@ public class TopologiesByConf {
 
         //region kafka
         stormConf.put("kafka.customer.hosts", properties.getProperty("kafka.broker.hosts"));
-        stormConf.put("kafka.platform.veh.reg", properties.get("kafka.platform.veh.reg"));
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC));
         stormConf.put(SysDefine.KAFKA_TOPIC_ALARM, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM));
         stormConf.put(SysDefine.KAFKA_TOPIC_ALARM_STORE, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM_STORE));
         stormConf.put(SysDefine.KAFKA_TOPIC_ES_STATUS, properties.get(SysDefine.KAFKA_TOPIC_ES_STATUS));
-        stormConf.put("kafka.topic.fencealarm", properties.get("kafka.topic.fencealarm"));
+        stormConf.put(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC, properties.get(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC));
         stormConf.put(SysDefine.KAFKA_TOPIC_NOTICE, properties.get(SysDefine.KAFKA_TOPIC_NOTICE));
         stormConf.put("kafka.topic.realinfostore", properties.getProperty("kafka.topic.realinfostore"));
         //endregion
@@ -369,20 +369,20 @@ public class TopologiesByConf {
 
         // region Spout 输入主题
 
-        // 原始报文 topic, 依赖上游前置机, 请保持一致. 目前约定为 us_packet.
-        SysDefine.ERROR_DATA_TOPIC = properties.getProperty("kafka.topic.errordatatopic");
-        // 原始报文 consumer-group
-        SysDefine.ERROR_DATA_GROUPID = properties.getProperty("kafka.metadata.veh_error_groupid");
+        // 车辆原始报文 topic, 依赖上游前置机, 请保持一致. 目前约定为 us_packet.
+        SysDefine.ERROR_DATA_TOPIC = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_TOPIC);
+        // 车辆原始报文 consumer-group
+        SysDefine.ERROR_DATA_GROUPID = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP);
 
         // 车辆实时数据 topic, 依赖上游前置机, 请保持一致. 目前约定为 us_general.
-        SysDefine.VEH_REALINFO_DATA_TOPIC = properties.getProperty("kafka.topic.veh_realinfo_data");
+        SysDefine.VEH_REALINFO_DATA_TOPIC = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_TOPIC);
         // 车辆实时数据 consumer-group
-        SysDefine.VEH_REALINFO_GROUPID = properties.getProperty("kafka.metadata.veh_realinfo_groupid");
+        SysDefine.VEH_REALINFO_GROUPID = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP);
 
         // 车辆注册通知 topic, 依赖上游前置机, 请保持一致. 目前约定为 SYNC_VEHICLE_REG.
-        SysDefine.PLAT_REG_TOPIC = properties.getProperty("kafka.platform.veh.reg");
+        SysDefine.PLAT_REG_TOPIC = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC);
         // 车辆注册通知 consumer-group
-        SysDefine.PLAT_REG_GROUPID = properties.getProperty("kafka.platform.group");
+        SysDefine.PLAT_REG_GROUPID = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP);
 
         // endregion Spout 输入主题
     }

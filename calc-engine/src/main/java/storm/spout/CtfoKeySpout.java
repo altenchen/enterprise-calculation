@@ -89,7 +89,7 @@ public final class CtfoKeySpout extends BaseRichSpout {
      */
     private static final int KEY_VID_ITEM_INDEX = 2;
 
-    private static final long SUCCESSFUL_POLL_INTERVAL_IN_MILLISECONDS = TimeUnit.MINUTES.toMillis(1);
+    private static final long SUCCESSFUL_POLL_INTERVAL_IN_MILLISECONDS = TimeUnit.HOURS.toMillis(1);
 
     private static final long EXCEPTION_POLL_INTERVAL_IN_MILLISECONDS = TimeUnit.SECONDS.toMillis(1);
 

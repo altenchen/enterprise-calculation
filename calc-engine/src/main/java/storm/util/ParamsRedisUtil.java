@@ -11,6 +11,7 @@ import storm.system.SysDefine;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 /**
@@ -33,10 +34,9 @@ public final class ParamsRedisUtil {
      */
     public static final String LT_ALARM_SOC_PERCENT = "lt.alarm.soc";
     /**
-     * 闲置车辆判定, 达到闲置状态时长, 默认1天, 单位:秒
+     * 车辆达到闲置状态的时间阈值, 默认1天, 单位分钟.
      */
-    @SuppressWarnings("SpellCheckingInspection")
-    public static final String GT_INIDLE_TIME_OUT_SECOND = "gt.inidle.timeOut.time";
+    public static final String VEHICLE_IDLE_TIMEOUT_MILLISECOND = "vehicle.idle.timeout.millisecond";
     /**
      * 连续多少帧没有gps，算为未定位车辆
      */
@@ -68,11 +68,11 @@ public final class ParamsRedisUtil {
     /**
      * 配置来源于Redis哪个库
      */
-    private static final int DB_INDEX = 4;
+    public static final int CONFIG_DATABASE_INDEX = 4;
     /**
      * 配置来自库中哪个键的Hash
      */
-    private static final String CAL_QY_CONF = "cal.qy.conf";
+    public static final String CAL_QY_CONF = "cal.qy.conf";
 
     /**
      * 追踪的车辆ID
@@ -115,7 +115,7 @@ public final class ParamsRedisUtil {
      */
     private void resetToDefault() {
         PARAMS.put(LT_ALARM_SOC_PERCENT, 10);
-        PARAMS.put(GT_INIDLE_TIME_OUT_SECOND, 60 * 60 * 24);
+        PARAMS.put(VEHICLE_IDLE_TIMEOUT_MILLISECOND, TimeUnit.DAYS.toMillis(1));
         PARAMS.put(GPS_NOVALUE_CONTINUE_NO, 5);
         PARAMS.put(GPS_HASVALUE_CONTINUE_NO, 10);
         PARAMS.put(CAN_NOVALUE_CONTINUE_NO, 5);
@@ -189,7 +189,7 @@ public final class ParamsRedisUtil {
     }
 
     private void initParams() {
-        Map<String, String> paramCache = redis.getMap(DB_INDEX, CAL_QY_CONF);
+        Map<String, String> paramCache = redis.getMap(CONFIG_DATABASE_INDEX, CAL_QY_CONF);
         if (null != paramCache && paramCache.size() > 0) {
             initParams(paramCache);
         }

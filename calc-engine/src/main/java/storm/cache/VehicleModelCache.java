@@ -37,18 +37,18 @@ public class VehicleModelCache {
 
     {
         final Properties sysDefine = config.sysDefine;
-        if(sysDefine.containsKey(SysDefine.VEH_MODEL_CACHE_REFRESH_SECOND)) {
-            final String property = sysDefine.getProperty(SysDefine.VEH_MODEL_CACHE_REFRESH_SECOND);
+        if(sysDefine.containsKey(SysDefine.DB_CACHE_FLUSH_TIME_SECOND)) {
+            final String property = sysDefine.getProperty(SysDefine.DB_CACHE_FLUSH_TIME_SECOND);
             if(StringUtils.isNotEmpty(property) && StringUtils.isNumeric(property)) {
                 try {
                     final long second = Long.parseUnsignedLong(property);
                     veh_model_cache_refresh_millisecond = second * 1000;
                 } catch (NumberFormatException e) {
                     e.printStackTrace();
-                    logger.warn("配置节[{}]不是正整数", SysDefine.VEH_MODEL_CACHE_REFRESH_SECOND);
+                    logger.warn("配置节[{}]不是正整数", SysDefine.DB_CACHE_FLUSH_TIME_SECOND);
                 }
             } else {
-                logger.warn("配置节[{}]不是整数", SysDefine.VEH_MODEL_CACHE_REFRESH_SECOND);
+                logger.warn("配置节[{}]不是整数", SysDefine.DB_CACHE_FLUSH_TIME_SECOND);
             }
         }
     }

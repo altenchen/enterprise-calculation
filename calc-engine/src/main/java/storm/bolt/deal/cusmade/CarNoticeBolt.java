@@ -23,7 +23,6 @@ import storm.handler.cusmade.CarOnOffHandler;
 import storm.handler.cusmade.CarRuleHandler;
 import storm.handler.cusmade.ScanRange;
 import storm.protocol.CommandType;
-import storm.stream.IStreamReceiver;
 import storm.stream.KafkaStream;
 import storm.stream.StreamReceiverFilter;
 import storm.system.DataKey;
@@ -33,6 +32,7 @@ import storm.util.DataUtils;
 import storm.util.JsonUtils;
 import storm.util.ParamsRedisUtil;
 
+import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -169,9 +169,10 @@ public final class CarNoticeBolt extends BaseRichBolt {
         final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
         paramsRedisUtil.rebulid();
         // 从Redis读取车辆闲置超时时间
-        final Object idleTimeoutMillisecondFromRedis = paramsRedisUtil.PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
-        if (null != idleTimeoutMillisecondFromRedis) {
-            idleTimeoutMillisecond = 1000 * (int) idleTimeoutMillisecondFromRedis;
+        final Object idleTimeoutMillisecond = paramsRedisUtil.PARAMS.get(
+            ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
+        if (null != idleTimeoutMillisecond) {
+            this.idleTimeoutMillisecond = (int) idleTimeoutMillisecond;
         }
 
         // 多长时间算是离线
@@ -200,7 +201,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
                     // 2代表着读取历史车辆数据，即全部车辆, 默认配置为1, 不会触发全量扫描.
                     if (2 == isPrepareCarProcess) {
                         carOnOffhandler.onOffCheck("TIMEOUT", 0, currentTimeMillis, offlineTimeMillisecond);
-                        final List<Map<String, Object>> notices = carOnOffhandler.fullDoesNotice("TIMEOUT", ScanRange.AllData, currentTimeMillis, idleTimeoutMillisecond);
+                        final List<Map<String, Object>> notices = carOnOffhandler.fullDoesNotice("TIMEOUT", ScanRange.AllData, currentTimeMillis, this.idleTimeoutMillisecond);
                         if (CollectionUtils.isNotEmpty(notices)) {
                             LOG.info("---------------syn redis cluster data--------");
                             for (final Map<String, Object> notice : notices) {
@@ -235,16 +236,16 @@ public final class CarNoticeBolt extends BaseRichBolt {
                              */
                             CarRuleHandler.rebulid();
                             //从配置文件中读出超时时间
-                            Object outbyconf = ParamsRedisUtil.getInstance().PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
-                            if (null != outbyconf) {
-                                idleTimeoutMillisecond = 1000 * (int) outbyconf;
+                            Object idleTimeoutMillisecond = ParamsRedisUtil.getInstance().PARAMS.get(ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
+                            if (null != idleTimeoutMillisecond) {
+                                CarNoticeBolt.this.idleTimeoutMillisecond = (int) idleTimeoutMillisecond;
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
                         // 车辆长期离线（闲置车辆）通知
                         // 这里容易出现的问题是, 判断线程和数据刷新线程没有做到线程安全, 在判断逻辑执行过程中, 状态是不断刷新的, 容易引起线程冲突或者上下文不一致等诡异的问题.
-                        final List<Map<String, Object>> msgs = carOnOffhandler.fullDoesNotice("TIMEOUT", ScanRange.AliveData, System.currentTimeMillis(), idleTimeoutMillisecond);
+                        final List<Map<String, Object>> msgs = carOnOffhandler.fullDoesNotice("TIMEOUT", ScanRange.AliveData, System.currentTimeMillis(), CarNoticeBolt.this.idleTimeoutMillisecond);
                         if (CollectionUtils.isNotEmpty(msgs)) {
                             for (Map<String, Object> map : msgs) {
                                 if (MapUtils.isNotEmpty(map)) {
@@ -330,16 +331,18 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
         PARAMS_REDIS_UTIL.autoLog(vid, () -> LOG.warn("VID[{}]进入车辆通知处理", vid));
 
-        final String collectTime = data.get(DataKey._2000_COLLECT_TIME);
-        final String serverReceiveTime = data.get(DataKey._9999_SERVER_RECEIVE_TIME);
+        // region 缓存有效状态
+
+        final String collectTime = data.get(DataKey._2000_TERMINAL_COLLECT_TIME);
+        final String serverReceiveTime = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
         boolean timeEffective = false;
         if(NumberUtils.isDigits(serverReceiveTime) && NumberUtils.isDigits(collectTime)) {
             try {
                 // 误差10分钟内有效
-                if (Math.abs(NumberUtils.toLong(serverReceiveTime) - NumberUtils.toLong(collectTime)) <= 1000 * 60 * 10) {
+                if (Math.abs(DataUtils.parseFormatTime(serverReceiveTime) - DataUtils.parseFormatTime(collectTime)) <= 1000 * 60 * 10) {
                     timeEffective = true;
                 }
-            } catch (Exception e) {
+            } catch (ParseException e) {
                 LOG.debug("时间格式异常", e);
             }
 
@@ -349,7 +352,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
         if(timeEffective) {
             final String totalMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
 
-            PARAMS_REDIS_UTIL.autoLog(vid, () -> LOG.warn("VID[{}][{}][{}]有效累计里程缓存处理", vid, collectTime, totalMileage));
+            PARAMS_REDIS_UTIL.autoLog(vid, () -> LOG.warn("VID[{}][{}][{}]有效累计里程缓存处理", vid, serverReceiveTime, totalMileage));
 
             if (NumberUtils.isDigits(totalMileage)) {
 
@@ -361,10 +364,10 @@ public final class CarNoticeBolt extends BaseRichBolt {
                             VehicleCache.TOTAL_MILEAGE_FIELD);
                     final String oldTime = usefulTotalMileage.get(VehicleCache.VALUE_TIME_KEY);
 
-                    if (NumberUtils.toLong(oldTime) < NumberUtils.toLong(collectTime)) {
+                    if (NumberUtils.toLong(oldTime) < NumberUtils.toLong(serverReceiveTime)) {
 
                         final ImmutableMap<String, String> update = new ImmutableMap.Builder<String, String>()
-                            .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                            .put(VehicleCache.VALUE_TIME_KEY, serverReceiveTime)
                             .put(VehicleCache.VALUE_DATA_KEY, totalMileage)
                             .build();
                         VEHICLE_CACHE.putField(
@@ -404,7 +407,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
                 () -> LOG.warn(
                     "VID[{}][{}][{}]有效定位缓存处理",
                     vid,
-                    collectTime,
+                    serverReceiveTime,
                     orientationString));
 
 
@@ -445,10 +448,10 @@ public final class CarNoticeBolt extends BaseRichBolt {
                                         VehicleCache.LATITUDE_FIELD);
                                 final String oldLatitudeTime = usefulLatitude.get(VehicleCache.VALUE_TIME_KEY);
 
-                                if (NumberUtils.toLong(oldOrientationTime) < NumberUtils.toLong(collectTime)) {
+                                if (NumberUtils.toLong(oldOrientationTime) < NumberUtils.toLong(serverReceiveTime)) {
 
                                     final ImmutableMap<String, String> updateOrientation = new ImmutableMap.Builder<String, String>()
-                                        .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                        .put(VehicleCache.VALUE_TIME_KEY, serverReceiveTime)
                                         .put(VehicleCache.VALUE_DATA_KEY, orientationString)
                                         .build();
                                     VEHICLE_CACHE.putField(
@@ -470,10 +473,10 @@ public final class CarNoticeBolt extends BaseRichBolt {
                                             usefulOrientation));
                                 }
 
-                                if (NumberUtils.toLong(oldLongitudeTime) < NumberUtils.toLong(collectTime)) {
+                                if (NumberUtils.toLong(oldLongitudeTime) < NumberUtils.toLong(serverReceiveTime)) {
 
                                     final ImmutableMap<String, String> updateLongitude = new ImmutableMap.Builder<String, String>()
-                                        .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                        .put(VehicleCache.VALUE_TIME_KEY, serverReceiveTime)
                                         .put(VehicleCache.VALUE_DATA_KEY, longitudeString)
                                         .build();
                                     VEHICLE_CACHE.putField(
@@ -495,10 +498,10 @@ public final class CarNoticeBolt extends BaseRichBolt {
                                             usefulLongitude));
                                 }
 
-                                if (NumberUtils.toLong(oldLatitudeTime) < NumberUtils.toLong(collectTime)) {
+                                if (NumberUtils.toLong(oldLatitudeTime) < NumberUtils.toLong(serverReceiveTime)) {
 
                                     final ImmutableMap<String, String> updateLatitude = new ImmutableMap.Builder<String, String>()
-                                        .put(VehicleCache.VALUE_TIME_KEY, collectTime)
+                                        .put(VehicleCache.VALUE_TIME_KEY, serverReceiveTime)
                                         .put(VehicleCache.VALUE_DATA_KEY, latitudeString)
                                         .build();
                                     VEHICLE_CACHE.putField(
@@ -559,6 +562,8 @@ public final class CarNoticeBolt extends BaseRichBolt {
         }
         // endregion
 
+        // endregion 缓存有效状态
+
         // region 更新实时缓存
         try {
             final String type = data.get(DataKey.MESSAGE_TYPE);
@@ -580,8 +585,8 @@ public final class CarNoticeBolt extends BaseRichBolt {
             }
         }
 
-        List<Map<String, Object>> faultCodeMessages = faultCodeHandler.generateNotice(data);
-        if (null != faultCodeMessages && faultCodeMessages.size() > 0) {
+        final List<Map<String, Object>> faultCodeMessages = faultCodeHandler.generateNotice(data);
+        if (CollectionUtils.isNotEmpty(faultCodeMessages)) {
             for (Map<String, Object> map : faultCodeMessages) {
                 if (null != map && map.size() > 0) {
                     String json = JSON_UTILS.toJson(map);

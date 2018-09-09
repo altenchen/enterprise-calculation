@@ -91,7 +91,7 @@ public final class IdleVehicleNoticeSpout extends BaseRichSpout {
 
     private static final String IDLE_VEHICLE_REDIS_KEY = "vehCache.qy.idle";
 
-    private static final long POLL_INTERVAL_IN_MILLISECONDS = TimeUnit.HOURS.toMillis(1);
+    private static final long POLL_INTERVAL_IN_MILLISECONDS = TimeUnit.MINUTES.toMillis(1);
 
     // endregion 静态常量
 

@@ -5,27 +5,69 @@ public final class SysDefine {
 
     public static final String DB_CACHE_FLUSH_TIME_SECOND = "db.cache.flushtime";
 
-    //接收实时数据TOPIC
-    public static String VEH_REALINFO_DATA_TOPIC;
+    /**
+     * 车辆原始报文 kafka 消费主题
+     */
+    public static final String KAFKA_CONSUMER_VEHICLE_PACKET_DATA_TOPIC = "kafka.consumer.vehicle_packet_data.topic";
 
-    //车辆实时数据组ID
-    public static String VEH_REALINFO_GROUPID;
+    /**
+     * 车辆原始报文 kafka 消费组
+     */
+    public static final String KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP = "kafka.consumer.vehicle_packet_data.group";
+
+    /**
+     * 车辆实时数据 kafka 消费主题
+     */
+    public static final String KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_TOPIC = "kafka.consumer.vehicle_realtime_data.topic";
+
+    /**
+     * 车辆实时数据 kafka 消费组
+     */
+    public static final String KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP = "kafka.consumer.vehicle_realtime_data.group";
+
+    /**
+     * 车辆注册通知 kafka 消费主题
+     */
+    public static final String KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC = "kafka.consumer.vehicle_register_data.topic";
+
+    /**
+     * 车辆注册通知 kafka 消费组
+     */
+    public static final String KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP = "kafka.consumer.vehicle_register_data.group";
 
     /**
      * Kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开.
      */
     public static String KAFKA_BOOTSTRAP_SERVERS;
 
-    //错误报文TOPIC
+    /**
+     * 车辆原始报文 kafka 消费主题
+     */
     public static String ERROR_DATA_TOPIC;
 
-    //平台注册报文TOPIC
-    public static String PLAT_REG_TOPIC;
-
-    //错误报文组名
+    /**
+     * 车辆原始报文 kafka 消费组
+     */
     public static String ERROR_DATA_GROUPID;
 
-    //错误报文组名
+    /**
+     * 车辆实时数据 kafka 消费主题
+     */
+    public static String VEH_REALINFO_DATA_TOPIC;
+
+    /**
+     * 车辆实时数据 kafka 消费组
+     */
+    public static String VEH_REALINFO_GROUPID;
+
+    /**
+     * 车辆注册通知 kafka 消费主题
+     */
+    public static String PLAT_REG_TOPIC;
+
+    /**
+     * 车辆注册通知 kafka 消费组
+     */
     public static String PLAT_REG_GROUPID;
 
 
@@ -150,15 +192,21 @@ public final class SysDefine {
     public static final String SYNES_GROUP = "synesGroup";
     public static final String CODE = "code";
 
+
     /**
      * 告警消息 kafka 输出 topic
      */
-    public static final String KAFKA_TOPIC_ALARM = "kafka.topic.alarm";
+    public static final String KAFKA_TOPIC_ALARM = "kafka.producer.vehicle_alarm.topic";
 
     /**
      * HBase 车辆报警状态存储 kafka 输出 topic
      */
-    public static final String KAFKA_TOPIC_ALARM_STORE = "kafka.topic.alarm.store";
+    public static final String KAFKA_TOPIC_ALARM_STORE = "kafka.producer.vehicle_alarm_store.topic";
+
+    /**
+     * 围栏告警
+     */
+    public static final String KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC = "kafka.producer.vehicle_fence_alarm.topic";
 
     /**
      * AlarmBolt, 连续多少条报警才发送通知
@@ -173,12 +221,12 @@ public final class SysDefine {
     /**
      * kafka 发往 ElasticSearch 的 topic
      */
-    public static final String KAFKA_TOPIC_ES_STATUS = "kafka.topic.es.status";
+    public static final String KAFKA_TOPIC_ES_STATUS = "kafka.producer.elastic_search_status.topic";
 
     /**
      * 通知消息 kafka 输出 topic
      */
-    public static final String KAFKA_TOPIC_NOTICE = "kafka.topic.notice";
+    public static final String KAFKA_TOPIC_NOTICE = "kafka.producer.vehicle_notice.topic";
 
     /**
      * 触发CAN故障需要的连续帧数
@@ -257,11 +305,6 @@ public final class SysDefine {
      * 未定位开始时间阈值
      */
     public static final String GPS_JUDGE_TIME = "gps.judge.time";
-
-    /**
-     * 车辆车型刷新间隔(秒), 不应大于30分钟
-     */
-    public static final String VEH_MODEL_CACHE_REFRESH_SECOND = "veh.model.cache.refresh.second";
 
     public static class Redis {
         /**

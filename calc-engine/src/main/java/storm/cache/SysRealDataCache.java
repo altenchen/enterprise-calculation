@@ -227,7 +227,7 @@ public class SysRealDataCache {
 
             // 当为实时报文且为自动唤醒报文时，忽略
             if(CommandType.SUBMIT_REALTIME.equals(msgType)){
-                if(DataUtils.judgeAutoWake(data)){
+                if(DataUtils.isAutoWake(data)){
                     return false;
                 }
             }
@@ -473,14 +473,14 @@ public class SysRealDataCache {
 
     private static void initChargeCarCache() {
 
-        final Object idleTimeoutMillisecondParam = ParamsRedisUtil.getInstance().PARAMS.get(ParamsRedisUtil.GT_INIDLE_TIME_OUT_SECOND);
+        final Object idleTimeoutMillisecondFromRedis = ParamsRedisUtil.getInstance().PARAMS.get(ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
 
         final long idleTimeoutMillisecond;
-        if (null != idleTimeoutMillisecondParam) {
+        if (null != idleTimeoutMillisecondFromRedis) {
 
-            idleTimeoutMillisecond = 1000*(int)idleTimeoutMillisecondParam;
+            idleTimeoutMillisecond = (int) idleTimeoutMillisecondFromRedis;
         } else {
-            idleTimeoutMillisecond = 86400000L;
+            idleTimeoutMillisecond = TimeUnit.DAYS.toMillis(1);
         }
 
         final Map<String, Map<String, String>> cluster = getLastDataCache();
