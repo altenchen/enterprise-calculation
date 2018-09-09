@@ -33,11 +33,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * 车辆上下线及相关处理
+ * 1. 闲置车辆通知(已转移待清理)
+ * 2. 车辆上下线通知(待转移)
  */
 public final class CarOnOffHandler implements Serializable {
 
     private static final long serialVersionUID = 3816584437913891275L;
+
+    private static final Logger LOG = LoggerFactory.getLogger(CarNoCanJudge.class);
 
     private final Map<String, Map<String, Object>> vidIdleNotice = new HashMap<>();
     private final Map<String, Map<String, Object>> onOffMileNotice = new HashMap<>();
@@ -48,7 +51,6 @@ public final class CarOnOffHandler implements Serializable {
     private final Recorder recorder = new RedisRecorder();
     private static final int REDIS_DB_INDEX =6;
     private static final String IDLE_REDIS_KEYS = "vehCache.qy.idle";
-    private static final Logger logger = LoggerFactory.getLogger(CarNoCanJudge.class);
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
     {
@@ -58,6 +60,7 @@ public final class CarOnOffHandler implements Serializable {
     }
 
     /**
+     * TODO: 独立出去
      * 生成通知
      * @param data
      * @param now
@@ -70,6 +73,7 @@ public final class CarOnOffHandler implements Serializable {
     }
 
     /**
+     * TODO: 待清理删除
      * 扫描所有车辆数据，找出闲置车辆，车辆闲置通知，并返回从缓存中清除。
      * 注意：此处定义的所有车辆可以理解为只有两种状态，（闲置和活跃），下线了也还属于活跃，只有下线时间超过阈值才归为闲置
      * 闲置车辆将从活跃缓存车辆中删除
@@ -79,6 +83,7 @@ public final class CarOnOffHandler implements Serializable {
      * @param idleTimeoutMillisecond 判断为闲置车辆的时长
      * @return 闲置车辆通知
      */
+    @Deprecated
     public List<Map<String, Object>> fullDoesNotice(
         final String type,
         final ScanRange status,
@@ -194,7 +199,9 @@ public final class CarOnOffHandler implements Serializable {
          * return result
          */
         if (idleNotices.size() > 0) {
-            return idleNotices;
+            // TODO: 暂时屏蔽原来的闲置车辆通知, 验证通过后清理代码.
+            return null;
+            //return idleNotices;
         }
 
         return null;
@@ -386,7 +393,7 @@ public final class CarOnOffHandler implements Serializable {
                 final String totalMileageCache = VEHICLE_CACHE.getTotalMileageString(vid, "-1");
                 numMileage = NumberUtils.toInt(totalMileageCache);
             } catch (ExecutionException e) {
-                logger.warn("获取累计里程缓存异常", e);
+                LOG.warn("获取累计里程缓存异常", e);
             }
         }
 
@@ -437,7 +444,7 @@ public final class CarOnOffHandler implements Serializable {
              */
             idleVehicles.add(vid);
             if (1 == (int)notice.get("status")) {
-                recorder.save(REDIS_DB_INDEX, IDLE_REDIS_KEYS,vid, notice);
+                // recorder.save(REDIS_DB_INDEX, IDLE_REDIS_KEYS,vid, notice);
                 return notice;
             }
         } else {//不是闲置车辆
@@ -462,9 +469,9 @@ public final class CarOnOffHandler implements Serializable {
                 }
                 Map<String, Object> notice = vidIdleNotice.get(vid);
                 vidIdleNotice.remove(vid);
-                //删除redis中的闲置车辆数据
-                recorder.del(REDIS_DB_INDEX, IDLE_REDIS_KEYS, vid);
-                //发送结束报文
+                // 删除redis中的闲置车辆数据
+                // recorder.del(REDIS_DB_INDEX, IDLE_REDIS_KEYS, vid);
+                // 发送结束报文
                 if (null != notice) {
                     notice.put("status", 3);
                     notice.put("etime", time);
@@ -615,7 +622,7 @@ public final class CarOnOffHandler implements Serializable {
             try {
                 timeValue = DateUtils.parseDate(time, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             } catch (ParseException e) {
-                logger.warn("闲置时间是否超时判断中报出异常", e);
+                LOG.warn("闲置时间是否超时判断中报出异常", e);
             }
         }
 
@@ -684,9 +691,9 @@ public final class CarOnOffHandler implements Serializable {
         return false;
     }
 
-    void restartInit(boolean isRestart){
-            if (isRestart) {
-            recorder.rebootInit(REDIS_DB_INDEX, IDLE_REDIS_KEYS, vidIdleNotice);
+    void restartInit(boolean isRestart) {
+        if (isRestart) {
+            // recorder.rebootInit(REDIS_DB_INDEX, IDLE_REDIS_KEYS, vidIdleNotice);
         }
     }
 }
