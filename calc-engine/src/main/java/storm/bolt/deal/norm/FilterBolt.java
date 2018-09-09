@@ -396,11 +396,11 @@ public class FilterBolt extends BaseRichBolt {
         if (isRealtimeInfo) {
 
             // 时间异常判断
-            if(ENABLE_TIME_OUT_OF_RANGE_NOTICE) {
-                final Map<String, String> notice = timeOutOfRangeNotice.process(data);
-                if(MapUtils.isNotEmpty(notice)) {
+            final Map<String, String> notice = timeOutOfRangeNotice.process(data);
+            if(MapUtils.isNotEmpty(notice)) {
+
+                if(ENABLE_TIME_OUT_OF_RANGE_NOTICE) {
                     sendNotice(vid, notice);
-                    return;
                 }
             }
 
@@ -437,13 +437,17 @@ public class FilterBolt extends BaseRichBolt {
 
         emit(input, vid, cmd, immutableData);
 
-        if(isRealtimeInfo) {
+        if (isRealtimeInfo) {
 
-            final String platformTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+            final String platformTimeString = immutableData.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
             try {
                 final long platformTime = DataUtils.parseFormatTime(platformTimeString);
 
+                // 如果不是自动唤醒报文
                 if(DataUtils.isNotAutoWake(data)) {
+
+                    VEHICLE_CACHE.updateUsefulCache(immutableData);
+
                     vehicleIdleHandler.updatePlatformReceiveTime(vid, platformTime);
                 }
             } catch (final ParseException e) {

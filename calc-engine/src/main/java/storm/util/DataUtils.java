@@ -8,6 +8,8 @@ import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
 import storm.system.DataKey;
 
@@ -22,6 +24,8 @@ import java.util.Map;
  */
 @SuppressWarnings("unused")
 public final class DataUtils {
+
+    private static final Logger LOG = LoggerFactory.getLogger(DataUtils.class);
 
     /**
      * 判断报文是否为自动唤醒报文,判断依据：总电压、总电流同时为空则为自动唤醒数据
@@ -234,6 +238,32 @@ public final class DataUtils {
                 }
             )
             .getTime();
+    }
+
+    /**
+     * 解析格式化时间
+     * @param formatTimeString 格式化时间
+     * @return 时间数值
+     * @throws ParseException 解析异常
+     */
+    public static long parseFormatTime(
+        @NotNull final String formatTimeString,
+        final long defaultValue) {
+
+        try {
+            return DateUtils
+                .parseDate(
+                    formatTimeString,
+                    new String[]{
+                        FormatConstant.DATE_FORMAT
+                    }
+                )
+                .getTime();
+        } catch (ParseException e) {
+            LOG.warn("时间解析异常", e);
+            LOG.warn("无效的格式化时间:[{}][{}]", FormatConstant.DATE_FORMAT, formatTimeString);
+            return defaultValue;
+        }
     }
 
     /**
