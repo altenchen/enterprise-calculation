@@ -89,7 +89,7 @@ public class EleFenceBolt extends BaseRichBolt {
 
         this.collector = collector;
         
-        fenceAlarmTopic = stormConf.get("kafka.topic.fencealarm").toString();
+        fenceAlarmTopic = stormConf.get(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC).toString();
 
         prepareStreamSender(collector);
 

@@ -1,9 +1,12 @@
 package storm.dao;
 
+import java.io.Serializable;
 import java.util.*;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,11 +19,15 @@ import storm.util.JedisPoolUtils;
  * Redis 数据访问对象
  * 历史版本中有遗留的Redis存储格式
  *
+ * TODO: 通用抽象合并到 JedisPoolUtils
+ *
  * @author xzp
  */
-public final class DataToRedis {
+public final class DataToRedis implements Serializable {
 
-    private static Logger logger = LoggerFactory.getLogger(DataToRedis.class);
+    private static final long serialVersionUID = -3264877595057681946L;
+
+    private static Logger LOG = LoggerFactory.getLogger(DataToRedis.class);
     private static JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
     public DataToRedis() {
@@ -40,9 +47,9 @@ public final class DataToRedis {
             jedis.hmset(table, map);
             map = null;
         } catch (JedisException e) {
-            logger.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
+            LOG.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
         } catch (Exception ex) {
-            logger.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
+            LOG.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
         } finally {
             if (jedis != null) {
                 jedisPool.returnResourceObject(jedis);
@@ -51,7 +58,9 @@ public final class DataToRedis {
 
     }
 
-    public Map<String, String> hgetallMapByKeyAndDb(String key, int db) {
+    @Nullable
+    public Map<String, String> hashGetAllMapByKeyAndDb(@NotNull final String key, final int db) {
+
         Map<String, String> map = null;
         try {
             map = JEDIS_POOL_UTILS.useResource(jedis -> {
@@ -59,14 +68,15 @@ public final class DataToRedis {
                 return jedis.hgetAll(key);
             });
         } catch (JedisException e) {
-            logger.error("获取实时数据项值缓存Jedis异常:" + e.getMessage(), e);
+            LOG.error("获取实时数据项值缓存Jedis异常:" + e.getMessage(), e);
         } catch (Exception ex) {
-            logger.error("获取实时数据项值缓存异常:" + ex.getMessage(), ex);
+            LOG.error("获取实时数据项值缓存异常:" + ex.getMessage(), ex);
         }
 
         if (MapUtils.isNotEmpty(map)) {
             return map;
         }
+
         return null;
     }
 
@@ -81,9 +91,9 @@ public final class DataToRedis {
             jedis.select(db);
             jedis.flushDB();
         } catch (JedisException e) {
-            logger.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
+            LOG.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
         } catch (Exception ex) {
-            logger.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
+            LOG.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
         } finally {
             if (jedis != null) {
                 jedisPool.returnResourceObject(jedis);
@@ -121,9 +131,9 @@ public final class DataToRedis {
             }
 
         } catch (JedisException e) {
-            logger.error("获取预处理缓存Jedis异常:" + e.getMessage(), e);
+            LOG.error("获取预处理缓存Jedis异常:" + e.getMessage(), e);
         } catch (Exception ex) {
-            logger.error("获取预处理缓存异常:" + ex.getMessage(), ex);
+            LOG.error("获取预处理缓存异常:" + ex.getMessage(), ex);
         } finally {
             if (jedis != null) {
                 jedisPool.returnResourceObject(jedis);
@@ -149,9 +159,9 @@ public final class DataToRedis {
             jedis.select(db);
             smembers = jedis.smembers(name);
         } catch (JedisException e) {
-            logger.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
+            LOG.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
         } catch (Exception ex) {
-            logger.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
+            LOG.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
         } finally {
             if (jedis != null) {
                 jedisPool.returnResourceObject(jedis);
@@ -175,9 +185,9 @@ public final class DataToRedis {
             jedis.select(db);
             keys = jedis.keys(name);
         } catch (JedisException e) {
-            logger.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
+            LOG.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
         } catch (Exception ex) {
-            logger.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
+            LOG.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
         } finally {
             if (jedis != null) {
                 jedisPool.returnResourceObject(jedis);
@@ -200,9 +210,9 @@ public final class DataToRedis {
             jedis.select(db);
             string = jedis.get(name);
         } catch (JedisException e) {
-            logger.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
+            LOG.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
         } catch (Exception ex) {
-            logger.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
+            LOG.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
         } finally {
             if (jedis != null) {
                 jedisPool.returnResourceObject(jedis);
@@ -225,9 +235,9 @@ public final class DataToRedis {
             jedis.select(db);
             string = jedis.set(key, value);
         } catch (JedisException e) {
-            logger.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
+            LOG.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
         } catch (Exception ex) {
-            logger.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
+            LOG.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
         } finally {
             if (jedis != null) {
                 jedisPool.returnResourceObject(jedis);
@@ -248,9 +258,9 @@ public final class DataToRedis {
             jedis.select(db);
             jedis.hset(key, field, value);
         } catch (JedisException e) {
-            logger.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
+            LOG.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
         } catch (Exception ex) {
-            logger.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
+            LOG.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
         } finally {
             if (jedis != null) {
                 jedisPool.returnResourceObject(jedis);
@@ -270,9 +280,9 @@ public final class DataToRedis {
             jedis.select(db);
             jedis.hdel(key, field);
         } catch (JedisException e) {
-            logger.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
+            LOG.error("存储临时统计数据缓存Jedis异常:" + e.getMessage(), e);
         } catch (Exception ex) {
-            logger.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
+            LOG.error("存储临时统计数据缓存异常:" + ex.getMessage(), ex);
         } finally {
             if (jedis != null) {
                 jedisPool.returnResourceObject(jedis);

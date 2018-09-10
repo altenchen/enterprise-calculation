@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.sun.jersey.core.util.Base64;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.jupiter.api.*;
@@ -12,10 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.*;
@@ -274,6 +270,78 @@ final class FormatTest {
             }
         } catch (IOException e) {
             LOG.warn("[7103]解析异常.", e);
+        }
+    }
+
+    @Disabled("测试序列化机制")
+    @Test
+    void serial() {
+
+        try {
+
+            final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(1024);
+
+            final ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+
+            final Person sourcePerson = new Person();
+            sourcePerson.name = "xzp";
+            sourcePerson.age = 31;
+            sourcePerson.transientString = "nat";
+
+            LOG.trace("sourcePerson={}", sourcePerson);
+
+            objectOutputStream.writeObject(sourcePerson);
+
+            final byte[] objectArray = byteArrayOutputStream.toByteArray();
+
+            LOG.trace("objectArray={}", new String(objectArray));
+
+            final ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(objectArray);
+
+            final ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+
+            final Person targetPerson = (Person)objectInputStream.readObject();
+
+            LOG.trace("targetPerson={}", targetPerson);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static class Person implements Serializable {
+
+        public String name;
+
+        public Integer age;
+
+        public final String finalString = "FinalString";
+
+        public transient String transientString = "TransientString";
+
+        public transient final String transientFinalString = "TransientFinalString";
+
+        public Person() {
+            LOG.trace("默认构造函数");
+        }
+
+        @Override
+        public String toString() {
+            return new StringBuilder()
+                .append("[name=")
+                .append(name)
+                .append(",age=")
+                .append(age)
+                .append(",finalString=")
+                .append(finalString)
+                .append(",transientString=")
+                .append(transientString)
+                .append(",transientFinalString=")
+                .append(transientFinalString)
+                .append("]")
+                .toString();
         }
     }
 

@@ -2,7 +2,6 @@ package storm.handler;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -23,6 +22,7 @@ import storm.util.DataUtils;
 import storm.util.ParamsRedisUtil;
 import storm.util.dbconn.Conn;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,11 +30,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * 故障处理
  * @author wza
  */
-public class FaultCodeHandler {
-    private static final Logger logger = LoggerFactory.getLogger(FaultCodeHandler.class);
-    private static final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
+public class FaultCodeHandler implements Serializable {
+
+    private static final long serialVersionUID = 1143313278543030344L;
+
+    private static final Logger LOG = LoggerFactory.getLogger(FaultCodeHandler.class);
 
     private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
+
+    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
 
     /**
      * 从数据库拉取规则的时间间隔, 默认360秒
@@ -107,7 +111,7 @@ public class FaultCodeHandler {
         try {
             autoPullRules();
         } catch (Exception e) {
-            logger.error("故障码处理初始化异常", e);
+            LOG.error("故障码处理初始化异常", e);
         }
     }
 
@@ -277,19 +281,19 @@ public class FaultCodeHandler {
         final String codeValues = data.get(faultType);
         final @NotNull long[] values = parseFaultCodes(codeValues);
         if(ArrayUtils.isEmpty(values)) {
-            paramsRedisUtil.autoLog(vid, ()->{
-                logger.info("VID[{}]故障码为空, 忽略处理.", vid);
+            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                LOG.info("VID[{}]故障码为空, 忽略处理.", vid);
             });
             return;
         }
-        paramsRedisUtil.autoLog(vid, ()->{
-            logger.info("VID[{}]故障码解析[{}]:[{}]->[{}].", vid, faultType, ArrayUtils.toString(codeValues), ArrayUtils.toString(values));
+        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+            LOG.info("VID[{}]故障码解析[{}]:[{}]->[{}].", vid, faultType, ArrayUtils.toString(codeValues), ArrayUtils.toString(values));
         });
 
         // 车型, 空字符串代表没有配置, 只匹配默认规则
         final String vehModel = VehicleModelCache.getInstance().getVehicleModel(vid);
-        paramsRedisUtil.autoLog(vid, ()->{
-            logger.info("VID[{}]解析车型为[{}], 故障类型[{}]", vid, vehModel, faultType);
+        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+            LOG.info("VID[{}]解析车型为[{}], 故障类型[{}]", vid, vehModel, faultType);
         });
         String noticeTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
 
@@ -306,9 +310,9 @@ public class FaultCodeHandler {
                 if (MapUtils.isNotEmpty(exceptions)) {
                     processByBit = true;
 
-                    paramsRedisUtil.autoLog(
+                    PARAMS_REDIS_UTIL.autoLog(
                         vid,
-                        () -> logger.info(
+                        () -> LOG.info(
                             "VID[{}]故障类型[{}]按位解析, 一共[{}]条异常码.",
                             vid,
                             faultType,
@@ -348,12 +352,12 @@ public class FaultCodeHandler {
                             final int status = (int) exceptionNotice.get(NOTICE_STATUS);
                             if (1 == status) {
                                 notices.add(exceptionNotice);
-                                paramsRedisUtil.autoLog(vid, () -> {
-                                    logger.info("VID[{}]按位解析EID[{}]触发", vid, exceptionId);
+                                PARAMS_REDIS_UTIL.autoLog(vid, () -> {
+                                    LOG.info("VID[{}]按位解析EID[{}]触发", vid, exceptionId);
                                 });
                             } else {
-                                paramsRedisUtil.autoLog(vid, () -> {
-                                    logger.info("VID[{}]按位解析EID[{}]持续", vid, exceptionId);
+                                PARAMS_REDIS_UTIL.autoLog(vid, () -> {
+                                    LOG.info("VID[{}]按位解析EID[{}]持续", vid, exceptionId);
                                 });
                             }
                         } else {
@@ -367,20 +371,20 @@ public class FaultCodeHandler {
                                     noticeTime);
                                 notices.add(normalNotice);
 
-                                paramsRedisUtil.autoLog(vid, () -> {
-                                    logger.info("VID[{}]按位解析EID[{}]解除", vid, exceptionId);
+                                PARAMS_REDIS_UTIL.autoLog(vid, () -> {
+                                    LOG.info("VID[{}]按位解析EID[{}]解除", vid, exceptionId);
                                 });
                             } else {
-                                paramsRedisUtil.autoLog(vid, () -> {
-                                    logger.info("VID[{}]按位解析EID[{}]无效", vid, exceptionId);
+                                PARAMS_REDIS_UTIL.autoLog(vid, () -> {
+                                    LOG.info("VID[{}]按位解析EID[{}]无效", vid, exceptionId);
                                 });
                             }
                         }
                     }
                 } else {
-                    paramsRedisUtil.autoLog(
+                    PARAMS_REDIS_UTIL.autoLog(
                         vid,
-                        () -> logger.info(
+                        () -> LOG.info(
                             "VID[{}]故障类型[{}]按位解析, 故障码[{}]没有异常码规则.",
                             vid,
                             faultId,
@@ -390,9 +394,9 @@ public class FaultCodeHandler {
                 }
             }
         } else {
-            paramsRedisUtil.autoLog(
+            PARAMS_REDIS_UTIL.autoLog(
                 vid,
-                () -> logger.info(
+                () -> LOG.info(
                     "VID[{}]故障类型[{}]没有按位解析规则",
                     vid,
                     faultType
@@ -407,9 +411,9 @@ public class FaultCodeHandler {
                 .filter(r -> StringUtils.equals(r.faultType, faultType))
                 .toArray(FaultCodeByteRule[]::new);
 
-            paramsRedisUtil.autoLog(
+            PARAMS_REDIS_UTIL.autoLog(
                 vid,
-                () -> logger.info(
+                () -> LOG.info(
                     "VID[{}]故障类型[{}]按值解析, 一共[{}]组故障规则.",
                     vid,
                     faultType,
@@ -419,9 +423,9 @@ public class FaultCodeHandler {
 
             for (FaultCodeByteRule rule: faultCodeByteRules) {
 
-                paramsRedisUtil.autoLog(
+                PARAMS_REDIS_UTIL.autoLog(
                     vid,
-                    () -> logger.info(
+                    () -> LOG.info(
                         "VID[{}]故障类型[{}]按值解析, 故障码[{}]共[{}]个异常码.",
                         vid,
                         faultType,
@@ -528,8 +532,8 @@ public class FaultCodeHandler {
             //添加通知消息
             if(1 == (int)notice.get(NOTICE_STATUS)) {
                 notices.add(notice);
-                paramsRedisUtil.autoLog(vid, ()->{
-                    logger.info("VID[{}]按值解析EID[{}]触发", vid, exceptionId);
+                PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                    LOG.info("VID[{}]按值解析EID[{}]触发", vid, exceptionId);
                 });
             }
             //添加缓存
@@ -538,7 +542,7 @@ public class FaultCodeHandler {
         // endregion
         // region 当没有异常码时, 才处理正常码.
         if (hasExceptionCode) {
-            logger.info("VID[{}]按值解析FID[{}], 异常码和正常码同时出现, 忽略正常码.", vid, faultId);
+            LOG.info("VID[{}]按值解析FID[{}], 异常码和正常码同时出现, 忽略正常码.", vid, faultId);
             return notices;
         }
         for (final FaultCodeByte normalRule : rules) {
@@ -567,8 +571,8 @@ public class FaultCodeHandler {
                         location,
                         noticetime);
                     notices.add(notice);
-                    paramsRedisUtil.autoLog(vid, ()->{
-                        logger.info("VID[{}]按值解析EID[{}]解除", vid, exceptionId);
+                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                        LOG.info("VID[{}]按值解析EID[{}]解除", vid, exceptionId);
                     });
                 }
 

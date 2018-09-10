@@ -1,11 +1,20 @@
 package storm.util;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang.time.DateFormatUtils;
+import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import storm.constant.FormatConstant;
 import storm.system.DataKey;
+
+import java.text.ParseException;
+import java.util.Date;
 import java.util.Map;
 
 /**
@@ -16,18 +25,29 @@ import java.util.Map;
 @SuppressWarnings("unused")
 public final class DataUtils {
 
+    private static final Logger LOG = LoggerFactory.getLogger(DataUtils.class);
+
     /**
      * 判断报文是否为自动唤醒报文,判断依据：总电压、总电流同时为空则为自动唤醒数据
-     * @param data 集合
+     * @param data 实时数据
      * @return 是否为自动唤醒报文
      */
-    public static boolean judgeAutoWake(
+    public static boolean isAutoWake(
         @NotNull Map<String,String> data){
 
-        final String totalVoltage = data.get(DataKey._2613_TOTAL_VOLTAGE);
-        final String totalElectricity = data.get(DataKey._2614_TOTAL_ELECTRICITY);
-        return StringUtils.isBlank(totalVoltage)
-                && StringUtils.isBlank(totalElectricity);
+        return StringUtils.isBlank(data.get(DataKey._2613_TOTAL_VOLTAGE))
+            && StringUtils.isBlank(data.get(DataKey._2614_TOTAL_ELECTRICITY));
+    }
+
+    /**
+     * 判断报文是否非自动唤醒报文,判断依据：总电压、总电流同时为空则为自动唤醒数据
+     * @param data 实时数据
+     * @return 是否非自动唤醒报文
+     */
+    public static boolean isNotAutoWake(
+        @NotNull Map<String,String> data){
+
+        return !isAutoWake(data);
     }
 
     /**
@@ -182,5 +202,89 @@ public final class DataUtils {
     @Contract(pure = true)
     public static boolean isOrientationLatitudeUseful(int latitude) {
         return latitude >= DataKey.MIN_2503_LATITUDE && latitude <= DataKey.MAX_2503_LATITUDE;
+    }
+
+    /**
+     * 解析平台接收时间
+     * @param data
+     * @return
+     * @throws ParseException
+     */
+    public static long parsePlatformReceiveTime(
+        @NotNull final ImmutableMap<String, String> data)
+        throws ParseException {
+
+        final String platformReceiveTimeString = data.get(
+            DataKey._9999_PLATFORM_RECEIVE_TIME);
+
+        return parseFormatTime(platformReceiveTimeString);
+    }
+
+    /**
+     * 解析格式化时间
+     * @param formatTimeString 格式化时间
+     * @return 时间数值
+     * @throws ParseException 解析异常
+     */
+    public static long parseFormatTime(
+        @NotNull final String formatTimeString)
+        throws ParseException {
+
+        return DateUtils
+            .parseDate(
+                formatTimeString,
+                new String[]{
+                    FormatConstant.DATE_FORMAT
+                }
+            )
+            .getTime();
+    }
+
+    /**
+     * 解析格式化时间
+     * @param formatTimeString 格式化时间
+     * @return 时间数值
+     * @throws ParseException 解析异常
+     */
+    public static long parseFormatTime(
+        @NotNull final String formatTimeString,
+        final long defaultValue) {
+
+        try {
+            return DateUtils
+                .parseDate(
+                    formatTimeString,
+                    new String[]{
+                        FormatConstant.DATE_FORMAT
+                    }
+                )
+                .getTime();
+        } catch (ParseException e) {
+            LOG.warn("时间解析异常", e);
+            LOG.warn("无效的格式化时间:[{}][{}]", FormatConstant.DATE_FORMAT, formatTimeString);
+            return defaultValue;
+        }
+    }
+
+    /**
+     * 构建格式化时间
+     * @param milliseconds 时间数值
+     * @return 格式化时间
+     */
+    public static String buildFormatTime(
+        final long milliseconds) {
+
+        return DateFormatUtils.format(milliseconds, FormatConstant.DATE_FORMAT);
+    }
+
+    /**
+     * 构建格式化时间
+     * @param date 时间
+     * @return 格式化时间
+     */
+    public static String buildFormatTime(
+        final Date date) {
+
+        return DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
     }
 }

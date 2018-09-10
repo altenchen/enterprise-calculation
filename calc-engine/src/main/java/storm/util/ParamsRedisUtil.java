@@ -11,6 +11,7 @@ import storm.system.SysDefine;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 /**
@@ -24,19 +25,18 @@ public final class ParamsRedisUtil {
     /**
      * 日志组件
      */
-    private static final Logger logger = LoggerFactory.getLogger(ParamsRedisUtil.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ParamsRedisUtil.class);
 
-    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
+    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
     /**
      * SOC百分值
      */
     public static final String LT_ALARM_SOC_PERCENT = "lt.alarm.soc";
     /**
-     * 闲置车辆判定, 达到闲置状态时长, 默认1天, 单位:秒
+     * 车辆达到闲置状态的时间阈值, 默认1天, 单位分钟.
      */
-    @SuppressWarnings("SpellCheckingInspection")
-    public static final String GT_INIDLE_TIME_OUT_SECOND = "gt.inidle.timeOut.time";
+    public static final String VEHICLE_IDLE_TIMEOUT_MILLISECOND = "vehicle.idle.timeout.millisecond";
     /**
      * 连续多少帧没有gps，算为未定位车辆
      */
@@ -68,11 +68,11 @@ public final class ParamsRedisUtil {
     /**
      * 配置来源于Redis哪个库
      */
-    private static final int DB_INDEX = 4;
+    public static final int CONFIG_DATABASE_INDEX = 4;
     /**
      * 配置来自库中哪个键的Hash
      */
-    private static final String CAL_QY_CONF = "cal.qy.conf";
+    public static final String CAL_QY_CONF = "cal.qy.conf";
 
     /**
      * 追踪的车辆ID
@@ -115,7 +115,7 @@ public final class ParamsRedisUtil {
      */
     private void resetToDefault() {
         PARAMS.put(LT_ALARM_SOC_PERCENT, 10);
-        PARAMS.put(GT_INIDLE_TIME_OUT_SECOND, 60 * 60 * 24);
+        PARAMS.put(VEHICLE_IDLE_TIMEOUT_MILLISECOND, TimeUnit.DAYS.toMillis(1));
         PARAMS.put(GPS_NOVALUE_CONTINUE_NO, 5);
         PARAMS.put(GPS_HASVALUE_CONTINUE_NO, 10);
         PARAMS.put(CAN_NOVALUE_CONTINUE_NO, 5);
@@ -131,7 +131,7 @@ public final class ParamsRedisUtil {
         PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, 0);
         PARAMS.put(TRACE_VEHICLE_ID, "test\\d+");
 
-        final Properties properties = configUtils.sysDefine;
+        final Properties properties = CONFIG_UTILS.sysDefine;
         if(properties != null) {
             // region 规则覆盖
             {
@@ -189,7 +189,7 @@ public final class ParamsRedisUtil {
     }
 
     private void initParams() {
-        Map<String, String> paramCache = redis.getMap(DB_INDEX, CAL_QY_CONF);
+        Map<String, String> paramCache = redis.getMap(CONFIG_DATABASE_INDEX, CAL_QY_CONF);
         if (null != paramCache && paramCache.size() > 0) {
             initParams(paramCache);
         }
@@ -197,7 +197,7 @@ public final class ParamsRedisUtil {
             final String traceVehicleId = (String) PARAMS.get(TRACE_VEHICLE_ID);
             if (!StringUtils.isBlank(traceVehicleId)) {
                 final String message = "[" + TRACE_VEHICLE_ID + "]初始化为[" + traceVehicleId + "]";
-                logger.info(message);
+                LOG.info(message);
             }
         }
     }
@@ -263,19 +263,5 @@ public final class ParamsRedisUtil {
      */
     public void rebulid(){
         initParams();
-    }
-
-    public static void main(String[] args) {
-        final Map<String, String> paramCache = new TreeMap<>();
-        paramCache.put("lt.alarm.soc", "10");
-        paramCache.put("gt.inidle.timeOut.time", "120");
-        paramCache.put("gps.novalue.continue.no", "10");
-        paramCache.put("can.novalue.continue.no", "10");
-        paramCache.put("mile.hop.num", "2");
-        paramCache.put(SysDefine.GPS_JUDGE_TIME, "600");
-        paramCache.put("can.judge.time", "600");
-
-        final ParamsRedisUtil instance = ParamsRedisUtil.getInstance();
-        instance.initParams(paramCache);
     }
 }

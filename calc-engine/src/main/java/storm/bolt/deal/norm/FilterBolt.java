@@ -6,6 +6,7 @@ import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.storm.Config;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -13,11 +14,14 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.apache.storm.utils.TupleUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.bolt.CtfoDataBolt;
+import storm.cache.VehicleCache;
 import storm.constant.StreamFieldKey;
 import storm.handler.cusmade.TimeOutOfRangeNotice;
 import storm.handler.cusmade.VehicleIdleHandler;
@@ -25,18 +29,18 @@ import storm.kafka.bolt.KafkaBoltTopic;
 import storm.kafka.spout.GeneralKafkaSpout;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.stream.DataStream;
-import storm.stream.IStreamReceiver;
-import storm.stream.KafkaStream;
+import storm.spout.IdleVehicleNoticeSpout;
+import storm.stream.*;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
-import storm.util.ConfigUtils;
-import storm.util.JsonUtils;
+import storm.util.*;
 
-import java.io.Serializable;
+import java.text.ParseException;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -80,7 +84,7 @@ public class FilterBolt extends BaseRichBolt {
     }
 
     @NotNull
-    public static IStreamReceiver prepareDataStreamReceiver(
+    public static StreamReceiverFilter prepareDataStreamReceiver(
         @NotNull final DataStream.IProcessor processor) {
 
         return DATA_STREAM
@@ -111,7 +115,11 @@ public class FilterBolt extends BaseRichBolt {
 
     private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
+    private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
+
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
+
+    private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
     private static final Pattern MSG_REGEX = Pattern.compile("^([^ ]+) (\\d+) ([^ ]+) ([^ ]+) \\{VID:([^,]*)(?:,([^}]+))*\\}$");
 
@@ -142,44 +150,72 @@ public class FilterBolt extends BaseRichBolt {
 
     // endregion 类常量
 
-    // region 对象常量
+    // region 对象变量
 
-    private final Map<String, Map<String, String>> vehicleCache = Maps.newHashMap();
+    private transient TimeOutOfRangeNotice timeOutOfRangeNotice;
 
-    private final TimeOutOfRangeNotice timeOutOfRangeNotice = new TimeOutOfRangeNotice();
+    private transient OnlineProcessor onlineProcessor;
 
-    private final OnlineProcessor onlineProcessor = new OnlineProcessor();
+    private transient TimeProcessor timeProcessor;
 
-    private final TimeProcessor timeProcessor = new TimeProcessor();
+    private transient ChargeProcessor chargeProcessor;
 
-    private final ChargeProcessor chargeProcessor = new ChargeProcessor();
+    private transient PowerBatteryAlarmFlagProcessor powerBatteryAlarmFlagProcessor;
 
-    private final PowerBatteryAlarmFlagProcessor powerBatteryAlarmFlagProcessor = new PowerBatteryAlarmFlagProcessor();
+    private transient AlarmProcessor alarmProcessor;
 
-    private final AlarmProcessor alarmProcessor = new AlarmProcessor();
-
-    private final StatusFlagsProcessor statusFlagsProcessor = new StatusFlagsProcessor();
+    private transient StatusFlagsProcessor statusFlagsProcessor;
 
     /**
      * 闲置车辆处理
      */
-    private final VehicleIdleHandler vehicleIdleHandler = new VehicleIdleHandler();
+    private transient VehicleIdleHandler vehicleIdleHandler;
 
-    // endregion 对象常量
+    private transient long lastComputIdleTime;
 
-    // region 对象变量
+    private transient Map<String, Map<String, String>> vehicleCache;
 
-    private OutputCollector collector;
+    private transient int taskId;
 
-    private IStreamReceiver generalStreamReceiver;
+    private transient OutputCollector collector;
 
-    private DataStream.Sender dataStreamSender;
+    private transient DataStream.BoltSender dataStreamSender;
 
-    private KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
+    private transient KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
 
-    private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
+    private transient KafkaStream.Sender kafkaStreamVehicleNoticeSender;
+
+    private transient StreamReceiverFilter generalStreamReceiver;
+
+    private transient StreamReceiverFilter noticeStreamReceiver;
+
+    private transient StreamReceiverFilter ctfoBoltDataStreamReceiver;
 
     // endregion 对象变量
+
+    // region IComponent
+
+    @Override
+    public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
+        declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
+        declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
+        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
+
+        DATA_STREAM.declareOutputFields(DATA_STREAM_ID, declarer);
+
+        KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
+    }
+
+    @Override
+    public Map<String, Object> getComponentConfiguration() {
+        final Config config = new Config();
+        config.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, 10);
+        return config;
+    }
+
+    // endregion IComponent
+
+    // region IBolt
 
     @Override
     public void prepare(
@@ -187,12 +223,38 @@ public class FilterBolt extends BaseRichBolt {
         @NotNull final TopologyContext context,
         @NotNull final OutputCollector collector) {
 
+        final Properties sysDefine = CONFIG_UTILS.sysDefine;
+
+        taskId = context.getThisTaskId();
         this.collector = collector;
+
+        timeOutOfRangeNotice = new TimeOutOfRangeNotice();
+        onlineProcessor = new OnlineProcessor();
+        timeProcessor = new TimeProcessor();
+        chargeProcessor = new ChargeProcessor();
+        powerBatteryAlarmFlagProcessor = new PowerBatteryAlarmFlagProcessor();
+        alarmProcessor = new AlarmProcessor();
+        statusFlagsProcessor = new StatusFlagsProcessor();
+
+        vehicleIdleHandler = new VehicleIdleHandler();
+        final String idleTimeoutMillisecondString = sysDefine.getProperty(ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
+        if(NumberUtils.isDigits(idleTimeoutMillisecondString)) {
+
+            final long idleTimeoutMillisecond = NumberUtils.toLong(
+                idleTimeoutMillisecondString,
+                vehicleIdleHandler.getIdleTimeoutMillisecond());
+
+            vehicleIdleHandler.setIdleTimeoutMillisecond(idleTimeoutMillisecond);
+        }
+
+        vehicleCache = Maps.newHashMap();
 
         prepareStreamSender(collector);
 
         prepareStreamReceiver();
     }
+
+    // region prepare
 
     private void prepareStreamSender(
         @NotNull final OutputCollector collector) {
@@ -207,15 +269,80 @@ public class FilterBolt extends BaseRichBolt {
     private void prepareStreamReceiver() {
 
         generalStreamReceiver = GeneralKafkaSpout.prepareGeneralStreamReceiver(this::executeFromKafkaGeneralStream);
+
+        noticeStreamReceiver = IdleVehicleNoticeSpout.prepareNoticeStreamReceiver(this::executeFromIdleVehicleNoticeStream);
+
+        ctfoBoltDataStreamReceiver = CtfoDataBolt.prepareDataStreamReceiver(this::executeFromCtfoBoltDataStream);
     }
+
+    // endregion prepare
 
     @Override
     public void execute(
         @NotNull final Tuple input) {
 
-        generalStreamReceiver.execute(input);
+        if (TupleUtils.isTick(input)) {
+            executeFromSystemTickStream(input);
+            return;
+        }
+
+        if (generalStreamReceiver.execute(input)) {
+            return;
+        }
+
+        if (noticeStreamReceiver.execute(input)) {
+            return;
+        }
+
+        if (ctfoBoltDataStreamReceiver.execute(input)) {
+            return;
+        }
+
+        collector.fail(input);
     }
 
+    // region execute
+
+    private void executeFromSystemTickStream(
+        @NotNull final Tuple input) {
+
+        collector.ack(input);
+
+        final long currentTimeMillis = System.currentTimeMillis();
+
+        // 每分钟计算一次闲置车辆
+        if(currentTimeMillis - lastComputIdleTime > TimeUnit.MINUTES.toMillis(1)) {
+
+            lastComputIdleTime = currentTimeMillis;
+
+            final String idleTimeoutMillisecondString = JEDIS_POOL_UTILS.useResource(jedis -> {
+
+                jedis.select(ParamsRedisUtil.CONFIG_DATABASE_INDEX);
+                return jedis.hget(
+                    ParamsRedisUtil.CAL_QY_CONF,
+                    ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
+            });
+
+            if(NumberUtils.isDigits(idleTimeoutMillisecondString)) {
+
+                final long idleTimeoutMillisecond = NumberUtils.toLong(
+                    idleTimeoutMillisecondString,
+                    TimeUnit.MILLISECONDS.toMinutes(
+                        vehicleIdleHandler.getIdleTimeoutMillisecond()));
+
+                vehicleIdleHandler.setIdleTimeoutMillisecond(idleTimeoutMillisecond);
+            }
+
+            vehicleIdleHandler
+                .computeNotice()
+                .forEach((vid, json) -> {
+                    kafkaStreamVehicleNoticeSender.emit(input, vid, json);
+                });
+        }
+
+    }
+
+    @SuppressWarnings("AlibabaMethodTooLong")
     private void executeFromKafkaGeneralStream(
         @NotNull final Tuple input,
         @NotNull final String vehicleId,
@@ -265,17 +392,16 @@ public class FilterBolt extends BaseRichBolt {
         data.put(DataKey.VEHICLE_ID, vid);
         parseData(data, content);
 
-        if (CommandType.SUBMIT_REALTIME.equals(cmd)) {
+        final boolean isRealtimeInfo = CommandType.SUBMIT_REALTIME.equals(cmd);
+        if (isRealtimeInfo) {
 
-            // 时间异常判断, 如果有时间异常, 则认为是无效帧
+            // 时间异常判断
             final Map<String, String> notice = timeOutOfRangeNotice.process(data);
             if(MapUtils.isNotEmpty(notice)) {
 
                 if(ENABLE_TIME_OUT_OF_RANGE_NOTICE) {
                     sendNotice(vid, notice);
                 }
-
-                return;
             }
 
             // 判断是否充电
@@ -297,7 +423,8 @@ public class FilterBolt extends BaseRichBolt {
             }
         }
 
-        // 增加utc字段，插入系统时间
+        // 增加utc字段，插入数据进入 storm 的时间, 这个值可能并不好使, 集群主机如果时间有误差的话.....
+        // TODO: 使用服务器时间取代
         data.put(SysDefine.ONLINE_UTC, String.valueOf(System.currentTimeMillis()));
 
         // 计算在线状态(10002)和平台注册通知类型(TYPE)
@@ -310,21 +437,83 @@ public class FilterBolt extends BaseRichBolt {
 
         emit(input, vid, cmd, immutableData);
 
-        if (CommandType.SUBMIT_REALTIME.equals(cmd)) {
-            vehicleIdleHandler.processRealtimeData(immutableData);
+        if (isRealtimeInfo) {
+
+            final String platformTimeString = immutableData.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+            try {
+                final long platformTime = DataUtils.parseFormatTime(platformTimeString);
+
+                // 如果不是自动唤醒报文
+                if(DataUtils.isNotAutoWake(data)) {
+
+                    VEHICLE_CACHE.updateUsefulCache(immutableData);
+
+                    vehicleIdleHandler.updatePlatformReceiveTime(vid, platformTime);
+                }
+            } catch (final ParseException e) {
+                LOG.warn("时间解析异常", e);
+                LOG.warn("无效的服务器接收时间: [{}]", platformTimeString);
+            }
         }
     }
 
-    @Override
-    public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
-        declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
-        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
+    private void executeFromIdleVehicleNoticeStream(
+        @NotNull final Tuple input,
+        @NotNull final String vid,
+        @NotNull final ImmutableMap<String, String> notice) {
 
-        DATA_STREAM.declareOutputFields(DATA_STREAM_ID, declarer);
+        collector.ack(input);
 
-        KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
+        vehicleIdleHandler.initIdleNotice(vid, notice);
     }
+
+    private void executeFromCtfoBoltDataStream(
+        @NotNull final Tuple input,
+        @NotNull final String vehicleId,
+        @NotNull final ImmutableMap<String, String> data) {
+
+        collector.ack(input);
+
+        long platformReceiveTime = 0;
+
+        final String platformReceiveTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+        if (StringUtils.isNotBlank(platformReceiveTimeString)) {
+            try {
+                platformReceiveTime = DataUtils.parseFormatTime(platformReceiveTimeString);
+            } catch (final ParseException e) {
+                LOG.warn("时间解析异常", e);
+                LOG.warn("无效的服务器接收时间: [{}]", platformReceiveTimeString);
+            }
+        } else {
+            LOG.warn("空白的服务器接收时间: [{}]", platformReceiveTimeString);
+        }
+
+        try {
+            final ImmutableMap<String, String> totalMileageCache = VEHICLE_CACHE.getField(
+                vehicleId,
+                VehicleCache.TOTAL_MILEAGE_FIELD);
+            final String totalMileageCacheTimeString = totalMileageCache.get(VehicleCache.VALUE_TIME_KEY);
+            if (StringUtils.isNotBlank(totalMileageCacheTimeString)) {
+                try {
+                    final long totalMileageCacheTime = DataUtils.parseFormatTime(totalMileageCacheTimeString);
+                    platformReceiveTime = Math.max(platformReceiveTime, totalMileageCacheTime);
+                } catch (final ParseException e) {
+                    LOG.warn("时间解析异常", e);
+                    LOG.warn("无效的服务器接收时间: [{}]", platformReceiveTimeString);
+                }
+            }
+        } catch (ExecutionException e) {
+            LOG.warn("从缓存获取有效累计里程异常", e);
+        }
+
+        if (platformReceiveTime > 0) {
+            vehicleIdleHandler.updatePlatformReceiveTime(vehicleId, platformReceiveTime);
+        }
+    }
+
+    // endregion execute
+
+    // endregion IBolt
 
     private void emit(
         @NotNull final Tuple anchors,
@@ -362,7 +551,7 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    void sendNotice(
+    private void sendNotice(
         @NotNull final String vid,
         @Nullable final Map<String, String> notice) {
 
@@ -401,9 +590,7 @@ public class FilterBolt extends BaseRichBolt {
         } while (true);
     }
 
-    private static class OnlineProcessor implements Serializable {
-
-        private static final long serialVersionUID = 52118788960816896L;
+    private static class OnlineProcessor {
 
         /**
          * 计算在线状态(10002)和平台注册通知类型(TYPE)
@@ -446,9 +633,7 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    private static class TimeProcessor implements Serializable {
-
-        private static final long serialVersionUID = -1001473285507342121L;
+    private static class TimeProcessor {
 
         /**
          * 计算时间(TIME)加入data
@@ -457,10 +642,14 @@ public class FilterBolt extends BaseRichBolt {
          */
         public void fillTime(@NotNull final String cmd, @NotNull final Map<String, String> data) {
 
+            // TODO: 统一使用平台接收数据时间
+
             if (CommandType.SUBMIT_REALTIME.equals(cmd)) {
                 // 如果是实时数据, 则将TIME设置为数据采集时间
-                data.put(DataKey.TIME, data.get(DataKey._2000_COLLECT_TIME));
+                data.put(DataKey.TIME, data.get(DataKey._9999_PLATFORM_RECEIVE_TIME));
             } else if (CommandType.SUBMIT_LOGIN.equals(cmd)) {
+                // 由于网络不稳定导致断线重连的情况, 这类报文歧义不小.
+
                 // 如果是注册报文, 则将TIME设置为登入时间或者登出时间或者注册时间
                 if (data.containsKey(SUBMIT_LOGIN.LOGIN_TIME)) {
                     // 将TIME设置为登入时间
@@ -475,25 +664,16 @@ public class FilterBolt extends BaseRichBolt {
             } else if (CommandType.SUBMIT_TERMSTATUS.equals(cmd)) {
                 // 如果是状态信息上报, 则将TIME设置为采集时间(地标)
                 data.put(DataKey.TIME, data.get(DataKey._3101_COLLECT_TIME));
-            } else if (CommandType.SUBMIT_HISTORY.equals(cmd)) {
-                // 如果是补发数据, 则将TIME设置为数据采集时间
-                data.put(DataKey.TIME, data.get(DataKey._2000_COLLECT_TIME));
             } else if (CommandType.SUBMIT_CARSTATUS.equals(cmd)) {
+                // 车辆运行状态, 采集时间
                 data.put(DataKey.TIME, data.get("3201"));
-            } else if (SysDefine.RENTCAR.equals(cmd)) {
-                // 租赁数据
-                data.put(DataKey.TIME, data.get("4001"));
-            } else if (SysDefine.CHARGE.equals(cmd)) {
-                // 充电设施数据
-                data.put(DataKey.TIME, data.get("4101"));
             }
 
         }
     }
 
-    private static class ChargeProcessor implements Serializable {
+    private static class ChargeProcessor {
 
-        private static final long serialVersionUID = 2317874526520165477L;
         /**
          * 每辆车的连续充电报文计次
          */
@@ -531,9 +711,7 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    private static class PowerBatteryAlarmFlagProcessor implements Serializable {
-
-        private static final long serialVersionUID = 962973199549443550L;
+    private static class PowerBatteryAlarmFlagProcessor {
 
         /**
          * 北京地标: 动力蓄电池报警标志解析存储, 见表20
@@ -570,9 +748,7 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    private static class AlarmProcessor implements Serializable {
-
-        private static final long serialVersionUID = 9087497673175781559L;
+    private static class AlarmProcessor {
 
         /**
          * 中国国标: 通用报警标志值, 见表18
@@ -623,9 +799,7 @@ public class FilterBolt extends BaseRichBolt {
         }
     }
 
-    private static class StatusFlagsProcessor implements Serializable {
-
-        private static final long serialVersionUID = -7702552036611826880L;
+    private static class StatusFlagsProcessor {
 
         /**
          * 北京地标: 车载终端状态解析存储, 见表23

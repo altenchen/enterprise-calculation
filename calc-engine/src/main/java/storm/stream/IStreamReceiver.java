@@ -13,6 +13,7 @@ public interface IStreamReceiver {
     /**
      * 处理输入元组
      * @param input 输入元组
+     * @return 元组是否被捕获处理
      */
     void execute(@NotNull final Tuple input);
 

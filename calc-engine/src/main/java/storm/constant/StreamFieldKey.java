@@ -19,5 +19,7 @@ public final class StreamFieldKey {
 
     public static final String DATA = "DATA";
 
+    public static final String NOTICE = "NOTICE";
+
     public static final String FLAG = "FLAG";
 }

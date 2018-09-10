@@ -533,7 +533,7 @@ public class CarRuleHandler implements InfoNotice {
         }
 
         final String vid = dat.get(DataKey.VEHICLE_ID);
-        final String timeString = dat.get(DataKey._9999_SERVER_RECEIVE_TIME);
+        final String timeString = dat.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
         if (StringUtils.isBlank(vid)
             || StringUtils.isEmpty(timeString)
             || !StringUtils.isNumeric(timeString)) {
@@ -725,7 +725,7 @@ public class CarRuleHandler implements InfoNotice {
      * @param latitude
      */
     private Map<String, Object> chargeCarNotice(String vid, double longitude, double latitude) {
-        Map<String, FillChargeCar> fillvidgps = SysRealDataCache.chargeCars();
+        Map<String, FillChargeCar> fillvidgps = SysRealDataCache.getChargeCarCache();
         Map<Double, FillChargeCar> chargeCarInfo = findNearFill(longitude, latitude, fillvidgps);
 
         if (null != chargeCarInfo) {

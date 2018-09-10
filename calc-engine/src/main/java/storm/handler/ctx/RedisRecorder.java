@@ -7,17 +7,20 @@ import org.slf4j.LoggerFactory;
 import storm.dao.DataToRedis;
 import storm.util.JsonUtils;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.TreeMap;
 
 /**
  * Redis记录器实现
  */
-public final class RedisRecorder implements Recorder {
+public final class RedisRecorder implements Recorder, Serializable {
 
-    private static final Logger logger = LoggerFactory.getLogger(RedisRecorder.class);
+    private static final long serialVersionUID = -2486640129712946392L;
 
-    private static final JsonUtils gson = JsonUtils.getInstance();
+    private static final Logger LOG = LoggerFactory.getLogger(RedisRecorder.class);
+
+    private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
     private DataToRedis redis;
 
@@ -43,7 +46,7 @@ public final class RedisRecorder implements Recorder {
     @Override
     public void save(int dbIndex, String type, String id, Map<String, Object> ctx) {
         try {
-            String json = gson.toJson(ctx);
+            String json = JSON_UTILS.toJson(ctx);
             if (null == this.redis) {
                 this.redis = new DataToRedis();
             }
@@ -62,7 +65,7 @@ public final class RedisRecorder implements Recorder {
             for (Map.Entry<String, Map<String, Object>> entry : ctxs.entrySet()) {
                 String id = entry.getKey();
                 Map<String, Object> ctx = entry.getValue();
-                String json = gson.toJson(ctx);
+                String json = JSON_UTILS.toJson(ctx);
                 redis.hset(dbIndex, type, id, json);
             }
 
@@ -79,7 +82,7 @@ public final class RedisRecorder implements Recorder {
         if (null == this.redis) {
             this.redis = new DataToRedis();
         }
-        Map<String, String> redisCache = redis.hgetallMapByKeyAndDb(type, dbIndex);
+        Map<String, String> redisCache = redis.hashGetAllMapByKeyAndDb(type, dbIndex);
         if (MapUtils.isNotEmpty(redisCache)) {
 
             for (Map.Entry<String, String> entry : redisCache.entrySet()) {
@@ -88,7 +91,7 @@ public final class RedisRecorder implements Recorder {
                 if (null != vid && !"".equals(vid)
                     && null != json && !"".equals(json)) {
 
-                    TreeMap<String, Object> map = gson.fromJson(
+                    TreeMap<String, Object> map = JSON_UTILS.fromJson(
                         json,
                         new TypeToken<TreeMap<String, Object>>() {
                         }.getType());
@@ -97,7 +100,7 @@ public final class RedisRecorder implements Recorder {
                     for (String key : map.keySet()) {
                         final Object value = map.get(key);
                         if(Double.class.equals(value.getClass())) {
-                            logger.debug("[{}]{}: {}-> \"{}\"", dbIndex, type, vid, json);
+                            LOG.debug("[{}]{}: {}-> \"{}\"", dbIndex, type, vid, json);
                         }
                     }
 

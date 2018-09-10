@@ -10,7 +10,6 @@ import storm.constant.FormatConstant;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.DataUtils;
-import storm.util.ParamsRedisUtil;
 
 import java.io.Serializable;
 import java.text.ParseException;
@@ -56,7 +55,7 @@ public final class TimeOutOfRangeNotice implements Serializable {
             return result;
         }
 
-        final String terminalTimeString = data.get(DataKey._2000_COLLECT_TIME);
+        final String terminalTimeString = data.get(DataKey._2000_TERMINAL_COLLECT_TIME);
 
         // 时间有效性异常
         if(StringUtils.isBlank(terminalTimeString)) {
@@ -66,7 +65,7 @@ public final class TimeOutOfRangeNotice implements Serializable {
         final long terminalTime;
         final long platformTime;
 
-        final String platformTimeString = data.get(DataKey._9999_SERVER_RECEIVE_TIME);
+        final String platformTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
         try {
             terminalTime = DateUtils.parseDate(terminalTimeString, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             platformTime = DateUtils.parseDate(platformTimeString, new String[]{FormatConstant.DATE_FORMAT}).getTime();
@@ -96,9 +95,9 @@ public final class TimeOutOfRangeNotice implements Serializable {
         // 车辆ID
         final String vid = data.get(DataKey.VEHICLE_ID);
         // 终端时间
-        final String terminalTimeString = data.get(DataKey._2000_COLLECT_TIME);
+        final String terminalTimeString = data.get(DataKey._2000_TERMINAL_COLLECT_TIME);
         // 平台时间
-        final String platformTimeString = data.get(DataKey._9999_SERVER_RECEIVE_TIME);
+        final String platformTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
         // 经度
         final String longitude = data.get(DataKey._2502_LONGITUDE);
         // 纬度

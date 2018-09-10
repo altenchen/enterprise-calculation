@@ -105,16 +105,16 @@ public class EsRealCalHandler {
      *
      * @return
      */
-    public List<Map<String, Object>> redisCarinfoSendMsgs() {
+    public List<Map<String, Object>> redisCarInfoSendMsgs() {
         try {
             if (carinfoSend) {
                 return null;
             }
 
             carinfoSend = true;
-            Cache<String, String[]> carinfoCache = RedisClusterLoaderUseCtfo.getCarinfoCache();
-            if (carinfoCache.size() > 1) {
-                return getCarMonitorEsMsgs(carinfoCache.asMap());
+            final Cache<String, String[]> carInfoCache = RedisClusterLoaderUseCtfo.getCarInfoCache();
+            if (carInfoCache.size() > 1) {
+                return getCarMonitorEsMsgs(carInfoCache.asMap());
             }
 
         } catch (Exception e) {
@@ -136,11 +136,11 @@ public class EsRealCalHandler {
         try {
             clusterSend = true;
             List<Map<String, Object>> msgs = null;
-            Cache<String, Map<String, String>> redisMsgs = RedisClusterLoaderUseCtfo.getDataCache();
+            Cache<String, Map<String, String>> redisMsgs = RedisClusterLoaderUseCtfo.getLastDataCache();
             if (redisMsgs.size() < 1) {
                 return null;
             }
-            LinkedBlockingQueue<String> carVids = RedisClusterLoaderUseCtfo.carVids;
+            LinkedBlockingQueue<String> carVids = RedisClusterLoaderUseCtfo.cachedVehicleIdQueue;
             Map<String, Map<String, String>> redismaps = redisMsgs.asMap();
             if (redismaps.size() < 1) {
                 return null;

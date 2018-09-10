@@ -14,9 +14,7 @@ import java.io.Serializable;
  * @date: 2018-09-05
  * @description: 流接收器过滤代理, 只有来自指定的组件和流的元组才会被处理.
  */
-public final class StreamReceiverFilter implements IStreamReceiver, Serializable {
-
-    private static final long serialVersionUID = -1896674425569805585L;
+public final class StreamReceiverFilter {
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(StreamReceiverFilter.class);
@@ -37,33 +35,21 @@ public final class StreamReceiverFilter implements IStreamReceiver, Serializable
         this.streamReceiver = streamReceiver;
     }
 
-    @Override
-    public void execute(
+    public boolean execute(
         final @NotNull Tuple input) {
 
         final String sourceComponentId = input.getSourceComponent();
         if(!StringUtils.equals(this.sourceComponentId,sourceComponentId)) {
-            return;
+            return false;
         }
 
         final String sourceStreamId = input.getSourceStreamId();
         if(!StringUtils.equals(this.sourceStreamId,sourceStreamId)) {
-            return;
+            return false;
         }
 
         streamReceiver.execute(input);
-    }
 
-    @Override
-    @Contract("_, _ -> new")
-    @NotNull
-    public StreamReceiverFilter filter(
-        final @NotNull String sourceComponentId,
-        final @NotNull String sourceStreamId) {
-
-        return new StreamReceiverFilter(
-            sourceComponentId,
-            sourceStreamId,
-            streamReceiver);
+        return true;
     }
 }

@@ -114,7 +114,7 @@ public final class GeneralStream implements IStreamFields, Serializable {
 
         private final IProcessor processor;
 
-        public Receiver(
+        Receiver(
             @NotNull final IProcessor processor) {
 
             this.processor = processor;

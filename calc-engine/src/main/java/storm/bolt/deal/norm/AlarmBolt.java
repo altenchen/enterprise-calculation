@@ -113,7 +113,7 @@ public class AlarmBolt extends BaseRichBolt {
     private Map<String, String> alarmMap = Maps.newHashMap();
 
     /**
-     * 车辆最大的数据帧采集时间
+     * 车辆最大的数据帧平台接收时间
      */
     private Map<String, String> vehDataMap = Maps.newHashMap();
 
@@ -363,15 +363,15 @@ public class AlarmBolt extends BaseRichBolt {
 
             if (CommandType.SUBMIT_REALTIME.equals(messageType)) {
                 try {
-                    final String collectTime = data.get(DataKey._2000_COLLECT_TIME);
-                    if (!StringUtils.isEmpty(collectTime)) {
-                        final String lastCollectTime = vehDataMap.get(vid);
-                        if (null == lastCollectTime || (lastCollectTime.compareTo(collectTime) < 0)) {
-                            vehDataMap.put(vid, collectTime);
+                    final String platformReceiveTime = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+                    if (!StringUtils.isEmpty(platformReceiveTime)) {
+                        final String lastPlatformReceiveTime = vehDataMap.get(vid);
+                        if (null == lastPlatformReceiveTime || (lastPlatformReceiveTime.compareTo(platformReceiveTime) < 0)) {
+                            vehDataMap.put(vid, platformReceiveTime);
                         }
                     }
                 } catch (final Exception e) {
-                    LOG.warn("更新最大车辆实时数据采集时间异常", e);
+                    LOG.warn("更新最大车辆实时数据平台接收时间异常", e);
                 }
             }
 

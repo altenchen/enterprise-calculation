@@ -58,7 +58,7 @@ public final class DataKey {
     /**
      * 采集时间, 国标, 这个值可能超过范围, 有效判定条件是于服务器接收时间(9999)相差10分钟以内.
      */
-    public static final String _2000_COLLECT_TIME = "2000";
+    public static final String _2000_TERMINAL_COLLECT_TIME = "2000";
 
     /**
      * 单体蓄电池总数
@@ -652,7 +652,7 @@ public final class DataKey {
     /**
      * SERVER_TIME服务器接收到报文的时间
      */
-    public static final String _9999_SERVER_RECEIVE_TIME = "9999";
+    public static final String _9999_PLATFORM_RECEIVE_TIME = "9999";
 
     /**
      * 车辆是否在线, 0-离线, 1-在线

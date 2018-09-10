@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.stream.RegisterStream;
 import storm.stream.IStreamReceiver;
+import storm.stream.StreamReceiverFilter;
 
 /**
  * @author: xzp
@@ -47,7 +48,7 @@ public final class RegisterKafkaSpout extends KafkaSpout<String, String> {
     }
 
     @NotNull
-    public static IStreamReceiver prepareRegisterStreamReceiver(
+    public static StreamReceiverFilter prepareRegisterStreamReceiver(
         @NotNull final RegisterStream.IProcessor processor) {
 
         return REGISTER_STREAM
