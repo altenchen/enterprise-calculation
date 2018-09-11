@@ -230,6 +230,10 @@ public final class DataUtils {
         @NotNull final String formatTimeString)
         throws ParseException {
 
+        if(!NumberUtils.isDigits(formatTimeString)) {
+            throw new ParseException("formatTimeString must be a digits", 0);
+        }
+
         return DateUtils
             .parseDate(
                 formatTimeString,
