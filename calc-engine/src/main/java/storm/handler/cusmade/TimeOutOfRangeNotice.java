@@ -1,6 +1,7 @@
 package storm.handler.cusmade;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -58,7 +59,7 @@ public final class TimeOutOfRangeNotice implements Serializable {
         final String terminalTimeString = data.get(DataKey._2000_TERMINAL_COLLECT_TIME);
 
         // 时间有效性异常
-        if(StringUtils.isBlank(terminalTimeString)) {
+        if(!NumberUtils.isDigits(terminalTimeString)) {
             return generateNotice(data, 1);
         }
 
@@ -66,6 +67,10 @@ public final class TimeOutOfRangeNotice implements Serializable {
         final long platformTime;
 
         final String platformTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+        if(!NumberUtils.isDigits(platformTimeString)) {
+            LOG.warn("平台接收时间格式错误[{}]", platformTimeString);
+            return result;
+        }
         try {
             terminalTime = DateUtils.parseDate(terminalTimeString, new String[]{FormatConstant.DATE_FORMAT}).getTime();
             platformTime = DateUtils.parseDate(platformTimeString, new String[]{FormatConstant.DATE_FORMAT}).getTime();
