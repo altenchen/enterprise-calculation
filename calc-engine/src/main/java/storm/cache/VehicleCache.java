@@ -571,6 +571,9 @@ public final class VehicleCache {
         }
 
         final String platformReceiveTime = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+        if (!NumberUtils.isDigits(platformReceiveTime)) {
+            return;
+        }
         try {
             DataUtils.parseFormatTime(platformReceiveTime);
         } catch (ParseException e) {
@@ -641,14 +644,23 @@ public final class VehicleCache {
             return;
         }
 
-        final String oldOrientationTime = usefulOrientation.get(VehicleCache.VALUE_TIME_KEY);
-        final String oldLongitudeTime = usefulLongitude.get(VehicleCache.VALUE_TIME_KEY);
-        final String oldLatitudeTime = usefulLatitude.get(VehicleCache.VALUE_TIME_KEY);
-
-        if (platformReceiveTime.compareTo(oldOrientationTime) <= 0
-            || platformReceiveTime.compareTo(oldLongitudeTime) <= 0
-            || platformReceiveTime.compareTo(oldLatitudeTime) <= 0) {
-            return;
+        if(MapUtils.isNotEmpty(usefulOrientation)) {
+            final String oldOrientationTime = usefulOrientation.get(VehicleCache.VALUE_TIME_KEY);
+            if (NumberUtils.isDigits(oldOrientationTime) && platformReceiveTime.compareTo(oldOrientationTime) <= 0) {
+                return;
+            }
+        }
+        if(MapUtils.isNotEmpty(usefulLongitude)) {
+            final String oldLongitudeTime = usefulLongitude.get(VehicleCache.VALUE_TIME_KEY);
+            if (NumberUtils.isDigits(oldLongitudeTime) && platformReceiveTime.compareTo(oldLongitudeTime) <= 0) {
+                return;
+            }
+        }
+        if(MapUtils.isNotEmpty(usefulLatitude)) {
+            final String oldLatitudeTime = usefulLatitude.get(VehicleCache.VALUE_TIME_KEY);
+            if (NumberUtils.isDigits(oldLatitudeTime) && platformReceiveTime.compareTo(oldLatitudeTime) <= 0) {
+                return;
+            }
         }
 
         // TODO: [使用滤波算法过滤漂移值](http://www.geek-workshop.com/thread-7694-1-1.html)
@@ -701,10 +713,11 @@ public final class VehicleCache {
             return;
         }
 
-        final String cacheTime = usefulTotalMileage.get(VehicleCache.VALUE_TIME_KEY);
-
-        if (platformReceiveTime.compareTo(cacheTime) <= 0) {
-            return;
+        if (MapUtils.isNotEmpty(usefulTotalMileage)) {
+            final String cacheTime = usefulTotalMileage.get(VehicleCache.VALUE_TIME_KEY);
+            if (NumberUtils.isDigits(cacheTime) && platformReceiveTime.compareTo(cacheTime) <= 0) {
+                return;
+            }
         }
 
         // TODO: [使用滤波算法计算有效值](http://www.geek-workshop.com/thread-7694-1-1.html)
