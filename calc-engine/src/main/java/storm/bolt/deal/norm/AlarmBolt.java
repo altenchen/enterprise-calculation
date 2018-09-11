@@ -212,7 +212,6 @@ public class AlarmBolt extends BaseRichBolt {
                 public void run() {
                     try {
                         EarlyWarnsGetter.rebuild();
-                        CoefficientOffsetGetter.rebuild();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -448,7 +447,7 @@ public class AlarmBolt extends BaseRichBolt {
 
                 int result;
                 // 没有依赖项, 直接处理
-                if (null == warn.dependId) {
+                if (null == warn.parentRuleId) {
 
                     result = processSingleAlarm(vid, warn, data);
                     sendAlarmMessage(result, vid, warn, data);
@@ -457,7 +456,7 @@ public class AlarmBolt extends BaseRichBolt {
                 // TODO: 李祥东: 按照系统原始逻辑，且运算，生成两条报警，依赖与被依赖各一条
                 // TODO: 有依赖项, 如果处理结果为1, 再处理父及约束? 是不是反了?!!
                 else {
-                    final EarlyWarn warndepend = EarlyWarnsGetter.getEarlyByDependId(warn.dependId);
+                    final EarlyWarn warndepend = EarlyWarnsGetter.getEarlyByDependId(warn.parentRuleId);
                     result = processSingleAlarm(vid, warn, data);
                     if (result == 1) {
 
@@ -503,8 +502,6 @@ public class AlarmBolt extends BaseRichBolt {
                     continue;
                 }
 
-                final String alarmName = warn.ruleName;
-                final int alarmLevel = warn.levels;
                 final String left1 = warn.left1DataKey;
 
                 //String alarmEnd = "VEHICLE_ID:"+vid+",ALARM_ID:"+alarmId+",STATUS:3,TIME:"+time+",CONST_ID:"+filterId;
@@ -519,6 +516,8 @@ public class AlarmBolt extends BaseRichBolt {
                 //kafka存储
                 sendAlarmKafka(vehAlarmTopic, vid, alarmEnd);
 
+                final String alarmName = warn.ruleName;
+                final int alarmLevel = warn.level;
                 sendMsg.put("ALARM_NAME", alarmName);
                 sendMsg.put("ALARM_LEVEL", alarmLevel);
                 sendMsg.put("LEFT1", left1);
@@ -587,7 +586,6 @@ public class AlarmBolt extends BaseRichBolt {
             // 左一偏移系数
             final CoefficientOffset left1CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left1);
             if (null != left1CoefficientOffset
-                && left1CoefficientOffset.isNumber()
                 && !stringIsNum
             ) {
                 PARAMS_REDIS_UTIL.autoLog(vid, ()->{
@@ -630,12 +628,12 @@ public class AlarmBolt extends BaseRichBolt {
                     result = diffMarkValid(left1_value, midExp, right1, right2);
                     return result;
 
-                } else if (left1CoefficientOffset.isNumber()) {
+                } else {
                     // 作为数值处理
 
                     final double left1_value =
-                        (NumberUtils.toDouble(left1Value, 0) - left1CoefficientOffset.offset)
-                            / left1CoefficientOffset.coefficient;
+                        (NumberUtils.toDouble(left1Value, 0) - left1CoefficientOffset.getOffset())
+                            / left1CoefficientOffset.getCoefficient();
 
                     //判断是否软报警条件(true/false)
                     result = diffMarkValid(left1_value, midExp, right1, right2);
@@ -734,12 +732,12 @@ public class AlarmBolt extends BaseRichBolt {
 
                     double left1_value = NumberUtils.toDouble(left1Value, 0);
                     if (null != left1CoefficientOffset) {
-                        left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
+                        left1_value = (left1_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
                     }
 
                     double left2_value = NumberUtils.toDouble(left2Value, 0);
                     if (null != left2CoefficientOffset) {
-                        left2_value = (left2_value - left2CoefficientOffset.offset) / left2CoefficientOffset.coefficient;
+                        left2_value = (left2_value - left2CoefficientOffset.getOffset()) / left2CoefficientOffset.getCoefficient();
                     }
 
                     double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
@@ -843,8 +841,8 @@ public class AlarmBolt extends BaseRichBolt {
                                 double left2_value = NumberUtils.toDouble(currentFormat[j], 0);
 
                                 if (null != left1CoefficientOffset) {
-                                    left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
-                                    left2_value = (left2_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
+                                    left1_value = (left1_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
+                                    left2_value = (left2_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
                                 }
 
                                 final double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
@@ -866,8 +864,8 @@ public class AlarmBolt extends BaseRichBolt {
                     double left2_value = NumberUtils.toDouble(currentLeft, 0);
 
                     if (null != left1CoefficientOffset) {
-                        left1_value = (left1_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
-                        left2_value = (left2_value - left1CoefficientOffset.offset) / left1CoefficientOffset.coefficient;
+                        left1_value = (left1_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
+                        left2_value = (left2_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
                     }
 
                     final double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
@@ -878,7 +876,6 @@ public class AlarmBolt extends BaseRichBolt {
                 }
 
             }
-            return result;
         } catch (Exception e) {
             LOG.warn("执行预警规则异常", e);
             return 0;
@@ -906,7 +903,7 @@ public class AlarmBolt extends BaseRichBolt {
 
         final String ruleId = warn.ruleId;
         final String alarmName = warn.ruleName;
-        final int alarmLevel = Math.max(warn.levels, alarmGb);
+        final int alarmLevel = Math.max(warn.level, alarmGb);
 
         // 左 1 数据项 ID
         final String left1 = warn.left1DataKey;
@@ -1155,7 +1152,7 @@ public class AlarmBolt extends BaseRichBolt {
         int result = 0;
 
         switch (midExpress) {
-            // L1 = R1
+            // L = R1
             case 1:
                 if (left1 == right1) {
                     result = 1;
@@ -1163,7 +1160,7 @@ public class AlarmBolt extends BaseRichBolt {
                     result = 2;
                 }
                 break;
-            // L1 < R1
+            // L < R1
             case 2:
                 if (left1 < right1) {
                     result = 1;
@@ -1171,7 +1168,7 @@ public class AlarmBolt extends BaseRichBolt {
                     result = 2;
                 }
                 break;
-            // L1 <= R1
+            // L <= R1
             case 3:
                 if (left1 <= right1) {
                     result = 1;
@@ -1179,7 +1176,7 @@ public class AlarmBolt extends BaseRichBolt {
                     result = 2;
                 }
                 break;
-            // L1 > R1
+            // L > R1
             case 4:
                 if (left1 > right1) {
                     result = 1;
@@ -1187,7 +1184,7 @@ public class AlarmBolt extends BaseRichBolt {
                     result = 2;
                 }
                 break;
-            // L1 >= R1
+            // L >= R1
             case 5:
                 if (left1 >= right1) {
                     result = 1;
@@ -1195,7 +1192,7 @@ public class AlarmBolt extends BaseRichBolt {
                     result = 2;
                 }
                 break;
-            // L1 ∈ (R1,R2)
+            // L ∈ (R1,R2)
             case 6:
                 if (left1 > right1 && left1 < right2) {
                     result = 1;
@@ -1203,7 +1200,7 @@ public class AlarmBolt extends BaseRichBolt {
                     result = 2;
                 }
                 break;
-            // L1 ∈ [R1, R2)
+            // L ∈ [R1, R2)
             case 7:
                 if (left1 >= right1 && left1 < right2) {
                     result = 1;
@@ -1211,7 +1208,7 @@ public class AlarmBolt extends BaseRichBolt {
                     result = 2;
                 }
                 break;
-            // L1 ∈ (R1, R2]
+            // L ∈ (R1, R2]
             case 8:
                 if (left1 > right1 && left1 <= right2) {
                     result = 1;
@@ -1219,7 +1216,7 @@ public class AlarmBolt extends BaseRichBolt {
                     result = 2;
                 }
                 break;
-            // L1 ∈ [R1, R2]
+            // L ∈ [R1, R2]
             case 9:
                 if (left1 >= right1 && left1 <= right2) {
                     result = 1;

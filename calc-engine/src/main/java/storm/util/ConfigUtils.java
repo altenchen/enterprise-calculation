@@ -16,7 +16,7 @@ import java.util.Properties;
  */
 public final class ConfigUtils {
 
-    private static final Logger logger = LoggerFactory.getLogger(ConfigUtils.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ConfigUtils.class);
 
     private static final ConfigUtils INSTANCE = new ConfigUtils();
 
@@ -50,8 +50,8 @@ public final class ConfigUtils {
             loadFromResource("parms.properties", sysParams);
         } catch (IOException e) {
             e.printStackTrace();
-            if(logger.isWarnEnabled()) {
-                logger.error("[{}]初始化失败.", ConfigUtils.class.getName());
+            if(LOG.isWarnEnabled()) {
+                LOG.error("[{}]初始化失败.", ConfigUtils.class.getName());
             }
         }
     }
@@ -64,16 +64,16 @@ public final class ConfigUtils {
         final InputStream stream = ConfigUtils.class.getClassLoader().getResourceAsStream(resourceName);
 
         if(null == stream) {
-            logger.info("从资源文件初始化配置失败[{}]", resourceName);
+            LOG.info("从资源文件初始化配置失败[{}]", resourceName);
             return;
         }
 
-        logger.info("从资源文件初始化配置开始[{}]", resourceName);
+        LOG.info("从资源文件初始化配置开始[{}]", resourceName);
 
         final InputStreamReader reader = new InputStreamReader(stream, "UTF-8");
         properties.load(reader);
 
-        logger.info("从资源文件初始化配置完毕[{}]", resourceName);
+        LOG.info("从资源文件初始化配置完毕[{}]", resourceName);
 
         stream.close();
     }

@@ -340,6 +340,32 @@ final class FormatTest {
         }
     }
 
+    @Disabled("验证装箱拆箱")
+    @Test
+    void boxDouble() {
+        final Double doubleObj = null;
+        Assertions.assertNull(doubleObj);
+
+        try {
+            final double doubleValue = doubleObj;
+            LOG.trace("doubleValue=[{}]", doubleValue);
+            Assertions.fail();
+        } catch (NullPointerException e) {
+            LOG.trace("doubleObj=[{}]", doubleObj);
+        }
+
+        final double coefficient = 0;
+        LOG.trace("coefficient = {}", coefficient);
+        Assertions.assertTrue(-Double.MIN_NORMAL < coefficient);
+        Assertions.assertTrue(coefficient < Double.MIN_NORMAL);
+        Assertions.assertEquals(0d, 0f);
+
+        final double zero = -1 / 0d;
+        LOG.trace("1d * 0 = {}", zero);
+        Assertions.assertTrue(Double.isInfinite(zero));
+        Assertions.assertEquals(Double.NEGATIVE_INFINITY, zero);
+    }
+
     private static class Person implements Serializable {
 
         public String name;

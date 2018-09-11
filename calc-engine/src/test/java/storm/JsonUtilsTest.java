@@ -7,6 +7,7 @@ import org.apache.storm.shade.com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.dto.alarm.CoefficientOffset;
 import storm.util.JsonUtils;
 
 import java.math.BigDecimal;

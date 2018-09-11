@@ -1,62 +1,89 @@
 package storm.dto.alarm;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import storm.util.JsonUtils;
+
 /**
- * @author wza
- * 偏移系数自定义数据项
+ * @author 徐志鹏
+ * 偏移系数定义
  */
-public class CoefficientOffset {
+public final class CoefficientOffset {
+
+    @NotNull
+    private final String dataKey;
+
+    private final double coefficient;
+
+    private final double offset;
+
+
+    public CoefficientOffset(
+        @NotNull final String dataKey,
+        double coefficient,
+        double offset) {
+
+        if(StringUtils.isBlank(dataKey)) {
+            throw new IllegalArgumentException("数据键不能为空白");
+        }
+        if(-Double.MIN_NORMAL < coefficient && coefficient < Double.MIN_NORMAL) {
+            throw new IllegalArgumentException("系数不能为0");
+        }
+        this.dataKey = dataKey;
+        this.coefficient = coefficient;
+        this.offset = offset;
+    }
+
+    @Nullable
+    public Double compute(
+        @NotNull final ImmutableMap<String, String> data) {
+
+        final String string = data.get(getDataKey());
+        if(!NumberUtils.isNumber(string)) {
+            return null;
+        }
+
+        final double value = NumberUtils.toDouble(string);
+        return (value - getOffset()) / getCoefficient();
+    }
+
+    @Contract(pure = true)
+    public double compute(double value) {
+        return (value - getOffset()) / getCoefficient();
+    }
 
     /**
      * 数据键
      */
-    public final String dataKey;
-
-    /**
-     * 数据项类型, 0-数值 1-数组
-     */
-    public final int dataType;
+    @Contract(pure = true)
+    public String getDataKey() {
+        return dataKey;
+    }
 
     /**
      * 系数
      */
-    public final double coefficient;
+    @Contract(pure = true)
+    public double getCoefficient() {
+        return coefficient;
+    }
 
     /**
      * 偏移值
      */
-    public final double offset;
-
-    /**
-     * 定义数据项来源, 0-全局 1-用户
-     */
-    public final int defineSource;
-
-    public CoefficientOffset(String dataKey, int dataType, double coefficient, double offset) {
-        this(dataKey, dataType, coefficient, offset, 0);
+    @Contract(pure = true)
+    public double getOffset() {
+        return offset;
     }
 
-    public CoefficientOffset(String dataKey, int dataType, double coefficient, double offset, int defineSource) {
-        this.dataKey = dataKey;
-        this.dataType = dataType;
-        this.coefficient = coefficient;
-        this.offset = offset;
-        this.defineSource = defineSource;
-    }
-
-    public boolean isArray() {
-        return 1 == dataType;
-    }
-
-    public boolean isNumber() {
-        return 0 == dataType;
-    }
-
-    public boolean isGlobal() {
-        return 0 == defineSource;
-    }
-
-    public boolean isCustom() {
-        return 1 == defineSource;
+    @NotNull
+    @Override
+    public String toString() {
+        return JsonUtils.getInstance().toJson(this);
     }
 }
                                                   

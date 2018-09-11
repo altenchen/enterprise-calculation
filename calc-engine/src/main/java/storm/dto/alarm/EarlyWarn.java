@@ -1,68 +1,107 @@
 package storm.dto.alarm;
 
-import org.apache.commons.lang.StringUtils;
-
-import java.io.Serializable;
-import java.util.LinkedList;
-import java.util.List;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * @author wza
- * 预警规则获取
+ * @author 徐志鹏
+ * 平台报警规则
  */
-public class EarlyWarn implements Serializable {
+public class EarlyWarn {
 
-    private static final long serialVersionUID = 1999980001L;
+    private static final Logger LOG = LoggerFactory.getLogger(EarlyWarn.class);
 
     /**
      * 规则Id
      */
-    public String ruleId;
+    public final String ruleId;
+
+    // region 描述属性
 
     /**
-     * 规则名称
+     * 规则名称, HBase 需要
      */
-    public String ruleName;
-
-    /**
-     * 车辆类型Id
-     */
-    public String vehicleModelId;
+    public final String ruleName;
 
     /**
      * 告警级别
      */
-    public int levels;
+    public final int level;
+
+    // endregion 描述属性
+
+    // region 组织属性
 
     /**
-     * 依赖Id
+     * 车辆类型Id
      */
-    public String dependId;
+    public final String vehicleModelId;
+
+    /**
+     * 父规则Id
+     */
+    public final String parentRuleId;
+
+    /**
+     * 同车型子规则
+     */
+    public ImmutableSet<EarlyWarn> earlyWarns;
+
+    /**
+     * 特定车型子规则, 只适用于通用规则.
+     */
+    public ImmutableMap<String, ImmutableSet<EarlyWarn>> vehicleModelChildren;
+
+    // endregion 组织属性
+
+    // region 时间属性
+
+    // 开始时间
+    // 结束时间
+
+    // endregion 时间属性
+
+    // region 计算属性
+
+    // region 数值运算
 
     /**
      * 左一数据项
      */
-    public String left1DataKey;
+    public final String left1DataKey;
 
     /**
-     * 左表达式
+     * 左一数据使用之前的值
      */
-    public String leftExpression;
+    public final boolean left1UsePrev;
 
     /**
      * 左二数据项
      */
-    public String left2DataKey;
+    public final String left2DataKey;
 
     /**
-     * 中间表达式
+     * 左二数据使用之前的值
      */
-    public String middleExpression;
+    public final boolean left2UsePrev;
+
+    /**
+     * 数值运算表达式
+     */
+    public final String leftExpression;
+
+    // endregion 数值运算
+
+    // region 逻辑运算
 
     /**
      * 右一值
      */
-    public double right1Value;
+    public final double right1Value;
 
     /**
      * 右二值
@@ -70,108 +109,89 @@ public class EarlyWarn implements Serializable {
     public double right2Value;
 
     /**
-     * 是否适用所有车型
+     * 逻辑运算表达式
      */
-    public boolean isAllCommon;
+    public final String middleExpression;
 
-    // region 暂时不生效，等前端变业务
+    // endregion 逻辑运算
 
-    /**
-     * 依赖规则
-     */
-    public List<EarlyWarn> earlyWarns;
-
-    /**
-     * 连续多少次开始结束报警
-     */
-    public int judgeCount = 10;
-
-    /**
-     * 连续发生多少时间开始结束报警
-     */
-    public long judgeTime = -1;
-
-    // endregion 暂时不生效，等前端变业务
+    // endregion 计算属性
 
     public EarlyWarn(
-        final String ruleId,
-        final String ruleName,
-        final String vehicleModelId,
-        final int levels,
-        final String dependId,
-        final String left1DataKey,
-        final String leftExpression,
-        final String left2DataKey,
-        final String middleExpression,
+        @NotNull final String ruleId,
+        @Nullable final String vehicleModelId,
+        @Nullable final String parentRuleId,
+        @NotNull final String left1DataKey,
+        final boolean left1UsePrev,
+        @Nullable final String left2DataKey,
+        final boolean left2UsePrev,
+        @Nullable final String leftExpression,
         final double right1Value,
-        final double right2Value) {
+        final double right2Value,
+        @NotNull final String middleExpression,
+        @Nullable final String ruleName,
+        final int level) {
 
         this.ruleId = ruleId;
-        this.ruleName = ruleName;
         this.vehicleModelId = vehicleModelId;
-        this.levels = levels;
-        this.dependId = dependId;
+        this.parentRuleId = parentRuleId;
         this.left1DataKey = left1DataKey;
+        this.left1UsePrev = left1UsePrev;
         this.leftExpression = leftExpression;
         this.left2DataKey = left2DataKey;
+        this.left2UsePrev = left2UsePrev;
         this.middleExpression = middleExpression;
         this.right1Value = right1Value;
         this.right2Value = right2Value;
-
-        setCommon(vehicleModelId);
+        this.ruleName = ruleName;
+        this.level = level;
     }
 
-    /**
-     * 判断是否适用所有车型
-     * @param vehModelId
-     */
-    void setCommon(final String vehModelId) {
-        if (StringUtils.isBlank(vehModelId)
-            || "ALL".equals(vehModelId.trim())) {
-
-            this.isAllCommon = true;
-
-        } else {
-
-            this.isAllCommon = false;
+    @Nullable
+    public static String parseLeftExpression(final int leftExpression) {
+        switch (leftExpression) {
+            case 0:
+                return null;
+            case 1:
+                return "+";
+            case 2:
+                return "-";
+            case 3:
+                return "*";
+            case 4:
+                return "/";
+            default:
+                LOG.error("未定义的数值运算表达式[{}]", leftExpression);
+                return null;
         }
     }
 
-    // region 暂时不生效，等前端变业务
-
-    /**
-     * 此方法暂时不用，等前端业务变了以后再使用
-     *
-     * @param common
-     * @param commonCount
-     * @param count
-     */
-    void setJudgeCondition(boolean common, int commonCount, int count) {
-        if (common) {
-            this.judgeCount = commonCount;
-        } else {
-            this.judgeCount = count;
+    @Nullable
+    public static String parseMiddleExpression(final int middleExpression) {
+        switch (middleExpression) {
+            case 0:
+                return null;
+            case 1:
+                return "=";
+            case 2:
+                return "<";
+            case 3:
+                return "<=";
+            case 4:
+                return ">";
+            case 5:
+                return ">=";
+            case 6:
+                return "< <";
+            case 7:
+                return "<= <";
+            case 8:
+                return "< <=";
+            case 9:
+                return "<= <=";
+            default:
+                LOG.error("未定义的逻辑运算表达式[{}]", middleExpression);
+                return null;
         }
     }
-
-    void setDependWarns(List<EarlyWarn> earlyWarns) {
-        this.earlyWarns = earlyWarns;
-    }
-
-    void addDependWarns(EarlyWarn warn) {
-        if (null == warn) {
-            return;
-        }
-
-        if (null == earlyWarns) {
-            earlyWarns = new LinkedList<>();
-        }
-
-        if (!earlyWarns.contains(warn)) {
-            earlyWarns.add(warn);
-        }
-    }
-
-    // endregion 暂时不生效，等前端变业务
-
 }

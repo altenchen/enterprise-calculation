@@ -158,12 +158,12 @@ public final class DataKey {
     public static final String _2203_GEARS = "2203";
 
     /**
-     * braking force 制动力
+     * 制动状态
      */
     public static final String _2204_BRAKING_FORCE = "2204";
 
     /**
-     * driving force 驱动力
+     * 驱动状态
      */
     public static final String _2205_DRIVING_FORCE = "2205";
 
@@ -186,6 +186,11 @@ public final class DataKey {
      * SOC 过高告警
      */
     public static final String _2213_RUNNING_MODE = "2213";
+
+    /**
+     * DC-DC状态
+     */
+    public static final String _2214 = "2214";
 
     /**
      * 续驶里程

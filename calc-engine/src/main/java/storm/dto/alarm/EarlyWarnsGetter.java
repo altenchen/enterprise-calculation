@@ -219,7 +219,7 @@ public class EarlyWarnsGetter {
                 EarlyWarn warn = new EarlyWarn(id, name, vehModelId, levels, dependId, left1DataItem, leftExpression, left2DataItem, middleExpression, right1Value, right2Value);
 
                 if (null != dependId) {
-                    warn.dependId = dependId;
+                    warn.parentRuleId = dependId;
                 }
 
                 return warn;

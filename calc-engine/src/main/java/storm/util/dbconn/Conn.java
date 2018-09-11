@@ -747,7 +747,7 @@ public final class Conn {
 
                 final int isArray = rs.getInt(2);
 
-                final double factor = rs.getDouble(3);
+                final double factor = NumberUtils.toDouble(rs.getString(3), 1);
 
                 final double offset = rs.getDouble(4);
 
@@ -756,14 +756,10 @@ public final class Conn {
                 final CoefficientOffset coefficientOffset = new CoefficientOffset(
                     // SEQ_NO, 序号
                     sequencerNumber,
-                    // IS_ARRAY, 是否数组, 1-是数组
-                    isArray,
                     // FACTOR, 系数
                     factor,
                     // OFFSET, 偏移值
-                    offset,
-                    // IS_CUSTOM, 是否为自定义字段, 1-自定义
-                    isCustom
+                    offset
                 );
 
                 rules.add(coefficientOffset);
