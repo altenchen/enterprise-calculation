@@ -31,6 +31,7 @@ import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.JsonUtils;
+import storm.util.ParamsRedisUtil;
 
 import java.text.ParseException;
 import java.util.*;
@@ -78,6 +79,8 @@ public class AlarmBolt extends BaseRichBolt {
     // endregion KafkaStream
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
+
+    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
 
     private OutputCollector collector;
 
@@ -259,6 +262,10 @@ public class AlarmBolt extends BaseRichBolt {
             final String vid = input.getString(0);
             final Map<String, String> data = Maps.newHashMap((Map<String, String>) input.getValue(1));
 
+            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                LOG.info("VID[{}]进入预警处理Bolt", vid);
+            });
+
             if (!data.containsKey(DataKey.TIME)
                 || StringUtils.isEmpty(data.get(DataKey.TIME))) {
                 return;
@@ -395,6 +402,7 @@ public class AlarmBolt extends BaseRichBolt {
      * 软报警处理
      */
     private void processAlarm(@NotNull final Map<String, String> data, @NotNull final String messageType) {
+
         if (MapUtils.isEmpty(data)) {
             return;
         }
@@ -405,6 +413,10 @@ public class AlarmBolt extends BaseRichBolt {
             || StringUtils.isEmpty(vehType)) {
             return;
         }
+
+        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+            LOG.info("VID[{}]进入软报警处理", vid);
+        });
 
         if (
             // 链接状态通知
@@ -423,6 +435,10 @@ public class AlarmBolt extends BaseRichBolt {
         if (CollectionUtils.isEmpty(warns)) {
             return;
         }
+
+        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+            LOG.info("VID[{}]开始软报警处理, 共有[{}]条规则", vid, warns.size());
+        });
 
         try {
             for (EarlyWarn warn : warns) {
@@ -548,6 +564,10 @@ public class AlarmBolt extends BaseRichBolt {
             return 0;
         }
 
+        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+            LOG.info("VID[{}]开始报警规则[{}][{}]处理", vid, warn.ruleId, warn.ruleName);
+        });
+
         try {
 
             // 左一数据项
@@ -556,6 +576,10 @@ public class AlarmBolt extends BaseRichBolt {
             final String left1Value = data.get(left1);
             //上传的实时数据包含左1字段 才进行预警判定
             if (StringUtils.isEmpty(left1Value)) {
+
+                PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                    LOG.info("VID[{}]数据不包含左一数据项[{}], 不予处理.", vid, warn.left1DataKey);
+                });
                 return 0;
             }
             boolean stringIsNum = NumberUtils.isNumber(left1Value);
@@ -566,12 +590,18 @@ public class AlarmBolt extends BaseRichBolt {
                 && left1CoefficientOffset.isNumber()
                 && !stringIsNum
             ) {
+                PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                    LOG.warn("左一数据项[{}]偏移系数规则存在且为数值类型, 但数据[{}]不是数值, 不予处理.", warn.left1DataKey, left1Value);
+                });
                 // 偏移系数规则存在, 但数据不是数值时, 返回0.
                 return 0;
             }
 
             if (null == left1CoefficientOffset
                 && !stringIsNum) {
+                PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                    LOG.warn("左一数据项[{}]偏移系数规则不存在, 但数据[{}]不是数值, 不予处理.", warn.left1DataKey, left1Value);
+                });
                 // 当偏移系数规则不存在, 但数据不是数值时, 返回0.
                 return 0;
             }
@@ -612,6 +642,11 @@ public class AlarmBolt extends BaseRichBolt {
                     return result;
 
                 } else if (left1CoefficientOffset.isArray()) {
+
+                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                        LOG.info("左一数据项[{}]偏移系数规则存在且为数组类型, 开始处理.", warn.left1DataKey);
+                    });
+
                     // 作为数组处理
 
                     //  7003_单体电池电压值列表, 国标 "表B.6 每个可充电储能子系统电压数据格式和定义"
@@ -662,6 +697,10 @@ public class AlarmBolt extends BaseRichBolt {
                 // 左二值
                 final String left2Value = data.get(left2);
                 if (StringUtils.isEmpty(left2Value)) {
+
+                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                        LOG.info("VID[{}]数据不包含左二数据项[{}], 不予处理.", vid, warn.left2DataKey);
+                    });
                     return 0;
                 }
 
@@ -671,6 +710,7 @@ public class AlarmBolt extends BaseRichBolt {
 
                     if (null != left1CoefficientOffset && left1CoefficientOffset.isArray()) {
                         // 左一偏移系数是数组, 不予处理, 返回0.
+                        LOG.warn("左一偏移系数是数组, 同时有配置不同的左二, 不予处理.");
                         return 0;
                     }
 
@@ -679,12 +719,16 @@ public class AlarmBolt extends BaseRichBolt {
 
                     if (null != left2CoefficientOffset && left2CoefficientOffset.isArray()) {
                         // 左二偏移系数是数组, 不予处理, 返回0.
+                        LOG.warn("左二偏移系数是数组, 不予处理.");
                         return 0;
                     }
 
                     if (!NumberUtils.isNumber(left1Value)
                         || !NumberUtils.isNumber(left2Value)) {
                         // 左一或者左二不是数值, 不予处理, 返回0.
+                        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                            LOG.warn("左一或者左二不是数值, 不予处理");
+                        });
                         return 0;
                     }
 
@@ -707,6 +751,10 @@ public class AlarmBolt extends BaseRichBolt {
                 } else {
                     // 左一和左二是同一个数据项
 
+                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                        LOG.warn("左一和左二是同一个数据项, 左一表示上一次的值.");
+                    });
+
                     String prevLeft = "";
                     final String currentLeft = left2Value;
                     // 车辆最后一帧缓存
@@ -719,6 +767,9 @@ public class AlarmBolt extends BaseRichBolt {
                     //上传的实时数据包含左1字段
                     if (StringUtils.isEmpty(prevLeft)) {
                         // 最后一帧缓存没有左一值, 不予处理, 返回0. 根据原来的缓存逻辑, 这里是有可能拿不到最后一帧缓存值的.
+                        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                            LOG.warn("最后一帧缓存没有左一值, 不予处理");
+                        });
                         return 0;
                     }
 
@@ -729,6 +780,9 @@ public class AlarmBolt extends BaseRichBolt {
                         || (currentLeft.contains("_") && !prevLeft.contains("_"))
                         || (!currentLeft.contains("_") && prevLeft.contains("_"))) {
                         // 左一和左二格式不同, 不予处理, 返回0.
+                        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                            LOG.warn("左一和左二格式不同, 不予处理");
+                        });
                         return 0;
                     }
 

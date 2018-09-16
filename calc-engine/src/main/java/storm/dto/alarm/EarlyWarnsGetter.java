@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.util.dbconn.Conn;
@@ -26,19 +27,37 @@ public class EarlyWarnsGetter {
 
     final static String ALL = "ALL";
 
+    /**
+     * 预警规则 <ruleId, rule>
+     */
     private static final ConcurrentHashMap<String, EarlyWarn> earlyWarns = new ConcurrentHashMap<>();
 
+    /**
+     * 按车型预警规则 <车型, 预警规则>, 通用规则类型为ALL
+     */
     private static final ConcurrentHashMap<String, Set<EarlyWarn>> typeWarns = new ConcurrentHashMap<>();
 
+    /**
+     * 按车型预警规则, 包含通用规则.
+     */
     private static final ConcurrentHashMap<String, List<EarlyWarn>> typeAllWarnArrs = new ConcurrentHashMap<>();
 
+    /**
+     * typeAllWarnArrs 同步锁
+     */
     private static final Lock lock = new ReentrantLock();
 
+    /**
+     * 查询数据库的封装类
+     */
     private static final Conn conn = new Conn();
 
+    /**
+     * 从数据库查出来的待解析预警规则
+     */
     private static List<Object[]> allEarlyWarns;
 
-    private static boolean buildSuccess = false;
+    private static boolean buildSuccess = true;
 
     static {
         rebuild();
@@ -48,26 +67,42 @@ public class EarlyWarnsGetter {
 
         try {
 
-            // 只会成功初始化一次 ?!!
             if (!buildSuccess) {
+                LOG.info("平台报警规则正在始化, 跳过.");
                 return;
             }
 
+            LOG.info("平台报警规则初始化开始.");
             buildSuccess = false;
 
             allEarlyWarns = conn.getAllWarns();
+            if(null != allEarlyWarns) {
+                LOG.info("从数据库获取到平台报警规则[{}]条", allEarlyWarns.size());
+            } else {
+                LOG.info("从数据库获取到平台报警规则[0]条");
+            }
+
+            // 解析预警规则
             initRules(allEarlyWarns);
+            // 将规则按车型分组
             initTypeRules();
+
+            // 清空按车型预警规则
             typeAllWarnArrs.clear();
 
             buildSuccess = true;
+            LOG.info("平台报警规则初始化完毕.");
 
         } catch (Exception e) {
-            LOG.warn("初始化失败", e);
+            LOG.warn("平台报警规则初始化异常", e);
         }
     }
 
-    static void initRules(List<Object[]> allWarns) {
+    /**
+     * 解析预警规则集合, 将规则更新到earlyWarns, 并清除earlyWarns中没有被更新到的过时规则.
+     * @param allWarns
+     */
+    private static void initRules(List<Object[]> allWarns) {
         try {
             //ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL
             List<String> nowIds = null;
@@ -79,6 +114,7 @@ public class EarlyWarnsGetter {
                         EarlyWarn warn = getEarlyByRule(rule);
                         if (null != warn && null != rule[0]) {
                             String id = (String) rule[0];
+                            // 将解析后的预警规则存储到earlyWarns并在nowIds中标记
                             earlyWarns.put(id, warn);
                             nowIds.add(id);
                         }
@@ -95,22 +131,27 @@ public class EarlyWarnsGetter {
                     while (allKeys.hasMoreElements()) {
                         String key = (String) allKeys.nextElement();
                         if (!nowIds.contains(key)) {
+                            // 标记已被删除的预警规则
                             needRemovekeys.add(key);
                         }
                     }
 
                     for (String key : needRemovekeys) {
+                        // 移除已被删除的预警规则
                         earlyWarns.remove(key);
                     }
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.warn("解析预警规则集合异常", e);
         }
 
     }
 
-    static void initTypeRules() {
+    /**
+     * 将规则按车型分组, 存储到 typeWarns 中
+     */
+    private static void initTypeRules() {
         typeWarns.clear();
         if (null != earlyWarns && earlyWarns.size() > 0) {
             Collection<EarlyWarn> warns = earlyWarns.values();
@@ -129,6 +170,11 @@ public class EarlyWarnsGetter {
         }
     }
 
+    /**
+     * 解析单条预警规则
+     * @param rule
+     * @return
+     */
     private static EarlyWarn getEarlyByRule(Object[] rule) {
         //ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL
 
@@ -196,8 +242,9 @@ public class EarlyWarnsGetter {
      * @param vehType 车辆类型, 预警用于匹配约束条件
      * @return 预警规则列表
      */
+    @Nullable
     public static List<EarlyWarn> allWarnArrsByType(String vehType) {
-        boolean buildSucc = bulidSuccessRetryTimes(150);
+        boolean buildSucc = buildSuccessRetryTimes(150);
         if (!buildSucc) {
             return null;
         }
@@ -206,16 +253,16 @@ public class EarlyWarnsGetter {
             return warns;
         }
         try {
-
+            // 多个线程来到这里, 则每个线程都会执行一次下面的逻辑.
             lock.lock();
             Set<EarlyWarn> warnSet = getAllWarnRules(vehType);
             if (null != warnSet) {
-                warns = new ArrayList<EarlyWarn>(warnSet.size());
+                warns = new ArrayList<>(warnSet.size());
                 warns.addAll(warnSet);
                 typeAllWarnArrs.put(vehType, warns);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("获取特定车型的预警规则异常", e);
         } finally {
 
             lock.unlock();
@@ -265,7 +312,7 @@ public class EarlyWarnsGetter {
      * @param times 尝试次数
      * @return
      */
-    private static boolean bulidSuccessRetryTimes(int times) {
+    private static boolean buildSuccessRetryTimes(int times) {
         try {
             int count = 0;
             while (!buildSuccess) {
@@ -277,7 +324,7 @@ public class EarlyWarnsGetter {
             }
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("等待预警规则同步完成重试异常", e);
         }
         return false;
     }
