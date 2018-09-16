@@ -25,7 +25,7 @@ public class EarlyWarnsGetter {
 
     private static final Logger LOG = LoggerFactory.getLogger(EarlyWarnsGetter.class);
 
-    final static String ALL = "ALL";
+    public final static String ALL = "ALL";
 
     /**
      * 预警规则 <ruleId, rule>

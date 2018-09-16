@@ -717,6 +717,10 @@ public final class Conn {
         return rules;
     }
 
+    public static void buildPlatformAlarm() {
+
+    }
+
     /**
      * 偏移系数自定义数据项
      *
