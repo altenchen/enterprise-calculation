@@ -76,7 +76,7 @@ public final class VehicleIdleHandler {
         vehicleIdleNoticeCache.putIfAbsent(vid, startNotice);
     }
 
-    public void updatePlatformReceiveTime(
+    public ImmutableMap<String, String> updatePlatformReceiveTime(
         @NotNull final String vid,
         final long platformReceiveTime) {
 
@@ -89,6 +89,37 @@ public final class VehicleIdleHandler {
                 return platformReceiveTime;
             }
         );
+
+        if (vehicleIdleNoticeCache.containsKey(vid)) {
+
+            final long currentTimeMillis = System.currentTimeMillis();
+            final Long latestPlatformReceiveTime = vehiclePlatformReceiveTime.get(vid);
+
+            if (currentTimeMillis - latestPlatformReceiveTime <= idleTimeoutMillisecond) {
+
+                final ImmutableMap<String, String> startNotice = vehicleIdleNoticeCache.remove(vid);
+
+                final ImmutableMap<String, String> endNotice = buildEndNotice(
+                    startNotice,
+                    vid,
+                    currentTimeMillis,
+                    latestPlatformReceiveTime,
+                    idleTimeoutMillisecond);
+
+
+                JEDIS_POOL_UTILS.useResource(jedis -> {
+
+                    jedis.select(REDIS_DATABASE_INDEX);
+                    jedis.hdel(IDLE_VEHICLE_REDIS_KEY, vid);
+                });
+
+                return new ImmutableMap.Builder<String, String>()
+                    .put(vid, JSON_UTILS.toJson(endNotice))
+                    .build();
+            }
+        }
+
+        return ImmutableMap.of();
     }
 
     @NotNull

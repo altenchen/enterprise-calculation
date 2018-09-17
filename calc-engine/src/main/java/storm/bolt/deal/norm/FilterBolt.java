@@ -1,5 +1,6 @@
 package storm.bolt.deal.norm;
 
+import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.commons.collections.MapUtils;
@@ -448,7 +449,11 @@ public class FilterBolt extends BaseRichBolt {
 
                     VEHICLE_CACHE.updateUsefulCache(immutableData);
 
-                    vehicleIdleHandler.updatePlatformReceiveTime(vid, platformTime);
+                    vehicleIdleHandler.updatePlatformReceiveTime(vid, platformTime)
+                        .forEach((key, json) -> {
+                            kafkaStreamVehicleNoticeSender.emit(input, key, json);
+                        });
+
                 }
             } catch (final ParseException e) {
                 LOG.warn("时间解析异常", e);
@@ -507,7 +512,10 @@ public class FilterBolt extends BaseRichBolt {
         }
 
         if (platformReceiveTime > 0) {
-            vehicleIdleHandler.updatePlatformReceiveTime(vehicleId, platformReceiveTime);
+            vehicleIdleHandler.updatePlatformReceiveTime(vehicleId, platformReceiveTime)
+                .forEach((vid, json) -> {
+                    kafkaStreamVehicleNoticeSender.emit(input, vid, json);
+                });
         }
     }
 
