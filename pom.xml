@@ -154,6 +154,19 @@
                 </exclusions>
             </dependency>
 
+            <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-kafka -->
+            <dependency>
+                <groupId>org.apache.storm</groupId>
+                <artifactId>storm-kafka</artifactId>
+                <version>${storm.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <artifactId>kafka-clients</artifactId>
+                        <groupId>org.apache.kafka</groupId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
             <!-- Storm 依赖结束 -->
 
             <!-- Kafka依赖开始 -->

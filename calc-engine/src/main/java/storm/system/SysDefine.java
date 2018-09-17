@@ -1,9 +1,17 @@
 package storm.system;
 
+import java.util.List;
+
 public final class SysDefine {
     public static final String TOPOLOGY_NAME = "topology.name";
 
     public static final String DB_CACHE_FLUSH_TIME_SECOND = "db.cache.flushtime";
+
+    public static final String KAFKA_ZOOKEEPER_SERVERS_KEY = "kafka.zookeeper.servers";
+
+    public static final String KAFKA_ZOOKEEPER_PORT_KEY = "kafka.zookeeper.port";
+
+    public static final String KAFKA_ZOOKEEPER_PATH_KEY = "kafka.zookeeper.path";
 
     /**
      * Kafka 经纪人及监听的端口
@@ -41,7 +49,27 @@ public final class SysDefine {
     public static final String KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP = "kafka.consumer.vehicle_register_data.group";
 
     /**
-     * Kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开.
+     * kafka 依赖的 zookeeper 集群主机
+     */
+    public static List<String> KAFKA_ZOOKEEPER_SERVERS;
+
+    /**
+     * kafka 依赖的 zookeeper 集群端口
+     */
+    public static int KAFKA_ZOOKEEPER_PORT;
+
+    /**
+     * kafka 依赖的 zookeeper 集群
+     */
+    public static String KAFKA_ZOOKEEPER_HOSTS;
+
+    /**
+     * kafka 元数据存储在 zookeeper 的路径
+     */
+    public static String KAFKA_ZOOKEEPER_PATH;
+
+    /**
+     * kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开.
      */
     public static String KAFKA_BOOTSTRAP_SERVERS;
 

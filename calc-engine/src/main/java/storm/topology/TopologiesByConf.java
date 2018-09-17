@@ -1,5 +1,7 @@
 package storm.topology;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
@@ -30,6 +32,7 @@ import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 
+import java.util.Arrays;
 import java.util.Properties;
 
 /**
@@ -101,6 +104,10 @@ public class TopologiesByConf {
         stormConf.put(SysDefine.ES_SEND_TIME, properties.get(SysDefine.ES_SEND_TIME));
 
         //region kafka
+
+        stormConf.put(SysDefine.KAFKA_ZOOKEEPER_SERVERS_KEY, properties.get(SysDefine.KAFKA_ZOOKEEPER_SERVERS_KEY));
+        stormConf.put(SysDefine.KAFKA_ZOOKEEPER_PORT_KEY, properties.get(SysDefine.KAFKA_ZOOKEEPER_PORT_KEY));
+        stormConf.put(SysDefine.KAFKA_ZOOKEEPER_PATH_KEY, properties.get(SysDefine.KAFKA_ZOOKEEPER_PATH_KEY));
 
         stormConf.put(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY, properties.get(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY));
 
@@ -369,6 +376,12 @@ public class TopologiesByConf {
     private static void fillKafkaConf(@NotNull final Properties properties) {
         // TODO: 转为存储到单例类
 
+        // Kafka 依赖的 Zookeeper 集群, 为了兼容旧版 kafka
+        final String kafkaZookeeperServers = properties.getProperty(SysDefine.KAFKA_ZOOKEEPER_SERVERS_KEY);
+        final String kafkaZookeeperPort = properties.getProperty(SysDefine.KAFKA_ZOOKEEPER_PORT_KEY);
+        final String kafkaZookeeperPath = properties.getProperty(SysDefine.KAFKA_ZOOKEEPER_PATH_KEY);
+        initZookeeperConfig(kafkaZookeeperServers, kafkaZookeeperPort, kafkaZookeeperPath);
+
         // Kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开. 从 kafka 0.10.1开始支持新的消费方式
         SysDefine.KAFKA_BOOTSTRAP_SERVERS = properties.getProperty(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY);
         LOG.info("ConsumerConfig: {}=[{}]", ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, SysDefine.KAFKA_BOOTSTRAP_SERVERS);
@@ -393,6 +406,32 @@ public class TopologiesByConf {
         SysDefine.PLAT_REG_GROUPID = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP);
 
         // endregion Spout 输入主题
+    }
+
+    public static void initZookeeperConfig(
+        final String kafkaZookeeperServers,
+        final String kafkaZookeeperPort,
+        final String kafkaZookeeperPath) {
+
+        SysDefine.KAFKA_ZOOKEEPER_SERVERS = Arrays.asList(
+            StringUtils.split(
+                kafkaZookeeperServers,
+                ','));
+        SysDefine.KAFKA_ZOOKEEPER_PORT = NumberUtils.toInt(kafkaZookeeperPort, 2181);
+
+        StringBuilder zkServersBuilder = new StringBuilder(64);
+        zkServersBuilder.append(SysDefine.KAFKA_ZOOKEEPER_SERVERS.get(0));
+        zkServersBuilder.append(':');
+        zkServersBuilder.append(SysDefine.KAFKA_ZOOKEEPER_PORT);
+        for (int i = 1; i < SysDefine.KAFKA_ZOOKEEPER_SERVERS.size(); ++i) {
+            zkServersBuilder.append(',');
+            zkServersBuilder.append(SysDefine.KAFKA_ZOOKEEPER_SERVERS.get(i));
+            zkServersBuilder.append(':');
+            zkServersBuilder.append(SysDefine.KAFKA_ZOOKEEPER_PORT);
+        }
+        SysDefine.KAFKA_ZOOKEEPER_HOSTS = zkServersBuilder.toString();
+
+        SysDefine.KAFKA_ZOOKEEPER_PATH = kafkaZookeeperPath;
     }
 }
 

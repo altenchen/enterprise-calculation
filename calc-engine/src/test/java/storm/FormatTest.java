@@ -10,6 +10,8 @@ import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
+import storm.system.SysDefine;
+import storm.topology.TopologiesByConf;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -51,7 +53,7 @@ final class FormatTest {
         final TimeZone chinaZoneToo = TimeZone.getTimeZone("GMT+8:00");
 
         final Calendar calendar = Calendar.getInstance();
-        calendar.set(2018, 7-1, 8, 20, 52, 33);
+        calendar.set(2018, 7 - 1, 8, 20, 52, 33);
         final Date time = calendar.getTime();
         final long timeInMillis = calendar.getTimeInMillis();
         final String format = "20180708205233";
@@ -122,6 +124,30 @@ final class FormatTest {
 
         Assertions.assertEquals("org.apache.kafka.common.serialization.StringSerializer", org.apache.kafka.common.serialization.StringSerializer.class.getCanonicalName());
         Assertions.assertEquals("org.apache.kafka.common.serialization.StringSerializer", org.apache.kafka.common.serialization.StringSerializer.class.getCanonicalName());
+    }
+
+    @Disabled("zookeeper配置解析")
+    @Test
+    void zookeeperTest() {
+        final String kafkaZookeeperServers = "192.168.1.100,192.168.1.101,192.168.1.102";
+        final String kafkaZookeeperPort = "2181";
+        final String kafkaZookeeperPath = "/stormcal";
+
+        TopologiesByConf.initZookeeperConfig(kafkaZookeeperServers, kafkaZookeeperPort, kafkaZookeeperPath);
+
+        Assertions.assertEquals(
+            Arrays.asList(
+                "192.168.1.100",
+                "192.168.1.101",
+                "192.168.1.102"),
+            SysDefine.KAFKA_ZOOKEEPER_SERVERS);
+        Assertions.assertEquals(
+            2181,
+            SysDefine.KAFKA_ZOOKEEPER_PORT);
+        Assertions.assertEquals(
+            "/stormcal",
+            SysDefine.KAFKA_ZOOKEEPER_PATH);
+        Assertions.assertEquals("192.168.1.100:2181,192.168.1.101:2181,192.168.1.102:2181", SysDefine.KAFKA_ZOOKEEPER_HOSTS);
     }
 
     @Disabled("不可变类")
@@ -243,10 +269,10 @@ final class FormatTest {
         final ByteArrayInputStream byteArrayStream = new ByteArrayInputStream(base64);
         final DataInputStream dataStream = new DataInputStream(byteArrayStream);
         try {
-            if(dataStream.available() % 2 != 0) {
+            if (dataStream.available() % 2 != 0) {
                 LOG.warn("[7003]数据不完整.");
             }
-            while(dataStream.available() >= 2) {
+            while (dataStream.available() >= 2) {
                 final int unsignedShort = dataStream.readUnsignedShort();
                 LOG.debug("单体电池电压值={}", unsignedShort);
             }
@@ -264,7 +290,7 @@ final class FormatTest {
         final ByteArrayInputStream byteArrayStream = new ByteArrayInputStream(base64);
         final DataInputStream dataStream = new DataInputStream(byteArrayStream);
         try {
-            while(dataStream.available() >= 1) {
+            while (dataStream.available() >= 1) {
                 final int unsignedByte = dataStream.readUnsignedByte();
                 LOG.debug("单体电池温度值={}", unsignedByte);
             }
@@ -300,7 +326,7 @@ final class FormatTest {
 
             final ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
 
-            final Person targetPerson = (Person)objectInputStream.readObject();
+            final Person targetPerson = (Person) objectInputStream.readObject();
 
             LOG.trace("targetPerson={}", targetPerson);
 
