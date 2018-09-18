@@ -481,16 +481,23 @@ public class FilterBolt extends BaseRichBolt {
 
         long platformReceiveTime = 0;
 
-        final String platformReceiveTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
-        if (StringUtils.isNotBlank(platformReceiveTimeString)) {
-            try {
-                platformReceiveTime = DataUtils.parseFormatTime(platformReceiveTimeString);
-            } catch (final ParseException e) {
-                LOG.warn("时间解析异常", e);
-                LOG.warn("无效的服务器接收时间: [{}]", platformReceiveTimeString);
+        final String messageType = data.get(DataKey.MESSAGE_TYPE);
+
+        final boolean isRealtimeInfo = CommandType.SUBMIT_REALTIME.equals(messageType);
+
+        if (isRealtimeInfo) {
+
+            final String platformReceiveTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+            if (StringUtils.isNotBlank(platformReceiveTimeString)) {
+                try {
+                    platformReceiveTime = DataUtils.parseFormatTime(platformReceiveTimeString);
+                } catch (final ParseException e) {
+                    LOG.warn("时间解析异常", e);
+                    LOG.warn("无效的服务器接收时间: [{}]", platformReceiveTimeString);
+                }
+            } else {
+                LOG.warn("空白的服务器接收时间: [{}]", platformReceiveTimeString);
             }
-        } else {
-            LOG.warn("空白的服务器接收时间: [{}]", platformReceiveTimeString);
         }
 
         try {
@@ -504,8 +511,10 @@ public class FilterBolt extends BaseRichBolt {
                     platformReceiveTime = Math.max(platformReceiveTime, totalMileageCacheTime);
                 } catch (final ParseException e) {
                     LOG.warn("时间解析异常", e);
-                    LOG.warn("无效的服务器接收时间: [{}]", platformReceiveTimeString);
+                    LOG.warn("无效的服务器接收时间: [{}]", totalMileageCacheTimeString);
                 }
+            } else {
+                LOG.warn("空白的服务器接收时间: [{}]", totalMileageCacheTimeString);
             }
         } catch (ExecutionException e) {
             LOG.warn("从缓存获取有效累计里程异常", e);
