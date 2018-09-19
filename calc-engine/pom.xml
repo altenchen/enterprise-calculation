@@ -63,6 +63,12 @@
             <artifactId>storm-kafka-client</artifactId>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-jdbc -->
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-jdbc</artifactId>
+        </dependency>
+
         <!-- Storm 依赖结束 -->
 
         <!-- Kafka依赖开始 -->
@@ -93,6 +99,12 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.zaxxer/HikariCP -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
         </dependency>
 
         <!-- 数据库依赖结束 -->

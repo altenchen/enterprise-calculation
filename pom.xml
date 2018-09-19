@@ -47,6 +47,7 @@
         <fastjson.version>1.2.47</fastjson.version>
         <slf4j.version>1.7.7</slf4j.version>
         <mysql.connector.version>8.0.11</mysql.connector.version>
+        <HikariCP.version>3.2.0</HikariCP.version>
         <jedis.version>2.4.2</jedis.version>
         <jersey.version>1.19.4</jersey.version>
         <dagger.version>2.16</dagger.version>
@@ -167,6 +168,20 @@
                 </exclusions>
             </dependency>
 
+            <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-jdbc -->
+            <dependency>
+                <groupId>org.apache.storm</groupId>
+                <artifactId>storm-jdbc</artifactId>
+                <version>${storm.version}</version>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-hbase -->
+            <dependency>
+                <groupId>org.apache.storm</groupId>
+                <artifactId>storm-hbase</artifactId>
+                <version>${storm.version}</version>
+            </dependency>
+
             <!-- Storm 依赖结束 -->
 
             <!-- Kafka依赖开始 -->
@@ -240,6 +255,13 @@
                 <artifactId>mysql-connector-java</artifactId>
                 <version>${mysql.connector.version}</version>
                 <scope>runtime</scope>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/com.zaxxer/HikariCP -->
+            <dependency>
+                <groupId>com.zaxxer</groupId>
+                <artifactId>HikariCP</artifactId>
+                <version>${HikariCP.version}</version>
             </dependency>
 
             <!-- 数据库依赖结束 -->
