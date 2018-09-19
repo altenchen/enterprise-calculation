@@ -15,6 +15,7 @@ import java.util.Objects;
  *
  * @param <T> the type of the input to the function
  * @param <R> the type of the result of the function
+ * @param <E> the type of the exception of the function
  *
  * @since 1.8
  */
@@ -45,7 +46,7 @@ public interface FunctionE<T, R, E extends Exception> {
      *
      * @see #andThen(FunctionE)
      */
-    default <V> FunctionE<V, R, E> compose(FunctionE<? super V, ? extends T, E> before) {
+    default <V> FunctionE<? extends V, ? super R, ? super E> compose(FunctionE<? super V, ? extends T, ? extends E> before) {
         Objects.requireNonNull(before);
         return (V v) -> apply(before.apply(v));
     }
@@ -65,7 +66,7 @@ public interface FunctionE<T, R, E extends Exception> {
      *
      * @see #compose(FunctionE)
      */
-    default <V> FunctionE<T, V, E> andThen(FunctionE<? super R, ? extends V, E> after) {
+    default <V> FunctionE<? extends T, ? super V, ? super E> andThen(FunctionE<? super R, ? extends V, ? extends E> after) {
         Objects.requireNonNull(after);
         return (T t) -> after.apply(apply(t));
     }
@@ -74,12 +75,12 @@ public interface FunctionE<T, R, E extends Exception> {
      * Returns a function that always returns its input argument.
      *
      * @param <T> the type of the input and output objects to the function
-     * @param <F> the type of the exception objects to the function
+     * @param <E> the type of the exception objects to the function
      * @return a function that always returns its input argument
      */
     @NotNull
     @Contract(pure = true)
-    static <T, F extends Exception> FunctionE<T, T, F> identity(){
+    static <T, E extends Exception> FunctionE<T, T, E> identity(){
         return t -> t;
     }
 }

@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 import java.util.TreeMap;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 /**
  * @author: xzp

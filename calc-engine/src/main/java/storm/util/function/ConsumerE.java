@@ -13,6 +13,7 @@ import java.util.Objects;
  * whose functional method is {@link #accept(Object)}.
  *
  * @param <T> the type of the input to the operation
+ * @param <E> the type of the exception of the function
  *
  * @since 1.8
  */
@@ -39,7 +40,7 @@ public interface ConsumerE<T, E extends Exception> {
      * operation followed by the {@code after} operation
      * @throws NullPointerException if {@code after} is null
      */
-    default ConsumerE<T, E> andThen(ConsumerE<? super T, E> after) {
+    default ConsumerE<? extends T, ? super E> andThen(ConsumerE<? super T, ? extends E> after) {
         Objects.requireNonNull(after);
         return (T t) -> { accept(t); after.accept(t); };
     }
