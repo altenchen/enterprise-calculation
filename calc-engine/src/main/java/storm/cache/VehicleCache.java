@@ -561,10 +561,6 @@ public final class VehicleCache {
             return;
         }
 
-        if (DataUtils.isAutoWake(data)) {
-            return;
-        }
-
         final String vid = data.get(DataKey.VEHICLE_ID);
         if(StringUtils.isBlank(vid)) {
             return;
