@@ -298,9 +298,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
         // region 缓存有效状态
 
-        if(DataUtils.isNotAutoWake(data)) {
-            VEHICLE_CACHE.updateUsefulCache(data);
-        }
+        VEHICLE_CACHE.updateUsefulCache(data);
 
         // endregion 缓存有效状态
 

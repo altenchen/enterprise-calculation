@@ -444,17 +444,13 @@ public class FilterBolt extends BaseRichBolt {
             try {
                 final long platformTime = DataUtils.parseFormatTime(platformTimeString);
 
-                // 如果不是自动唤醒报文
-                if(DataUtils.isNotAutoWake(data)) {
+                VEHICLE_CACHE.updateUsefulCache(immutableData);
 
-                    VEHICLE_CACHE.updateUsefulCache(immutableData);
+                vehicleIdleHandler.updatePlatformReceiveTime(vid, platformTime)
+                    .forEach((key, json) -> {
+                        kafkaStreamVehicleNoticeSender.emit(input, key, json);
+                    });
 
-                    vehicleIdleHandler.updatePlatformReceiveTime(vid, platformTime)
-                        .forEach((key, json) -> {
-                            kafkaStreamVehicleNoticeSender.emit(input, key, json);
-                        });
-
-                }
             } catch (final ParseException e) {
                 LOG.warn("时间解析异常", e);
                 LOG.warn("无效的服务器接收时间: [{}]", platformTimeString);
