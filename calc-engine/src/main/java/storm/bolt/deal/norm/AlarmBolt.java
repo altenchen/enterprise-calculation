@@ -628,64 +628,64 @@ public class AlarmBolt extends BaseRichBolt {
                     result = diffMarkValid(left1_value, midExp, right1, right2);
                     return result;
 
-                } else {
+                } else if(true) {
                     // 作为数值处理
 
-                    final double left1_value =
-                        (NumberUtils.toDouble(left1Value, 0) - left1CoefficientOffset.getOffset())
-                            / left1CoefficientOffset.getCoefficient();
-
-                    //判断是否软报警条件(true/false)
-                    result = diffMarkValid(left1_value, midExp, right1, right2);
+//                    final double left1_value =
+//                        (NumberUtils.toDouble(left1Value, 0) - left1CoefficientOffset.getOffset())
+//                            / left1CoefficientOffset.getCoefficient();
+//
+//                    //判断是否软报警条件(true/false)
+//                    result = diffMarkValid(left1_value, midExp, right1, right2);
                     return result;
 
-                } else if (left1CoefficientOffset.isArray()) {
+                } else if (false) {
 
-                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                        LOG.info("左一数据项[{}]偏移系数规则存在且为数组类型, 开始处理.", warn.left1DataKey);
-                    });
-
-                    // 作为数组处理
-
-                    //  7003_单体电池电压值列表, 国标 "表B.6 每个可充电储能子系统电压数据格式和定义"
-                    //  7103_单体电池温度值列表, 国标 "表B.8 每个可充电储能子系统上温度数据格式和定义"
-
-                    // TODO: 对于7003和7103, 以下解析逻辑有误, 不会起作用的......其它的待分析, 以下疑似4001, 雅安驾驶行为数据表
-
-                    final String[] stringArray1 = left1Value.split("\\|");
-                    for (int i = 0; i < stringArray1.length; i++) {
-
-                        final String stringArray = stringArray1[i];
-                        if (StringUtils.isEmpty(stringArray)) {
-                            continue;
-                        }
-
-                        final String decodeGb18030String = new String(Base64.decode(stringArray), "GB18030");
-
-                        if (!decodeGb18030String.contains(":")) {
-                            continue;
-                        }
-
-                        final String[] arr2m = decodeGb18030String.split(":");
-                        if (arr2m.length != 2
-                            || StringUtils.isEmpty(arr2m[1])) {
-                            continue;
-                        }
-
-                        final String[] arr2 = arr2m[1].split("_");
-                        for (int j = 0; j < arr2.length; j++) {
-
-                            final double value = (NumberUtils.toDouble(arr2[j], 0) - left1CoefficientOffset.offset)
-                                / left1CoefficientOffset.coefficient;
-
-                            //判断是否软报警条件(true/false)
-                            result = diffMarkValid(value, midExp, right1, right2);
-
-                            if (result == 1) {
-                                return result;
-                            }
-                        }
-                    }
+//                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+//                        LOG.info("左一数据项[{}]偏移系数规则存在且为数组类型, 开始处理.", warn.left1DataKey);
+//                    });
+//
+//                    // 作为数组处理
+//
+//                    //  7003_单体电池电压值列表, 国标 "表B.6 每个可充电储能子系统电压数据格式和定义"
+//                    //  7103_单体电池温度值列表, 国标 "表B.8 每个可充电储能子系统上温度数据格式和定义"
+//
+//                    // TODO: 对于7003和7103, 以下解析逻辑有误, 不会起作用的......其它的待分析, 以下疑似4001, 雅安驾驶行为数据表
+//
+//                    final String[] stringArray1 = left1Value.split("\\|");
+//                    for (int i = 0; i < stringArray1.length; i++) {
+//
+//                        final String stringArray = stringArray1[i];
+//                        if (StringUtils.isEmpty(stringArray)) {
+//                            continue;
+//                        }
+//
+//                        final String decodeGb18030String = new String(Base64.decode(stringArray), "GB18030");
+//
+//                        if (!decodeGb18030String.contains(":")) {
+//                            continue;
+//                        }
+//
+//                        final String[] arr2m = decodeGb18030String.split(":");
+//                        if (arr2m.length != 2
+//                            || StringUtils.isEmpty(arr2m[1])) {
+//                            continue;
+//                        }
+//
+//                        final String[] arr2 = arr2m[1].split("_");
+//                        for (int j = 0; j < arr2.length; j++) {
+//
+//                            final double value = (NumberUtils.toDouble(arr2[j], 0) - left1CoefficientOffset.offset)
+//                                / left1CoefficientOffset.coefficient;
+//
+//                            //判断是否软报警条件(true/false)
+//                            result = diffMarkValid(value, midExp, right1, right2);
+//
+//                            if (result == 1) {
+//                                return result;
+//                            }
+//                        }
+//                    }
 
                     return 0;
                 }
@@ -706,20 +706,20 @@ public class AlarmBolt extends BaseRichBolt {
                 if (!left1.equals(left2)) {
                     // 左一和左二不是同一个数据项
 
-                    if (null != left1CoefficientOffset && left1CoefficientOffset.isArray()) {
-                        // 左一偏移系数是数组, 不予处理, 返回0.
-                        LOG.warn("左一偏移系数是数组, 同时有配置不同的左二, 不予处理.");
-                        return 0;
-                    }
+//                    if (null != left1CoefficientOffset && left1CoefficientOffset.isArray()) {
+//                        // 左一偏移系数是数组, 不予处理, 返回0.
+//                        LOG.warn("左一偏移系数是数组, 同时有配置不同的左二, 不予处理.");
+//                        return 0;
+//                    }
 
                     // 左二偏移系数
                     final CoefficientOffset left2CoefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(left2);
 
-                    if (null != left2CoefficientOffset && left2CoefficientOffset.isArray()) {
-                        // 左二偏移系数是数组, 不予处理, 返回0.
-                        LOG.warn("左二偏移系数是数组, 不予处理.");
-                        return 0;
-                    }
+//                    if (null != left2CoefficientOffset && left2CoefficientOffset.isArray()) {
+//                        // 左二偏移系数是数组, 不予处理, 返回0.
+//                        LOG.warn("左二偏移系数是数组, 不予处理.");
+//                        return 0;
+//                    }
 
                     if (!NumberUtils.isNumber(left1Value)
                         || !NumberUtils.isNumber(left2Value)) {
@@ -731,19 +731,19 @@ public class AlarmBolt extends BaseRichBolt {
                     }
 
                     double left1_value = NumberUtils.toDouble(left1Value, 0);
-                    if (null != left1CoefficientOffset) {
-                        left1_value = (left1_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
-                    }
+//                    if (null != left1CoefficientOffset) {
+//                        left1_value = (left1_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
+//                    }
+//
+//                    double left2_value = NumberUtils.toDouble(left2Value, 0);
+//                    if (null != left2CoefficientOffset) {
+//                        left2_value = (left2_value - left2CoefficientOffset.getOffset()) / left2CoefficientOffset.getCoefficient();
+//                    }
 
-                    double left2_value = NumberUtils.toDouble(left2Value, 0);
-                    if (null != left2CoefficientOffset) {
-                        left2_value = (left2_value - left2CoefficientOffset.getOffset()) / left2CoefficientOffset.getCoefficient();
-                    }
+//                    double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
 
-                    double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
-
-                    //判断是否软报警条件(true/false)
-                    result = diffMarkValid(left_value, midExp, right1, right2);
+//                    //判断是否软报警条件(true/false)
+//                    result = diffMarkValid(left_value, midExp, right1, right2);
                     return result;
 
                 } else {
@@ -840,10 +840,10 @@ public class AlarmBolt extends BaseRichBolt {
                                 double left1_value = NumberUtils.toDouble(prevFormat[j], 0);
                                 double left2_value = NumberUtils.toDouble(currentFormat[j], 0);
 
-                                if (null != left1CoefficientOffset) {
-                                    left1_value = (left1_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
-                                    left2_value = (left2_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
-                                }
+//                                if (null != left1CoefficientOffset) {
+//                                    left1_value = (left1_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
+//                                    left2_value = (left2_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
+//                                }
 
                                 final double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
 
@@ -863,10 +863,10 @@ public class AlarmBolt extends BaseRichBolt {
                     double left1_value = NumberUtils.toDouble(prevLeft, 0);
                     double left2_value = NumberUtils.toDouble(currentLeft, 0);
 
-                    if (null != left1CoefficientOffset) {
-                        left1_value = (left1_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
-                        left2_value = (left2_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
-                    }
+//                    if (null != left1CoefficientOffset) {
+//                        left1_value = (left1_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
+//                        left2_value = (left2_value - left1CoefficientOffset.getOffset()) / left1CoefficientOffset.getCoefficient();
+//                    }
 
                     final double left_value = diffMarkValid2(leftExp, left1_value, left2_value);
 
@@ -880,6 +880,8 @@ public class AlarmBolt extends BaseRichBolt {
             LOG.warn("执行预警规则异常", e);
             return 0;
         }
+
+        return 0;
     }
 
     /**

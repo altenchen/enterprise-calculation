@@ -6,7 +6,10 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import storm.util.DataUtils;
 import storm.util.JsonUtils;
+
+import java.math.BigDecimal;
 
 /**
  * @author 徐志鹏
@@ -17,48 +20,58 @@ public final class CoefficientOffset {
     @NotNull
     private final String dataKey;
 
-    private final double coefficient;
+    @NotNull
+    private final BigDecimal coefficient;
 
-    private final double offset;
+    @NotNull
+    private final BigDecimal offset;
 
+    @NotNull
+    private final int precision;
 
     public CoefficientOffset(
         @NotNull final String dataKey,
-        double coefficient,
-        double offset) {
+        @NotNull BigDecimal coefficient,
+        @NotNull BigDecimal offset,
+        final int precision) {
 
         if(StringUtils.isBlank(dataKey)) {
             throw new IllegalArgumentException("数据键不能为空白");
         }
-        if(-Double.MIN_NORMAL < coefficient && coefficient < Double.MIN_NORMAL) {
+        if(BigDecimal.ZERO.equals(coefficient)) {
             throw new IllegalArgumentException("系数不能为0");
         }
         this.dataKey = dataKey;
         this.coefficient = coefficient;
         this.offset = offset;
+        this.precision = precision;
     }
 
     @Nullable
-    public Double compute(
+    public BigDecimal compute(
         @NotNull final ImmutableMap<String, String> data) {
 
-        final String string = data.get(getDataKey());
-        if(!NumberUtils.isNumber(string)) {
+        final String valueString = data.get(getDataKey());
+        if(!NumberUtils.isNumber(valueString)) {
             return null;
         }
 
-        final double value = NumberUtils.toDouble(string);
-        return (value - getOffset()) / getCoefficient();
+        final BigDecimal value = DataUtils.createBigDecimal(valueString);
+        if (null == value) {
+            return null;
+        }
+        return compute(value);
     }
 
-    @Contract(pure = true)
-    public double compute(double value) {
-        return (value - getOffset()) / getCoefficient();
+    @NotNull
+    public BigDecimal compute(@NotNull BigDecimal value) {
+        return (value.subtract(getOffset())).divide(getCoefficient(), getPrecision(), BigDecimal.ROUND_HALF_UP);
     }
 
     /**
      * 数据键
      */
+    @NotNull
     @Contract(pure = true)
     public String getDataKey() {
         return dataKey;
@@ -67,17 +80,27 @@ public final class CoefficientOffset {
     /**
      * 系数
      */
+    @NotNull
     @Contract(pure = true)
-    public double getCoefficient() {
+    public BigDecimal getCoefficient() {
         return coefficient;
     }
 
     /**
-     * 偏移值
+     * 偏移
      */
     @Contract(pure = true)
-    public double getOffset() {
+    public BigDecimal getOffset() {
         return offset;
+    }
+
+    /**
+     * 精度
+     * @return
+     */
+    @Contract(pure = true)
+    public int getPrecision() {
+        return precision;
     }
 
     @NotNull
@@ -85,5 +108,6 @@ public final class CoefficientOffset {
     public String toString() {
         return JsonUtils.getInstance().toJson(this);
     }
+
 }
                                                   

@@ -1,11 +1,10 @@
 package storm;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.sun.jersey.core.util.Base64;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.jupiter.api.*;
@@ -16,6 +15,8 @@ import storm.system.SysDefine;
 import storm.topology.TopologiesByConf;
 
 import java.io.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.*;
@@ -25,7 +26,7 @@ import java.util.*;
  * @date: 2018-07-08
  * @description:
  */
-@Disabled("比较随意的各种函数验证")
+@DisplayName("格式化测试")
 final class FormatTest {
 
     @SuppressWarnings("unused")
@@ -418,6 +419,57 @@ final class FormatTest {
         Assertions.assertEquals(true, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "xx")));
         Assertions.assertEquals(true, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "yy")));
         Assertions.assertEquals(true, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "zz")));
+    }
+
+    @Disabled("验证BigDecimal特性")
+    @Test
+    void testBigDecimal() {
+        final BigDecimal _1_2345 = NumberUtils.createBigDecimal("1.2345");
+        Assertions.assertEquals(4, _1_2345.scale());
+
+        final BigDecimal _123_45 = NumberUtils.createBigDecimal("123.45");
+        Assertions.assertEquals(2, _123_45.scale());
+
+        final BigDecimal _123_450 = NumberUtils.createBigDecimal("123.450");
+        Assertions.assertEquals(3, _123_450.scale());
+
+        // 值相同 且 精度相同 的小数才相同
+        Assertions.assertNotEquals(_123_45, _123_450);
+        Assertions.assertEquals(_123_45, _123_450.stripTrailingZeros());
+
+        // 只比较值大小的话, 应当使用 compareTo 方法, 小于返回 -1, 等于返回0, 大于返回 1
+        Assertions.assertTrue(_1_2345.compareTo(_123_45) < 0);
+        Assertions.assertTrue(_1_2345.compareTo(_123_45) == -1);
+        Assertions.assertTrue(_123_45.compareTo(_1_2345) > 0);
+        Assertions.assertTrue(_123_45.compareTo(_1_2345) == 1);
+        Assertions.assertTrue(_123_45.compareTo(_123_450) == 0);
+
+        final BigDecimal _1_2345_multiply_123_45 = _1_2345.multiply(_123_450).stripTrailingZeros();
+        Assertions.assertEquals(6, _1_2345_multiply_123_45.scale());
+        Assertions.assertEquals(new BigDecimal("152.399025"), _1_2345_multiply_123_45);
+
+        final BigDecimal _0_01 = NumberUtils.createBigDecimal("0.01");
+        final BigDecimal _1_2345_divide_0_01 = _1_2345.divide(_0_01).stripTrailingZeros();
+        Assertions.assertEquals(2, _1_2345_divide_0_01.scale());
+        Assertions.assertEquals(_123_450.stripTrailingZeros(), _1_2345_divide_0_01);
+
+        final BigDecimal _2 = NumberUtils.createBigDecimal("2");
+        final BigDecimal _123_45_multiply_2 = _123_450.multiply(_2).stripTrailingZeros();
+        Assertions.assertEquals(1, _123_45_multiply_2.scale());
+
+        final BigDecimal _123_45_divide_2 = _123_450.divide(_2);
+        Assertions.assertEquals(3, _123_45_divide_2.scale());
+
+        final BigDecimal _7 = NumberUtils.createBigDecimal("7.0");
+        final BigDecimal _123_45_divide_7 = _123_450.divide(_7, RoundingMode.HALF_UP).stripTrailingZeros();
+        Assertions.assertEquals(_123_450.scale()-_7.stripTrailingZeros().scale(), _123_45_divide_7.scale());
+        Assertions.assertEquals(new BigDecimal("17.636"), _123_45_divide_7);
+
+        try {
+            _123_450.divide(_7);
+        } catch (final ArithmeticException ignored) {
+
+        }
     }
 
     @SuppressWarnings("unused")

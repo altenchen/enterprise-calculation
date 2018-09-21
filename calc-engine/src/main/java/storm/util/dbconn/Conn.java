@@ -757,16 +757,16 @@ public final class Conn {
 
                 final int isCustom = rs.getInt(5);
 
-                final CoefficientOffset coefficientOffset = new CoefficientOffset(
-                    // SEQ_NO, 序号
-                    sequencerNumber,
-                    // FACTOR, 系数
-                    factor,
-                    // OFFSET, 偏移值
-                    offset
-                );
-
-                rules.add(coefficientOffset);
+//                final CoefficientOffset coefficientOffset = new CoefficientOffset(
+//                    // SEQ_NO, 序号
+//                    sequencerNumber,
+//                    // FACTOR, 系数
+//                    factor,
+//                    // OFFSET, 偏移值
+//                    offset
+//                );
+//
+//                rules.add(coefficientOffset);
             }
             return rules;
 

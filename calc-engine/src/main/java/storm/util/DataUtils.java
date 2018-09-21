@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
 import storm.system.DataKey;
 
+import java.math.BigDecimal;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.Map;
@@ -290,5 +291,19 @@ public final class DataUtils {
         final Date date) {
 
         return DateFormatUtils.format(date, FormatConstant.DATE_FORMAT);
+    }
+
+    @Nullable
+    public static BigDecimal createBigDecimal(
+        @Nullable final String value) {
+
+        try
+        {
+            return NumberUtils.createBigDecimal(value);
+        } catch (final Exception e) {
+            LOG.trace("转换字符串[{}]到BigDecimal异常", value);
+            LOG.debug("转换字符串到BigDecimal异常", e);
+            return null;
+        }
     }
 }

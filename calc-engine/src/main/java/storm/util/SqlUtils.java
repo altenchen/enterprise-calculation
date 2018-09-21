@@ -77,7 +77,7 @@ public final class SqlUtils {
     @Nullable
     public <R> R query(
         @NotNull final String sql,
-        @NotNull final FunctionE<? super ResultSet, ? extends R, ? extends SQLException> processSet) {
+        @NotNull final FunctionE<@NotNull ? super ResultSet, @Nullable ? extends R, ? extends SQLException> processSet) {
 
         if (StringUtils.isBlank(sql)) {
             LOG.warn("SQL查询语句为空", new IllegalArgumentException("sql"));

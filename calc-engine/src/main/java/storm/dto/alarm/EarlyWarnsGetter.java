@@ -12,9 +12,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.util.SqlUtils;
 import storm.util.dbconn.Conn;
 
 /**
@@ -24,6 +26,8 @@ import storm.util.dbconn.Conn;
 public class EarlyWarnsGetter {
 
     private static final Logger LOG = LoggerFactory.getLogger(EarlyWarnsGetter.class);
+
+    private static final SqlUtils SQL_UTILS = SqlUtils.getInstance();
 
     public final static String ALL = "ALL";
 
@@ -157,7 +161,7 @@ public class EarlyWarnsGetter {
             Collection<EarlyWarn> warns = earlyWarns.values();
             for (EarlyWarn warn : warns) {
                 String modelId = warn.vehicleModelId;
-                if (warn.isAllCommon) {
+                if (StringUtils.isBlank(modelId)) {
                     modelId = ALL;
                 }
                 Set<EarlyWarn> allCommons = typeWarns.get(modelId);
@@ -216,13 +220,13 @@ public class EarlyWarnsGetter {
                 && null != left1DataItem
                 && Float.MIN_VALUE != right1Value) {
 
-                EarlyWarn warn = new EarlyWarn(id, name, vehModelId, levels, dependId, left1DataItem, leftExpression, left2DataItem, middleExpression, right1Value, right2Value);
+                //EarlyWarn warn = new EarlyWarn(id, name, vehModelId, levels, dependId, left1DataItem, leftExpression, left2DataItem, middleExpression, right1Value, right2Value);
 
                 if (null != dependId) {
-                    warn.parentRuleId = dependId;
+                    //warn.parentRuleId = dependId;
                 }
 
-                return warn;
+                //return warn;
             }
         }
         return null;
