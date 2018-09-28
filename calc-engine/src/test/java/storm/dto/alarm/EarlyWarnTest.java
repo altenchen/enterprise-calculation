@@ -51,7 +51,7 @@ public final class EarlyWarnTest {
     @Test
     void testDataGetter() {
 
-        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> function = EarlyWarn.buildDataGetter(false, "2202");
+        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> function = EarlyWarn.buildDataGetter( "2202", false);
         Assertions.assertTrue(new BigDecimal("1234.5").compareTo(
             function.apply(
                 ImmutableMap.of("2202", "12345"),
@@ -63,7 +63,7 @@ public final class EarlyWarnTest {
     @Test
     void testCacheGetter() {
 
-        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> function = EarlyWarn.buildDataGetter(true, "2202");
+        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> function = EarlyWarn.buildDataGetter( "2202", true);
         Assertions.assertTrue(new BigDecimal("9876.5").compareTo(
             function.apply(
                 ImmutableMap.of("2202", "12345"),

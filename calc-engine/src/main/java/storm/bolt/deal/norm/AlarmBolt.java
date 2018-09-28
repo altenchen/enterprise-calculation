@@ -430,7 +430,7 @@ public class AlarmBolt extends BaseRichBolt {
             return;
         }
 
-        final List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vehType);
+        final List<EarlyWarn> warns = null;//EarlyWarnsGetter.allWarnArrsByType(vehType);
         if (CollectionUtils.isEmpty(warns)) {
             return;
         }
@@ -447,27 +447,27 @@ public class AlarmBolt extends BaseRichBolt {
 
                 int result;
                 // 没有依赖项, 直接处理
-                if (null == warn.parentRuleId) {
+                //if (null == warn.parentRuleId) {
 
                     result = processSingleAlarm(vid, warn, data);
                     sendAlarmMessage(result, vid, warn, data);
 
-                }
+                //}
                 // TODO: 李祥东: 按照系统原始逻辑，且运算，生成两条报警，依赖与被依赖各一条
                 // TODO: 有依赖项, 如果处理结果为1, 再处理父及约束? 是不是反了?!!
-                else {
-                    final EarlyWarn warndepend = EarlyWarnsGetter.getEarlyByDependId(warn.parentRuleId);
-                    result = processSingleAlarm(vid, warn, data);
-                    if (result == 1) {
-
-                        //先判断父级约束是否成立，如果成立则继续判断子级约束
-
-                        if (null != warndepend) {
-                            result = processSingleAlarm(vid, warndepend, data);
-                        }
-                    }
-                    sendAlarmMessage(result, vid, warndepend, data);
-                }
+//                else {
+//                    final EarlyWarn warndepend = null;//EarlyWarnsGetter.getEarlyByDependId(warn.parentRuleId);
+//                    result = processSingleAlarm(vid, warn, data);
+//                    if (result == 1) {
+//
+//                        //先判断父级约束是否成立，如果成立则继续判断子级约束
+//
+//                        if (null != warndepend) {
+//                            result = processSingleAlarm(vid, warndepend, data);
+//                        }
+//                    }
+//                    sendAlarmMessage(result, vid, warndepend, data);
+//                }
             }
         } catch (Exception e) {
             LOG.warn("按预警规则处理时异常", e);
@@ -494,7 +494,7 @@ public class AlarmBolt extends BaseRichBolt {
                 // 发送结束报警报文, 这里与sendAlarmMessage方法中有冗余代码了.
 
                 final String alarmId = alarmMap.get(vid + "#" + ruleId);
-                final EarlyWarn warn = EarlyWarnsGetter.getEarlyByDependId(ruleId);
+                final EarlyWarn warn = null;//EarlyWarnsGetter.getEarlyByDependId(ruleId);
                 // 报警规则不存在, 则忽略处理?
                 // 要是同步下来这条规则没了, 原来的报警不应该结束吗?
                 // 或许这就是报警规则只初始化一次的原因?
@@ -612,9 +612,9 @@ public class AlarmBolt extends BaseRichBolt {
             // 中间表达式
             final int midExp = NumberUtils.toInt(warn.middleExpression, 0);
             // 右一值
-            final double right1 = warn.right1Value;
+            final double right1 = 0;//warn.right1Value;
             // 右二值
-            final double right2 = warn.right2Value;
+            final double right2 = 0;//warn.right2Value;
 
             //左二字段为空，L2_ID为空  根据EXPR_MID，和R1_VAL, R2_VAL判断
             if (StringUtils.isEmpty(left2)) {
@@ -912,9 +912,9 @@ public class AlarmBolt extends BaseRichBolt {
         // 左 2 数据项 ID
         final String left2 = warn.left2DataKey;
         // 右 1 数据值
-        final double right1 = warn.right1Value;
+        final double right1 = 0;//warn.right1Value;
         // 右 2 数据值
-        final double right2 = warn.right2Value;
+        final double right2 = 0;//warn.right2Value;
 
         final String time = data.get(DataKey.TIME);
 
@@ -1308,7 +1308,7 @@ public class AlarmBolt extends BaseRichBolt {
                                         if (StringUtils.isNotEmpty(vid)
                                             && StringUtils.isNotEmpty(vehicleType)) {
 
-                                            final List<EarlyWarn> warns = EarlyWarnsGetter.allWarnArrsByType(vehicleType);
+                                            final List<EarlyWarn> warns = null;//EarlyWarnsGetter.allWarnArrsByType(vehicleType);
                                             if (!CollectionUtils.isEmpty(warns)) {
                                                 // 车辆发离线通知，系统自动发送结束报警通知
                                                 sendOverAlarmMessage(vid);

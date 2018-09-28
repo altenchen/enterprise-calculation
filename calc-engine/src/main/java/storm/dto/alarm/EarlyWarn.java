@@ -1,7 +1,6 @@
 package storm.dto.alarm;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Contract;
@@ -9,15 +8,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.util.DataUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-
-import storm.util.BigDecimalUtils;
-import storm.util.DataUtils;
-import storm.util.function.TeFunction;
 
 /**
  * @author 徐志鹏
@@ -39,21 +35,6 @@ public class EarlyWarn {
      * 车辆类型Id
      */
     public final String vehicleModelId;
-
-    /**
-     * 父规则Id
-     */
-    public final String parentRuleId;
-
-    /**
-     * 同车型子规则
-     */
-    public ImmutableMap<String, EarlyWarn> earlyWarns;
-
-    /**
-     * 特定车型子规则, 只适用于通用规则.
-     */
-    public ImmutableMap<String, ImmutableSet<EarlyWarn>> vehicleModelChildren;
 
     // endregion 组织属性
 
@@ -93,12 +74,12 @@ public class EarlyWarn {
     /**
      * 右一值
      */
-    public final double right1Value;
+    public final String right1Value;
 
     /**
      * 右二值
      */
-    public double right2Value;
+    public String right2Value;
 
     /**
      * 逻辑运算表达式
@@ -120,7 +101,7 @@ public class EarlyWarn {
     // region 约定属性
 
     /**
-     * 告警级别, 对于告警级别为0的规则, 使用报文中最高报警级别作为当前规则的告警级别.
+     * 告警级别, 对于告警级别为 0 的规则, 使用报文中最高报警级别作为当前规则的告警级别.
      */
     public final int level;
 
@@ -129,7 +110,7 @@ public class EarlyWarn {
     // region 描述属性
 
     /**
-     * 规则名称, HBase 需要
+     * 规则名称, 日志和 HBase 需要
      */
     public final String ruleName;
 
@@ -137,23 +118,21 @@ public class EarlyWarn {
 
     EarlyWarn(
         @NotNull final String ruleId,
-        @Nullable final String vehicleModelId,
-        @Nullable final String parentRuleId,
+        @Nullable final String ruleName,
         @NotNull final String left1DataKey,
         final boolean left1UsePrev,
         @Nullable final String left2DataKey,
         final boolean left2UsePrev,
         @Nullable final String leftExpression,
-        final double right1Value,
-        final double right2Value,
+        @NotNull final String right1Value,
+        @Nullable final String right2Value,
         @NotNull final String middleExpression,
         final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, Boolean> function,
         final int level,
-        @Nullable final String ruleName) {
+        @Nullable final String vehicleModelId) {
 
         this.ruleId = ruleId;
-        this.vehicleModelId = vehicleModelId;
-        this.parentRuleId = parentRuleId;
+        this.ruleName = ruleName;
 
         this.left1DataKey = left1DataKey;
         this.left1UsePrev = left1UsePrev;
@@ -169,11 +148,11 @@ public class EarlyWarn {
 
         this.level = level;
 
-        this.ruleName = ruleName;
+        this.vehicleModelId = vehicleModelId;
     }
 
     /**
-     * 计算平台报警规则,
+     * 计算平台报警规则
      *
      * @param data  当前数据集
      * @param cache 之前有效数据集
@@ -193,14 +172,14 @@ public class EarlyWarn {
      *
      * @param ruleId               平台报警规则标识, 用于打印日志.
      * @param ruleName             平台报警规则名称, 用于打印日志.
-     * @param arithmeticExpression 算术运算表达式标记
      * @param left1DataKey         左一数据项键
      * @param left1UsePrev         左一数据项使用当前有效值还是上一次有效值
      * @param left2DataKey         左二数据项键
      * @param left2UsePrev         左二数据项使用当前有效值还是上一次有效值
-     * @param logicExpression      逻辑运算表达式标记
+     * @param arithmeticExpression 算术运算表达式标记
      * @param right1Value          右一值
      * @param right2Value          右二值
+     * @param logicExpression      逻辑运算表达式标记
      * @return 平台报警函数, 只需传入车辆当前数据项和上一次有效数据项, 即可计算结果,
      * true 表示符合规则, false 表示不符合规则, null 表示需要的数据项不完整
      */
@@ -208,28 +187,28 @@ public class EarlyWarn {
     public static BiFunction<
         ImmutableMap<String, String>,
         ImmutableMap<String, String>,
-        Boolean> buildExpression(
+        Boolean> buildFunction(
 
         @NotNull final String ruleId,
         @Nullable final String ruleName,
-        @Nullable final String arithmeticExpression,
         @NotNull final String left1DataKey,
         final boolean left1UsePrev,
         @Nullable final String left2DataKey,
         final boolean left2UsePrev,
-        @NotNull final String logicExpression,
+        @Nullable final String arithmeticExpression,
         @NotNull final String right1Value,
-        @Nullable final String right2Value) {
+        @Nullable final String right2Value,
+        @NotNull final String logicExpression) {
 
         final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> arithmeticFunction =
             buildArithmeticFunction(
                 ruleId,
                 ruleName,
-                arithmeticExpression,
                 left1DataKey,
                 left1UsePrev,
                 left2DataKey,
-                left2UsePrev);
+                left2UsePrev,
+                arithmeticExpression);
 
         if (null == arithmeticFunction) {
             return null;
@@ -276,11 +255,11 @@ public class EarlyWarn {
 
         @NotNull final String ruleId,
         @Nullable final String ruleName,
-        @Nullable final String arithmeticExpression,
         @NotNull final String left1DataKey,
         final boolean left1UsePrev,
         @Nullable final String left2DataKey,
-        final boolean left2UsePrev) {
+        final boolean left2UsePrev,
+        @Nullable final String arithmeticExpression) {
 
         if (StringUtils.isBlank(left1DataKey)) {
             LOG.error("平台报警规则[{}][{}]左一键空白, 无法构建算术运算函数.", ruleId, ruleName);
@@ -290,10 +269,10 @@ public class EarlyWarn {
         final BiFunction<
             ImmutableMap<String, String>,
             ImmutableMap<String, String>,
-            BigDecimal> firstGetter = buildDataGetter(left1UsePrev, left1DataKey);
+            BigDecimal> firstGetter = buildDataGetter(left1DataKey, left1UsePrev);
 
         final String none = "0";
-        if (null == arithmeticExpression || none.equals(arithmeticExpression)) {
+        if (StringUtils.isBlank(arithmeticExpression) || none.equals(arithmeticExpression)) {
             // 没有算术运算, 直接使用左一值.
             return firstGetter;
         } else {
@@ -306,7 +285,7 @@ public class EarlyWarn {
             final BiFunction<
                 ImmutableMap<String, String>,
                 ImmutableMap<String, String>,
-                BigDecimal> secondGetter = buildDataGetter(left2UsePrev, left2DataKey);
+                BigDecimal> secondGetter = buildDataGetter(left2DataKey, left2UsePrev);
 
             final BiFunction<BigDecimal, BigDecimal, BigDecimal> function =
                 buildArithmeticFunction(ruleId, ruleName, arithmeticExpression);
@@ -329,8 +308,8 @@ public class EarlyWarn {
         ImmutableMap<String, String>,
         ImmutableMap<String, String>,
         BigDecimal> buildDataGetter(
-        final boolean isUseCache,
-        @NotNull final String dataKey
+        @NotNull final String dataKey,
+        final boolean isUseCache
     ) {
         return (data, cache) -> buildDataGetter(dataKey).apply(isUseCache ? cache : data);
     }
@@ -560,4 +539,10 @@ public class EarlyWarn {
     // endregion 构建逻辑运算函数
 
     // endregion 构建函数
+
+
+    @Override
+    public String toString() {
+        return StringUtils.defaultIfEmpty(ruleName, super.toString());
+    }
 }
