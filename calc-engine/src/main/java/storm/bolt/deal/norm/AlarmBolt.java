@@ -211,7 +211,7 @@ public class AlarmBolt extends BaseRichBolt {
                 @Override
                 public void run() {
                     try {
-                        EarlyWarnsGetter.rebuild();
+                        //EarlyWarnsGetter.rebuild();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

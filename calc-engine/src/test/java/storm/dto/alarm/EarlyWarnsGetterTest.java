@@ -4,7 +4,12 @@ import com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.system.SysDefine;
+import storm.util.ConfigUtils;
 import storm.util.collect.ImmutableMapUtils;
+
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author: xzp
@@ -32,17 +37,34 @@ public final class EarlyWarnsGetterTest {
         // 每个测试之前
     }
 
-    @DisplayName("测试从数据库导入规则")
+    @Disabled("测试从数据库导入规则")
     @Test
     void testRebuild() {
-        EarlyWarnsGetter.rebuild();
 
-        final ImmutableMap<String, EarlyWarn> rules =
-            EarlyWarnsGetter.getRules("ALL");
+        ConfigUtils.getInstance().sysDefine
+            .setProperty(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, "3");
 
-        Assertions.assertNotNull(rules);
-        LOG.warn("rules.size={}", ImmutableMapUtils.filter(rules, (k,v)-> v.level == 0).size());
-        Assertions.assertTrue(rules.size() >= 19);
+        Runnable test = ()->{
+            final ImmutableMap<String, EarlyWarn> rules =
+                EarlyWarnsGetter.getRules("ALL");
+
+            Assertions.assertNotNull(rules);
+            Assertions.assertTrue(rules.size() >= 19);
+        };
+
+        for (int i = 0; i < 100; i++) {
+            test.run();
+        }
+
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        } catch (InterruptedException e) {
+            LOG.error("休眠异常", e);
+        }
+
+        for (int i = 0; i < 100; i++) {
+            test.run();
+        }
     }
 
     @SuppressWarnings("unused")
