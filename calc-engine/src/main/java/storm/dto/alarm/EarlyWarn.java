@@ -376,7 +376,12 @@ public class EarlyWarn {
             // L1 / L2
             case "4": {
                 return buildArithmeticFunctionFilter(
-                    (left1Value, left2Value) -> left1Value.divide(left2Value, Math.max(left1Value.scale(),left2Value.scale()), BigDecimal.ROUND_HALF_UP));
+                    (left1Value, left2Value) -> {
+                        if(0 == BigDecimal.ZERO.compareTo(left2Value)) {
+                            return null;
+                        }
+                        return left1Value.divide(left2Value, Math.max(left1Value.scale(), left2Value.scale()), BigDecimal.ROUND_HALF_UP);
+                    });
             }
             default:
                 LOG.error("平台报警规则[{}][{}]未识别的数值运算表达式[{}]", ruleId, ruleName, arithmeticExpression);

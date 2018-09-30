@@ -6,9 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
-import storm.util.collect.ImmutableMapUtils;
 
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -46,7 +44,7 @@ public final class EarlyWarnsGetterTest {
 
         Runnable test = ()->{
             final ImmutableMap<String, EarlyWarn> rules =
-                EarlyWarnsGetter.getRules("ALL");
+                EarlyWarnsGetter.getRulesByVehicleModel("ALL");
 
             Assertions.assertNotNull(rules);
             Assertions.assertTrue(rules.size() >= 19);

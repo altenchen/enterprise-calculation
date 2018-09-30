@@ -324,8 +324,6 @@ final class FormatTest {
 
             final byte[] objectArray = byteArrayOutputStream.toByteArray();
 
-            LOG.trace("objectArray={}", new String(objectArray));
-
             final ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(objectArray);
 
             final ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
@@ -369,15 +367,21 @@ final class FormatTest {
 
     private static class Person implements Serializable {
 
+        private static final long serialVersionUID = -7322732111703395160L;
+
         public String name;
 
         public Integer age;
 
-        public final String finalString = "FinalString";
+        public final String finalString = UUID.randomUUID().toString();
 
         public transient String transientString = "TransientString";
 
-        public transient final String transientFinalString = "TransientFinalString";
+        public transient final String transientFinalString = UUID.randomUUID().toString();
+
+        {
+            LOG.trace("对象初始化块");
+        }
 
         public Person() {
             LOG.trace("默认构造函数");

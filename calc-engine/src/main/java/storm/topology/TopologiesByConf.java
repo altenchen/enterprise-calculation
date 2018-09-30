@@ -88,8 +88,8 @@ public class TopologiesByConf {
         final Config stormConf = new Config();
 
         //region alarm
-        // 连续多少条报警才发送通知
-        stormConf.put(SysDefine.ALARM_CONTINUE_COUNTS, properties.get(SysDefine.ALARM_CONTINUE_COUNTS));
+        stormConf.put(SysDefine.ALARM_START_TRIGGER_CONTINUE_COUNT, properties.get(SysDefine.ALARM_START_TRIGGER_CONTINUE_COUNT));
+        stormConf.put(SysDefine.ALARM_START_TRIGGER_TIMEOUT_MILLISECOND, properties.get(SysDefine.ALARM_START_TRIGGER_TIMEOUT_MILLISECOND));
         //endregion
 
         //region ctfo
@@ -118,8 +118,8 @@ public class TopologiesByConf {
         stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC));
         stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP));
 
-        stormConf.put(SysDefine.KAFKA_TOPIC_ALARM, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM));
-        stormConf.put(SysDefine.KAFKA_TOPIC_ALARM_STORE, properties.getProperty(SysDefine.KAFKA_TOPIC_ALARM_STORE));
+        stormConf.put(SysDefine.VEHICLE_ALARM_TOPIC, properties.getProperty(SysDefine.VEHICLE_ALARM_TOPIC));
+        stormConf.put(SysDefine.VEHICLE_ALARM_STORE_TOPIC, properties.getProperty(SysDefine.VEHICLE_ALARM_STORE_TOPIC));
         stormConf.put(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC, properties.get(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC));
         stormConf.put(SysDefine.KAFKA_TOPIC_NOTICE, properties.get(SysDefine.KAFKA_TOPIC_NOTICE));
         stormConf.put(SysDefine.KAFKA_TOPIC_ES_STATUS, properties.get(SysDefine.KAFKA_TOPIC_ES_STATUS));
