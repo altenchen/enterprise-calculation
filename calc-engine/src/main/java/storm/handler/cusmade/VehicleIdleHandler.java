@@ -2,6 +2,7 @@ package storm.handler.cusmade;
 
 import com.google.common.collect.*;
 import com.google.gson.reflect.TypeToken;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
@@ -40,6 +41,9 @@ public final class VehicleIdleHandler {
     private static final String IDLE_VEHICLE_REDIS_KEY = "vehCache.qy.idle";
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
+
+    private static final Type TREE_MAP_STRING_STRING_TYPE = new TypeToken<TreeMap<String, String>>() {
+    }.getType();
 
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
@@ -136,18 +140,22 @@ public final class VehicleIdleHandler {
             if(currentTimeMillis - serverReceiveTime > idleTimeoutMillisecond) {
 
                 if(!vehicleIdleNoticeCache.containsKey(vid)) {
+                    final boolean noticeExists = noticeExists(vid);
+                    if (noticeExists) {
+                        final ImmutableMap<String, String> startNotice = getNotice(vid);
+                        vehicleIdleNoticeCache.put(vid, startNotice);
+                    } else {
+                        final ImmutableMap<String, String> startNotice = buildStartNotice(
+                            vid,
+                            currentTimeMillis,
+                            serverReceiveTime,
+                            idleTimeoutMillisecond);
+                        vehicleIdleNoticeCache.put(vid, startNotice);
 
-                    final ImmutableMap<String, String> startNotice = buildStartNotice(
-                        vid,
-                        currentTimeMillis,
-                        serverReceiveTime,
-                        idleTimeoutMillisecond);
-
-                    vehicleIdleNoticeCache.put(vid, startNotice);
-
-                    startNoticeList.put(
-                        vid,
-                        JSON_UTILS.toJson(startNotice));
+                        startNoticeList.put(
+                            vid,
+                            JSON_UTILS.toJson(startNotice));
+                    }
                 }
 
             } else {
@@ -183,6 +191,25 @@ public final class VehicleIdleHandler {
             .putAll(startNoticeList)
             .putAll(endNoticeList)
             .build();
+    }
+
+    private ImmutableMap<String, String> getNotice(@NotNull final String vid) {
+        return JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(REDIS_DATABASE_INDEX);
+            final String json = jedis.hget(IDLE_VEHICLE_REDIS_KEY, vid);
+            final TreeMap<String, String> notice = JSON_UTILS.fromJson(
+                json,
+                TREE_MAP_STRING_STRING_TYPE);
+            return ImmutableMap.copyOf(notice);
+        });
+    }
+
+    private boolean noticeExists(@NotNull final String vid) {
+        return JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(REDIS_DATABASE_INDEX);
+            final Set<String> notices = jedis.hkeys(IDLE_VEHICLE_REDIS_KEY);
+            return CollectionUtils.isNotEmpty(notices) && notices.parallelStream().anyMatch(vehicleId -> StringUtils.equals(vehicleId, vid));
+        });
     }
 
     @NotNull

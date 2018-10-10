@@ -1,7 +1,9 @@
 package storm;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.sun.jersey.core.util.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -23,7 +25,7 @@ import java.util.*;
  * @date: 2018-07-08
  * @description:
  */
-@DisplayName("格式化测试")
+@Disabled("比较随意的各种函数验证")
 final class FormatTest {
 
     @SuppressWarnings("unused")
@@ -369,6 +371,26 @@ final class FormatTest {
                 .append("]")
                 .toString();
         }
+    }
+
+    @Disabled("测试流式函数")
+    @Test
+    void testStream() {
+        final ImmutableSet<String> set = ImmutableSet.of("xx", "yy", "zz");
+
+        Assertions.assertEquals(true, set.parallelStream().noneMatch(s -> StringUtils.equals(s, "aa")));
+        Assertions.assertEquals(true, set.parallelStream().noneMatch(s -> StringUtils.equals(s, "bb")));
+        Assertions.assertEquals(true, set.parallelStream().noneMatch(s -> StringUtils.equals(s, "cc")));
+        Assertions.assertEquals(false, set.parallelStream().noneMatch(s -> StringUtils.equals(s, "xx")));
+        Assertions.assertEquals(false, set.parallelStream().noneMatch(s -> StringUtils.equals(s, "yy")));
+        Assertions.assertEquals(false, set.parallelStream().noneMatch(s -> StringUtils.equals(s, "zz")));
+
+        Assertions.assertEquals(false, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "aa")));
+        Assertions.assertEquals(false, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "bb")));
+        Assertions.assertEquals(false, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "cc")));
+        Assertions.assertEquals(true, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "xx")));
+        Assertions.assertEquals(true, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "yy")));
+        Assertions.assertEquals(true, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "zz")));
     }
 
     @SuppressWarnings("unused")
