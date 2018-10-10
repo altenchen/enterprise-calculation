@@ -142,8 +142,10 @@ public final class VehicleIdleHandler {
                 if(!vehicleIdleNoticeCache.containsKey(vid)) {
                     final boolean noticeExists = noticeExists(vid);
                     if (noticeExists) {
+                        LOG.warn("[{}]长期离线车辆通知未加载到内存中, 尝试自动加载.", vid);
                         final ImmutableMap<String, String> startNotice = getNotice(vid);
                         vehicleIdleNoticeCache.put(vid, startNotice);
+                        LOG.info("[{}]长期离线车辆通知未加载到内存中, 自动加载成功.[{}]", vid, JSON_UTILS.toJson(startNotice));
                     } else {
                         final ImmutableMap<String, String> startNotice = buildStartNotice(
                             vid,
