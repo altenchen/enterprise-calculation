@@ -715,6 +715,7 @@ public class FilterBolt extends BaseRichBolt {
                     } else {
                         continueChargingCount.put(vid, continueCount + 1);
                     }
+                    return;
                 }
             }
 
