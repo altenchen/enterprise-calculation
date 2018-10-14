@@ -31,7 +31,7 @@ public final class ObjectExtension {
     }
 
     @Contract("!null, _ -> param1")
-    public static <T, E extends Exception> T defaultIfNull(
+    public static <T, E extends Exception> T defaultIfNullE(
         @Nullable final T object,
         @NotNull final SupplierE<? extends T, ? extends E> defaultValue) throws E {
 
