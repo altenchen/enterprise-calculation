@@ -2,16 +2,20 @@ package storm.bolt.deal.norm;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.storm.Config;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.utils.TupleUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.dto.alarm.AlarmStatus;
@@ -172,11 +176,15 @@ public class AlarmBolt extends BaseRichBolt {
                 AlarmStatus::new);
     }
 
+    private transient long lastFinishUnableRuleTime;
+
     @Override
     public void prepare(
         @NotNull final Map stormConf,
         @NotNull final TopologyContext context,
         @NotNull final OutputCollector collector) {
+
+        final long currentTimeMillis = System.currentTimeMillis();
 
         this.collector = collector;
 
@@ -184,6 +192,8 @@ public class AlarmBolt extends BaseRichBolt {
         ruleVehicleStatus = Maps.newHashMap();
 
         prepareStreamSender(collector);
+
+        lastFinishUnableRuleTime = currentTimeMillis;
     }
 
     private void prepareStreamSender(
@@ -198,7 +208,10 @@ public class AlarmBolt extends BaseRichBolt {
     @Override
     public void execute(@NotNull final Tuple input) {
 
-        collector.ack(input);
+        if (TupleUtils.isTick(input)) {
+            executeFromSystemTickStream(input);
+            return;
+        }
 
         if (input.getSourceComponent().equals(FilterBolt.getComponentId())
             && input.getSourceStreamId().equals(SysDefine.SPLIT_GROUP)) {
@@ -211,8 +224,44 @@ public class AlarmBolt extends BaseRichBolt {
 
             executeFromDataCacheStream(input, vehicleId, data);
 
-        } else {
-            LOG.warn("未处理的流[{}][{}]", input.getSourceComponent(), input.getSourceStreamId());
+            return;
+        }
+
+        LOG.warn("未处理的流[{}][{}]", input.getSourceComponent(), input.getSourceStreamId());
+        collector.fail(input);
+    }
+
+    private void executeFromSystemTickStream(
+        @NotNull final Tuple input) {
+
+        collector.ack(input);
+
+        final long currentTimeMillis = System.currentTimeMillis();
+
+        // 每分钟清理一次不可用的平台报警规则未结束通知
+        if(currentTimeMillis - lastFinishUnableRuleTime > TimeUnit.MINUTES.toMillis(1)) {
+
+            lastFinishUnableRuleTime = currentTimeMillis;
+
+            final Set<String> unableRuleIds = Sets.newHashSet(ruleVehicleStatus.keySet());
+
+            final ImmutableMap<String, ImmutableMap<String, EarlyWarn>> allRules = EarlyWarnsGetter.getAllRules();
+            allRules.forEach((vehicleType, rules) ->{
+                rules.forEach((ruleId, rule) ->{
+                    unableRuleIds.remove(ruleId);
+                });
+            });
+
+            unableRuleIds.forEach(ruleId->{
+                final Map<String, AlarmStatus> vehicleStatus = ruleVehicleStatus.remove(ruleId);
+                if (MapUtils.isNotEmpty(vehicleStatus)) {
+                    vehicleStatus.forEach((vehicleId, status)->{
+                        status.finishNoticeIfStarted(notice ->{
+                            emitNotice(input, vehicleId, notice);
+                        });
+                    });
+                }
+            });
         }
     }
 
@@ -220,6 +269,8 @@ public class AlarmBolt extends BaseRichBolt {
         @NotNull final Tuple input,
         @NotNull final String vehicleId,
         @NotNull final ImmutableMap<String, String> data) {
+
+        collector.ack(input);
 
         final String messageType = data.get(DataKey.MESSAGE_TYPE);
         if (StringUtils.isBlank(messageType)) {
@@ -286,13 +337,7 @@ public class AlarmBolt extends BaseRichBolt {
                     rule.level,
                     data,
                     rule,
-                    notice -> {
-                        if (MapUtils.isNotEmpty(notice)) {
-                            final String json = JSON_UTILS.toJson(notice);
-                            kafkaStreamVehicleAlarmSender.emit(input, vehicleId, json);
-                            kafkaStreamVehicleAlarmStoreSender.emit(input, vehicleId, json);
-                        }
-                    }
+                    notice -> emitNotice(input, vehicleId, notice)
                 );
             } catch (final Exception e) {
                 LOG.warn(
@@ -339,10 +384,29 @@ public class AlarmBolt extends BaseRichBolt {
         }
     }
 
+    private void emitNotice(
+        @NotNull final Tuple input,
+        @NotNull final String vehicleId,
+        @Nullable final ImmutableMap<String, String> notice) {
+
+        if (MapUtils.isNotEmpty(notice)) {
+            final String json = JSON_UTILS.toJson(notice);
+            kafkaStreamVehicleAlarmSender.emit(input, vehicleId, json);
+            kafkaStreamVehicleAlarmStoreSender.emit(input, vehicleId, json);
+        }
+    }
+
     @Override
     public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
 
         KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
+    }
+
+    @Override
+    public Map<String, Object> getComponentConfiguration() {
+        final Config config = new Config();
+        config.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, 1);
+        return config;
     }
 
 }

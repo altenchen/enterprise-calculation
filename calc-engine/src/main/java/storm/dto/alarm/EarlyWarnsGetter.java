@@ -68,6 +68,9 @@ public class EarlyWarnsGetter {
         LOG.debug("平台报警规则数据库更新最小间隔为[{}]毫秒", DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND);
     }
 
+    /**
+     * <vehicleType, <ruleId, rule>>
+     */
     @NotNull
     private static ImmutableMap<String, ImmutableMap<String, EarlyWarn>> rules = ImmutableMap.of();
 
@@ -173,6 +176,18 @@ public class EarlyWarnsGetter {
             ImmutableMap::of);
     }
 
+    @NotNull
+    public static ImmutableMap<String, ImmutableMap<String, EarlyWarn>> getAllRules() {
+
+        final long currentTimeMillis = System.currentTimeMillis();
+        if(currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
+            rebuild(currentTimeMillis);
+        }
+
+        return rules;
+    }
+
+    @NotNull
     public static ImmutableMap<String, EarlyWarn> getRulesByVehicleModel(@Nullable final String vehicleModel) {
 
         final long currentTimeMillis = System.currentTimeMillis();
@@ -183,6 +198,7 @@ public class EarlyWarnsGetter {
         return getRulesByVehicleModelWithoutRebuild(rules, vehicleModel);
     }
 
+    @NotNull
     private static ImmutableMap<String, EarlyWarn> getRulesByVehicleModelWithoutRebuild(
         @NotNull final ImmutableMap<String, ImmutableMap<String, EarlyWarn>> warns,
         @Nullable final String vehicleModel) {
@@ -200,6 +216,5 @@ public class EarlyWarnsGetter {
         }
         return builder.build();
     }
-
 
 }

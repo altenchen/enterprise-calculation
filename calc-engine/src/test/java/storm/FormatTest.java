@@ -1,13 +1,17 @@
 package storm;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.sun.jersey.core.util.Base64;
+import org.apache.commons.collections.SetUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.jupiter.api.*;
+import org.junit.platform.commons.util.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
@@ -474,6 +478,40 @@ final class FormatTest {
         } catch (final ArithmeticException ignored) {
 
         }
+    }
+
+    @Disabled("验证BigDecimal特性")
+    @Test
+    void testHashSetOnString() {
+        final String first = "123";
+        final String second = "123";
+        final String third = new String("123");
+
+        Assertions.assertSame(first, second);
+        Assertions.assertNotSame(first, third);
+        Assertions.assertNotSame(second, third);
+
+        Assertions.assertEquals(first, second);
+        Assertions.assertEquals(first, third);
+        Assertions.assertEquals(second, third);
+
+        Assertions.assertEquals(first.hashCode(), second.hashCode());
+        Assertions.assertEquals(first.hashCode(), third.hashCode());
+        Assertions.assertEquals(second.hashCode(), third.hashCode());
+
+        final HashSet<String> hashSet = Sets.newHashSet();
+
+        hashSet.add(first);
+        hashSet.remove(second);
+        Assertions.assertTrue(hashSet.isEmpty());
+
+        hashSet.add(first);
+        hashSet.remove(third);
+        Assertions.assertTrue(hashSet.isEmpty());
+
+        hashSet.add(second);
+        hashSet.remove(third);
+        Assertions.assertTrue(hashSet.isEmpty());
     }
 
     @SuppressWarnings("unused")

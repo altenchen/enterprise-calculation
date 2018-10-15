@@ -1,9 +1,13 @@
 package storm.dto.alarm;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.lang.StringUtils;
+import com.google.common.collect.Maps;
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.extension.ObjectExtension;
@@ -13,6 +17,7 @@ import storm.tool.DelaySwitch;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 
+import java.util.Map;
 import java.util.Properties;
 import java.util.function.Consumer;
 
@@ -77,11 +82,17 @@ public final class AlarmStatus {
 
     private final String vehicleId;
 
+    /**
+     * 持续状态
+     */
+    @NotNull
+    private ImmutableMap<String, String> continueStatus = ImmutableMap.of();
+
+    /**
+     * 开始通知
+     */
     @NotNull
     private ImmutableMap<String, String> startNotice = ImmutableMap.of();
-
-    @NotNull
-    private ImmutableMap<String, String> endNotice = ImmutableMap.of();
 
     public AlarmStatus(final String vehicleId) {
         this.vehicleId = vehicleId;
@@ -124,7 +135,7 @@ public final class AlarmStatus {
     }
 
     private void startReset() {
-        startNotice = new ImmutableMap.Builder<String, String>()
+        continueStatus = new ImmutableMap.Builder<String, String>()
             .build();
     }
 
@@ -137,6 +148,27 @@ public final class AlarmStatus {
         @NotNull final EarlyWarn rule,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
 
+        final ImmutableMap<String, String> startNotice = buildStartNotice(
+            positiveThreshold,
+            positiveTimeout,
+            ruleId,
+            level,
+            data,
+            rule);
+
+        this.startNotice = startNotice;
+        noticeCallback.accept(startNotice);
+    }
+    
+    @NotNull
+    private ImmutableMap<String, String> buildStartNotice(
+        final int positiveThreshold,
+        final long positiveTimeout,
+        @NotNull final String ruleId,
+        final int level,
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final EarlyWarn rule) {
+        
         @NotNull final String platformReceiveTimeString = data.get(
             DataKey._9999_PLATFORM_RECEIVE_TIME);
         final String alarmId = buildAlarmId(vehicleId, platformReceiveTimeString, ruleId);
@@ -146,36 +178,33 @@ public final class AlarmStatus {
         final String leftExpression = ObjectExtension.defaultIfNull(rule.leftExpression, "");
         final String right2Value = ObjectExtension.defaultIfNull(rule.right2Value, "");
 
-        final ImmutableMap<String, String> startNotice = new ImmutableMap.Builder<String, String>()
-            .putAll(this.startNotice)
-            .put(DataKey.VEHICLE_ID, vehicleId)
-            .put("ALARM_ID", alarmId)
-            .put("STATUS", "1")
-            .put("TIME", platformReceiveTimeString)
-            .put("CONST_ID", ruleId)
-            .put("ALARM_LEVEL", String.valueOf(alarmLevel))
-            //
-            .put("ALARM_NAME", ruleName)
-            .put("LEFT1", rule.left1DataKey)
-            .put("left1_use_prev", String.valueOf(rule.left1UsePrev))
-            .put("LEFT2", left2DataKey)
-            .put("left2_use_prev", String.valueOf(rule.left2UsePrev))
-            .put("arithmetic_expression", leftExpression)
-            .put("RIGHT1", rule.right1Value)
-            .put("RIGHT2", right2Value)
-            .put("logic_expression", rule.middleExpression)
-            .put("sNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()))
-            .put("sThreshold", String.valueOf(positiveThreshold))
-            .put("sTimeout", String.valueOf(positiveTimeout))
-            .build();
+        final Map<String, String> startNotice = Maps.newHashMap();
+        startNotice.putAll(this.continueStatus);
+        startNotice.put(DataKey.VEHICLE_ID, vehicleId);
+        startNotice.put("ALARM_ID", alarmId);
+        startNotice.put("STATUS", "1");
+        startNotice.put("TIME", platformReceiveTimeString);
+        startNotice.put("CONST_ID", ruleId);
+        startNotice.put("ALARM_LEVEL", String.valueOf(alarmLevel));
+        //
+        startNotice.put("ALARM_NAME", ruleName);
+        startNotice.put("LEFT1", rule.left1DataKey);
+        startNotice.put("left1_use_prev", String.valueOf(rule.left1UsePrev));
+        startNotice.put("LEFT2", left2DataKey);
+        startNotice.put("left2_use_prev", String.valueOf(rule.left2UsePrev));
+        startNotice.put("arithmetic_expression", leftExpression);
+        startNotice.put("RIGHT1", rule.right1Value);
+        startNotice.put("RIGHT2", right2Value);
+        startNotice.put("logic_expression", rule.middleExpression);
+        startNotice.put("sNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()));
+        startNotice.put("sThreshold", String.valueOf(positiveThreshold));
+        startNotice.put("sTimeout", String.valueOf(positiveTimeout));
 
-        this.startNotice = startNotice;
-        noticeCallback.accept(startNotice);
+        return ImmutableMap.copyOf(startNotice);
     }
 
     private void endReset() {
-        endNotice = new ImmutableMap.Builder<String, String>()
-            .putAll(startNotice)
+        continueStatus = new ImmutableMap.Builder<String, String>()
             .build();
     }
 
@@ -188,6 +217,27 @@ public final class AlarmStatus {
         @NotNull final EarlyWarn rule,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
 
+        final ImmutableMap<String, String> endNotice = buildEndNotice(
+            negativeThreshold,
+            negativeTimeout,
+            ruleId,
+            level,
+            data,
+            rule);
+
+        this.startNotice = ImmutableMap.of();
+        noticeCallback.accept(endNotice);
+    }
+
+    @NotNull
+    private ImmutableMap<String, String> buildEndNotice(
+        final int negativeThreshold,
+        final long negativeTimeout,
+        @NotNull final String ruleId,
+        final int level,
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final EarlyWarn rule){
+
         @NotNull final String platformReceiveTimeString = data.get(
             DataKey._9999_PLATFORM_RECEIVE_TIME);
         final String alarmId = buildAlarmId(vehicleId, platformReceiveTimeString, ruleId);
@@ -197,31 +247,29 @@ public final class AlarmStatus {
         final String leftExpression = ObjectExtension.defaultIfNull(rule.leftExpression, "");
         final String right2Value = ObjectExtension.defaultIfNull(rule.right2Value, "");
 
-        final ImmutableMap<String, String> endNotice = new ImmutableMap.Builder<String, String>()
-            .putAll(this.endNotice)
-            .put(DataKey.VEHICLE_ID, vehicleId)
-            .put("ALARM_ID", alarmId)
-            .put("STATUS", "3")
-            .put("TIME", platformReceiveTimeString)
-            .put("CONST_ID", ruleId)
-            .put("ALARM_LEVEL", String.valueOf(alarmLevel))
-            //
-            .put("ALARM_NAME", ruleName)
-            .put("LEFT1", rule.left1DataKey)
-            .put("left1_use_prev", String.valueOf(rule.left1UsePrev))
-            .put("LEFT2", left2DataKey)
-            .put("left2_use_prev", String.valueOf(rule.left2UsePrev))
-            .put("arithmetic_expression", leftExpression)
-            .put("RIGHT1", rule.right1Value)
-            .put("RIGHT2", right2Value)
-            .put("logic_expression", rule.middleExpression)
-            .put("eNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()))
-            .put("eThreshold", String.valueOf(negativeThreshold))
-            .put("eTimeout", String.valueOf(negativeTimeout))
-            .build();
+        final Map<String, String> endNotice = Maps.newHashMap();
+        endNotice.putAll(this.continueStatus);
+        endNotice.put(DataKey.VEHICLE_ID, vehicleId);
+        endNotice.put("ALARM_ID", alarmId);
+        endNotice.put("STATUS", "3");
+        endNotice.put("TIME", platformReceiveTimeString);
+        endNotice.put("CONST_ID", ruleId);
+        endNotice.put("ALARM_LEVEL", String.valueOf(alarmLevel));
+        //
+        endNotice.put("ALARM_NAME", ruleName);
+        endNotice.put("LEFT1", rule.left1DataKey);
+        endNotice.put("left1_use_prev", String.valueOf(rule.left1UsePrev));
+        endNotice.put("LEFT2", left2DataKey);
+        endNotice.put("left2_use_prev", String.valueOf(rule.left2UsePrev));
+        endNotice.put("arithmetic_expression", leftExpression);
+        endNotice.put("RIGHT1", rule.right1Value);
+        endNotice.put("RIGHT2", right2Value);
+        endNotice.put("logic_expression", rule.middleExpression);
+        endNotice.put("eNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()));
+        endNotice.put("eThreshold", String.valueOf(negativeThreshold));
+        endNotice.put("eTimeout", String.valueOf(negativeTimeout));
 
-        this.endNotice = endNotice;
-        noticeCallback.accept(endNotice);
+        return ImmutableMap.copyOf(endNotice);
     }
 
     private int parseAlarmLevel(
@@ -245,5 +293,33 @@ public final class AlarmStatus {
             .append("_")
             .append(ruleId)
             .toString();
+    }
+
+    @Nullable
+    @Contract(pure = true)
+    private Boolean getStatus() {
+        final int switchStatus = delaySwitch.getSwitchStatus();
+        if(switchStatus > 0) {
+            return true;
+        } else if(switchStatus < 0) {
+            return false;
+        } else {
+            return null;
+        }
+    }
+
+    public void finishNoticeIfStarted(
+        @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
+        if (BooleanUtils.isTrue(getStatus())) {
+            if(MapUtils.isNotEmpty(startNotice)) {
+                final Map<String, String> endNotice = Maps.newHashMap();
+                endNotice.putAll(this.startNotice);
+                endNotice.put("STATUS", "3");
+                endNotice.put("eNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()));
+                endNotice.put("reason", "rule_unable");
+
+                noticeCallback.accept(ImmutableMap.copyOf(endNotice));
+            }
+        }
     }
 }
