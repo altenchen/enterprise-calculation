@@ -46,107 +46,25 @@ public final class CoefficientOffsetGetterTest {
         // 每个测试之前
     }
 
-    @DisplayName("测试偏移系数")
+    @Disabled("测试偏移系数")
     @Test
     void testMethod() {
-        final ImmutableMap<String, CoefficientOffset> coefficientOffsets = CoefficientOffsetGetter.getCoefficientOffsets();
-        coefficientOffsets.forEach((dataKey, coefficientOffset) -> {
-            if(StringUtils.isBlank(dataKey)) {
-                final FormattingTuple tuple = MessageFormatter.arrayFormat(
-                    "dataKey不能为空[{}][{}]",
-                    new Object[]{
-                        dataKey,
-                        coefficientOffset
+        final ImmutableMap<String, ImmutableMap<String, CoefficientOffset>> coefficientOffsets =
+            CoefficientOffsetGetter.getAllCoefficientOffsets();
+        LOG.debug("count(model)={}", coefficientOffsets.size());
+        coefficientOffsets.forEach(
+            (vehicleModel, dataCoefficientOffset) -> {
+                LOG.debug("[{}]count(key)={}", vehicleModel, dataCoefficientOffset.size());
+                dataCoefficientOffset.forEach(
+                    (dataKey, coefficientOffset) -> {
+                        LOG.debug("M[{}]D[{}]I[{}]", vehicleModel, dataKey, coefficientOffset.itemId);
                     }
                 );
-                Assertions.fail(tuple.getMessage());
             }
-            if(!dataKey.equals(coefficientOffset.getDataKey())) {
-                final FormattingTuple tuple = MessageFormatter.arrayFormat(
-                    "key[{}]与dataKey[{}]必须相等",
-                    new Object[]{
-                        dataKey,
-                        coefficientOffset.getDataKey()
-                    }
-                );
-                Assertions.fail(tuple.getMessage());
-            }
-        });
+        );
+        LOG.debug("total={}", coefficientOffsets.values().stream().map(Map::size).reduce(0, (l, r) -> l + r));
     }
 
-    @DisplayName("测试偏移系数配置文件")
-    @Test
-    void initFromResource() {
-
-        final String resourceName = "coefficient_offset.json";
-        final InputStream stream = ConfigUtils.class.getClassLoader().getResourceAsStream(resourceName);
-        if(null == stream) {
-            final FormattingTuple tuple = MessageFormatter.arrayFormat(
-                "初始化偏移系数的资源文件[{}]不存在",
-                new Object[]{
-                    resourceName
-                }
-            );
-            final String message = tuple.getMessage();
-            Assertions.fail(message);
-            return;
-        }
-
-        final ArrayList<CoefficientOffset> coefficientOffsets;
-        try {
-            coefficientOffsets =  JSON.parseObject(
-                stream,
-                Charset.forName("UTF-8"),
-                new TypeToken<ArrayList<CoefficientOffset>>() {
-                }.getType()
-            );
-        } catch (@NotNull final Exception e) {
-            final FormattingTuple tuple = MessageFormatter.arrayFormat(
-                "从资源文件初始化偏移系数异常[{}]",
-                new Object[]{
-                    e.getMessage()
-                }
-            );
-            final String message = tuple.getMessage();
-            Assertions.fail(message);
-            return;
-        }
-
-        if(CollectionUtils.isNotEmpty(coefficientOffsets)) {
-            final HashMap<String, CoefficientOffset> coefficientOffsetMap = Maps.newHashMapWithExpectedSize(coefficientOffsets.size());
-            coefficientOffsets.forEach(coefficientOffset -> {
-                final String key = coefficientOffset.getDataKey();
-                if (coefficientOffsetMap.containsKey(key)) {
-                    final FormattingTuple tuple = MessageFormatter.arrayFormat(
-                        "冲突的偏移系数配置[{}]",
-                        new Object[]{
-                            key
-                        }
-                    );
-                    final String message = tuple.getMessage();
-                    Assertions.fail(message);
-                    return;
-                }
-                coefficientOffsetMap.put(key, coefficientOffset);
-            });
-        } else {
-            Assertions.fail("偏移系数规则为空");
-        }
-    }
-
-    @Disabled("偏移系数序列化")
-    @Test
-    void coefficientOffsetJson() throws IOException {
-        final ImmutableSortedSet<CoefficientOffset> coefficientOffsets = ImmutableSortedSet.copyOf(
-            (c1, c2) -> c2.getDataKey().compareTo(c1.getDataKey()),
-            CoefficientOffsetGetter.getCoefficientOffsets().values());
-
-        final JsonUtils jsonUtils = JsonUtils.getInstance();
-
-        final String coefficientOffsetsJson = jsonUtils.toJson(coefficientOffsets);
-
-        LOG.debug("coefficientOffsetsJson={}", coefficientOffsetsJson);
-    }
 
     @SuppressWarnings("unused")
     @AfterEach

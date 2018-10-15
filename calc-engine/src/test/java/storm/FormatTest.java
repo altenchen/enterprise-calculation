@@ -5,13 +5,11 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.sun.jersey.core.util.Base64;
-import org.apache.commons.collections.SetUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.jupiter.api.*;
-import org.junit.platform.commons.util.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
@@ -512,6 +510,19 @@ final class FormatTest {
         hashSet.add(second);
         hashSet.remove(third);
         Assertions.assertTrue(hashSet.isEmpty());
+    }
+
+    @Disabled("验证ImmutableSet特性")
+    @Test
+    void testImmutableSet() {
+        final ImmutableSet<String> _111 = ImmutableSet.of("1", "1", "1");
+        Assertions.assertEquals(1, _111.size());
+
+        final ImmutableSet<String> _1111 = ImmutableSet.copyOf(new String[]{"1", "1", "1", "1"});
+        Assertions.assertEquals(1, _1111.size());
+
+        final ImmutableSet<String> _11 = new ImmutableSet.Builder<String>().add("1").add("1").build();
+        Assertions.assertEquals(1, _11.size());
     }
 
     @SuppressWarnings("unused")

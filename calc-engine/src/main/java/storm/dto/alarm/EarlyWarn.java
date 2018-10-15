@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.system.DataKey;
 import storm.util.DataUtils;
 
 import java.math.BigDecimal;
@@ -327,7 +328,10 @@ public class EarlyWarn {
                 if (StringUtils.isNotBlank(itemString)) {
                     final BigDecimal itemValue = DataUtils.createBigDecimal(itemString);
                     if(null != itemValue) {
-                        final CoefficientOffset coefficientOffset = CoefficientOffsetGetter.getCoefficientOffset(dataKey);
+                        @NotNull final String vehicleModelId = StringUtils.defaultIfEmpty(
+                            map.get(DataKey.VEHICLE_TYPE),
+                            CoefficientOffsetGetter.DEFAULT);
+                        final CoefficientOffset coefficientOffset = CoefficientOffsetGetter.getCoefficientOffsetByVehicleModel(vehicleModelId, dataKey);
                         if (null != coefficientOffset) {
                             return coefficientOffset.compute(itemValue);
                         }

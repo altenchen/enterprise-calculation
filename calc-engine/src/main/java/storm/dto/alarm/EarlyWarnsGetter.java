@@ -56,7 +56,7 @@ public class EarlyWarnsGetter {
             sysParams.getProperty("alarm.rule.sql"),
             "select id,name,l1_seq_no,is_last1,l2_seq_no,is_last2,expr_left,r1_val,r2_val,expr_mid,levels,ifnull(veh_model_id,'ALL') from sys_data_const where is_valid=1 and type=1 and (depend_id is null or depend_id = '')"
         );
-        LOG.debug("平台报警规则数据库查询语句为[{}]", ALARM_RULE_SQL);
+        LOG.info("平台报警规则数据库查询语句为[{}]", ALARM_RULE_SQL);
 
         DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(
             NumberUtils.toLong(
@@ -65,7 +65,7 @@ public class EarlyWarnsGetter {
                 60
             )
         );
-        LOG.debug("平台报警规则数据库更新最小间隔为[{}]毫秒", DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND);
+        LOG.info("平台报警规则数据库更新最小间隔为[{}]毫秒", DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND);
     }
 
     /**

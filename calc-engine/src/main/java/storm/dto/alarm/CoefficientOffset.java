@@ -18,21 +18,25 @@ import java.math.BigDecimal;
 public final class CoefficientOffset {
 
     @NotNull
-    private final String dataKey;
+    public final String itemId;
 
     @NotNull
-    private final BigDecimal coefficient;
+    private final String dataKey;
 
     @NotNull
     private final BigDecimal offset;
 
     @NotNull
+    private final BigDecimal coefficient;
+
+    @NotNull
     private final int precision;
 
     public CoefficientOffset(
+        @NotNull final String itemId,
         @NotNull final String dataKey,
-        @NotNull BigDecimal coefficient,
         @NotNull BigDecimal offset,
+        @NotNull BigDecimal coefficient,
         final int precision) {
 
         if(StringUtils.isBlank(dataKey)) {
@@ -41,9 +45,14 @@ public final class CoefficientOffset {
         if(BigDecimal.ZERO.equals(coefficient)) {
             throw new IllegalArgumentException("系数不能为0");
         }
+        if(precision < 0) {
+            throw new IllegalArgumentException("小数精度不能为负数");
+        }
+
+        this.itemId = itemId;
         this.dataKey = dataKey;
-        this.coefficient = coefficient;
         this.offset = offset;
+        this.coefficient = coefficient;
         this.precision = precision;
     }
 

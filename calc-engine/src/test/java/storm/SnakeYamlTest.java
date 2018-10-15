@@ -35,18 +35,6 @@ public final class SnakeYamlTest {
         // 每个测试之前
     }
 
-    @DisplayName("以yaml格式输出偏移系数")
-    @Test
-    void testMethod() throws UnsupportedEncodingException {
-
-        final JsonUtils jsonUtils = JsonUtils.getInstance();
-
-        final InputStream stream = ConfigUtils.class.getClassLoader().getResourceAsStream("coefficient_offset.json");
-        final InputStreamReader reader = new InputStreamReader(stream, "UTF-8");
-
-        final Yaml yaml = new Yaml();
-    }
-
     @SuppressWarnings("unused")
     @AfterEach
     private void afterEach() {
