@@ -31,6 +31,12 @@ public final class AlarmStatus {
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(AlarmStatus.class);
 
+    public static final String NOTICE_STATUS_KEY = "STATUS";
+
+    public static final String NOTICE_STATUS_START = "1";
+
+    public static final String NOTICE_STATUS_END = "3";
+
     /**
      * 触发平台报警开始需要的连续次数
      */
@@ -92,10 +98,19 @@ public final class AlarmStatus {
      * 开始通知
      */
     @NotNull
-    private ImmutableMap<String, String> startNotice = ImmutableMap.of();
+    private ImmutableMap<String, String> startNotice;
 
-    public AlarmStatus(final String vehicleId) {
+    public AlarmStatus(@NotNull final String vehicleId) {
+        this(vehicleId, ImmutableMap.of());
+    }
+
+    public AlarmStatus(
+        @NotNull final String vehicleId,
+        @NotNull final ImmutableMap<String, String> startNotice) {
+
         this.vehicleId = vehicleId;
+        this.startNotice = startNotice;
+        delaySwitch.setSwitchStatus(1);
     }
 
     public void updateVehicleAlarmData(
@@ -182,7 +197,7 @@ public final class AlarmStatus {
         startNotice.putAll(this.continueStatus);
         startNotice.put(DataKey.VEHICLE_ID, vehicleId);
         startNotice.put("ALARM_ID", alarmId);
-        startNotice.put("STATUS", "1");
+        startNotice.put(NOTICE_STATUS_KEY, NOTICE_STATUS_START);
         startNotice.put("TIME", platformReceiveTimeString);
         startNotice.put("CONST_ID", ruleId);
         startNotice.put("ALARM_LEVEL", String.valueOf(alarmLevel));
@@ -251,7 +266,7 @@ public final class AlarmStatus {
         endNotice.putAll(this.continueStatus);
         endNotice.put(DataKey.VEHICLE_ID, vehicleId);
         endNotice.put("ALARM_ID", alarmId);
-        endNotice.put("STATUS", "3");
+        endNotice.put(NOTICE_STATUS_KEY, NOTICE_STATUS_END);
         endNotice.put("TIME", platformReceiveTimeString);
         endNotice.put("CONST_ID", ruleId);
         endNotice.put("ALARM_LEVEL", String.valueOf(alarmLevel));
@@ -314,7 +329,7 @@ public final class AlarmStatus {
             if(MapUtils.isNotEmpty(startNotice)) {
                 final Map<String, String> endNotice = Maps.newHashMap();
                 endNotice.putAll(this.startNotice);
-                endNotice.put("STATUS", "3");
+                endNotice.put("STATUS", NOTICE_STATUS_END);
                 endNotice.put("eNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()));
                 endNotice.put("reason", "rule_unable");
 
