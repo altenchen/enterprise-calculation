@@ -608,6 +608,9 @@ public final class VehicleCache {
             || !NumberUtils.isDigits(longitudeString)
             || !NumberUtils.isDigits(latitudeString)) {
             return;
+        } else if(0 == NumberUtils.toLong(longitudeString) &&
+            0 == NumberUtils.toLong(latitudeString)) {
+            return;
         }
 
         final int orientationValue = NumberUtils.toInt(orientationString);
@@ -695,6 +698,8 @@ public final class VehicleCache {
         @Nullable final String totalMileage) {
 
         if (!NumberUtils.isDigits(totalMileage)) {
+            return;
+        } else if(0 == NumberUtils.toLong(totalMileage)) {
             return;
         }
 

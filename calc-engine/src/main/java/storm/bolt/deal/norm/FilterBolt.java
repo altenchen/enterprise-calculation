@@ -3,6 +3,7 @@ package storm.bolt.deal.norm;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import javafx.beans.binding.MapExpression;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
@@ -24,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import storm.bolt.CtfoDataBolt;
 import storm.cache.VehicleCache;
 import storm.constant.StreamFieldKey;
+import storm.extension.ImmutableMapExtension;
+import storm.extension.MapExtension;
 import storm.handler.cusmade.TimeOutOfRangeNotice;
 import storm.handler.cusmade.VehicleIdleHandler;
 import storm.kafka.bolt.KafkaBoltTopic;
@@ -434,6 +437,7 @@ public class FilterBolt extends BaseRichBolt {
         // 计算时间(TIME)加入data
         timeProcessor.fillTime(cmd, data);
 
+        MapExtension.clearNullEntry(data);
         final ImmutableMap<String, String> immutableData = ImmutableMap.copyOf(data);
 
         emit(input, vid, cmd, immutableData);
@@ -682,6 +686,9 @@ public class FilterBolt extends BaseRichBolt {
                 data.put(DataKey.TIME, data.get("3201"));
             }
 
+            if (data.get(DataKey.TIME) == null) {
+                data.remove(DataKey.TIME);
+            }
         }
     }
 

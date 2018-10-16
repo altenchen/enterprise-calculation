@@ -207,6 +207,7 @@ final class FormatTest {
             Assertions.fail();
         } catch (Exception e) {
         }
+
     }
 
     @Disabled("测试更新Map")
