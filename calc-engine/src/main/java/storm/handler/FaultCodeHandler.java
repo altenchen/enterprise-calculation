@@ -407,8 +407,9 @@ public class FaultCodeHandler implements Serializable {
         // 没有匹配按位处理规则, 转为按字节处理
         if(!processByBit) {
 
+            //添加车型判断
             final FaultCodeByteRule[] faultCodeByteRules = byteRules.stream()
-                .filter(r -> StringUtils.equals(r.faultType, faultType))
+                .filter(r -> StringUtils.equals(r.faultType, faultType) && r.effective(vehModel))
                 .toArray(FaultCodeByteRule[]::new);
 
             PARAMS_REDIS_UTIL.autoLog(

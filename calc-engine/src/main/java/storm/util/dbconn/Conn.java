@@ -236,7 +236,7 @@ public final class Conn {
             }
             codeIds.add(exceptionId);
 
-            final FaultCodeByteRule ruleCode = result.getOrDefault(faultId, new FaultCodeByteRule(faultId, faultType));
+            final FaultCodeByteRule ruleCode = result.getOrDefault(faultId, new FaultCodeByteRule(faultId, faultType, modelNum));
             result.put(faultId, ruleCode);
 
             final FaultCodeByte faultCode = new FaultCodeByte(
