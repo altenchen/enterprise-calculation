@@ -262,11 +262,6 @@ public final class SysDefine {
     public static final String ALARM_STOP_TRIGGER_TIMEOUT_MILLISECOND = "alarm.stop.trigger.timeout.millisecond";
 
     /**
-     * 触发平台报警结束需要的持续时长
-     */
-    public static final String ALARM_STOP_TRIGGER_AT_VEHICLE_OFFLINE = "alarm.stop.trigger.at.vehicle.offline";
-
-    /**
      * 每隔多少时间推送一次,默认一分钟，60000毫秒。如果负数或者0代表实时推送, 单位秒.
      */
     public static final String ES_SEND_TIME = "es.send.time";

@@ -71,11 +71,11 @@ public final class AlarmStatus {
             30000);
 
         ALARM_STOP_TRIGGER_CONTINUE_COUNT = NumberUtils.toInt(
-            sysDefine.getProperty(SysDefine.ALARM_START_TRIGGER_CONTINUE_COUNT),
+            sysDefine.getProperty(SysDefine.ALARM_STOP_TRIGGER_CONTINUE_COUNT),
             3);
 
         ALARM_STOP_TRIGGER_TIMEOUT_MILLISECOND = NumberUtils.toInt(
-            sysDefine.getProperty(SysDefine.ALARM_START_TRIGGER_TIMEOUT_MILLISECOND),
+            sysDefine.getProperty(SysDefine.ALARM_STOP_TRIGGER_TIMEOUT_MILLISECOND),
             30000);
     }
 
@@ -281,7 +281,7 @@ public final class AlarmStatus {
         endNotice.put("RIGHT2", right2Value);
         endNotice.put("logic_expression", rule.middleExpression);
         endNotice.put("eNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()));
-        endNotice.put("eThreshold", String.valueOf(negativeThreshold));
+        endNotice.put("eThreshold", String.valueOf(-negativeThreshold));
         endNotice.put("eTimeout", String.valueOf(negativeTimeout));
 
         return ImmutableMap.copyOf(endNotice);

@@ -40,35 +40,35 @@ public final class EarlyWarnTest {
     @Test
     void testMapGetter() {
 
-        final Function<ImmutableMap<String, String>, BigDecimal> function = EarlyWarn.buildDataGetter("2202");
-        Assertions.assertTrue(new BigDecimal("1234.5").compareTo(function.apply(ImmutableMap.of("2202", "12345"))) == 0);
-        Assertions.assertNull(function.apply(ImmutableMap.of("7615", "80")));
-        Assertions.assertNull(function.apply(ImmutableMap.of("2202", "")));
-        Assertions.assertNull(function.apply(ImmutableMap.of("2202", " ")));
+        final Function<ImmutableMap<String, String>, BigDecimal> function = EarlyWarn.buildDataGetter("12202");
+        Assertions.assertTrue(new BigDecimal("12345").compareTo(function.apply(ImmutableMap.of("12202", "12345"))) == 0);
+        Assertions.assertNull(function.apply(ImmutableMap.of("17615", "80")));
+        Assertions.assertNull(function.apply(ImmutableMap.of("12202", "")));
+        Assertions.assertNull(function.apply(ImmutableMap.of("12202", " ")));
     }
 
     @DisplayName("平台报警_数据摘取函数构建_实时")
     @Test
     void testDataGetter() {
 
-        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> function = EarlyWarn.buildDataGetter( "2202", false);
-        Assertions.assertTrue(new BigDecimal("1234.5").compareTo(
+        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> function = EarlyWarn.buildDataGetter( "12202", false);
+        Assertions.assertTrue(new BigDecimal("12345").compareTo(
             function.apply(
-                ImmutableMap.of("2202", "12345"),
+                ImmutableMap.of("12202", "12345"),
 
-                ImmutableMap.of("2202", "98765"))) == 0);
+                ImmutableMap.of("12202", "98765"))) == 0);
     }
 
     @DisplayName("平台报警_数据摘取函数构建_缓存")
     @Test
     void testCacheGetter() {
 
-        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> function = EarlyWarn.buildDataGetter( "2202", true);
-        Assertions.assertTrue(new BigDecimal("9876.5").compareTo(
+        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> function = EarlyWarn.buildDataGetter( "12202", true);
+        Assertions.assertTrue(new BigDecimal("98765").compareTo(
             function.apply(
-                ImmutableMap.of("2202", "12345"),
+                ImmutableMap.of("12202", "12345"),
 
-                ImmutableMap.of("2202", "98765"))) == 0);
+                ImmutableMap.of("12202", "98765"))) == 0);
     }
 
     @DisplayName("平台报警_算术运算函数构建 -> L1 + L2")
@@ -160,7 +160,7 @@ public final class EarlyWarnTest {
         Assertions.assertEquals(new BigDecimal("-0.429"), function.apply(new BigDecimal("-3.000"), new BigDecimal("7.000")));
     }
 
-    @DisplayName("平台报警_逻辑运算函数构建_右一值无效")
+    @Disabled("平台报警_逻辑运算函数构建_右一值无效")
     @Test
     void testInvalidRight1ValueLogicExpression() {
 
