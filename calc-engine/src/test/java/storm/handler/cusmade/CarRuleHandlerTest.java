@@ -78,20 +78,23 @@ class CarRuleHandlerTest {
         data.put(DataKey._2503_LATITUDE,"100");
 
         //连续三帧soc过低，第三帧产生通知
-        Date date1 = new Date(date .getTime() + 1000);
+        Date date1 = new Date(date .getTime() - 1001000);
         data.put(DataKey.TIME, DateFormatUtils.format(date1, FormatConstant.DATE_FORMAT));
+        data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date1, FormatConstant.DATE_FORMAT));
         List<Map<String, Object>> result_1 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
         Assertions.assertTrue(result_1.isEmpty(),"第1帧不该出现故障通知");
 
 
-        Date date2 = new Date(date .getTime() + 2000);
+        Date date2 = new Date(date .getTime() - 1002000);
         data.put(DataKey.TIME, DateFormatUtils.format(date2, FormatConstant.DATE_FORMAT));
+        data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date2, FormatConstant.DATE_FORMAT));
         List<Map<String, Object>> result_2 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
         Assertions.assertTrue(result_2.isEmpty(),"第2帧不该出现故障通知");
 
 
-        Date date3 = new Date(date .getTime() + 3000);
+        Date date3 = new Date(date .getTime() - 1003000);
         data.put(DataKey.TIME, DateFormatUtils.format(date3, FormatConstant.DATE_FORMAT));
+        data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date3, FormatConstant.DATE_FORMAT));
         List<Map<String, Object>> result_3 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
         Assertions.assertTrue(0 != result_3.size(),"第3帧出现故障通知");
 
@@ -100,20 +103,10 @@ class CarRuleHandlerTest {
         //连续三帧soc正常，第三帧发送结束soc过低通知
         Date date4 = new Date(date .getTime() + 1000);
         data.put(DataKey.TIME, DateFormatUtils.format(date4, FormatConstant.DATE_FORMAT));
+        data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date1, FormatConstant.DATE_FORMAT));
         List<Map<String, Object>> result_4 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
         Assertions.assertTrue(0 != result_4.size(),"第4帧应该该恢复通知");
-//
-//        Date date5 = new Date(date .getTime() + 2000);
-//        data.put(DataKey.TIME, DateFormatUtils.format(date5, FormatConstant.DATE_FORMAT));
-//        List<Map<String, Object>> result_5 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
-//        Assertions.assertTrue(result_5.isEmpty(),"第5帧不该恢复通知");
-//
-//
-//        Date date6 = new Date(date .getTime() + 3000);
-//        data.put(DataKey.TIME, DateFormatUtils.format(date6, FormatConstant.DATE_FORMAT));
-//        List<Map<String, Object>> result_6 = CarRuleHandler.generateNotices(ImmutableMap.copyOf(data));
-//        System.out.println(result_6.size());
-//        Assertions.assertTrue(0 != result_6.size(),"第6帧恢复通知");
+
 
     }
 

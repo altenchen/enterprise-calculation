@@ -158,6 +158,8 @@ public class CarRuleHandler implements InfoNotice {
 
     private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
 
+    private final CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
+
     private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
 
     //以下参数可以通过读取配置文件进行重置
@@ -460,7 +462,7 @@ public class CarRuleHandler implements InfoNotice {
         if (1 == socRule) {
             //lowsoc(data)返回一个map，里面有vid和通知消息（treeMap）
             // SOC
-            List<Map<String, Object>> socJudges = lowSoc(data);
+            List<Map<String, Object>> socJudges = carLowSocJudge.processFrame(data);
             if (!CollectionUtils.isEmpty(socJudges)) {
                 list.addAll(socJudges);
             }
