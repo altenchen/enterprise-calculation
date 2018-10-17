@@ -20,6 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.dto.alarm.AlarmStatus;
+import storm.dto.alarm.CoefficientOffsetGetter;
 import storm.dto.alarm.EarlyWarn;
 import storm.dto.alarm.EarlyWarnsGetter;
 import storm.extension.ObjectExtension;
@@ -173,6 +174,11 @@ public class AlarmBolt extends BaseRichBolt {
         @NotNull final Map stormConf,
         @NotNull final TopologyContext context,
         @NotNull final OutputCollector collector) {
+
+        // region 初始化规则
+        EarlyWarnsGetter.getAllRules();
+        CoefficientOffsetGetter.getAllCoefficientOffsets();
+        // endregion 初始化规则
 
         final long currentTimeMillis = System.currentTimeMillis();
 

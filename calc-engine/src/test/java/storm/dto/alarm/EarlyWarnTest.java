@@ -1,9 +1,12 @@
 package storm.dto.alarm;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.util.function.TeFunction;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -81,15 +84,15 @@ public final class EarlyWarnTest {
         final BigDecimal left2Value = new BigDecimal("1.23");
         final BigDecimal result = new BigDecimal("99.93");
 
-        final BiFunction<BigDecimal, BigDecimal, BigDecimal> function = EarlyWarn.buildArithmeticFunction(
+        final TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> function = EarlyWarn.buildArithmeticFunction(
             ruleId,
             ruleName,
             "1"
         );
         Assertions.assertNotNull(function);
-        Assertions.assertNull(function.apply(left1Value, null));
-        Assertions.assertNull(function.apply(null, left2Value));
-        Assertions.assertEquals(result, function.apply(left1Value, left2Value));
+        Assertions.assertNull(function.apply(left1Value, null, 2));
+        Assertions.assertNull(function.apply(null, left2Value,  2));
+        Assertions.assertEquals(result, function.apply(left1Value, left2Value, 2));
     }
 
     @DisplayName("平台报警_算术运算函数构建 -> L1 - L2")
@@ -102,15 +105,15 @@ public final class EarlyWarnTest {
         final BigDecimal left2Value = new BigDecimal("1.23");
         final BigDecimal result = new BigDecimal("97.47");
 
-        final BiFunction<BigDecimal, BigDecimal, BigDecimal> function = EarlyWarn.buildArithmeticFunction(
+        final TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> function = EarlyWarn.buildArithmeticFunction(
             ruleId,
             ruleName,
             "2"
         );
         Assertions.assertNotNull(function);
-        Assertions.assertNull(function.apply(left1Value, null));
-        Assertions.assertNull(function.apply(null, left2Value));
-        Assertions.assertEquals(result, function.apply(left1Value, left2Value));
+        Assertions.assertNull(function.apply(left1Value, null,  2));
+        Assertions.assertNull(function.apply(null, left2Value,  2));
+        Assertions.assertEquals(result, function.apply(left1Value, left2Value, 2));
     }
 
     @DisplayName("平台报警_算术运算函数构建 -> L1 * L2")
@@ -123,15 +126,15 @@ public final class EarlyWarnTest {
         final BigDecimal left2Value = new BigDecimal("1.1");
         final BigDecimal result = new BigDecimal("1.1223344");
 
-        final BiFunction<BigDecimal, BigDecimal, BigDecimal> function = EarlyWarn.buildArithmeticFunction(
+        final TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> function = EarlyWarn.buildArithmeticFunction(
             ruleId,
             ruleName,
             "3"
         );
         Assertions.assertNotNull(function);
-        Assertions.assertNull(function.apply(left1Value, null));
-        Assertions.assertNull(function.apply(null, left2Value));
-        Assertions.assertEquals(result, function.apply(left1Value, left2Value));
+        Assertions.assertNull(function.apply(left1Value, null, 7));
+        Assertions.assertNull(function.apply(null, left2Value, 7));
+        Assertions.assertEquals(result, function.apply(left1Value, left2Value, 7));
     }
 
     @DisplayName("平台报警_算术运算函数构建 -> L1 / L2")
@@ -144,20 +147,20 @@ public final class EarlyWarnTest {
         final BigDecimal left2Value = new BigDecimal("1.1");
         final BigDecimal result = new BigDecimal("10.203040");
 
-        final BiFunction<BigDecimal, BigDecimal, BigDecimal> function = EarlyWarn.buildArithmeticFunction(
+        final TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> function = EarlyWarn.buildArithmeticFunction(
             ruleId,
             ruleName,
             "4"
         );
         Assertions.assertNotNull(function);
-        Assertions.assertNull(function.apply(left1Value, null));
-        Assertions.assertNull(function.apply(null, left2Value));
-        Assertions.assertEquals(result, function.apply(left1Value, left2Value));
-        Assertions.assertEquals(new BigDecimal("0.7"), function.apply(new BigDecimal("2.0"), new BigDecimal("3.0")));
-        Assertions.assertEquals(new BigDecimal("0.67"), function.apply(new BigDecimal("2.00"), new BigDecimal("3.0")));
-        Assertions.assertEquals(new BigDecimal("0.67"), function.apply(new BigDecimal("2.0"), new BigDecimal("3.00")));
-        Assertions.assertEquals(new BigDecimal("0.429"), function.apply(new BigDecimal("3.000"), new BigDecimal("7.000")));
-        Assertions.assertEquals(new BigDecimal("-0.429"), function.apply(new BigDecimal("-3.000"), new BigDecimal("7.000")));
+        Assertions.assertNull(function.apply(left1Value, null, 6));
+        Assertions.assertNull(function.apply(null, left2Value,  6));
+        Assertions.assertEquals(result, function.apply(left1Value, left2Value, 6));
+        Assertions.assertEquals(new BigDecimal("0.7"), function.apply(new BigDecimal("2.0"), new BigDecimal("3.0"), 1));
+        Assertions.assertEquals(new BigDecimal("0.67"), function.apply(new BigDecimal("2.00"), new BigDecimal("3.0"), 2));
+        Assertions.assertEquals(new BigDecimal("0.67"), function.apply(new BigDecimal("2.0"), new BigDecimal("3.00"), 2));
+        Assertions.assertEquals(new BigDecimal("0.429"), function.apply(new BigDecimal("3.000"), new BigDecimal("7.000"), 3));
+        Assertions.assertEquals(new BigDecimal("-0.429"), function.apply(new BigDecimal("-3.000"), new BigDecimal("7.000"), 3));
     }
 
     @Disabled("平台报警_逻辑运算函数构建_右一值无效")
@@ -389,6 +392,65 @@ public final class EarlyWarnTest {
         Assertions.assertTrue(function.apply(scale -> new BigDecimal("98.7")));
         Assertions.assertFalse(function.apply(scale -> new BigDecimal("98.8")));
         Assertions.assertNull(function.apply(scale -> null));
+    }
+
+    @DisplayName("平台报警测试-除法")
+    @Test
+    void testDiv() {
+
+        final String ruleId = "402881e86660d7ff01667c0cca520674";
+        final String ruleName = "平台报警测试-除法";
+        final String left1DataKey = "2201";
+        final boolean left1UsePrev = false;
+        final String left2DataKey = "7615";
+        final boolean left2UsePrev = false;
+        final String arithmeticExpression = "4";
+        final String right1Value = "2.0";
+        final BigDecimal r1 = NumberUtils.createBigDecimal(right1Value);
+        Assertions.assertEquals(1, r1.scale());
+        final String right2Value = null;
+        final String logicExpression = "1";
+        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, Boolean> function =
+            EarlyWarn.buildFunction(
+                ruleId, ruleName,
+                left1DataKey, left1UsePrev, left2DataKey, left2UsePrev, arithmeticExpression,
+                right1Value, right2Value, logicExpression
+            );
+        Assertions.assertNotNull(function);
+
+
+        final int level = ((Function<String, Integer>) s -> {
+            if (NumberUtils.isDigits(s)) {
+                return NumberUtils.toInt(s);
+            }
+            return 0;
+        }).apply("1");
+        Assertions.assertEquals(1, level);
+        final String vehicleModelId = ((Function<String, String>) s -> {
+            if (StringUtils.isNotBlank(s)) {
+                return s;
+            }
+            return EarlyWarnsGetter.ALL;
+        }).apply("ALL");
+        Assertions.assertEquals("ALL", vehicleModelId);
+
+        final EarlyWarn earlyWarn = new EarlyWarn(
+            ruleId, ruleName,
+            left1DataKey, left1UsePrev, left2DataKey, left2UsePrev, arithmeticExpression,
+            right1Value, right2Value, logicExpression,
+            function,
+            level,
+            vehicleModelId);
+
+        final ImmutableMap<String, String> data = new ImmutableMap.Builder<String, String>()
+            .put(left1DataKey, "120")
+            .put(left2DataKey, "70")
+            .build();
+        final ImmutableMap<String, String> cache = ImmutableMap.of();
+
+        final Boolean compute = earlyWarn.compute(data, cache);
+        Assertions.assertNotNull(compute);
+        //Assertions.assertFalse(compute);
     }
 
     @SuppressWarnings("unused")

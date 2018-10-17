@@ -122,6 +122,21 @@ public final class AlarmStatus {
         @NotNull final EarlyWarn rule,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
         if(result) {
+            if(rule.left1UsePrev || rule.left2UsePrev) {
+                if (BooleanUtils.isNotTrue(getStatus())) {
+                    this.startReset();
+                    startOverflow(
+                        1,
+                        0,
+                        ruleId,
+                        level,
+                        data,
+                        rule,
+                        noticeCallback);
+                    delaySwitch.setSwitchStatus(1);
+                }
+            }
+
             delaySwitch.positiveIncrease(
                 platformReceiveTime,
                 this::startReset,
@@ -232,16 +247,19 @@ public final class AlarmStatus {
         @NotNull final EarlyWarn rule,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
 
-        final ImmutableMap<String, String> endNotice = buildEndNotice(
-            negativeThreshold,
-            negativeTimeout,
-            ruleId,
-            level,
-            data,
-            rule);
+        if(MapUtils.isNotEmpty(startNotice)) {
 
-        this.startNotice = ImmutableMap.of();
-        noticeCallback.accept(endNotice);
+            final ImmutableMap<String, String> endNotice = buildEndNotice(
+                negativeThreshold,
+                negativeTimeout,
+                ruleId,
+                level,
+                data,
+                rule);
+
+            this.startNotice = ImmutableMap.of();
+            noticeCallback.accept(endNotice);
+        }
     }
 
     @NotNull
@@ -334,6 +352,7 @@ public final class AlarmStatus {
                 endNotice.put("reason", "rule_unable");
 
                 noticeCallback.accept(ImmutableMap.copyOf(endNotice));
+                delaySwitch.setSwitchStatus(-1);
             }
         }
     }

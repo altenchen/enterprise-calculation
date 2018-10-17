@@ -203,18 +203,6 @@ public final class CoefficientOffsetGetter {
             ImmutableMap::of);
     }
 
-    @Deprecated
-    @Nullable
-    public static CoefficientOffset getCoefficientOffset(
-        @Nullable final String dataKey) {
-
-        if (StringUtils.isBlank(dataKey)) {
-            return null;
-        }
-
-        return null;
-    }
-
     @NotNull
     public static ImmutableMap<String, ImmutableMap<String, CoefficientOffset>> getAllCoefficientOffsets() {
 

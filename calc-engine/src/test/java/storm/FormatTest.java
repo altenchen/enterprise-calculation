@@ -476,6 +476,12 @@ final class FormatTest {
         } catch (final ArithmeticException ignored) {
 
         }
+
+        final BigDecimal speed = new BigDecimal("120");
+        final BigDecimal soc = new BigDecimal("70");
+        final BigDecimal result = new BigDecimal("2.0");
+        final BigDecimal divide = speed.divide(soc, Math.max(result.scale(), Math.max(speed.scale(), soc.scale())), BigDecimal.ROUND_HALF_UP);
+        Assertions.assertEquals(new BigDecimal("1.7"), divide);
     }
 
     @Disabled("验证BigDecimal特性")

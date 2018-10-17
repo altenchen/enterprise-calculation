@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.system.DataKey;
 import storm.util.DataUtils;
+import storm.util.function.TeFunction;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -201,7 +202,7 @@ public class EarlyWarn {
         @Nullable final String right2Value,
         @NotNull final String logicExpression) {
 
-        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> arithmeticFunction =
+        final TeFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, Integer, BigDecimal> arithmeticFunction =
             buildArithmeticFunction(
                 ruleId,
                 ruleName,
@@ -227,15 +228,15 @@ public class EarlyWarn {
             return null;
         }
 
-        return (data, cache) -> {
-            final BigDecimal arithmeticValue = arithmeticFunction.apply(data, cache);
-            if(null == arithmeticValue) {
-                return null;
-            }
-            return logicFunction.apply(scale -> arithmeticValue.setScale(scale, RoundingMode.HALF_UP));
-        };
+        return (data, cache) ->
+            logicFunction.apply(scale -> {
+                final BigDecimal arithmeticValue = arithmeticFunction.apply(data, cache, scale);
+                if (null == arithmeticValue) {
+                    return null;
+                }
+                return arithmeticValue.setScale(scale, RoundingMode.HALF_UP);
+            });
     }
-
 
     // region 构建数据摘取函数
 
@@ -252,7 +253,7 @@ public class EarlyWarn {
      * @return 算术运算函数, 输入为实时数据获取器和缓存(上一次)数据获取器, 获取器输入为数据项的键, 输出为数据项的有效值, 如果没有有效值, 则输出 null.
      */
     @Nullable
-    private static BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, BigDecimal> buildArithmeticFunction(
+    private static TeFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, Integer, BigDecimal> buildArithmeticFunction(
 
         @NotNull final String ruleId,
         @Nullable final String ruleName,
@@ -275,7 +276,7 @@ public class EarlyWarn {
         final String none = "0";
         if (StringUtils.isBlank(arithmeticExpression) || none.equals(arithmeticExpression)) {
             // 没有算术运算, 直接使用左一值.
-            return firstGetter;
+            return (data, cache, scale) -> firstGetter.apply(data, cache);
         } else {
 
             if (StringUtils.isBlank(left2DataKey)) {
@@ -288,12 +289,13 @@ public class EarlyWarn {
                 ImmutableMap<String, String>,
                 BigDecimal> secondGetter = buildDataGetter(left2DataKey, left2UsePrev);
 
-            final BiFunction<BigDecimal, BigDecimal, BigDecimal> function =
+            final TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> function =
                 buildArithmeticFunction(ruleId, ruleName, arithmeticExpression);
 
-            return (data, cache) -> function.apply(
+            return (data, cache, scale) -> function.apply(
                 firstGetter.apply(data, cache),
-                secondGetter.apply(data, cache));
+                secondGetter.apply(data, cache),
+                scale);
         }
     }
 
@@ -356,7 +358,7 @@ public class EarlyWarn {
      * @return 逻辑运算函数, 输入为实时数据获取器和缓存(上一次)数据获取器, 获取器输入为数据项的键, 输出为数据项的有效值, 如果没有有效值, 则输出 null.
      */
     @Nullable
-    public static BiFunction<BigDecimal, BigDecimal, BigDecimal> buildArithmeticFunction(
+    public static TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> buildArithmeticFunction(
         @NotNull final String ruleId,
         @Nullable final String ruleName,
         @NotNull final String arithmeticExpression) {
@@ -365,26 +367,31 @@ public class EarlyWarn {
             // L1 + L2
             case "1": {
                 return buildArithmeticFunctionFilter(
-                    (left1Value, left2Value) -> left1Value.add(left2Value));
+                    (left1Value, left2Value, scale) -> left1Value.add(left2Value));
             }
             // L1 - L2
             case "2": {
                 return buildArithmeticFunctionFilter(
-                    (left1Value, left2Value) -> left1Value.subtract(left2Value));
+                    (left1Value, left2Value, scale) -> left1Value.subtract(left2Value));
             }
             // L1 * L2
             case "3": {
                 return buildArithmeticFunctionFilter(
-                    (left1Value, left2Value) -> left1Value.multiply(left2Value));
+                    (left1Value, left2Value, scale) -> left1Value.multiply(left2Value));
             }
             // L1 / L2
             case "4": {
                 return buildArithmeticFunctionFilter(
-                    (left1Value, left2Value) -> {
+                    (left1Value, left2Value, scale) -> {
                         if(0 == BigDecimal.ZERO.compareTo(left2Value)) {
                             return null;
                         }
-                        return left1Value.divide(left2Value, Math.max(left1Value.scale(), left2Value.scale()), BigDecimal.ROUND_HALF_UP);
+                        return left1Value.divide(
+                            left2Value,
+                            Math.max(
+                                scale,
+                                Math.max(left1Value.scale(), left2Value.scale())),
+                            BigDecimal.ROUND_HALF_UP);
                     });
             }
             default:
@@ -395,18 +402,18 @@ public class EarlyWarn {
 
     @Contract(pure = true)
     @NotNull
-    private static BiFunction<BigDecimal, BigDecimal, BigDecimal> buildArithmeticFunctionFilter(
-        @NotNull final BiFunction<BigDecimal, BigDecimal, BigDecimal> arithmeticFunction
+    private static TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> buildArithmeticFunctionFilter(
+        @NotNull final TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> arithmeticFunction
     ) {
 
-        return (left1Value, left2Value) -> {
+        return (left1Value, left2Value, scale) -> {
             if (null == left1Value) {
                 return null;
             }
             if (null == left2Value) {
                 return null;
             }
-            return arithmeticFunction.apply(left1Value, left2Value);
+            return arithmeticFunction.apply(left1Value, left2Value, scale);
         };
     }
 

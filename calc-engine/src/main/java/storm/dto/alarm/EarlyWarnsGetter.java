@@ -30,7 +30,7 @@ public class EarlyWarnsGetter {
 
     private static final SqlUtils SQL_UTILS = SqlUtils.getInstance();
 
-    private static final String ALL = "ALL";
+    public static final String ALL = "ALL";
 
     /**
      * 平台报警规则查询 SQL
