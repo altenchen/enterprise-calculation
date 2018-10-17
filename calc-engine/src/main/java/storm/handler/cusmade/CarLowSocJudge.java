@@ -35,6 +35,11 @@ public class CarLowSocJudge {
 
     private static final String STATUS_KEY = "status";
 
+    /**
+     * 出于兼容性考虑暂留, 已存储到车辆缓存<code>VehicleCache</code>中
+     */
+    private static final String REDIS_TABLE_NAME = "vehCache.qy.notice.lowSoc";
+
 //<<..........................................................数据库相关配置..........................................................>>
     DataToRedis redis;
     private Recorder recorder;
@@ -47,16 +52,16 @@ public class CarLowSocJudge {
     /**
      * SOC过低通知开始缓存
      */
-    public static Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
+    private Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
 
     /**
      * SOC 过低计数器
      */
-    public static Map<String, Integer> vidLowSocCount = new HashMap<>();
+    private Map<String, Integer> vidLowSocCount = new HashMap<>();
     /**
      * SOC 正常计数器
      */
-    public static Map<String, Integer> vidNormSoc = new HashMap<>();
+    private Map<String, Integer> vidNormSoc = new HashMap<>();
 
 
 //<<..........................................................6个可以配置的阈值..........................................................>>
@@ -78,11 +83,11 @@ public class CarLowSocJudge {
     /**
      * SOC过低告警触发阈值
      */
-    private static int lowSocAlarm_StartThreshold = 10;
+    private static int socLowAlarm_StartThreshold = 10;
     /**
      * SOC过低告警结束阈值
      */
-    private static int lowSocAlarm_EndThreshold = 20;
+    private static int socLowAlarm_EndThreshold = 20;
 
 
 
@@ -132,7 +137,7 @@ public class CarLowSocJudge {
         final int socNum = Integer.parseInt(socString);
 
         // 检验SOC是否小于过低开始阈值
-        if (socNum < lowSocAlarm_StartThreshold) {
+        if (socNum < socLowAlarm_StartThreshold) {
 
             //SOC正常帧数记录值清空
             vidNormSoc.remove(vid);
@@ -169,10 +174,10 @@ public class CarLowSocJudge {
                 lowSocNotice.put("stime", timeString);
                 lowSocNotice.put("location", location);
                 lowSocNotice.put("slocation", location);
-                lowSocNotice.put("sthreshold", lowSocAlarm_StartThreshold);
+                lowSocNotice.put("sthreshold", socLowAlarm_StartThreshold);
                 lowSocNotice.put("ssoc", socNum);
                 // 兼容性处理, 暂留
-                lowSocNotice.put("lowSocThreshold", lowSocAlarm_StartThreshold);
+                lowSocNotice.put("lowSocThreshold", socLowAlarm_StartThreshold);
 
                 PARAMS_REDIS_UTIL.autoLog(vid, ()->{
                     logger.info("VID[{}]SOC过低首帧更新", vid);
@@ -247,9 +252,7 @@ public class CarLowSocJudge {
             }
 
             //检验SOC是否大于过低结束阈值
-            if (socNum < lowSocAlarm_EndThreshold){
-                //SOC正常帧数记录值清空
-                vidNormSoc.remove(vid);
+            if (socNum < socLowAlarm_EndThreshold){
                 return null;
             }
 
@@ -265,7 +268,7 @@ public class CarLowSocJudge {
             if(1 == normalSocCount) {
                 normalSocNotice.put("etime", timeString);
                 normalSocNotice.put("elocation", location);
-                normalSocNotice.put("ethreshold", lowSocAlarm_StartThreshold);
+                normalSocNotice.put("ethreshold", socLowAlarm_StartThreshold);
                 normalSocNotice.put("esoc", socNum);
 
                 PARAMS_REDIS_UTIL.autoLog(vid, ()->{
@@ -424,51 +427,51 @@ public class CarLowSocJudge {
 
 
     //以下为6个可配置变量的get和set方法
-    public int getLowSocAlarm_StartThreshold() {
-        return lowSocAlarm_StartThreshold;
+    public static int getSocLowAlarm_StartThreshold() {
+        return socLowAlarm_StartThreshold;
     }
 
-    public void setSocLowAlarm_StartThreshold(int lowSocAlarm_StartThreshold) {
-        CarLowSocJudge.lowSocAlarm_StartThreshold = lowSocAlarm_StartThreshold;
+    public static void setSocLowAlarm_StartThreshold(int socLowAlarm_StartThreshold) {
+        CarLowSocJudge.socLowAlarm_StartThreshold = socLowAlarm_StartThreshold;
     }
 
-    public int getLowSocAlarm_EndThreshold() {
-        return lowSocAlarm_EndThreshold;
+    public static int getSocLowAlarm_EndThreshold() {
+        return socLowAlarm_EndThreshold;
     }
 
-    public void setLowSocAlarm_EndThreshold(int lowSocAlarm_EndThreshold) {
-        CarLowSocJudge.lowSocAlarm_EndThreshold = lowSocAlarm_EndThreshold;
+    public static void setSocLowAlarm_EndThreshold(int socLowAlarm_EndThreshold) {
+        CarLowSocJudge.socLowAlarm_EndThreshold = socLowAlarm_EndThreshold;
     }
 
-    public int getLowSocFaultJudgeNum() {
+    public static int getLowSocFaultJudgeNum() {
         return lowSocFaultJudgeNum;
     }
 
-    public void setLowSocFaultJudgeNum(int lowSocFaultJudgeNum) {
+    public static void setLowSocFaultJudgeNum(int lowSocFaultJudgeNum) {
         CarLowSocJudge.lowSocFaultJudgeNum = lowSocFaultJudgeNum;
     }
 
-    public int getLowSocNormalJudgeNum() {
+    public static int getLowSocNormalJudgeNum() {
         return lowSocNormalJudgeNum;
     }
 
-    public void setLowSocNormalJudgeNum(int lowSocNormalJudgeNum) {
+    public static void setLowSocNormalJudgeNum(int lowSocNormalJudgeNum) {
         CarLowSocJudge.lowSocNormalJudgeNum = lowSocNormalJudgeNum;
     }
 
-    public Long getLowSocFaultIntervalMillisecond() {
+    public static Long getLowSocFaultIntervalMillisecond() {
         return lowSocFaultIntervalMillisecond;
     }
 
-    public void setLowSocFaultIntervalMillisecond(Long lowSocFaultIntervalMillisecond) {
+    public static void setLowSocFaultIntervalMillisecond(Long lowSocFaultIntervalMillisecond) {
         CarLowSocJudge.lowSocFaultIntervalMillisecond = lowSocFaultIntervalMillisecond;
     }
 
-    public Long getLowSocNormalIntervalMillisecond() {
+    public static Long getLowSocNormalIntervalMillisecond() {
         return lowSocNormalIntervalMillisecond;
     }
 
-    public void setLowSocNormalIntervalMillisecond(Long lowSocNormalIntervalMillisecond) {
+    public static void setLowSocNormalIntervalMillisecond(Long lowSocNormalIntervalMillisecond) {
         CarLowSocJudge.lowSocNormalIntervalMillisecond = lowSocNormalIntervalMillisecond;
     }
 
