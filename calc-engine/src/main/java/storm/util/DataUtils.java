@@ -70,9 +70,8 @@ public final class DataUtils {
                 .append(',')
                 .append(latitude)
                 .toString();
-        } else {
-            return StringUtils.EMPTY;
         }
+        return StringUtils.EMPTY;
     }
 
     /**

@@ -279,6 +279,12 @@ public class FaultCodeHandler implements Serializable {
         @NotNull final String faultType) {
 
         final String codeValues = data.get(faultType);
+        if( StringUtils.isEmpty(codeValues) ){
+            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                LOG.info("VID[{}]故障码为空, 忽略处理.", vid);
+            });
+            return;
+        }
         final @NotNull long[] values = parseFaultCodes(codeValues);
         if(ArrayUtils.isEmpty(values)) {
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
@@ -292,6 +298,7 @@ public class FaultCodeHandler implements Serializable {
 
         // 车型, 空字符串代表没有配置, 只匹配默认规则
         final String vehModel = VehicleModelCache.getInstance().getVehicleModel(vid);
+
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
             LOG.info("VID[{}]解析车型为[{}], 故障类型[{}]", vid, vehModel, faultType);
         });
@@ -508,7 +515,8 @@ public class FaultCodeHandler implements Serializable {
         boolean hasExceptionCode = false;
         // region 先处理异常码
         for (final FaultCodeByte exceptionRule : rules) {
-            if(1 != exceptionRule.type) {
+            if(0 == exceptionRule.type) {
+                //跳过正常码
                 continue;
             }
             final long exceptionCode = Long.decode(exceptionRule.equalCode);
@@ -547,7 +555,8 @@ public class FaultCodeHandler implements Serializable {
             return notices;
         }
         for (final FaultCodeByte normalRule : rules) {
-            if (0 != normalRule.type) {
+            if(1 == normalRule.type) {
+                //跳过异常码
                 continue;
             }
             final long normalCode = Long.decode(normalRule.equalCode);
