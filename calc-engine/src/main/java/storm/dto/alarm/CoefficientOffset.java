@@ -18,7 +18,7 @@ import java.math.BigDecimal;
 public final class CoefficientOffset {
 
     @NotNull
-    public final String itemId;
+    private final String itemId;
 
     @NotNull
     private final String dataKey;
@@ -75,6 +75,15 @@ public final class CoefficientOffset {
     @NotNull
     public BigDecimal compute(@NotNull BigDecimal value) {
         return (value.subtract(getOffset())).divide(getCoefficient(), getPrecision(), BigDecimal.ROUND_HALF_UP);
+    }
+
+    /**
+     * 数据项标识
+     */
+    @NotNull
+    @Contract(pure = true)
+    public String getItemId() {
+        return itemId;
     }
 
     /**

@@ -1,28 +1,19 @@
 package storm.dto.alarm;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
-import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import com.alibaba.fastjson.JSON;
 import com.google.common.collect.*;
-import com.google.gson.reflect.TypeToken;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.extension.ImmutableMapExtension;
 import storm.extension.ObjectExtension;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
@@ -183,7 +174,7 @@ public final class CoefficientOffsetGetter {
                         );
                         if (dataCoefficientOffset.containsKey(dataKey)) {
                             final CoefficientOffset duplicated = dataCoefficientOffset.get(dataKey);
-                            LOG.warn("车型[{}]数据项[{}]重复的偏移系数[{}][{}]", vehicleModel, dataKey, duplicated.itemId, itemId);
+                            LOG.warn("车型[{}]数据项[{}]重复的偏移系数[{}][{}]", vehicleModel, dataKey, duplicated.getItemId(), itemId);
                         } else {
                             dataCoefficientOffset.put(dataKey, coefficientOffset);
                         }

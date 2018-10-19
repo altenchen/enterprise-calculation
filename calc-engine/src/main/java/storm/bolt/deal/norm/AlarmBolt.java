@@ -1,8 +1,6 @@
 package storm.bolt.deal.norm;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -35,6 +33,7 @@ import java.lang.reflect.Type;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * @author wza
@@ -148,7 +147,7 @@ public class AlarmBolt extends BaseRichBolt {
                 k -> JEDIS_POOL_UTILS.useResource(jedis -> {
                     jedis.select(REDIS_DATABASE_INDEX);
 
-                    final String field = vehicleId + "_" + ruleId;
+                    final String field = buildRedisField(vehicleId, ruleId);
                     final String json = jedis.hget(IDLE_VEHICLE_REDIS_KEY, field);
                     // 如果 redis 中有未结束状态, 则加载未结束状态初始化
                     if (StringUtils.isNotBlank(json)) {
@@ -161,6 +160,8 @@ public class AlarmBolt extends BaseRichBolt {
                         } else if(AlarmStatus.NOTICE_STATUS_END.equals(status)) {
                             // 顺手清理下已结束未删除的状态
                             jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
+                        } else {
+                            LOG.warn("redis中状态未知的平台报警通知[{}]", json);
                         }
                     }
                     return new AlarmStatus(vehicleId);
@@ -239,22 +240,23 @@ public class AlarmBolt extends BaseRichBolt {
 
             lastFinishUnableRuleTime = currentTimeMillis;
 
-            final Set<String> unableRuleIds = Sets.newHashSet(ruleVehicleStatus.keySet());
+            final Set<String> enableRuleIds = ImmutableSet.copyOf(
+                EarlyWarnsGetter.getAllRules()
+                    .values()
+                    .stream()
+                    .flatMap(rules -> rules.keySet().stream())
+                    .collect(Collectors.toSet())
+            );
 
-            final ImmutableMap<String, ImmutableMap<String, EarlyWarn>> allRules = EarlyWarnsGetter.getAllRules();
-            allRules.forEach((vehicleType, rules) ->{
-                rules.forEach((ruleId, rule) ->{
-                    unableRuleIds.remove(ruleId);
-                });
-            });
-
-            unableRuleIds.forEach(ruleId->{
-                final Map<String, AlarmStatus> vehicleStatus = ruleVehicleStatus.remove(ruleId);
-                if (MapUtils.isNotEmpty(vehicleStatus)) {
-                    vehicleStatus.forEach((vehicleId, status)->
-                        status.finishNoticeIfStarted(
-                            notice -> emitNotice(input, vehicleId, ruleId, notice))
-                    );
+            ruleVehicleStatus.keySet().forEach(ruleId -> {
+                if(!enableRuleIds.contains(ruleId)) {
+                    final Map<String, AlarmStatus> vehicleStatus = ruleVehicleStatus.remove(ruleId);
+                    if (MapUtils.isNotEmpty(vehicleStatus)) {
+                        vehicleStatus.forEach((vehicleId, status)->
+                            status.finishNoticeIfStarted(
+                                notice -> emitNotice(input, vehicleId, ruleId, notice))
+                        );
+                    }
                 }
             });
 
@@ -263,12 +265,12 @@ public class AlarmBolt extends BaseRichBolt {
 
                 final Set<String> fields = jedis.hkeys(IDLE_VEHICLE_REDIS_KEY);
                 fields.forEach(field ->{
-                    final String[] parts = StringUtils.split(field, '_');
-                    if(2 == parts.length) {
-                        final String vehicleId = parts[0];
-                        final String ruleId = parts[1];
+                    final ImmutableList<String> parts = parseRedisField(field);
+                    if(2 == parts.size()) {
+                        final String vehicleId = parts.get(0);
+                        final String ruleId = parts.get(1);
 
-                        if(unableRuleIds.contains(ruleId)) {
+                        if(!enableRuleIds.contains(ruleId)) {
 
                             final String json = jedis.hget(IDLE_VEHICLE_REDIS_KEY, field);
                             // 如果 redis 中有未结束状态, 则加载未结束状态并结束
@@ -283,6 +285,8 @@ public class AlarmBolt extends BaseRichBolt {
                                 } else if(AlarmStatus.NOTICE_STATUS_END.equals(status)) {
                                     // 顺手清理下已结束未删除的状态
                                     jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
+                                } else {
+                                    LOG.warn("redis中状态未知的平台报警通知[{}]", json);
                                 }
                             } else {
                                 jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
@@ -429,7 +433,7 @@ public class AlarmBolt extends BaseRichBolt {
             JEDIS_POOL_UTILS.useResource(jedis -> {
                 jedis.select(REDIS_DATABASE_INDEX);
 
-                final String field = vehicleId + "_" + ruleId;
+                final String field = buildRedisField(vehicleId, ruleId);
                 final String status = notice.get(AlarmStatus.NOTICE_STATUS_KEY);
                 if(AlarmStatus.NOTICE_STATUS_START.equals(status)) {
                     jedis.hset(IDLE_VEHICLE_REDIS_KEY, field, json);
@@ -437,6 +441,23 @@ public class AlarmBolt extends BaseRichBolt {
                     jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
                 }
             });
+        }
+    }
+
+    @NotNull
+    @Contract(pure = true)
+    private String buildRedisField(
+        @NotNull final String vehicleId,
+        @NotNull final String ruleId) {
+        return vehicleId + "_" + ruleId;
+    }
+
+    private ImmutableList<String> parseRedisField(final String field) {
+        final String[] parts = StringUtils.split(field, '_');
+        if(null != parts && 2 == parts.length) {
+            return ImmutableList.of(parts[0], parts[1]);
+        } else {
+            return ImmutableList.of();
         }
     }
 

@@ -1,13 +1,16 @@
 package storm.dto.alarm;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * @author: xzp
@@ -63,6 +66,19 @@ public final class EarlyWarnsGetterTest {
         for (int i = 0; i < 100; i++) {
             test.run();
         }
+    }
+
+    @Disabled("获取所有可用规则ID")
+    @Test
+    void getEnableRuleIds() {
+        ImmutableSet.copyOf(
+            EarlyWarnsGetter.getAllRules()
+                .values()
+                .stream()
+                .flatMap(rules -> rules.keySet().stream())
+                .peek(LOG::trace)
+                .collect(Collectors.toSet())
+        );
     }
 
     @SuppressWarnings("unused")

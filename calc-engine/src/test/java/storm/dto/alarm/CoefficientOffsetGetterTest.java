@@ -1,23 +1,10 @@
 package storm.dto.alarm;
 
-import com.alibaba.fastjson.JSON;
 import com.google.common.collect.*;
-import com.google.gson.reflect.TypeToken;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.MapUtils;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.*;
-import org.junit.platform.commons.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.FormattingTuple;
-import org.slf4j.helpers.MessageFormatter;
-import storm.util.ConfigUtils;
-import storm.util.JsonUtils;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.Charset;
 import java.util.*;
 
 /**
@@ -57,7 +44,7 @@ public final class CoefficientOffsetGetterTest {
                 LOG.debug("[{}]count(key)={}", vehicleModel, dataCoefficientOffset.size());
                 dataCoefficientOffset.forEach(
                     (dataKey, coefficientOffset) -> {
-                        LOG.debug("M[{}]D[{}]I[{}]", vehicleModel, dataKey, coefficientOffset.itemId);
+                        LOG.debug("M[{}]D[{}]I[{}]", vehicleModel, dataKey, coefficientOffset.getItemId());
                     }
                 );
             }
