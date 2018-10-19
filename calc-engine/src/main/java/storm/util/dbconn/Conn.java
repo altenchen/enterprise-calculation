@@ -243,7 +243,8 @@ public final class Conn {
                 exceptionId,
                 exceptionCode,
                 responseLevel,
-                exceptionType);
+                exceptionType,
+                    faultId);
             ruleCode.addFaultCode(faultCode);
 
         }
@@ -504,7 +505,7 @@ public final class Conn {
                     }
 
                     // 异常码规则
-                    final ExceptionSingleBit exceptionRule = new ExceptionSingleBit(exception_id, faultOffset, lazy, level);
+                    final ExceptionSingleBit exceptionRule = new ExceptionSingleBit(exception_id, faultOffset, lazy, level, fault_id);
                     faultExceptionsCache.put(exceptionRule.exceptionId, exceptionRule);
 
                     // 将异常关联到适用车型, 空字符串表示默认车型

@@ -14,6 +14,11 @@ public final class FaultCodeByte {
     public final String codeId;
 
     /**
+     * 故障码ID
+     */
+    public final String faultId;
+
+    /**
      * 异常码/正常码
      */
     public final String equalCode;
@@ -32,12 +37,14 @@ public final class FaultCodeByte {
         @NotNull String codeId,
         @NotNull String code,
         int alarmLevel,
-        int type) {
+        int type,
+        String faultId) {
 
         this.codeId = codeId;
         this.equalCode = code;
         this.alarmLevel = alarmLevel;
         this.type = type;
+        this.faultId = faultId;
     }
 }
                                                   

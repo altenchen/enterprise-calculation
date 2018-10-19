@@ -13,12 +13,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleModelCache;
 import storm.constant.FormatConstant;
+import storm.dao.DataToRedis;
 import storm.dto.*;
+import storm.entity.NoticeMessage;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
+import storm.util.JsonUtils;
 import storm.util.ParamsRedisUtil;
 import storm.util.dbconn.Conn;
 
@@ -39,6 +42,11 @@ public class FaultCodeHandler implements Serializable {
     private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
+
+    private static final DataToRedis redis = new DataToRedis();
+
+    private static final int REDIS_DATABASE_INDEX = 6;
+    private static final String REDIS_KEY_FAULT_NOTICE_PREFIX = "vehCache.fault.notice.";
 
     /**
      * 从数据库拉取规则的时间间隔, 默认360秒
@@ -306,98 +314,108 @@ public class FaultCodeHandler implements Serializable {
 
         boolean processByBit = false;
         if(bitRules.containsKey(faultType)) {
+
+            //<故障码ID， 异常码>
             final Map<String, FaultTypeSingleBit> faultTypeRules = bitRules.get(faultType);
 
             for (final Map.Entry<String, FaultTypeSingleBit> entry : faultTypeRules.entrySet()) {
                 final String faultId = entry.getKey();
                 final FaultTypeSingleBit faultTypeRule = entry.getValue();
 
+                //<异常ID， 异常码>
                 final Map<String, ExceptionSingleBit> exceptions = getVehicleExceptions(vehModel, faultTypeRule);
 
-                if (MapUtils.isNotEmpty(exceptions)) {
-                    processByBit = true;
-
+                if( MapUtils.isEmpty(exceptions) ){
                     PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        () -> LOG.info(
-                            "VID[{}]故障类型[{}]按位解析, 一共[{}]条异常码.",
                             vid,
-                            faultType,
-                            exceptions.size()
-                        )
+                            () -> LOG.info(
+                                    "VID[{}]故障类型[{}]按位解析, 故障码[{}]没有异常码规则.",
+                                    vid,
+                                    faultId,
+                                    exceptions.size()
+                            )
                     );
+                    continue;
+                }
+                processByBit = true;
 
-                    // <faultId, <exceptionId, <k,v>>>
-                    final Map<String, Map<String, Map<String, Object>>> vidNotice = vidBitRuleMsg.getOrDefault(
+                PARAMS_REDIS_UTIL.autoLog(
+                    vid,
+                    () -> LOG.info(
+                        "VID[{}]故障类型[{}]按位解析, 一共[{}]条异常码.",
                         vid,
+                        faultType,
+                        exceptions.size()
+                    )
+                );
+
+                // <faultId, <exceptionId, <k,v>>>
+                final Map<String, Map<String, Map<String, Object>>> vidNotice = vidBitRuleMsg.getOrDefault(
+                    vid,
+                    new ConcurrentHashMap<>());
+                vidBitRuleMsg.put(vid, vidNotice);
+
+                for (final ExceptionSingleBit bit : exceptions.values()) {
+                    final String exceptionId = bit.exceptionId;
+                    final long code = PartationBit.computeValue(values, bit.offset);
+
+                    // <exceptionId, <k,v>>
+                    final Map<String, Map<String, Object>> faultNotice = vidNotice.getOrDefault(
+                        faultId,
                         new ConcurrentHashMap<>());
-                    vidBitRuleMsg.put(vid, vidNotice);
+                    vidNotice.put(faultId, faultNotice);
 
-                    for (final ExceptionSingleBit bit : exceptions.values()) {
-                        final String exceptionId = bit.exceptionId;
-                        final long code = PartationBit.computeValue(values, bit.offset);
+                    lastTime.put(vid, currentTimeMillis);
+                    if (code != 0) {
+                        final Map<String, Object> exceptionNotice = updateNoticeMsg(
+                            faultNotice.get(exceptionId),
+                            vid,
+                            time,
+                            location,
+                            exceptionId,
+                            bit.level,
+                            code,
+                            noticeTime,
+                                bit.faultId,
+                                AnalyzeType.BIT);
+                        faultNotice.put(exceptionId, exceptionNotice);
 
-                        // <exceptionId, <k,v>>
-                        final Map<String, Map<String, Object>> faultNotice = vidNotice.getOrDefault(
-                            faultId,
-                            new ConcurrentHashMap<>());
-                        vidNotice.put(faultId, faultNotice);
-
-                        lastTime.put(vid, currentTimeMillis);
-                        if (code != 0) {
-                            final Map<String, Object> exceptionNotice = updateNoticeMsg(
-                                faultNotice.get(exceptionId),
-                                vid,
+                        final int status = (int) exceptionNotice.get(NOTICE_STATUS);
+                        if (1 == status) {
+                            notices.add(exceptionNotice);
+                            PARAMS_REDIS_UTIL.autoLog(vid, () -> {
+                                LOG.info("VID[{}]按位解析EID[{}]触发", vid, exceptionId);
+                            });
+                        } else {
+                            PARAMS_REDIS_UTIL.autoLog(vid, () -> {
+                                LOG.info("VID[{}]按位解析EID[{}]持续", vid, exceptionId);
+                            });
+                        }
+                    } else {
+                        Map<String, Object> normalNotice = faultNotice.remove(exceptionId);
+                        if( MapUtils.isEmpty(normalNotice) ){
+                            //如果当前内存中没有异常通知， 则从redis查找
+                            String redisKey = getRedisNoticeMessageKey(vid, exceptionId);
+                            normalNotice = queryNoticeMsgByRedis(redisKey);
+                        }
+                        //如果从redis也找不到就跳过
+                        if( MapUtils.isEmpty(normalNotice) ){
+                            PARAMS_REDIS_UTIL.autoLog(vid, () -> {
+                                LOG.info("VID[{}]按位解析EID[{}]无效", vid, exceptionId);
+                            });
+                            continue;
+                        }
+                        deleteNoticeMsg(
+                                normalNotice,
                                 time,
                                 location,
-                                exceptionId,
-                                bit.level,
-                                code,
                                 noticeTime);
-                            faultNotice.put(exceptionId, exceptionNotice);
+                        notices.add(normalNotice);
 
-                            final int status = (int) exceptionNotice.get(NOTICE_STATUS);
-                            if (1 == status) {
-                                notices.add(exceptionNotice);
-                                PARAMS_REDIS_UTIL.autoLog(vid, () -> {
-                                    LOG.info("VID[{}]按位解析EID[{}]触发", vid, exceptionId);
-                                });
-                            } else {
-                                PARAMS_REDIS_UTIL.autoLog(vid, () -> {
-                                    LOG.info("VID[{}]按位解析EID[{}]持续", vid, exceptionId);
-                                });
-                            }
-                        } else {
-                            final Map<String, Object> normalNotice = faultNotice.remove(exceptionId);
-                            if (MapUtils.isNotEmpty(normalNotice)) {
-
-                                deleteNoticeMsg(
-                                    normalNotice,
-                                    time,
-                                    location,
-                                    noticeTime);
-                                notices.add(normalNotice);
-
-                                PARAMS_REDIS_UTIL.autoLog(vid, () -> {
-                                    LOG.info("VID[{}]按位解析EID[{}]解除", vid, exceptionId);
-                                });
-                            } else {
-                                PARAMS_REDIS_UTIL.autoLog(vid, () -> {
-                                    LOG.info("VID[{}]按位解析EID[{}]无效", vid, exceptionId);
-                                });
-                            }
-                        }
+                        PARAMS_REDIS_UTIL.autoLog(vid, () -> {
+                            LOG.info("VID[{}]按位解析EID[{}]解除", vid, exceptionId);
+                        });
                     }
-                } else {
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        () -> LOG.info(
-                            "VID[{}]故障类型[{}]按位解析, 故障码[{}]没有异常码规则.",
-                            vid,
-                            faultId,
-                            exceptions.size()
-                        )
-                    );
                 }
             }
         } else {
@@ -536,7 +554,9 @@ public class FaultCodeHandler implements Serializable {
                 exceptionId,
                 exceptionRule.alarmLevel,
                 exceptionCode,
-                noticetime);
+                noticetime,
+                    exceptionRule.faultId,
+                    AnalyzeType.BYTE);
 
             //添加通知消息
             if(1 == (int)notice.get(NOTICE_STATUS)) {
@@ -566,6 +586,29 @@ public class FaultCodeHandler implements Serializable {
             lastTime.put(vid, currentTimeMillis);
 
             if (MapUtils.isEmpty(faultNotices)) {
+                //如果当前的内存里没有该异常通知， 则从redis查询
+                long start = System.currentTimeMillis();
+                String keyPrefix = REDIS_KEY_FAULT_NOTICE_PREFIX + vid + "_" + normalRule.faultId + "_";
+                Set<String> faultNoticeKeys = redis.getKeys(REDIS_DATABASE_INDEX, keyPrefix);
+                long end = System.currentTimeMillis();
+                LOG.warn("redis key 查询耗时：" + (end - start) / 1000 + " ms");
+                if (faultNoticeKeys == null || faultNoticeKeys.isEmpty()) {
+                    continue;
+                }
+                for( String faultNoticeKey : faultNoticeKeys ){
+                    Map<String, Object> notice = queryNoticeMsgByRedis(faultNoticeKey);
+                    if (MapUtils.isNotEmpty(notice)) {
+                        deleteNoticeMsg(
+                                notice,
+                                time,
+                                location,
+                                noticetime);
+                        notices.add(notice);
+                        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                            LOG.info("VID[{}]按值解析EID[{}]解除", vid, faultId);
+                        });
+                    }
+                }
                 continue;
             }
 
@@ -598,6 +641,20 @@ public class FaultCodeHandler implements Serializable {
     private static final String NOTICE_STATUS = "status";
     private static final String NOTICE_LEVEL = "level";
 
+    /**
+     *
+     * @param notice
+     * @param vid
+     * @param time
+     * @param location
+     * @param exceptionId
+     * @param alarmLevel
+     * @param faultCode
+     * @param noticeTime
+     * @param faultId
+     * @param analyzeType 解析方式 1为字节解析， 2为按位解析
+     * @return
+     */
     @NotNull
     private Map<String,Object> updateNoticeMsg(
         @Nullable Map<String, Object> notice,
@@ -607,12 +664,17 @@ public class FaultCodeHandler implements Serializable {
         final String exceptionId,
         final int alarmLevel,
         final long faultCode,
-        final String noticeTime) {
+        final String noticeTime,
+        final String faultId,
+        int analyzeType) {
 
         if(MapUtils.isEmpty(notice)) {
+            String msgId = UUID.randomUUID().toString();
+            String msgType = "FAULT_CODE_ALARM";
+
             notice = new HashMap<>();
-            notice.put("msgType", "FAULT_CODE_ALARM");
-            notice.put("msgId", UUID.randomUUID().toString());
+            notice.put("msgType", msgType);
+            notice.put("msgId", msgId);
             notice.put("vid", vid);
         }
 
@@ -628,8 +690,34 @@ public class FaultCodeHandler implements Serializable {
         notice.put("ruleId", exceptionId);
         notice.put("faultCode", faultCode);
         notice.put("noticetime", noticeTime);
+        notice.put("faultId", faultId);
+        notice.put("analyzeType", analyzeType);
 
+        //数据缓存一份到redis， 根据解析方式生成key
+        String redisKey = null;
+        if( analyzeType == AnalyzeType.BIT ){
+            redisKey = getRedisNoticeMessageKey(vid, exceptionId);
+        }else if(analyzeType == AnalyzeType.BYTE){
+            redisKey = getRedisNoticeMessageKey(vid, faultId, faultCode);
+        }
+        redis.setString(REDIS_DATABASE_INDEX, redisKey, JsonUtils.getInstance().toJson(notice));
         return notice;
+    }
+
+    //解析方式
+    private static class AnalyzeType{
+        //按字节解析
+        public static final int BYTE = 1;
+        //按位解析
+        public static final int BIT = 2;
+    }
+
+    private String getRedisNoticeMessageKey(String vid, String faultId, long faultCode){
+        return REDIS_KEY_FAULT_NOTICE_PREFIX + vid + "_" + faultId + "_" + faultCode;
+    }
+
+    private String getRedisNoticeMessageKey(String vid, String faultId){
+        return REDIS_KEY_FAULT_NOTICE_PREFIX + vid + "_" + faultId;
     }
 
     private void deleteNoticeMsg(
@@ -642,5 +730,46 @@ public class FaultCodeHandler implements Serializable {
         notice.put("etime", time);
         notice.put("elocation", location);
         notice.put("noticetime", noticeTime);
+
+        //从redis删除对应的缓存
+        String redisKey = null;
+        int analyzeType = Integer.valueOf(notice.get("analyzeType") + "");
+        if( analyzeType == AnalyzeType.BIT ){
+            redisKey = getRedisNoticeMessageKey(notice.get("vid") + "", notice.get("ruleId") + "");
+        }else if(analyzeType == AnalyzeType.BYTE){
+            redisKey = getRedisNoticeMessageKey(notice.get("vid") + "", notice.get("faultId") + "", Long.valueOf(notice.get("faultCode")+""));
+        }
+        redis.del(REDIS_DATABASE_INDEX, redisKey);
+    }
+
+    private Map<String, Object> queryNoticeMsgByRedis(String vid, String ruleId, long faultCode){
+        String redisKey = getRedisNoticeMessageKey(vid, ruleId, faultCode);
+        return queryNoticeMsgByRedis(redisKey);
+    }
+
+    private Map<String, Object> queryNoticeMsgByRedis(String redisKey){
+        //从redis读取
+        String cacheJson = redis.getString(REDIS_DATABASE_INDEX, redisKey);
+        if( StringUtils.isEmpty(cacheJson) ){
+            return null;
+        }
+        Map<String, Object> notice = new ConcurrentHashMap<>();
+        NoticeMessage noticeMessage = JsonUtils.getInstance().fromJson(cacheJson, NoticeMessage.class);
+        notice.put("msgType", noticeMessage.getMsgType());
+        notice.put("msgId", noticeMessage.getMsgId());
+        notice.put("vid", noticeMessage.getVid());
+
+        notice.put(NOTICE_STATUS, noticeMessage.getStatus());
+        notice.put("stime", noticeMessage.getStime());
+        notice.put("slocation", noticeMessage.getSlocation());
+        notice.put(NOTICE_LEVEL, noticeMessage.getLevel());
+
+        notice.put("ruleId", noticeMessage.getRuleId());
+        notice.put("faultCode", noticeMessage.getFaultCode());
+        notice.put("noticetime", noticeMessage.getNoticeTime());
+
+        notice.put("faultId", noticeMessage.getFaultId());
+        notice.put("analyzeType", noticeMessage.getAnalyzeType());
+        return notice;
     }
 }
