@@ -119,7 +119,7 @@ public class CarRuleHandler implements InfoNotice {
 
     private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
 
-    private final CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
+    private static final CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
 
     private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
 
