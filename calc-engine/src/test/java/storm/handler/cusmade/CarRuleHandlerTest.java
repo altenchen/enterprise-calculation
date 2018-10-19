@@ -56,13 +56,7 @@ class CarRuleHandlerTest {
         CarRuleHandler.onoffRule = 0;
         CarRuleHandler.mileHopRule = 0;
         CarRuleHandler.carLockStatueChangeJudgeRule = 0;
-
-        CarRuleHandler.setLowSocJudgeNum(3);
-        CarRuleHandler.setSocAlarm(10);
-        CarRuleHandler.setLowSocIntervalMillisecond((long)5000);
-
-
-
+        
         Date date = new Date();
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
