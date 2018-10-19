@@ -121,6 +121,8 @@ public class CarRuleHandler implements InfoNotice {
 
     private static final CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
 
+    private static final CarHighSocJudge carHighSocJudge = new CarHighSocJudge();
+
     private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
 
     //以下参数可以通过读取配置文件进行重置
@@ -187,6 +189,7 @@ public class CarRuleHandler implements InfoNotice {
                 value = null;
             }
 //<<................................................从配置文件中读取SOC相关阈值..........................................>>
+            //过低SOC
             value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_FAULT_JUDGE_TIME);
             if (!StringUtils.isEmpty(value)) {
                 carLowSocJudge.setLowSocFaultIntervalMillisecond(Long.parseLong(value));
@@ -216,6 +219,39 @@ public class CarRuleHandler implements InfoNotice {
             value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC_END);
             if (!StringUtils.isEmpty(value)) {
                 carLowSocJudge.setLowSocAlarm_EndThreshold(Integer.parseInt(value));
+                value = null;
+            }
+
+            //过高SOC
+            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_HIGH_FAULT_JUDGE_TIME);
+            if (!StringUtils.isEmpty(value)) {
+                carHighSocJudge.setHighSocFaultIntervalMillisecond(Long.parseLong(value));
+                value = null;
+            }
+            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_HIGH_NORMAL_JUDGE_TIME);
+            if (!StringUtils.isEmpty(value)) {
+                carHighSocJudge.setHighSocNormalIntervalMillisecond(Long.parseLong(value));
+                value = null;
+            }
+            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_HIGH_FAULT_JUDGE_NO);
+            if (!StringUtils.isEmpty(value)) {
+                carHighSocJudge.setHighSocFaultJudgeNum(Integer.parseInt(value));
+                value = null;
+            }
+            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_HIGH_NORMAL_JUDGE_NO);
+            if (!StringUtils.isEmpty(value)) {
+                carHighSocJudge.setHighSocNormalJudgeNum(Integer.parseInt(value));
+                value = null;
+            }
+
+            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC_HIGH_START);
+            if (!StringUtils.isEmpty(value)) {
+                carHighSocJudge.setHighSocAlarm_StartThreshold(Integer.parseInt(value));
+                value = null;
+            }
+            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC_HIGH_END);
+            if (!StringUtils.isEmpty(value)) {
+                carHighSocJudge.setHighSocAlarm_EndThreshold(Integer.parseInt(value));
                 value = null;
             }
 
@@ -272,7 +308,32 @@ public class CarRuleHandler implements InfoNotice {
             carLowSocJudge.setLowSocNormalIntervalMillisecond(((int) lowSocNormalJudgeTime)*1L);
         }
 
+        Object socHighVal_Start = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.LT_ALARM_SOC_HIGH_START);
+        if (null != socHighVal_Start) {
+            carHighSocJudge.setHighSocAlarm_StartThreshold((int) socHighVal_Start);
+        }
+        Object socHighVal_End = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.LT_ALARM_SOC_HIGH_END);
+        if (null != socHighVal_End) {
+            carHighSocJudge.setHighSocAlarm_EndThreshold((int) socHighVal_End);
+        }
 
+        // soc过高开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
+        Object highSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_HIGH_FAULT_JUDGE_NO);
+        if (null != highSocFaultJudgeCount) {
+            carHighSocJudge.setHighSocFaultJudgeNum((int) highSocFaultJudgeCount);
+        }
+        Object highSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_HIGH_NORMAL_JUDGE_NO);
+        if (null != highSocNormalJudgeCount) {
+            carHighSocJudge.setHighSocNormalJudgeNum((int) highSocNormalJudgeCount);
+        }
+        Object highSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_HIGH_FAULT_JUDGE_TIME);
+        if (null != highSocFaultJudgeTime) {
+            carHighSocJudge.setHighSocFaultIntervalMillisecond(((int) highSocFaultJudgeTime)*1L);
+        }
+        Object highSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_HIGH_NORMAL_JUDGE_TIME);
+        if (null != highSocNormalJudgeTime) {
+            carHighSocJudge.setHighSocNormalIntervalMillisecond(((int) highSocNormalJudgeTime)*1L);
+        }
 
         Object nocanJugyObj = PARAMS_REDIS_UTIL.PARAMS.get("can.novalue.continue.no");
         if (null != nocanJugyObj) {
@@ -438,6 +499,10 @@ public class CarRuleHandler implements InfoNotice {
             List<Map<String, Object>> socJudges = carLowSocJudge.processFrame(data);
             if (!CollectionUtils.isEmpty(socJudges)) {
                 list.addAll(socJudges);
+            }
+            List<Map<String, Object>> socHighJudges = carHighSocJudge.processFrame(data);
+            if (!CollectionUtils.isEmpty(socHighJudges)) {
+                list.addAll(socHighJudges);
             }
         }
         if (1 == enableCanRule) {
@@ -1575,7 +1640,7 @@ public class CarRuleHandler implements InfoNotice {
     void restartInit(boolean isRestart) {
         if (isRestart) {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
-//            recorder.rebootInit(db, socRedisKeys, vidSocNotice);
+//            recorder.rebootInit(db, socHighRedisKeys, vidSocNotice);
         }
     }
 

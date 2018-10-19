@@ -28,7 +28,7 @@ public class CarHighSocJudge {
     //region<<..........................................................数据库相关配置..........................................................>>
     DataToRedis redis;
     private Recorder recorder;
-    static String socRedisKeys = "vehCache.qy.high.soc.notice";
+    static String socHighRedisKeys = "vehCache.qy.high.soc.notice";
     static int db = 6;
     //endregion
 
@@ -50,31 +50,31 @@ public class CarHighSocJudge {
 
     //region<<.........................................................6个可以配置的阈值..........................................................>>
     /**
-     * SOC过低确认帧数
+     * SOC过高确认帧数
      */
     private static int highSocFaultJudgeNum = 3;
     private static int highSocNormalJudgeNum = 1;
 
     /**
-     * SOC过低触发确认延时, 默认1分钟.
+     * SOC过高触发确认延时, 默认1分钟.
      */
-    private static Long lowSocFaultIntervalMillisecond = (long) 30000;
+    private static Long highSocFaultIntervalMillisecond = (long) 30000;
     /**
-     * SOC过低恢复确认延时, 默认1分钟.
+     * SOC过高恢复确认延时, 默认1分钟.
      */
-    private static Long lowSocNormalIntervalMillisecond = (long) 0;
+    private static Long highSocNormalIntervalMillisecond = (long) 0;
 
     /**
-     * SOC过低告警触发阈值
+     * SOC过高告警触发阈值
      */
-    private static int lowSocAlarm_StartThreshold = 10;
+    private static int highSocAlarm_StartThreshold = 90;
     /**
-     * SOC过低告警结束阈值
+     * SOC过高告警结束阈值
      */
-    private static int lowSocAlarm_EndThreshold = 20;
+    private static int highSocAlarm_EndThreshold = 80;
     //endregion
 
-    // 实例初始化代码块，从redis加载lowSoc车辆
+    // 实例初始化代码块，从redis加载highSoc车辆
     {
         redis = new DataToRedis();
         recorder = new RedisRecorder(redis);
@@ -85,7 +85,7 @@ public class CarHighSocJudge {
      * @param data 车辆数据
      * @return 如果产生低电量通知, 则填充通知, 否则为空集合.
      */
-    @NotNull
+    //@NotNull   这个的作用，有时间搞清楚。
     public List<Map<String, Object>> processFrame(@NotNull Map<String, String> data) {
 
         if (MapUtils.isEmpty(data)) {
@@ -119,111 +119,109 @@ public class CarHighSocJudge {
         }
         final int socNum = Integer.parseInt(socString);
 
-        // 检验SOC是否小于过低开始阈值
-        if (socNum < lowSocAlarm_StartThreshold) {
+        // 检验SOC是否大于过高开始阈值
+        if (socNum > highSocAlarm_StartThreshold) {
 
             //SOC正常帧数记录值清空
             vidHighNormSoc.remove(vid);
 
-            //此车之前是否SOC过低状态
-            final Map<String, Object> lowSocNotice = vidHighSocNotice.getOrDefault(vid, new TreeMap<>());
+            //此车之前是否SOC过高状态
+            final Map<String, Object> highSocNotice = vidHighSocNotice.getOrDefault(vid, new TreeMap<>());
             // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-            int status = (int)lowSocNotice.getOrDefault("status", 0);
+            int status = (int)highSocNotice.getOrDefault("status", 0);
             if (status != 0 && status != 3) {
                 return null;
             }
 
-            if(MapUtils.isEmpty(lowSocNotice)) {
-                lowSocNotice.put("msgType", NoticeType.SOC_ALARM);
-                lowSocNotice.put("msgId", UUID.randomUUID().toString());
-                lowSocNotice.put("vid", vid);
-                vidHighSocNotice.put(vid, lowSocNotice);
+            if(MapUtils.isEmpty(highSocNotice)) {
+                highSocNotice.put("msgType", NoticeType.SOC_HIGH_ALARM);
+                highSocNotice.put("msgId", UUID.randomUUID().toString());
+                highSocNotice.put("vid", vid);
+                vidHighSocNotice.put(vid, highSocNotice);
 
                 PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                    logger.info("VID[{}]SOC首帧缓存初始化", vid);
+                    logger.info("VID[{}]SOC_HIGH首帧缓存初始化", vid);
                 });
             }
 
-            //过低SOC帧数加1
-            final int lowSocCount = vidHighSocCount.getOrDefault(vid, 0) + 1;
-            vidHighSocCount.put(vid, lowSocCount);
+            //过高SOC帧数加1
+            final int highSocCount = vidHighSocCount.getOrDefault(vid, 0) + 1;
+            vidHighSocCount.put(vid, highSocCount);
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                logger.info("VID[{}]判定为SOC过低第[{}]次", vid, lowSocCount);
+                logger.info("VID[{}]判定为SOC过高第[{}]次", vid, highSocCount);
             });
 
-            // 记录连续SOC过低状态开始时的信息
-            if(1 == lowSocCount) {
-                lowSocNotice.put("stime", timeString);
-                lowSocNotice.put("location", location);
-                lowSocNotice.put("slocation", location);
-                lowSocNotice.put("sthreshold", lowSocAlarm_StartThreshold);
-                lowSocNotice.put("ssoc", socNum);
-                // 兼容性处理, 暂留
-                lowSocNotice.put("lowSocThreshold", lowSocAlarm_StartThreshold);
+            // 记录连续SOC过高状态开始时的信息
+            if(1 == highSocCount) {
+                highSocNotice.put("stime", timeString);
+                highSocNotice.put("location", location);
+                highSocNotice.put("slocation", location);
+                highSocNotice.put("sthreshold", highSocAlarm_StartThreshold);
+                highSocNotice.put("ssoc", socNum);
 
                 PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                    logger.info("VID[{}]SOC过低首帧更新", vid);
+                    logger.info("VID[{}]SOC过高首帧更新", vid);
                 });
             }
 
-            //过低soc帧数是否超过阈值
-            if(lowSocCount < highSocFaultJudgeNum) {
+            //过高soc帧数是否超过阈值
+            if(highSocCount < highSocFaultJudgeNum) {
                 return null;
             }
 
-            final Long firstLowSocTime;
+            final Long firstHighSocTime;
             try {
-                firstLowSocTime = DateUtils
+                firstHighSocTime = DateUtils
                         .parseDate(
-                                lowSocNotice.get("stime").toString(),
+                                highSocNotice.get("stime").toString(),
                                 new String[]{FormatConstant.DATE_FORMAT})
                         .getTime();
             } catch (ParseException e) {
                 logger.warn("解析开始时间异常", e);
-                lowSocNotice.put("stime", timeString);
+                highSocNotice.put("stime", timeString);
                 return null;
             }
 
             //故障时间是否超过阈值
-            if (currentTimeMillis - firstLowSocTime <= lowSocFaultIntervalMillisecond) {
+            if (currentTimeMillis - firstHighSocTime <= highSocFaultIntervalMillisecond) {
                 return null;
             }
 
-            //记录连续SOC过低状态确定时的信息
-            lowSocNotice.put("status", 1);
-            lowSocNotice.put("slazy", lowSocFaultIntervalMillisecond);
-            lowSocNotice.put("noticeTime", noticeTime);
+            //记录连续SOC过高状态确定时的信息
+            highSocNotice.put("status", 1);
+            highSocNotice.put("slazy", highSocFaultIntervalMillisecond);
+            highSocNotice.put("noticeTime", noticeTime);
 
-            //把soc过低开始通知存储到redis中
-            recorder.save(db, socRedisKeys, vid, lowSocNotice);
+            //把soc过高开始通知存储到redis中
+            recorder.save(db, socHighRedisKeys, vid, highSocNotice);
 
-            result.add(lowSocNotice);
+            result.add(highSocNotice);
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                logger.info("VID[{}]SOC异常通知发送[{}]", vid, lowSocNotice.get("msgId"));
+                logger.info("VID[{}]SOC过高异常通知发送[{}]", vid, highSocNotice.get("msgId"));
             });
             
             return result;
         } else {
 
-            //SOC过低帧数记录值清空
+            //SOC过高帧数记录值清空
             vidHighSocCount.remove(vid);
 
-            //此车之前是否为SOC过低状态
-            final Map<String, Object> normalSocNotice = vidHighSocNotice.get(vid);
-            if(null == normalSocNotice) {
+            //此车之前是否为SOC过高状态
+            final Map<String, Object> highSocNotice = vidHighSocNotice.get(vid);
+            if(null == highSocNotice) {
                 return null;
             }
 
             // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-            int status = (int)normalSocNotice.getOrDefault("status", 0);
+            int status = (int)highSocNotice.getOrDefault("status", 0);
             if (status != 1 && status != 2) {
                 return null;
             }
 
-            //检验SOC是否大于过低结束阈值
-            if (socNum < lowSocAlarm_EndThreshold){
+            //检验SOC是否小于过高结束阈值(有点绕)
+            if (socNum > highSocAlarm_EndThreshold){
                 //SOC正常帧数记录值清空
                 vidHighNormSoc.remove(vid);
                 return null;
@@ -234,18 +232,18 @@ public class CarHighSocJudge {
             vidHighNormSoc.put(vid, normalSocCount);
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                logger.info("VID[{}]判定为SOC正常第[{}]次", vid, normalSocCount);
+                logger.info("VID[{}]判定为SOC过高正常第[{}]次", vid, normalSocCount);
             });
 
             //记录首帧正常报文信息（即soc过低结束时信息）
             if(1 == normalSocCount) {
-                normalSocNotice.put("etime", timeString);
-                normalSocNotice.put("elocation", location);
-                normalSocNotice.put("ethreshold", lowSocAlarm_StartThreshold);
-                normalSocNotice.put("esoc", socNum);
+                highSocNotice.put("etime", timeString);
+                highSocNotice.put("elocation", location);
+                highSocNotice.put("ethreshold", highSocAlarm_StartThreshold);
+                highSocNotice.put("esoc", socNum);
 
                 PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                    logger.info("VID[{}]SOC正常首帧初始化", vid);
+                    logger.info("VID[{}]SOC过高正常首帧初始化", vid);
                 });
             }
 
@@ -256,31 +254,31 @@ public class CarHighSocJudge {
 
             final Long firstNormalSocTime;
             try {
-                firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
+                firstNormalSocTime = DateUtils.parseDate(highSocNotice.get("etime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
             } catch (ParseException e) {
                 logger.warn("解析结束时间异常", e);
-                normalSocNotice.put("etime", timeString);
+                highSocNotice.put("etime", timeString);
                 return result;
             }
 
             //正常时间是否超过阈值
-            if (currentTimeMillis - firstNormalSocTime <= lowSocNormalIntervalMillisecond) {
+            if (currentTimeMillis - firstNormalSocTime <= highSocNormalIntervalMillisecond) {
                 return result;
             }
 
             //记录连续SOC正常状态确定时的信息
-            normalSocNotice.put("status", 3);
-            normalSocNotice.put("elazy", lowSocNormalIntervalMillisecond);
-            normalSocNotice.put("noticeTime", noticeTime);
+            highSocNotice.put("status", 3);
+            highSocNotice.put("elazy", highSocNormalIntervalMillisecond);
+            highSocNotice.put("noticeTime", noticeTime);
 
             vidHighSocNotice.remove(vid);
-            recorder.del(db, socRedisKeys, vid);
+            recorder.del(db, socHighRedisKeys, vid);
 
             //返回soc过低结束通知
-            result.add(normalSocNotice);
+            result.add(highSocNotice);
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                logger.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
+                logger.info("VID[{}]SOC过高正常通知发送", vid, highSocNotice.get("msgId"));
             });
 
             return result;
@@ -290,64 +288,63 @@ public class CarHighSocJudge {
 
 
     /**
-     * 初始化lowSoc通知的缓存
+     * 初始化highSoc通知的缓存
      * @param isRestart
      */
     void restartInit(boolean isRestart) {
         if (isRestart) {
-            recorder.rebootInit(db, socRedisKeys, vidHighSocNotice);
+            recorder.rebootInit(db, socHighRedisKeys, vidHighSocNotice);
         }
     }
 
 
     //以下为6个可配置变量的get和set方法
-    public int getLowSocAlarm_StartThreshold() {
-        return lowSocAlarm_StartThreshold;
-    }
 
-    public void setSocLowAlarm_StartThreshold(int lowSocAlarm_StartThreshold) {
-        CarHighSocJudge.lowSocAlarm_StartThreshold = lowSocAlarm_StartThreshold;
-    }
-
-    public int getLowSocAlarm_EndThreshold() {
-        return lowSocAlarm_EndThreshold;
-    }
-
-    public void setLowSocAlarm_EndThreshold(int lowSocAlarm_EndThreshold) {
-        CarHighSocJudge.lowSocAlarm_EndThreshold = lowSocAlarm_EndThreshold;
-    }
-
-    public int getLowSocFaultJudgeNum() {
+    public static int getHighSocFaultJudgeNum() {
         return highSocFaultJudgeNum;
     }
 
-    public void setLowSocFaultJudgeNum(int lowSocFaultJudgeNum) {
-        CarHighSocJudge.highSocFaultJudgeNum = lowSocFaultJudgeNum;
+    public static void setHighSocFaultJudgeNum(int highSocFaultJudgeNum) {
+        CarHighSocJudge.highSocFaultJudgeNum = highSocFaultJudgeNum;
     }
 
-    public int getLowSocNormalJudgeNum() {
+    public static int getHighSocNormalJudgeNum() {
         return highSocNormalJudgeNum;
     }
 
-    public void setLowSocNormalJudgeNum(int lowSocNormalJudgeNum) {
-        CarHighSocJudge.highSocNormalJudgeNum = lowSocNormalJudgeNum;
+    public static void setHighSocNormalJudgeNum(int highSocNormalJudgeNum) {
+        CarHighSocJudge.highSocNormalJudgeNum = highSocNormalJudgeNum;
     }
 
-    public Long getLowSocFaultIntervalMillisecond() {
-        return lowSocFaultIntervalMillisecond;
+    public static Long getHighSocFaultIntervalMillisecond() {
+        return highSocFaultIntervalMillisecond;
     }
 
-    public void setLowSocFaultIntervalMillisecond(Long lowSocFaultIntervalMillisecond) {
-        CarHighSocJudge.lowSocFaultIntervalMillisecond = lowSocFaultIntervalMillisecond;
+    public static void setHighSocFaultIntervalMillisecond(Long highSocFaultIntervalMillisecond) {
+        CarHighSocJudge.highSocFaultIntervalMillisecond = highSocFaultIntervalMillisecond;
     }
 
-    public Long getLowSocNormalIntervalMillisecond() {
-        return lowSocNormalIntervalMillisecond;
+    public static Long getHighSocNormalIntervalMillisecond() {
+        return highSocNormalIntervalMillisecond;
     }
 
-    public void setLowSocNormalIntervalMillisecond(Long lowSocNormalIntervalMillisecond) {
-        CarHighSocJudge.lowSocNormalIntervalMillisecond = lowSocNormalIntervalMillisecond;
+    public static void setHighSocNormalIntervalMillisecond(Long highSocNormalIntervalMillisecond) {
+        CarHighSocJudge.highSocNormalIntervalMillisecond = highSocNormalIntervalMillisecond;
     }
 
+    public static int getHighSocAlarm_StartThreshold() {
+        return highSocAlarm_StartThreshold;
+    }
 
+    public static void setHighSocAlarm_StartThreshold(int highSocAlarm_StartThreshold) {
+        CarHighSocJudge.highSocAlarm_StartThreshold = highSocAlarm_StartThreshold;
+    }
+
+    public static int getHighSocAlarm_EndThreshold() {
+        return highSocAlarm_EndThreshold;
+    }
+
+    public static void setHighSocAlarm_EndThreshold(int highSocAlarm_EndThreshold) {
+        CarHighSocJudge.highSocAlarm_EndThreshold = highSocAlarm_EndThreshold;
+    }
 }

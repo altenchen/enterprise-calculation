@@ -242,7 +242,7 @@ public class CarLowSocJudge {
                 return null;
             }
 
-            //检验SOC是否大于过低结束阈值
+            //检验SOC是否大于过低结束阈值(有点绕)
             if (socNum < lowSocAlarm_EndThreshold){
                 //SOC正常帧数记录值清空
                 vidNormSoc.remove(vid);

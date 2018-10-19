@@ -344,6 +344,31 @@ public final class SysDefine {
      */
     public static final String SOC_NORMAL_JUDGE_NO = "notice.soc.normal.trigger.continue.count";
 
+    /**
+     * soc过高开始阈值
+     */
+    public static final String LT_ALARM_SOC_HIGH_START = "socHighAlarm_StartThreshold";
+    /**
+     * soc过高结束阈值
+     */
+    public static final String LT_ALARM_SOC_HIGH_END = "socHighAlarm_EndThreshold";
+
+    /**
+     * soc过高故障判断时间阈值
+     */
+    public static final String SOC_HIGH_FAULT_JUDGE_TIME = "notice.soc.high.fault.trigger.timeout.millisecond";
+    /**
+     * soc过高正常判断时间阈值
+     */
+    public static final String SOC_HIGH_NORMAL_JUDGE_TIME = "notice.soc.high.normal.trigger.timeout.millisecond";
+    /**
+     * soc过高故障帧数判断
+     */
+    public static final String SOC_HIGH_FAULT_JUDGE_NO = "notice.soc.high.fault.trigger.continue.count";
+    /**
+     * soc过高正常帧数判断
+     */
+    public static final String SOC_HIGH_NORMAL_JUDGE_NO = "notice.soc.high.normal.trigger.continue.count";
 
     /**
      * 未定位开始帧数判断

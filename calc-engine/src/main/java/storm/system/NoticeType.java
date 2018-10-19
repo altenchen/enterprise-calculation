@@ -62,6 +62,11 @@ public final class NoticeType {
     public static final String SOC_ALARM = "SOC_ALARM";
 
     /**
+     * SOC 过高通知
+     */
+    public static final String SOC_HIGH_ALARM = "SOC_HIGH_ALARM";
+
+    /**
      * 时间异常通知
      */
     public static final String TIME_EXCEPTION_VEH = "TIME_EXCEPTION_VEH";
