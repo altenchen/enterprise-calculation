@@ -2,26 +2,24 @@ package storm.handler.cusmade;
 
 import com.google.common.collect.*;
 import com.google.gson.reflect.TypeToken;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Jedis;
 import storm.cache.VehicleCache;
+import storm.extension.ObjectExtension;
 import storm.system.NoticeType;
 import storm.util.DataUtils;
 import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
 
-import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 /**
  * @author: xzp
@@ -53,9 +51,16 @@ public final class VehicleIdleHandler {
     private final Map<String, Long> vehiclePlatformReceiveTime = Maps.newHashMap();
 
     /**
-     * 车辆闲置开始通知缓存
+     * 车辆闲置状态
+     * -1   闲置结束
+     * 0    未知状态
+     * 1    闲置开始
      */
-    private final Map<String, ImmutableMap<String, String>> vehicleIdleNoticeCache = Maps.newHashMap();
+    private final Map<String, Integer> vehicleStatus = Maps.newHashMap();
+
+    private static final Integer STATUS_START = 1;
+    private static final Integer STATUS_UNKNOWN = 0;
+    private static final Integer STATUS_STOP = -1;
 
     /**
      * 车辆闲置阈值, 默认1天
@@ -67,25 +72,44 @@ public final class VehicleIdleHandler {
         return idleTimeoutMillisecond;
     }
 
-    public void setIdleTimeoutMillisecond(
-        final long idleTimeoutMillisecond) {
-
+    public void setIdleTimeoutMillisecond(final long idleTimeoutMillisecond) {
         this.idleTimeoutMillisecond = idleTimeoutMillisecond;
     }
 
-    public void initIdleNotice(
-        @NotNull final String vid,
-        @NotNull final ImmutableMap<String, String> startNotice) {
-
-        vehicleIdleNoticeCache.putIfAbsent(vid, startNotice);
-    }
-
-    public ImmutableMap<String, String> updatePlatformReceiveTime(
-        @NotNull final String vid,
+    /**
+     * 初始化平台接收时间, 只会初始化一次.
+     * 如果有持久化的闲置开始通知, 则生成闲置结束通知
+     * 更新车辆状态为闲置结束
+     * @param vehicleId 车辆标识
+     * @param platformReceiveTime 平台接收时间
+     * @return 闲置结束通知或者空字典
+     */
+    public ImmutableMap<String, String> initPlatformReceiveTime(
+        @NotNull final String vehicleId,
         final long platformReceiveTime) {
 
-        vehiclePlatformReceiveTime.compute(
-            vid,
+        if (vehiclePlatformReceiveTime.containsKey(vehicleId)) {
+            return ImmutableMap.of();
+        } else {
+            vehiclePlatformReceiveTime.put(vehicleId, platformReceiveTime);
+            return computeEndNotice(vehicleId, platformReceiveTime);
+        }
+    }
+
+    /**
+     * 更新平台接收时间
+     * 如果有持久化的闲置开始通知, 则生成闲置结束通知
+     * 更新车辆状态为闲置结束
+     * @param vehicleId 车辆标识
+     * @param platformReceiveTime 平台接收时间
+     * @return 闲置结束通知或者空字典
+     */
+    public ImmutableMap<String, String> updatePlatformReceiveTime(
+        @NotNull final String vehicleId,
+        final long platformReceiveTime) {
+
+        final Long latestPlatformReceiveTime = vehiclePlatformReceiveTime.compute(
+            vehicleId,
             (key, oldValue) -> {
                 if(null != oldValue) {
                     return Math.max(oldValue, platformReceiveTime);
@@ -94,124 +118,116 @@ public final class VehicleIdleHandler {
             }
         );
 
-        if (vehicleIdleNoticeCache.containsKey(vid)) {
-
-            final long currentTimeMillis = System.currentTimeMillis();
-            final Long latestPlatformReceiveTime = vehiclePlatformReceiveTime.get(vid);
-
-            if (currentTimeMillis - latestPlatformReceiveTime <= idleTimeoutMillisecond) {
-
-                final ImmutableMap<String, String> startNotice = vehicleIdleNoticeCache.remove(vid);
-
-                final ImmutableMap<String, String> endNotice = buildEndNotice(
-                    startNotice,
-                    vid,
-                    currentTimeMillis,
-                    latestPlatformReceiveTime,
-                    idleTimeoutMillisecond);
-
-
-                JEDIS_POOL_UTILS.useResource(jedis -> {
-
-                    jedis.select(REDIS_DATABASE_INDEX);
-                    jedis.hdel(IDLE_VEHICLE_REDIS_KEY, vid);
-                });
-
-                return new ImmutableMap.Builder<String, String>()
-                    .put(vid, JSON_UTILS.toJson(endNotice))
-                    .build();
-            }
-        }
-
-        return ImmutableMap.of();
+        return computeEndNotice(vehicleId, latestPlatformReceiveTime);
     }
 
-    @NotNull
-    public ImmutableMap<String, String> computeNotice() {
+    private ImmutableMap<String, String> computeEndNotice(
+        final @NotNull String vehicleId,
+        final Long latestPlatformReceiveTime) {
 
-        final Map<String, String> startNoticeList = Maps.newHashMap();
-        final Map<String, String> endNoticeList = Maps.newHashMap();
+        final Integer status = vehicleStatus.getOrDefault(vehicleId, STATUS_UNKNOWN);
+        if(!STATUS_STOP.equals(status)) {
 
-        final long currentTimeMillis = System.currentTimeMillis();
-        final long idleTimeoutMillisecond = this.idleTimeoutMillisecond;
+            final ImmutableMap<String, String> notice = JEDIS_POOL_UTILS.useResource(jedis -> {
 
-        vehiclePlatformReceiveTime.forEach((final String vid, final Long serverReceiveTime)->{
+                jedis.select(REDIS_DATABASE_INDEX);
 
-            if(currentTimeMillis - serverReceiveTime > idleTimeoutMillisecond) {
+                final ImmutableMap<String, String> startNotice = getNotice(jedis, vehicleId);
+                if (MapUtils.isNotEmpty(startNotice)) {
 
-                if(!vehicleIdleNoticeCache.containsKey(vid)) {
-                    final boolean noticeExists = noticeExists(vid);
-                    if (noticeExists) {
-                        LOG.warn("[{}]长期离线车辆通知未加载到内存中, 尝试自动加载.", vid);
-                        final ImmutableMap<String, String> startNotice = getNotice(vid);
-                        vehicleIdleNoticeCache.put(vid, startNotice);
-                        LOG.info("[{}]长期离线车辆通知未加载到内存中, 自动加载成功.[{}]", vid, JSON_UTILS.toJson(startNotice));
-                    } else {
-                        final ImmutableMap<String, String> startNotice = buildStartNotice(
-                            vid,
-                            currentTimeMillis,
-                            serverReceiveTime,
-                            idleTimeoutMillisecond);
-                        vehicleIdleNoticeCache.put(vid, startNotice);
-
-                        startNoticeList.put(
-                            vid,
-                            JSON_UTILS.toJson(startNotice));
-                    }
-                }
-
-            } else {
-
-                if (vehicleIdleNoticeCache.containsKey(vid)) {
-
-                    final ImmutableMap<String, String> startNotice = vehicleIdleNoticeCache.remove(vid);
+                    final long currentTimeMillis = System.currentTimeMillis();
 
                     final ImmutableMap<String, String> endNotice = buildEndNotice(
                         startNotice,
-                        vid,
+                        vehicleId,
                         currentTimeMillis,
-                        serverReceiveTime,
+                        latestPlatformReceiveTime,
                         idleTimeoutMillisecond);
+                    jedis.hdel(IDLE_VEHICLE_REDIS_KEY, vehicleId);
 
-                    endNoticeList.put(
-                        vid,
-                        JSON_UTILS.toJson(endNotice));
+                    final String json = JSON_UTILS.toJson(endNotice);
+                    return ImmutableMap.of(vehicleId, json);
+                } else {
+                    return ImmutableMap.of();
                 }
-            }
-        });
+            });
+            vehicleStatus.put(vehicleId, STATUS_STOP);
+            return notice;
+        } else {
+            return ImmutableMap.of();
+        }
+    }
+
+    /**
+     * 计算闲置开始通知
+     * @return 闲置开始通知字典 <vid, json>
+     */
+    @NotNull
+    public ImmutableMap<String, String> computeStartNotice() {
+
+        final ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder<>();
+
+        final long currentTimeMillis = System.currentTimeMillis();
+        final long idleTimeoutMillisecond = this.idleTimeoutMillisecond;
 
         JEDIS_POOL_UTILS.useResource(jedis -> {
 
             jedis.select(REDIS_DATABASE_INDEX);
 
-            endNoticeList.keySet().forEach(vid -> jedis.hdel(IDLE_VEHICLE_REDIS_KEY, vid));
+            final ImmutableSet<String> idleVehicleIds = getIdleVehicleIds(jedis);
 
-            startNoticeList.forEach((vid, json)->jedis.hset(IDLE_VEHICLE_REDIS_KEY, vid, json));
+            vehiclePlatformReceiveTime.forEach((final String vehicleId, final Long serverReceiveTime)->{
+
+                if(currentTimeMillis - serverReceiveTime > idleTimeoutMillisecond) {
+                    final Integer status = vehicleStatus.getOrDefault(vehicleId, STATUS_UNKNOWN);
+                    if (!STATUS_START.equals(status)) {
+                        if (!idleVehicleIds.contains(vehicleId)) {
+                            final ImmutableMap<String, String> startNotice = buildStartNotice(
+                                vehicleId,
+                                currentTimeMillis,
+                                serverReceiveTime,
+                                idleTimeoutMillisecond);
+                            final String json = JSON_UTILS.toJson(startNotice);
+
+                            jedis.hset(IDLE_VEHICLE_REDIS_KEY, vehicleId, json);
+
+                            builder.put(vehicleId,json);
+                        }
+                        vehicleStatus.put(vehicleId, STATUS_START);
+                    }
+                }
+            });
         });
 
-        return new ImmutableMap.Builder<String, String>()
-            .putAll(startNoticeList)
-            .putAll(endNoticeList)
-            .build();
+        return builder.build();
     }
 
-    private ImmutableMap<String, String> getNotice(@NotNull final String vid) {
-        return JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(REDIS_DATABASE_INDEX);
-            final String json = jedis.hget(IDLE_VEHICLE_REDIS_KEY, vid);
+    @NotNull
+    private ImmutableMap<String, String> getNotice(
+        @NotNull final Jedis jedis,
+        @NotNull final String vid) {
+        final String json = jedis.hget(IDLE_VEHICLE_REDIS_KEY, vid);
+        if (StringUtils.isBlank(json)) {
+            return ImmutableMap.of();
+        } else {
             final TreeMap<String, String> notice = JSON_UTILS.fromJson(
                 json,
                 TREE_MAP_STRING_STRING_TYPE);
             return ImmutableMap.copyOf(notice);
-        });
+        }
     }
 
-    private boolean noticeExists(@NotNull final String vid) {
-        return JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(REDIS_DATABASE_INDEX);
-            final Set<String> notices = jedis.hkeys(IDLE_VEHICLE_REDIS_KEY);
-            return CollectionUtils.isNotEmpty(notices) && notices.parallelStream().anyMatch(vehicleId -> StringUtils.equals(vehicleId, vid));
-        });
+    @NotNull
+    private ImmutableSet<String> getIdleVehicleIds(
+        @NotNull final Jedis jedis) {
+
+        final Set<String> vehicleIds = jedis.hkeys(IDLE_VEHICLE_REDIS_KEY);
+        return ImmutableSet.copyOf(
+            ObjectExtension.defaultIfNull(
+                vehicleIds,
+                ImmutableSet::of
+            )
+        );
     }
 
     @NotNull
