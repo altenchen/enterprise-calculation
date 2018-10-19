@@ -56,7 +56,7 @@ class CarRuleHandlerTest {
         CarRuleHandler.onoffRule = 0;
         CarRuleHandler.mileHopRule = 0;
         CarRuleHandler.carLockStatueChangeJudgeRule = 0;
-        
+
         Date date = new Date();
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
