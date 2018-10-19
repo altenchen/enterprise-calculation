@@ -319,9 +319,13 @@ public final class SysDefine {
     public static final String RULE_OVERRIDE_VALUE_JILI = "jili";
 
     /**
-     * soc过低阈值
+     * soc过低开始阈值
      */
-    public static final String LT_ALARM_SOC = "lt.alarm.soc";
+    public static final String LT_ALARM_SOC_START = "socLowAlarm_StartThreshold";
+    /**
+     * soc过低结束阈值
+     */
+    public static final String LT_ALARM_SOC_END = "socLowAlarm_EndThreshold";
 
     /**
      * soc故障判断时间阈值

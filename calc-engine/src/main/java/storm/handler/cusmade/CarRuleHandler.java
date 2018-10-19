@@ -158,7 +158,7 @@ public class CarRuleHandler implements InfoNotice {
 
     private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
 
-    private final CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
+    private static final CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
 
     private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
 
@@ -225,34 +225,39 @@ public class CarRuleHandler implements InfoNotice {
                 mileHopRule = Integer.parseInt(value);
                 value = null;
             }
-
+//<<................................................从配置文件中读取SOC相关阈值..........................................>>
             value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_FAULT_JUDGE_TIME);
             if (!StringUtils.isEmpty(value)) {
-                lowSocFaultIntervalMillisecond = Long.parseLong(value);
+                carLowSocJudge.setLowSocFaultIntervalMillisecond(Long.parseLong(value));
                 value = null;
             }
             value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_NORMAL_JUDGE_TIME);
             if (!StringUtils.isEmpty(value)) {
-                lowSocNormalIntervalMillisecond = Long.parseLong(value);
+                carLowSocJudge.setLowSocNormalIntervalMillisecond(Long.parseLong(value));
                 value = null;
             }
             value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_FAULT_JUDGE_NO);
             if (!StringUtils.isEmpty(value)) {
-                lowSocFaultJudgeNum = Integer.parseInt(value);
+                carLowSocJudge.setLowSocFaultJudgeNum(Integer.parseInt(value));
                 value = null;
             }
             value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_NORMAL_JUDGE_NO);
             if (!StringUtils.isEmpty(value)) {
-                lowSocNormalJudgeNum = Integer.parseInt(value);
+                carLowSocJudge.setLowSocNormalJudgeNum(Integer.parseInt(value));
                 value = null;
             }
 
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC);
+            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC_START);
             if (!StringUtils.isEmpty(value)) {
-                socAlarm = Integer.parseInt(value);
+                carLowSocJudge.setSocLowAlarm_StartThreshold(Integer.parseInt(value));
                 value = null;
             }
+            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC_END);
+            if (!StringUtils.isEmpty(value)) {
+                carLowSocJudge.setLowSocAlarm_EndThreshold(Integer.parseInt(value));
+                value = null;
+            }
+
 
             value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.GPS_NOVALUE_CONTINUE_NO);
             if (NumberUtils.isDigits(value)) {
@@ -278,27 +283,34 @@ public class CarRuleHandler implements InfoNotice {
 
     //以下参数可以通过读取redis定时进行重新加载
     static void init() {
-        Object socVal = PARAMS_REDIS_UTIL.PARAMS.get("lt.alarm.soc");
-        if (null != socVal) {
-            socAlarm = (int) socVal;
+        //<<...................................从redis中定时读取SOC相关阈值..................................>>
+        Object socVal_Start = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.LT_ALARM_SOC_START);
+        if (null != socVal_Start) {
+            carLowSocJudge.setSocLowAlarm_StartThreshold((int) socVal_Start);
         }
+        Object socVal_End = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.LT_ALARM_SOC_END);
+        if (null != socVal_End) {
+            carLowSocJudge.setSocLowAlarm_StartThreshold((int) socVal_End);
+        }
+
         // soc过低开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
-        Object lowSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get("notice.soc.fault.trigger.continue.count");
+        Object lowSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_FAULT_JUDGE_NO);
         if (null != lowSocFaultJudgeCount) {
-            lowSocFaultJudgeNum = (int) lowSocFaultJudgeCount;
+            carLowSocJudge.setLowSocFaultJudgeNum((int) lowSocFaultJudgeCount);
         }
-        Object lowSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get("notice.soc.normal.trigger.continue.count");
+        Object lowSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_NORMAL_JUDGE_NO);
         if (null != lowSocNormalJudgeCount) {
-            lowSocNormalJudgeNum = (int) lowSocNormalJudgeCount;
+            carLowSocJudge.setLowSocNormalJudgeNum((int) lowSocNormalJudgeCount);
         }
-        Object lowSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get("notice.soc.fault.trigger.timeout.millisecond");
+        Object lowSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_FAULT_JUDGE_TIME);
         if (null != lowSocFaultJudgeTime) {
-            lowSocFaultIntervalMillisecond = ((int) lowSocFaultJudgeTime)*1L;
+            carLowSocJudge.setLowSocFaultIntervalMillisecond(((int) lowSocFaultJudgeTime)*1L);
         }
-        Object lowSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get("notice.soc.normal.trigger.timeout.millisecond");
+        Object lowSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_NORMAL_JUDGE_TIME);
         if (null != lowSocNormalJudgeTime) {
-            lowSocNormalIntervalMillisecond = ((int) lowSocNormalJudgeTime)*1L;
+            carLowSocJudge.setLowSocNormalIntervalMillisecond(((int) lowSocNormalJudgeTime)*1L);
         }
+
 
 
         Object nocanJugyObj = PARAMS_REDIS_UTIL.PARAMS.get("can.novalue.continue.no");
@@ -1897,7 +1909,7 @@ public class CarRuleHandler implements InfoNotice {
     void restartInit(boolean isRestart) {
         if (isRestart) {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
-            recorder.rebootInit(db, socRedisKeys, vidSocNotice);
+//            recorder.rebootInit(db, socRedisKeys, vidSocNotice);
         }
     }
 
