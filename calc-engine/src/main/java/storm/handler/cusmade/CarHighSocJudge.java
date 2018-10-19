@@ -1,67 +1,59 @@
 package storm.handler.cusmade;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.cache.SysRealDataCache;
 import storm.constant.FormatConstant;
-import storm.constant.RedisConstant;
 import storm.dao.DataToRedis;
-import storm.dto.FillChargeCar;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.system.DataKey;
 import storm.system.NoticeType;
-import storm.util.*;
+import storm.util.DataUtils;
+import storm.util.JsonUtils;
+import storm.util.ParamsRedisUtil;
 
 import java.text.ParseException;
 import java.util.*;
 
-import static storm.cache.VehicleCache.REDIS_DB_INDEX;
-
-public class CarLowSocJudge {
+public class CarHighSocJudge {
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
-    private static final Logger logger = LoggerFactory.getLogger(CarLowSocJudge.class);
+    private static final Logger logger = LoggerFactory.getLogger(CarHighSocJudge.class);
     private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
 
     //region<<..........................................................数据库相关配置..........................................................>>
     DataToRedis redis;
     private Recorder recorder;
-    static String socRedisKeys = "vehCache.qy.soc.notice";
+    static String socRedisKeys = "vehCache.qy.high.soc.notice";
     static int db = 6;
-    static int topn = 20;
     //endregion
 
     //region<<..........................................................3个缓存.........................................................>>
     /**
-     * SOC过低通知开始缓存
+     * SOC过高通知开始缓存
      */
-    public static Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
+    public static Map<String, Map<String, Object>> vidHighSocNotice = new HashMap<>();
 
     /**
-     * SOC 过低计数器
+     * SOC 过高计数器
      */
-    public static Map<String, Integer> vidLowSocCount = new HashMap<>();
+    public static Map<String, Integer> vidHighSocCount = new HashMap<>();
     /**
      * SOC 正常计数器
      */
-    public static Map<String, Integer> vidNormSoc = new HashMap<>();
+    public static Map<String, Integer> vidHighNormSoc = new HashMap<>();
     //endregion
 
     //region<<.........................................................6个可以配置的阈值..........................................................>>
     /**
      * SOC过低确认帧数
      */
-    private static int lowSocFaultJudgeNum = 3;
-    private static int lowSocNormalJudgeNum = 1;
+    private static int highSocFaultJudgeNum = 3;
+    private static int highSocNormalJudgeNum = 1;
 
     /**
      * SOC过低触发确认延时, 默认1分钟.
@@ -131,10 +123,10 @@ public class CarLowSocJudge {
         if (socNum < lowSocAlarm_StartThreshold) {
 
             //SOC正常帧数记录值清空
-            vidNormSoc.remove(vid);
+            vidHighNormSoc.remove(vid);
 
             //此车之前是否SOC过低状态
-            final Map<String, Object> lowSocNotice = vidSocNotice.getOrDefault(vid, new TreeMap<>());
+            final Map<String, Object> lowSocNotice = vidHighSocNotice.getOrDefault(vid, new TreeMap<>());
             // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
             int status = (int)lowSocNotice.getOrDefault("status", 0);
             if (status != 0 && status != 3) {
@@ -145,7 +137,7 @@ public class CarLowSocJudge {
                 lowSocNotice.put("msgType", NoticeType.SOC_ALARM);
                 lowSocNotice.put("msgId", UUID.randomUUID().toString());
                 lowSocNotice.put("vid", vid);
-                vidSocNotice.put(vid, lowSocNotice);
+                vidHighSocNotice.put(vid, lowSocNotice);
 
                 PARAMS_REDIS_UTIL.autoLog(vid, ()->{
                     logger.info("VID[{}]SOC首帧缓存初始化", vid);
@@ -153,8 +145,8 @@ public class CarLowSocJudge {
             }
 
             //过低SOC帧数加1
-            final int lowSocCount = vidLowSocCount.getOrDefault(vid, 0) + 1;
-            vidLowSocCount.put(vid, lowSocCount);
+            final int lowSocCount = vidHighSocCount.getOrDefault(vid, 0) + 1;
+            vidHighSocCount.put(vid, lowSocCount);
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
                 logger.info("VID[{}]判定为SOC过低第[{}]次", vid, lowSocCount);
@@ -176,7 +168,7 @@ public class CarLowSocJudge {
             }
 
             //过低soc帧数是否超过阈值
-            if(lowSocCount < lowSocFaultJudgeNum) {
+            if(lowSocCount < highSocFaultJudgeNum) {
                 return null;
             }
 
@@ -211,27 +203,15 @@ public class CarLowSocJudge {
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
                 logger.info("VID[{}]SOC异常通知发送[{}]", vid, lowSocNotice.get("msgId"));
             });
-
-            //查找附近补电车
-            try {
-                final double longitude = Double.parseDouble(NumberUtils.isNumber(longitudeString) ? longitudeString : "0") / 1000000.0;
-                final double latitude = Double.parseDouble(NumberUtils.isNumber(latitudeString) ? latitudeString : "0") / 1000000.0;
-                Map<String, Object> chargeMap = chargeCarNotice(vid, longitude, latitude);
-                if (MapUtils.isNotEmpty(chargeMap)) {
-                    result.add(chargeMap);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
+            
             return result;
         } else {
 
             //SOC过低帧数记录值清空
-            vidLowSocCount.remove(vid);
+            vidHighSocCount.remove(vid);
 
             //此车之前是否为SOC过低状态
-            final Map<String, Object> normalSocNotice = vidSocNotice.get(vid);
+            final Map<String, Object> normalSocNotice = vidHighSocNotice.get(vid);
             if(null == normalSocNotice) {
                 return null;
             }
@@ -245,13 +225,13 @@ public class CarLowSocJudge {
             //检验SOC是否大于过低结束阈值
             if (socNum < lowSocAlarm_EndThreshold){
                 //SOC正常帧数记录值清空
-                vidNormSoc.remove(vid);
+                vidHighNormSoc.remove(vid);
                 return null;
             }
 
             //正常SOC帧数加1
-            final int normalSocCount = vidNormSoc.getOrDefault(vid, 0) + 1;
-            vidNormSoc.put(vid, normalSocCount);
+            final int normalSocCount = vidHighNormSoc.getOrDefault(vid, 0) + 1;
+            vidHighNormSoc.put(vid, normalSocCount);
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
                 logger.info("VID[{}]判定为SOC正常第[{}]次", vid, normalSocCount);
@@ -270,7 +250,7 @@ public class CarLowSocJudge {
             }
 
             //正常soc帧数是否超过阈值
-            if(normalSocCount < lowSocNormalJudgeNum) {
+            if(normalSocCount < highSocNormalJudgeNum) {
                 return null;
             }
 
@@ -293,7 +273,7 @@ public class CarLowSocJudge {
             normalSocNotice.put("elazy", lowSocNormalIntervalMillisecond);
             normalSocNotice.put("noticeTime", noticeTime);
 
-            vidSocNotice.remove(vid);
+            vidHighSocNotice.remove(vid);
             recorder.del(db, socRedisKeys, vid);
 
             //返回soc过低结束通知
@@ -308,105 +288,6 @@ public class CarLowSocJudge {
     }
 
 
-    /**
-     * 查找附近补电车 保存到 redis 中
-     *
-     * @param vid
-     * @param longitude
-     * @param latitude
-     */
-    private Map<String, Object> chargeCarNotice(String vid, double longitude, double latitude) {
-        Map<String, FillChargeCar> fillvidgps = SysRealDataCache.getChargeCarCache();
-        Map<Double, FillChargeCar> chargeCarInfo = findNearFill(longitude, latitude, fillvidgps);
-
-        if (null != chargeCarInfo) {
-            Map<String, Object> chargeMap = new TreeMap<>();
-            List<Map<String, Object>> chargeCars = new LinkedList<>();
-            Map<String, String> topnCars = new TreeMap<>();
-            int cts = 0;
-            for (Map.Entry<Double, FillChargeCar> entry : chargeCarInfo.entrySet()) {
-                cts++;
-                if (cts > topn) {
-                    break;
-                }
-                double distance = entry.getKey();
-                FillChargeCar chargeCar = entry.getValue();
-
-                //save to redis map
-                Map<String, Object> jsonMap = new TreeMap<>();
-                jsonMap.put("vid", chargeCar.vid);
-                jsonMap.put("LONGITUDE", chargeCar.longitude);
-                jsonMap.put("LATITUDE", chargeCar.latitude);
-                jsonMap.put("lastOnline", chargeCar.lastOnline);
-                jsonMap.put("distance", distance);
-
-                String jsonString = GSON_UTILS.toJson(jsonMap);
-                topnCars.put("" + cts, jsonString);
-                //send to kafka map
-                Map<String, Object> kMap = new TreeMap<>();
-                kMap.put("vid", chargeCar.vid);
-                kMap.put("location", chargeCar.longitude + "," + chargeCar.latitude);
-                kMap.put("lastOnline", chargeCar.lastOnline);
-                kMap.put("gpsDis", distance);
-                kMap.put("ranking", cts);
-                kMap.put("running", chargeCar.running);
-
-                chargeCars.add(kMap);
-            }
-
-            if (topnCars.size() > 0) {
-                redis.saveMap(topnCars, 2, "charge-car-" + vid);
-            }
-            if (chargeCars.size() > 0) {
-
-                chargeMap.put("vid", vid);
-                chargeMap.put("msgType", NoticeType.CHARGE_CAR_NOTICE);
-                chargeMap.put("location", longitude * 1000000 + "," + latitude * 1000000);
-                chargeMap.put("fillChargeCars", chargeCars);
-                return chargeMap;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 查找附件补电车
-     *
-     * @param longitude  经度
-     * @param latitude   纬度
-     * @param fillvidgps 缓存的补电车 vid [经度，纬度]
-     * @return 距离， 补电车
-     */
-    private Map<Double, FillChargeCar> findNearFill(double longitude, double latitude, Map<String, FillChargeCar> fillvidgps) {
-        //
-        if (null == fillvidgps || fillvidgps.size() == 0) {
-            return null;
-        }
-
-        if ((0 == longitude && 0 == latitude)
-                || Math.abs(longitude) > 180
-                || Math.abs(latitude) > 180) {
-            return null;
-        }
-        /**
-         * 按照此种方式加上远近排名的话可能会有 bug,
-         * 此方法假设 任意两点的 车子gps距离 的double值不可能相等
-         * 出现的 概率极低，暂时忽略
-         */
-
-        Map<Double, FillChargeCar> carSortMap = new TreeMap<>();
-
-        for (Map.Entry<String, FillChargeCar> entry : fillvidgps.entrySet()) {
-//            String fillvid = entry.getKey();
-            FillChargeCar chargeCar = entry.getValue();
-            double distance = GpsUtil.getDistance(longitude, latitude, chargeCar.longitude, chargeCar.latitude);
-            carSortMap.put(distance, chargeCar);
-        }
-        if (carSortMap.size() > 0) {
-            return carSortMap;
-        }
-        return null;
-    }
 
     /**
      * 初始化lowSoc通知的缓存
@@ -414,7 +295,7 @@ public class CarLowSocJudge {
      */
     void restartInit(boolean isRestart) {
         if (isRestart) {
-            recorder.rebootInit(db, socRedisKeys, vidSocNotice);
+            recorder.rebootInit(db, socRedisKeys, vidHighSocNotice);
         }
     }
 
@@ -425,7 +306,7 @@ public class CarLowSocJudge {
     }
 
     public void setSocLowAlarm_StartThreshold(int lowSocAlarm_StartThreshold) {
-        CarLowSocJudge.lowSocAlarm_StartThreshold = lowSocAlarm_StartThreshold;
+        CarHighSocJudge.lowSocAlarm_StartThreshold = lowSocAlarm_StartThreshold;
     }
 
     public int getLowSocAlarm_EndThreshold() {
@@ -433,23 +314,23 @@ public class CarLowSocJudge {
     }
 
     public void setLowSocAlarm_EndThreshold(int lowSocAlarm_EndThreshold) {
-        CarLowSocJudge.lowSocAlarm_EndThreshold = lowSocAlarm_EndThreshold;
+        CarHighSocJudge.lowSocAlarm_EndThreshold = lowSocAlarm_EndThreshold;
     }
 
     public int getLowSocFaultJudgeNum() {
-        return lowSocFaultJudgeNum;
+        return highSocFaultJudgeNum;
     }
 
     public void setLowSocFaultJudgeNum(int lowSocFaultJudgeNum) {
-        CarLowSocJudge.lowSocFaultJudgeNum = lowSocFaultJudgeNum;
+        CarHighSocJudge.highSocFaultJudgeNum = lowSocFaultJudgeNum;
     }
 
     public int getLowSocNormalJudgeNum() {
-        return lowSocNormalJudgeNum;
+        return highSocNormalJudgeNum;
     }
 
     public void setLowSocNormalJudgeNum(int lowSocNormalJudgeNum) {
-        CarLowSocJudge.lowSocNormalJudgeNum = lowSocNormalJudgeNum;
+        CarHighSocJudge.highSocNormalJudgeNum = lowSocNormalJudgeNum;
     }
 
     public Long getLowSocFaultIntervalMillisecond() {
@@ -457,7 +338,7 @@ public class CarLowSocJudge {
     }
 
     public void setLowSocFaultIntervalMillisecond(Long lowSocFaultIntervalMillisecond) {
-        CarLowSocJudge.lowSocFaultIntervalMillisecond = lowSocFaultIntervalMillisecond;
+        CarHighSocJudge.lowSocFaultIntervalMillisecond = lowSocFaultIntervalMillisecond;
     }
 
     public Long getLowSocNormalIntervalMillisecond() {
@@ -465,7 +346,7 @@ public class CarLowSocJudge {
     }
 
     public void setLowSocNormalIntervalMillisecond(Long lowSocNormalIntervalMillisecond) {
-        CarLowSocJudge.lowSocNormalIntervalMillisecond = lowSocNormalIntervalMillisecond;
+        CarHighSocJudge.lowSocNormalIntervalMillisecond = lowSocNormalIntervalMillisecond;
     }
 
 
