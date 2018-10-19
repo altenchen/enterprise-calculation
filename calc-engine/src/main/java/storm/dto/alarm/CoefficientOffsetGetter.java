@@ -127,12 +127,12 @@ public final class CoefficientOffsetGetter {
                     final int itemType = resultSet.getInt(6);
                     final boolean isSemaphore = 1 == itemType;
                     if (isSemaphore) {
-                        final boolean isOffsetScaleEqualZero = 0 == dataOffset.scale();
-                        if (!isOffsetScaleEqualZero) {
-                            LOG.warn("偏移系数规则[{}]:信号量偏移必须是整数", itemId);
+                        final boolean isOffsetEqualZero = 0 == dataOffset.compareTo(BigDecimal.ZERO);
+                        if (!isOffsetEqualZero) {
+                            LOG.warn("偏移系数规则[{}]:信号量偏移必须是0", itemId);
                             continue;
                         }
-                        final boolean isCoefficientEqualOne = 0 != dataCoefficient.compareTo(BigDecimal.ONE);
+                        final boolean isCoefficientEqualOne = 0 == dataCoefficient.compareTo(BigDecimal.ONE);
                         if (!isCoefficientEqualOne) {
                             LOG.warn("偏移系数规则[{}]:信号量系数必须是1", itemId);
                             continue;

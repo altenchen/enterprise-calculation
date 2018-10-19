@@ -312,6 +312,10 @@ public class AlarmBolt extends BaseRichBolt {
             return;
         }
 
+        if (!CommandType.SUBMIT_REALTIME.equals(messageType)) {
+            return;
+        }
+
         try {
             final ImmutableMap<String, String> cache = ObjectExtension.defaultIfNull(
                 vehicleCache.get(vehicleId),
@@ -320,17 +324,19 @@ public class AlarmBolt extends BaseRichBolt {
             final long platformReceiveTime;
             try {
                 platformReceiveTime = DataUtils.parsePlatformReceiveTime(data);
-                final long cacheTime = DataUtils.parsePlatformReceiveTime(cache);
-                if(platformReceiveTime < cacheTime) {
-                    LOG.warn("VID[{}]平台接收时间乱序, [{}] < [{}]", vehicleId, platformReceiveTime, cacheTime);
-                    return;
+                if(MapUtils.isNotEmpty(cache)) {
+                    final long cacheTime = DataUtils.parsePlatformReceiveTime(cache);
+                    if (platformReceiveTime < cacheTime) {
+                        LOG.warn("VID[{}]平台接收时间乱序, [{}] < [{}]", vehicleId, platformReceiveTime, cacheTime);
+                        return;
+                    }
                 }
             } catch (final ParseException e) {
                 LOG.warn("解析服务器时间异常", e);
                 return;
             }
 
-            processAlarm(input, vehicleId, data, cache, platformReceiveTime, messageType);
+            processAlarm(input, vehicleId, data, cache, platformReceiveTime);
         } catch (Exception e) {
             LOG.warn("处理报警出错[{}]", data);
         } finally {
@@ -343,12 +349,7 @@ public class AlarmBolt extends BaseRichBolt {
         @NotNull final String vehicleId,
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final ImmutableMap<String, String> cache,
-        final long platformReceiveTime,
-        @NotNull final String messageType) {
-
-        if (!CommandType.SUBMIT_REALTIME.equals(messageType)) {
-            return;
-        }
+        final long platformReceiveTime) {
 
         final String vehicleType = data.get(DataKey.VEHICLE_TYPE);
         if (StringUtils.isBlank(vehicleType)) {
