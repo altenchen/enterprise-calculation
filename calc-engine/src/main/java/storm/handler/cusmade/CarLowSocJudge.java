@@ -47,16 +47,16 @@ public class CarLowSocJudge {
     /**
      * SOC过低通知开始缓存
      */
-    private Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
+    public static Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
 
     /**
      * SOC 过低计数器
      */
-    private Map<String, Integer> vidLowSocCount = new HashMap<>();
+    public static Map<String, Integer> vidLowSocCount = new HashMap<>();
     /**
      * SOC 正常计数器
      */
-    private Map<String, Integer> vidNormSoc = new HashMap<>();
+    public static Map<String, Integer> vidNormSoc = new HashMap<>();
 
 
 //<<..........................................................6个可以配置的阈值..........................................................>>

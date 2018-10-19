@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class CarLowSocJudgeTest {
 
     @Test
-    void processFrame() {
+    void testProcessFrame() {
+        CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
+
     }
 }
