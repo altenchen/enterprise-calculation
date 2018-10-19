@@ -229,12 +229,12 @@ public final class SysDefine {
     /**
      * 告警消息 kafka 输出 topic
      */
-    public static final String KAFKA_TOPIC_ALARM = "kafka.producer.vehicle_alarm.topic";
+    public static final String VEHICLE_ALARM_TOPIC = "kafka.producer.vehicle_alarm.topic";
 
     /**
      * HBase 车辆报警状态存储 kafka 输出 topic
      */
-    public static final String KAFKA_TOPIC_ALARM_STORE = "kafka.producer.vehicle_alarm_store.topic";
+    public static final String VEHICLE_ALARM_STORE_TOPIC = "kafka.producer.vehicle_alarm_store.topic";
 
     /**
      * 围栏告警
@@ -242,9 +242,24 @@ public final class SysDefine {
     public static final String KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC = "kafka.producer.vehicle_fence_alarm.topic";
 
     /**
-     * AlarmBolt, 连续多少条报警才发送通知
+     * 触发平台报警开始需要的连续次数
      */
-    public static final String ALARM_CONTINUE_COUNTS = "alarm.continue.counts";
+    public static final String ALARM_START_TRIGGER_CONTINUE_COUNT = "alarm.start.trigger.continue.count";
+
+    /**
+     * 触发平台报警开始需要的持续时长
+     */
+    public static final String ALARM_START_TRIGGER_TIMEOUT_MILLISECOND = "alarm.start.trigger.timeout.millisecond";
+
+    /**
+     * 触发平台报警结束需要的连续次数
+     */
+    public static final String ALARM_STOP_TRIGGER_CONTINUE_COUNT = "alarm.stop.trigger.continue.count";
+
+    /**
+     * 触发平台报警结束需要的持续时长
+     */
+    public static final String ALARM_STOP_TRIGGER_TIMEOUT_MILLISECOND = "alarm.stop.trigger.timeout.millisecond";
 
     /**
      * 每隔多少时间推送一次,默认一分钟，60000毫秒。如果负数或者0代表实时推送, 单位秒.

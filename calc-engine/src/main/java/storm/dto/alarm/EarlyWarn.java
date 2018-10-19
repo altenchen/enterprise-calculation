@@ -1,177 +1,564 @@
 package storm.dto.alarm;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import storm.system.DataKey;
+import storm.util.DataUtils;
+import storm.util.function.TeFunction;
 
-import java.io.Serializable;
-import java.util.LinkedList;
-import java.util.List;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
- * @author wza
- * 预警规则获取
+ * @author 徐志鹏
+ * 平台报警规则
  */
-public class EarlyWarn implements Serializable {
+@SuppressWarnings("unused")
+public class EarlyWarn {
 
-    private static final long serialVersionUID = 1999980001L;
+    private static final Logger LOG = LoggerFactory.getLogger(EarlyWarn.class);
 
     /**
      * 规则Id
      */
-    public String ruleId;
+    public final String ruleId;
 
-    /**
-     * 规则名称
-     */
-    public String ruleName;
+    // region 组织属性
 
     /**
      * 车辆类型Id
      */
-    public String vehicleModelId;
+    public final String vehicleModelId;
 
-    /**
-     * 告警级别
-     */
-    public int levels;
+    // endregion 组织属性
 
-    /**
-     * 依赖Id
-     */
-    public String dependId;
+    // region 计算属性
+
+    // region 数值运算
 
     /**
      * 左一数据项
      */
-    public String left1DataKey;
+    public final String left1DataKey;
 
     /**
-     * 左表达式
+     * 左一数据使用之前的值
      */
-    public String leftExpression;
+    public final boolean left1UsePrev;
 
     /**
      * 左二数据项
      */
-    public String left2DataKey;
+    public final String left2DataKey;
 
     /**
-     * 中间表达式
+     * 左二数据使用之前的值
      */
-    public String middleExpression;
+    public final boolean left2UsePrev;
+
+    /**
+     * 数值运算表达式
+     */
+    public final String leftExpression;
+
+    // endregion 数值运算
+
+    // region 逻辑运算
 
     /**
      * 右一值
      */
-    public double right1Value;
+    public final String right1Value;
 
     /**
      * 右二值
      */
-    public double right2Value;
+    public String right2Value;
 
     /**
-     * 是否适用所有车型
+     * 逻辑运算表达式
      */
-    public boolean isAllCommon;
+    public final String middleExpression;
 
-    // region 暂时不生效，等前端变业务
+    // endregion 逻辑运算
 
     /**
-     * 依赖规则
+     * 运算表达式
      */
-    public List<EarlyWarn> earlyWarns;
+    public final BiFunction<
+        ImmutableMap<String, String>,
+        ImmutableMap<String, String>,
+        Boolean> function;
+
+    // endregion 计算属性
+
+    // region 约定属性
 
     /**
-     * 连续多少次开始结束报警
+     * 告警级别, 对于告警级别为 0 的规则, 使用报文中最高报警级别作为当前规则的告警级别.
      */
-    public int judgeCount = 10;
+    public final int level;
+
+    // endregion 约定属性
+
+    // region 描述属性
 
     /**
-     * 连续发生多少时间开始结束报警
+     * 规则名称, 日志和 HBase 需要
      */
-    public long judgeTime = -1;
+    public final String ruleName;
 
-    // endregion 暂时不生效，等前端变业务
+    // endregion 描述属性
 
-    public EarlyWarn(
-        final String ruleId,
-        final String ruleName,
-        final String vehicleModelId,
-        final int levels,
-        final String dependId,
-        final String left1DataKey,
-        final String leftExpression,
-        final String left2DataKey,
-        final String middleExpression,
-        final double right1Value,
-        final double right2Value) {
+    EarlyWarn(
+        @NotNull final String ruleId,
+        @Nullable final String ruleName,
+        @NotNull final String left1DataKey,
+        final boolean left1UsePrev,
+        @Nullable final String left2DataKey,
+        final boolean left2UsePrev,
+        @Nullable final String leftExpression,
+        @NotNull final String right1Value,
+        @Nullable final String right2Value,
+        @NotNull final String middleExpression,
+        final BiFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, Boolean> function,
+        final int level,
+        @Nullable final String vehicleModelId) {
 
         this.ruleId = ruleId;
         this.ruleName = ruleName;
-        this.vehicleModelId = vehicleModelId;
-        this.levels = levels;
-        this.dependId = dependId;
+
         this.left1DataKey = left1DataKey;
-        this.leftExpression = leftExpression;
+        this.left1UsePrev = left1UsePrev;
         this.left2DataKey = left2DataKey;
-        this.middleExpression = middleExpression;
+        this.left2UsePrev = left2UsePrev;
+        this.leftExpression = leftExpression;
+
         this.right1Value = right1Value;
         this.right2Value = right2Value;
+        this.middleExpression = middleExpression;
 
-        setCommon(vehicleModelId);
+        this.function = function;
+
+        this.level = level;
+
+        this.vehicleModelId = vehicleModelId;
     }
 
     /**
-     * 判断是否适用所有车型
-     * @param vehModelId
-     */
-    void setCommon(final String vehModelId) {
-        if (StringUtils.isBlank(vehModelId)
-            || "ALL".equals(vehModelId.trim())) {
-
-            this.isAllCommon = true;
-
-        } else {
-
-            this.isAllCommon = false;
-        }
-    }
-
-    // region 暂时不生效，等前端变业务
-
-    /**
-     * 此方法暂时不用，等前端业务变了以后再使用
+     * 计算平台报警规则
      *
-     * @param common
-     * @param commonCount
-     * @param count
+     * @param data  当前数据集
+     * @param cache 之前有效数据集
+     * @return true 表示符合规则, false 表示不符合规则, null 表示需要的数据项不完整
      */
-    void setJudgeCondition(boolean common, int commonCount, int count) {
-        if (common) {
-            this.judgeCount = commonCount;
+    public Boolean compute(
+        @Nullable final ImmutableMap<String, String> data,
+        @Nullable final ImmutableMap<String, String> cache) {
+
+        return function.apply(data, cache);
+    }
+
+    // region 构建函数
+
+    /**
+     * 构建平台报警函数, 如果构建参数不符合约束, 则返回 null .
+     *
+     * @param ruleId               平台报警规则标识, 用于打印日志.
+     * @param ruleName             平台报警规则名称, 用于打印日志.
+     * @param left1DataKey         左一数据项键
+     * @param left1UsePrev         左一数据项使用当前有效值还是上一次有效值
+     * @param left2DataKey         左二数据项键
+     * @param left2UsePrev         左二数据项使用当前有效值还是上一次有效值
+     * @param arithmeticExpression 算术运算表达式标记
+     * @param right1Value          右一值
+     * @param right2Value          右二值
+     * @param logicExpression      逻辑运算表达式标记
+     * @return 平台报警函数, 只需传入车辆当前数据项和上一次有效数据项, 即可计算结果,
+     * true 表示符合规则, false 表示不符合规则, null 表示需要的数据项不完整
+     */
+    @Nullable
+    public static BiFunction<
+        ImmutableMap<String, String>,
+        ImmutableMap<String, String>,
+        Boolean> buildFunction(
+
+        @NotNull final String ruleId,
+        @Nullable final String ruleName,
+        @NotNull final String left1DataKey,
+        final boolean left1UsePrev,
+        @Nullable final String left2DataKey,
+        final boolean left2UsePrev,
+        @Nullable final String arithmeticExpression,
+        @NotNull final String right1Value,
+        @Nullable final String right2Value,
+        @NotNull final String logicExpression) {
+
+        final TeFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, Integer, BigDecimal> arithmeticFunction =
+            buildArithmeticFunction(
+                ruleId,
+                ruleName,
+                left1DataKey,
+                left1UsePrev,
+                left2DataKey,
+                left2UsePrev,
+                arithmeticExpression);
+
+        if (null == arithmeticFunction) {
+            return null;
+        }
+
+        final Function<Function<Integer, BigDecimal>, Boolean> logicFunction =
+            buildLogicFunction(
+                ruleId,
+                ruleName,
+                logicExpression,
+                right1Value,
+                right2Value);
+
+        if (null == logicFunction) {
+            return null;
+        }
+
+        return (data, cache) ->
+            logicFunction.apply(scale -> {
+                final BigDecimal arithmeticValue = arithmeticFunction.apply(data, cache, scale);
+                if (null == arithmeticValue) {
+                    return null;
+                }
+                return arithmeticValue.setScale(scale, RoundingMode.HALF_UP);
+            });
+    }
+
+    // region 构建数据摘取函数
+
+    /**
+     * 构建算术运算函数
+     *
+     * @param ruleId               平台报警规则标识, 用于打印日志.
+     * @param ruleName             平台报警规则名称, 用于打印日志.
+     * @param arithmeticExpression 算术运算表达式标记
+     * @param left1DataKey         左一数据项键
+     * @param left1UsePrev         左一数据项使用当前有效值还是上一次有效值
+     * @param left2DataKey         左二数据项键
+     * @param left2UsePrev         左二数据项使用当前有效值还是上一次有效值
+     * @return 算术运算函数, 输入为实时数据获取器和缓存(上一次)数据获取器, 获取器输入为数据项的键, 输出为数据项的有效值, 如果没有有效值, 则输出 null.
+     */
+    @Nullable
+    private static TeFunction<ImmutableMap<String, String>, ImmutableMap<String, String>, Integer, BigDecimal> buildArithmeticFunction(
+
+        @NotNull final String ruleId,
+        @Nullable final String ruleName,
+        @NotNull final String left1DataKey,
+        final boolean left1UsePrev,
+        @Nullable final String left2DataKey,
+        final boolean left2UsePrev,
+        @Nullable final String arithmeticExpression) {
+
+        if (StringUtils.isBlank(left1DataKey)) {
+            LOG.error("平台报警规则[{}][{}]左一键空白, 无法构建算术运算函数.", ruleId, ruleName);
+            return null;
+        }
+
+        final BiFunction<
+            ImmutableMap<String, String>,
+            ImmutableMap<String, String>,
+            BigDecimal> firstGetter = buildDataGetter(left1DataKey, left1UsePrev);
+
+        final String none = "0";
+        if (StringUtils.isBlank(arithmeticExpression) || none.equals(arithmeticExpression)) {
+            // 没有算术运算, 直接使用左一值.
+            return (data, cache, scale) -> firstGetter.apply(data, cache);
         } else {
-            this.judgeCount = count;
+
+            if (StringUtils.isBlank(left2DataKey)) {
+                LOG.error("平台报警规则[{}][{}]左二键空白, 无法构建算术运算函数.", ruleId, ruleName);
+                return null;
+            }
+
+            final BiFunction<
+                ImmutableMap<String, String>,
+                ImmutableMap<String, String>,
+                BigDecimal> secondGetter = buildDataGetter(left2DataKey, left2UsePrev);
+
+            final TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> function =
+                buildArithmeticFunction(ruleId, ruleName, arithmeticExpression);
+
+            return (data, cache, scale) -> function.apply(
+                firstGetter.apply(data, cache),
+                secondGetter.apply(data, cache),
+                scale);
         }
     }
 
-    void setDependWarns(List<EarlyWarn> earlyWarns) {
-        this.earlyWarns = earlyWarns;
+    /**
+     * 构建数据摘取函数
+     * @param isUseCache 是否使用缓存的上一次有效值
+     * @param dataKey 数据键
+     * @return 数据摘取函数
+     */
+    @NotNull
+    @Contract(pure = true)
+    public static BiFunction<
+        ImmutableMap<String, String>,
+        ImmutableMap<String, String>,
+        BigDecimal> buildDataGetter(
+        @NotNull final String dataKey,
+        final boolean isUseCache
+    ) {
+        return (data, cache) -> buildDataGetter(dataKey).apply(isUseCache ? cache : data);
     }
 
-    void addDependWarns(EarlyWarn warn) {
-        if (null == warn) {
-            return;
-        }
+    @NotNull
+    @Contract(pure = true)
+    public static Function<
+        ImmutableMap<String, String>,
+        BigDecimal> buildDataGetter(
+        @NotNull final String dataKey
+    ) {
+        return (map) -> {
+            if(MapUtils.isNotEmpty(map)) {
+                final String itemString = map.get(dataKey);
+                if (StringUtils.isNotBlank(itemString)) {
+                    final BigDecimal itemValue = DataUtils.createBigDecimal(itemString);
+                    if(null != itemValue) {
+                        @NotNull final String vehicleModelId = StringUtils.defaultIfEmpty(
+                            map.get(DataKey.VEHICLE_TYPE),
+                            CoefficientOffsetGetter.DEFAULT);
+                        final CoefficientOffset coefficientOffset = CoefficientOffsetGetter.getCoefficientOffsetByVehicleModel(vehicleModelId, dataKey);
+                        if (null != coefficientOffset) {
+                            return coefficientOffset.compute(itemValue);
+                        }
+                        return itemValue;
+                    }
+                }
+            }
+            return null;
+        };
+    }
 
-        if (null == earlyWarns) {
-            earlyWarns = new LinkedList<>();
-        }
+    // endregion 构建数据摘取函数
 
-        if (!earlyWarns.contains(warn)) {
-            earlyWarns.add(warn);
+    // region 构建算术运算函数
+
+    /**
+     * 构建算术运算函数
+     *
+     * @param ruleId 平台报警规则标识, 用于打印日志.
+     * @param ruleName 平台报警规则名称, 用于打印日志.
+     * @param arithmeticExpression 算术运算表达式标记
+     * @return 逻辑运算函数, 输入为实时数据获取器和缓存(上一次)数据获取器, 获取器输入为数据项的键, 输出为数据项的有效值, 如果没有有效值, 则输出 null.
+     */
+    @Nullable
+    public static TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> buildArithmeticFunction(
+        @NotNull final String ruleId,
+        @Nullable final String ruleName,
+        @NotNull final String arithmeticExpression) {
+
+        switch (arithmeticExpression) {
+            // L1 + L2
+            case "1": {
+                return buildArithmeticFunctionFilter(
+                    (left1Value, left2Value, scale) -> left1Value.add(left2Value));
+            }
+            // L1 - L2
+            case "2": {
+                return buildArithmeticFunctionFilter(
+                    (left1Value, left2Value, scale) -> left1Value.subtract(left2Value));
+            }
+            // L1 * L2
+            case "3": {
+                return buildArithmeticFunctionFilter(
+                    (left1Value, left2Value, scale) -> left1Value.multiply(left2Value));
+            }
+            // L1 / L2
+            case "4": {
+                return buildArithmeticFunctionFilter(
+                    (left1Value, left2Value, scale) -> {
+                        if(0 == BigDecimal.ZERO.compareTo(left2Value)) {
+                            return null;
+                        }
+                        return left1Value.divide(
+                            left2Value,
+                            Math.max(
+                                scale,
+                                Math.max(left1Value.scale(), left2Value.scale())),
+                            BigDecimal.ROUND_HALF_UP);
+                    });
+            }
+            default:
+                LOG.error("平台报警规则[{}][{}]未识别的数值运算表达式[{}]", ruleId, ruleName, arithmeticExpression);
+                return null;
         }
     }
 
-    // endregion 暂时不生效，等前端变业务
+    @Contract(pure = true)
+    @NotNull
+    private static TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> buildArithmeticFunctionFilter(
+        @NotNull final TeFunction<BigDecimal, BigDecimal, Integer, BigDecimal> arithmeticFunction
+    ) {
 
+        return (left1Value, left2Value, scale) -> {
+            if (null == left1Value) {
+                return null;
+            }
+            if (null == left2Value) {
+                return null;
+            }
+            return arithmeticFunction.apply(left1Value, left2Value, scale);
+        };
+    }
+
+    // endregion 构建算术运算函数
+
+    // region 构建逻辑运算函数
+
+    /**
+     * 构建逻辑运算函数
+     *
+     * @param ruleId 平台报警规则标识, 用于打印日志.
+     * @param ruleName 平台报警规则名称, 用于打印日志.
+     * @param logicExpression 逻辑运算表达式标记
+     * @param right1Value 右一值
+     * @param right2Value 右二值
+     * @return 逻辑运算函数, 输入为左值获取函数且输入不能为空.
+     */
+    @Nullable
+    public static Function<Function<Integer, BigDecimal>, Boolean> buildLogicFunction(
+        @NotNull final String ruleId,
+        @Nullable final String ruleName,
+        @NotNull final String logicExpression,
+        @NotNull final String right1Value,
+        @Nullable final String right2Value) {
+
+        final BigDecimal first = DataUtils.createBigDecimal(right1Value);
+        if (null == first) {
+            LOG.error("平台报警规则[{}][{}]右一值不是小数, 无法构建逻辑运算函数.", ruleId, ruleName);
+            return null;
+        }
+
+        switch (logicExpression) {
+            // L = R1
+            case "1": {
+                return buildLogicFunctionFilter(
+                    first.scale(),
+                    leftValue -> leftValue.compareTo(first) == 0);
+            }
+            // L < R1
+            case "2": {
+                return buildLogicFunctionFilter(
+                    first.scale(),
+                    leftValue -> leftValue.compareTo(first) < 0);
+            }
+            // L <= R1
+            case "3": {
+                return buildLogicFunctionFilter(
+                    first.scale(),
+                    leftValue -> leftValue.compareTo(first) <= 0);
+            }
+            // L > R1
+            case "4": {
+                return buildLogicFunctionFilter(
+                    first.scale(),
+                    leftValue -> leftValue.compareTo(first) > 0);
+            }
+            // L >= R1
+            case "5": {
+                return buildLogicFunctionFilter(
+                    first.scale(),
+                    leftValue -> leftValue.compareTo(first) >= 0);
+            }
+            // L ∈ (R1, R2)
+            case "6": {
+
+                final BigDecimal second = DataUtils.createBigDecimal(right2Value);
+                if (null == second) {
+                    LOG.warn("平台报警规则[{}][{}]右二值无效, 无法构建数值区间逻辑表达式: L ∈ (R1, R2)", ruleId, ruleName);
+                    return null;
+                }
+                final int maxScale = Math.max(first.scale(), second.scale());
+                return buildLogicFunctionFilter(
+                    maxScale,
+                    leftValue -> (0 < leftValue.compareTo(first)) && (leftValue.compareTo(second) < 0));
+            }
+            // L ∈ [R1, R2)
+            case "7": {
+
+                final BigDecimal second = DataUtils.createBigDecimal(right2Value);
+                if (null == second) {
+                    LOG.warn("平台报警规则[{}][{}]右二值无效, 无法构建数值区间逻辑表达式: L ∈ [R1, R2)", ruleId, ruleName);
+                    return null;
+                }
+                final int maxScale = Math.max(first.scale(), second.scale());
+                return buildLogicFunctionFilter(
+                    maxScale,
+                    leftValue -> (0 <= leftValue.compareTo(first)) && (leftValue.compareTo(second) < 0));
+            }
+            // L ∈ (R1, R2]
+            case "8": {
+
+                final BigDecimal second = DataUtils.createBigDecimal(right2Value);
+                if (null == second) {
+                    LOG.warn("平台报警规则[{}][{}]右二值无效, 无法构建数值区间逻辑表达式: L ∈ (R1, R2]", ruleId, ruleName);
+                    return null;
+                }
+                final int maxScale = Math.max(first.scale(), second.scale());
+                return buildLogicFunctionFilter(
+                    maxScale,
+                    leftValue -> (0 < leftValue.compareTo(first)) && (leftValue.compareTo(second) <= 0));
+            }
+            // L ∈ [R1, R2]
+            case "9": {
+
+                final BigDecimal second = DataUtils.createBigDecimal(right2Value);
+                if (null == second) {
+                    LOG.warn("平台报警规则[{}][{}]右二值无效, 无法构建数值区间逻辑表达式: L ∈ [R1, R2]", ruleId, ruleName);
+                    return null;
+                }
+                final int maxScale = Math.max(first.scale(), second.scale());
+                return buildLogicFunctionFilter(
+                    maxScale,
+                    leftValue -> (0 <= leftValue.compareTo(first)) && (leftValue.compareTo(second) <= 0));
+            }
+            default: {
+                LOG.warn("平台报警规则[{}][{}]未识别的逻辑运算表达式[{}]", ruleId, ruleName, logicExpression);
+                return null;
+            }
+        }
+    }
+
+    @NotNull
+    @Contract(pure = true)
+    private static Function<Function<Integer, BigDecimal>, Boolean> buildLogicFunctionFilter(
+        final int scale,
+        @NotNull final Function<BigDecimal, Boolean> logicFunction
+    ) {
+
+        return arithmeticFunction ->
+        {
+            final BigDecimal leftValue = arithmeticFunction.apply(scale);
+            if (null == leftValue) {
+                return null;
+            }
+            return logicFunction.apply(leftValue);
+        };
+    }
+
+    // endregion 构建逻辑运算函数
+
+    // endregion 构建函数
+
+
+    @Override
+    public String toString() {
+        return StringUtils.defaultIfEmpty(ruleName, super.toString());
+    }
 }

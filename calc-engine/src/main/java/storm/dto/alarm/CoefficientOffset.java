@@ -1,62 +1,131 @@
 package storm.dto.alarm;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import storm.util.DataUtils;
+import storm.util.JsonUtils;
+
+import java.math.BigDecimal;
+
 /**
- * @author wza
- * 偏移系数自定义数据项
+ * @author 徐志鹏
+ * 偏移系数定义
  */
-public class CoefficientOffset {
+public final class CoefficientOffset {
+
+    @NotNull
+    private final String itemId;
+
+    @NotNull
+    private final String dataKey;
+
+    @NotNull
+    private final BigDecimal offset;
+
+    @NotNull
+    private final BigDecimal coefficient;
+
+    @NotNull
+    private final int precision;
+
+    public CoefficientOffset(
+        @NotNull final String itemId,
+        @NotNull final String dataKey,
+        @NotNull BigDecimal offset,
+        @NotNull BigDecimal coefficient,
+        final int precision) {
+
+        if(StringUtils.isBlank(dataKey)) {
+            throw new IllegalArgumentException("数据键不能为空白");
+        }
+        if(BigDecimal.ZERO.equals(coefficient)) {
+            throw new IllegalArgumentException("系数不能为0");
+        }
+        if(precision < 0) {
+            throw new IllegalArgumentException("小数精度不能为负数");
+        }
+
+        this.itemId = itemId;
+        this.dataKey = dataKey;
+        this.offset = offset;
+        this.coefficient = coefficient;
+        this.precision = precision;
+    }
+
+    @Nullable
+    public BigDecimal compute(
+        @NotNull final ImmutableMap<String, String> data) {
+
+        final String valueString = data.get(getDataKey());
+        if(!NumberUtils.isNumber(valueString)) {
+            return null;
+        }
+
+        final BigDecimal value = DataUtils.createBigDecimal(valueString);
+        if (null == value) {
+            return null;
+        }
+        return compute(value);
+    }
+
+    @NotNull
+    public BigDecimal compute(@NotNull BigDecimal value) {
+        return (value.subtract(getOffset())).divide(getCoefficient(), getPrecision(), BigDecimal.ROUND_HALF_UP);
+    }
+
+    /**
+     * 数据项标识
+     */
+    @NotNull
+    @Contract(pure = true)
+    public String getItemId() {
+        return itemId;
+    }
 
     /**
      * 数据键
      */
-    public final String dataKey;
-
-    /**
-     * 数据项类型, 0-数值 1-数组
-     */
-    public final int dataType;
+    @NotNull
+    @Contract(pure = true)
+    public String getDataKey() {
+        return dataKey;
+    }
 
     /**
      * 系数
      */
-    public final double coefficient;
+    @NotNull
+    @Contract(pure = true)
+    public BigDecimal getCoefficient() {
+        return coefficient;
+    }
 
     /**
-     * 偏移值
+     * 偏移
      */
-    public final double offset;
+    @Contract(pure = true)
+    public BigDecimal getOffset() {
+        return offset;
+    }
 
     /**
-     * 定义数据项来源, 0-全局 1-用户
+     * 精度
+     * @return
      */
-    public final int defineSource;
-
-    public CoefficientOffset(String dataKey, int dataType, double coefficient, double offset) {
-        this(dataKey, dataType, coefficient, offset, 0);
+    @Contract(pure = true)
+    public int getPrecision() {
+        return precision;
     }
 
-    public CoefficientOffset(String dataKey, int dataType, double coefficient, double offset, int defineSource) {
-        this.dataKey = dataKey;
-        this.dataType = dataType;
-        this.coefficient = coefficient;
-        this.offset = offset;
-        this.defineSource = defineSource;
+    @NotNull
+    @Override
+    public String toString() {
+        return JsonUtils.getInstance().toJson(this);
     }
 
-    public boolean isArray() {
-        return 1 == dataType;
-    }
-
-    public boolean isNumber() {
-        return 0 == dataType;
-    }
-
-    public boolean isGlobal() {
-        return 0 == defineSource;
-    }
-
-    public boolean isCustom() {
-        return 1 == defineSource;
-    }
 }
                                                   

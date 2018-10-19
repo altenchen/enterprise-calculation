@@ -33,8 +33,6 @@ public final class DelaySwitch {
 
     // region 反向区域
 
-    private static final int NEGATIVE_INIT_COUNT = -1;
-
     /**
      * 反向连续计数阈值
      */
@@ -162,5 +160,37 @@ public final class DelaySwitch {
         } else {
             continueCount = 0;
         }
+    }
+
+    /**
+     * 正向连续计数阈值
+     */
+    @Contract(pure = true)
+    public int getPositiveThreshold() {
+        return positiveThreshold;
+    }
+
+    /**
+     * 正向连续超时阈值
+     */
+    @Contract(pure = true)
+    public long getPositiveTimeout() {
+        return positiveTimeout;
+    }
+
+    /**
+     * 反向连续计数阈值
+     */
+    @Contract(pure = true)
+    public int getNegativeThreshold() {
+        return negativeThreshold;
+    }
+
+    /**
+     * 反向连续超时阈值
+     */
+    @Contract(pure = true)
+    public long getNegativeTimeout() {
+        return negativeTimeout;
     }
 }

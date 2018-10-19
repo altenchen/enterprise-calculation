@@ -45,73 +45,16 @@ public final class Conn {
 
     /**
      * 故障码按字节解析规则
-     * SELECT
-     * faultCode.id fault_id,
-     * faultCode.fault_type,
-     * faultCode.analyze_type,
-     * GROUP_CONCAT(model.id) model_num,
-     * '0' AS exception_type,
-     * faultCode.id AS exception_id,
-     * faultCode.normal_code exception_code,
-     * '0' AS response_level
-     * FROM sys_fault_code faultCode
-     * LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id
-     * LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id
-     * WHERE faultCode.is_delete = '0'
-     * AND faultCode.analyze_type = '1'
-     * GROUP BY faultCode.id
-     * UNION ALL SELECT
-     * faultCode.id fault_id,
-     * faultCode.fault_type,
-     * faultCode.analyze_type,
-     * GROUP_CONCAT(model.id) model_num,
-     * '1' AS exception_type,
-     * excep.id AS exception_id,
-     * excep.exception_code exception_code,
-     * excep.response_level AS response_level
-     * FROM sys_fault_code_exception excep
-     * LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id
-     * LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id
-     * LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id
-     * WHERE excep.is_delete = '0'
-     * AND faultCode.is_delete = '0'
-     * AND faultCode.analyze_type = '1'
-     * GROUP BY excep.id
      */
     private static String alarm_code_sql = "SELECT faultCode.id fault_id,faultCode.fault_type,faultCode.analyze_type,GROUP_CONCAT(model.id) model_num,'0' AS exception_type,faultCode.id AS exception_id,faultCode.normal_code exception_code,'0' AS response_level FROM sys_fault_code faultCode LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id WHERE faultCode.is_delete='0' AND faultCode.analyze_type='1' GROUP BY faultCode.id UNION ALL SELECT faultCode.id fault_id,faultCode.fault_type,faultCode.analyze_type,GROUP_CONCAT(model.id) model_num,'1' AS exception_type,excep.id AS exception_id,excep.exception_code exception_code,excep.response_level AS response_level FROM sys_fault_code_exception excep LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id WHERE excep.is_delete='0' AND faultCode.is_delete='0' AND faultCode.analyze_type='1' GROUP BY excep.id";
 
     /**
      * 故障码按位解析规则
-     * SELECT
-     * faultCode.id fault_id,
-     * faultCode.fault_type,
-     * faultCode.analyze_type,
-     * faultCode.param_length,
-     * GROUP_CONCAT(model.id) model_num,
-     * excep.start_point,
-     * excep.id exception_id,
-     * excep.exception_code,
-     * faultCode.threshold time_threshold,
-     * excep.response_level
-     * FROM sys_fault_code_exception excep
-     * LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id
-     * LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id
-     * LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id
-     * WHERE excep.is_delete = '0'
-     * AND faultCode.is_delete = '0'
-     * AND faultCode.analyze_type = '2'
-     * GROUP BY excep.id
      */
     private static String alarm_code_bit_sql = "SELECT faultCode.id fault_id,faultCode.fault_type,faultCode.analyze_type,faultCode.param_length,GROUP_CONCAT(model.id) model_num,excep.start_point,excep.id exception_id,excep.exception_code,faultCode.threshold time_threshold,excep.response_level FROM sys_fault_code_exception excep LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id WHERE excep.is_delete='0' AND faultCode.is_delete='0' AND faultCode.analyze_type='2' GROUP BY excep.id";
 
     /**
      * 车辆车型表
-     * SELECT
-     * veh.uuid vid,
-     * model.id modelId
-     * FROM sys_vehicle veh
-     * LEFT JOIN sys_veh_model model ON veh.veh_model_id=model.id
-     * WHERE model.id IS NOT NULL
      */
     private static String veh_model_sql = "SELECT veh.uuid vid,model.id mid FROM sys_vehicle veh LEFT JOIN sys_veh_model model ON veh.veh_model_id=model.id WHERE model.id IS NOT NULL";
 
@@ -717,6 +660,10 @@ public final class Conn {
         return rules;
     }
 
+    public static void buildPlatformAlarm() {
+
+    }
+
     /**
      * 偏移系数自定义数据项
      *
@@ -747,26 +694,22 @@ public final class Conn {
 
                 final int isArray = rs.getInt(2);
 
-                final double factor = rs.getDouble(3);
+                final double factor = NumberUtils.toDouble(rs.getString(3), 1);
 
                 final double offset = rs.getDouble(4);
 
                 final int isCustom = rs.getInt(5);
 
-                final CoefficientOffset coefficientOffset = new CoefficientOffset(
-                    // SEQ_NO, 序号
-                    sequencerNumber,
-                    // IS_ARRAY, 是否数组, 1-是数组
-                    isArray,
-                    // FACTOR, 系数
-                    factor,
-                    // OFFSET, 偏移值
-                    offset,
-                    // IS_CUSTOM, 是否为自定义字段, 1-自定义
-                    isCustom
-                );
-
-                rules.add(coefficientOffset);
+//                final CoefficientOffset coefficientOffset = new CoefficientOffset(
+//                    // SEQ_NO, 序号
+//                    sequencerNumber,
+//                    // FACTOR, 系数
+//                    factor,
+//                    // OFFSET, 偏移值
+//                    offset
+//                );
+//
+//                rules.add(coefficientOffset);
             }
             return rules;
 

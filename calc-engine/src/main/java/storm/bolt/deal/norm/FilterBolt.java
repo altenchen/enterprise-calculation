@@ -495,8 +495,6 @@ public class FilterBolt extends BaseRichBolt {
                     LOG.warn("时间解析异常", e);
                     LOG.warn("无效的服务器接收时间: [{}]", platformReceiveTimeString);
                 }
-            } else {
-                LOG.warn("空白的服务器接收时间: [{}]", platformReceiveTimeString);
             }
         }
 
@@ -513,8 +511,6 @@ public class FilterBolt extends BaseRichBolt {
                     LOG.warn("时间解析异常", e);
                     LOG.warn("无效的服务器接收时间: [{}]", totalMileageCacheTimeString);
                 }
-            } else {
-                LOG.warn("空白的服务器接收时间: [{}]", totalMileageCacheTimeString);
             }
         } catch (ExecutionException e) {
             LOG.warn("从缓存获取有效累计里程异常", e);

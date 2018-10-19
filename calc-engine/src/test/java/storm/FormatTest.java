@@ -6,6 +6,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.sun.jersey.core.util.Base64;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.jupiter.api.*;
@@ -16,6 +17,8 @@ import storm.system.SysDefine;
 import storm.topology.TopologiesByConf;
 
 import java.io.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.*;
@@ -25,7 +28,7 @@ import java.util.*;
  * @date: 2018-07-08
  * @description:
  */
-@Disabled("比较随意的各种函数验证")
+@DisplayName("格式化测试")
 final class FormatTest {
 
     @SuppressWarnings("unused")
@@ -323,8 +326,6 @@ final class FormatTest {
 
             final byte[] objectArray = byteArrayOutputStream.toByteArray();
 
-            LOG.trace("objectArray={}", new String(objectArray));
-
             final ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(objectArray);
 
             final ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
@@ -340,17 +341,49 @@ final class FormatTest {
         }
     }
 
+    @Disabled("验证装箱拆箱")
+    @Test
+    void boxDouble() {
+        final Double doubleObj = null;
+        Assertions.assertNull(doubleObj);
+
+        try {
+            final double doubleValue = doubleObj;
+            LOG.trace("doubleValue=[{}]", doubleValue);
+            Assertions.fail();
+        } catch (NullPointerException e) {
+            LOG.trace("doubleObj=[{}]", doubleObj);
+        }
+
+        final double coefficient = 0;
+        LOG.trace("coefficient = {}", coefficient);
+        Assertions.assertTrue(-Double.MIN_NORMAL < coefficient);
+        Assertions.assertTrue(coefficient < Double.MIN_NORMAL);
+        Assertions.assertEquals(0d, 0f);
+
+        final double zero = -1 / 0d;
+        LOG.trace("1d * 0 = {}", zero);
+        Assertions.assertTrue(Double.isInfinite(zero));
+        Assertions.assertEquals(Double.NEGATIVE_INFINITY, zero);
+    }
+
     private static class Person implements Serializable {
+
+        private static final long serialVersionUID = -7322732111703395160L;
 
         public String name;
 
         public Integer age;
 
-        public final String finalString = "FinalString";
+        public final String finalString = UUID.randomUUID().toString();
 
         public transient String transientString = "TransientString";
 
-        public transient final String transientFinalString = "TransientFinalString";
+        public transient final String transientFinalString = UUID.randomUUID().toString();
+
+        {
+            LOG.trace("对象初始化块");
+        }
 
         public Person() {
             LOG.trace("默认构造函数");
@@ -392,6 +425,110 @@ final class FormatTest {
         Assertions.assertEquals(true, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "xx")));
         Assertions.assertEquals(true, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "yy")));
         Assertions.assertEquals(true, set.parallelStream().anyMatch(s -> StringUtils.equals(s, "zz")));
+    }
+
+    @Disabled("验证BigDecimal特性")
+    @Test
+    void testBigDecimal() {
+        final BigDecimal _1_2345 = NumberUtils.createBigDecimal("1.2345");
+        Assertions.assertEquals(4, _1_2345.scale());
+
+        final BigDecimal _123_45 = NumberUtils.createBigDecimal("123.45");
+        Assertions.assertEquals(2, _123_45.scale());
+
+        final BigDecimal _123_450 = NumberUtils.createBigDecimal("123.450");
+        Assertions.assertEquals(3, _123_450.scale());
+
+        // 值相同 且 精度相同 的小数才相同
+        Assertions.assertNotEquals(_123_45, _123_450);
+        Assertions.assertEquals(_123_45, _123_450.stripTrailingZeros());
+
+        // 只比较值大小的话, 应当使用 compareTo 方法, 小于返回 -1, 等于返回0, 大于返回 1
+        Assertions.assertTrue(_1_2345.compareTo(_123_45) < 0);
+        Assertions.assertTrue(_1_2345.compareTo(_123_45) == -1);
+        Assertions.assertTrue(_123_45.compareTo(_1_2345) > 0);
+        Assertions.assertTrue(_123_45.compareTo(_1_2345) == 1);
+        Assertions.assertTrue(_123_45.compareTo(_123_450) == 0);
+
+        final BigDecimal _1_2345_multiply_123_45 = _1_2345.multiply(_123_450).stripTrailingZeros();
+        Assertions.assertEquals(6, _1_2345_multiply_123_45.scale());
+        Assertions.assertEquals(new BigDecimal("152.399025"), _1_2345_multiply_123_45);
+
+        final BigDecimal _0_01 = NumberUtils.createBigDecimal("0.01");
+        final BigDecimal _1_2345_divide_0_01 = _1_2345.divide(_0_01).stripTrailingZeros();
+        Assertions.assertEquals(2, _1_2345_divide_0_01.scale());
+        Assertions.assertEquals(_123_450.stripTrailingZeros(), _1_2345_divide_0_01);
+
+        final BigDecimal _2 = NumberUtils.createBigDecimal("2");
+        final BigDecimal _123_45_multiply_2 = _123_450.multiply(_2).stripTrailingZeros();
+        Assertions.assertEquals(1, _123_45_multiply_2.scale());
+
+        final BigDecimal _123_45_divide_2 = _123_450.divide(_2);
+        Assertions.assertEquals(3, _123_45_divide_2.scale());
+
+        final BigDecimal _7 = NumberUtils.createBigDecimal("7.0");
+        final BigDecimal _123_45_divide_7 = _123_450.divide(_7, RoundingMode.HALF_UP).stripTrailingZeros();
+        Assertions.assertEquals(_123_450.scale()-_7.stripTrailingZeros().scale(), _123_45_divide_7.scale());
+        Assertions.assertEquals(new BigDecimal("17.636"), _123_45_divide_7);
+
+        try {
+            _123_450.divide(_7);
+        } catch (final ArithmeticException ignored) {
+
+        }
+
+        final BigDecimal speed = new BigDecimal("120");
+        final BigDecimal soc = new BigDecimal("70");
+        final BigDecimal result = new BigDecimal("2.0");
+        final BigDecimal divide = speed.divide(soc, Math.max(result.scale(), Math.max(speed.scale(), soc.scale())), BigDecimal.ROUND_HALF_UP);
+        Assertions.assertEquals(new BigDecimal("1.7"), divide);
+    }
+
+    @Disabled("验证BigDecimal特性")
+    @Test
+    void testHashSetOnString() {
+        final String first = "123";
+        final String second = "123";
+        final String third = new String("123");
+
+        Assertions.assertSame(first, second);
+        Assertions.assertNotSame(first, third);
+        Assertions.assertNotSame(second, third);
+
+        Assertions.assertEquals(first, second);
+        Assertions.assertEquals(first, third);
+        Assertions.assertEquals(second, third);
+
+        Assertions.assertEquals(first.hashCode(), second.hashCode());
+        Assertions.assertEquals(first.hashCode(), third.hashCode());
+        Assertions.assertEquals(second.hashCode(), third.hashCode());
+
+        final HashSet<String> hashSet = Sets.newHashSet();
+
+        hashSet.add(first);
+        hashSet.remove(second);
+        Assertions.assertTrue(hashSet.isEmpty());
+
+        hashSet.add(first);
+        hashSet.remove(third);
+        Assertions.assertTrue(hashSet.isEmpty());
+
+        hashSet.add(second);
+        hashSet.remove(third);
+        Assertions.assertTrue(hashSet.isEmpty());
+    }
+
+    @Disabled("验证ImmutableSet特性")
+    @Test
+    void testImmutableSet() {
+        final ImmutableSet<String> _111 = ImmutableSet.of("1", "1", "1");
+        Assertions.assertEquals(1, _111.size());
+
+        final ImmutableSet<String> _1111 = ImmutableSet.copyOf(new String[]{"1", "1", "1", "1"});
+        Assertions.assertEquals(1, _1111.size());
+
+        final ImmutableSet<String> _11 = new ImmutableSet.Builder<String>().add("1").add("1").build();
+        Assertions.assertEquals(1, _11.size());
     }
 
     @SuppressWarnings("unused")
