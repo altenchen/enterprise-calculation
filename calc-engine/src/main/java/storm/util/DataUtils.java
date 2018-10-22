@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * @author: xzp
@@ -218,6 +219,10 @@ public final class DataUtils {
         final String platformReceiveTimeString = data.get(
             DataKey._9999_PLATFORM_RECEIVE_TIME);
 
+        if (platformReceiveTimeString == null) {
+            return 0;
+        }
+
         return parseFormatTime(platformReceiveTimeString);
     }
 
@@ -248,12 +253,12 @@ public final class DataUtils {
     /**
      * 解析格式化时间
      * @param formatTimeString 格式化时间
+     * @param defaultValue 解析失败返回的默认值
      * @return 时间数值
-     * @throws ParseException 解析异常
      */
     public static long parseFormatTime(
         @NotNull final String formatTimeString,
-        final long defaultValue) {
+        @NotNull final long defaultValue) {
 
         try {
             return DateUtils
@@ -264,10 +269,32 @@ public final class DataUtils {
                     }
                 )
                 .getTime();
-        } catch (ParseException e) {
-            LOG.warn("时间解析异常", e);
-            LOG.warn("无效的格式化时间:[{}][{}]", FormatConstant.DATE_FORMAT, formatTimeString);
+        } catch (final Exception ignore) {
             return defaultValue;
+        }
+    }
+
+    /**
+     * 解析格式化时间
+     * @param formatTimeString 格式化时间
+     * @param exceptionCallback 解析异常回调
+     * @return 时间数值
+     */
+    public static long parseFormatTime(
+        @NotNull final String formatTimeString,
+        @NotNull final Function<@NotNull ParseException, @NotNull Long> exceptionCallback) {
+
+        try {
+            return DateUtils
+                .parseDate(
+                    formatTimeString,
+                    new String[]{
+                        FormatConstant.DATE_FORMAT
+                    }
+                )
+                .getTime();
+        } catch (final ParseException e) {
+            return exceptionCallback.apply(e);
         }
     }
 
@@ -295,15 +322,38 @@ public final class DataUtils {
 
     @Nullable
     public static BigDecimal createBigDecimal(
-        @Nullable final String value) {
+        @NotNull final String value,
+        @Nullable final BigDecimal defaultValue) {
 
         try
         {
             return NumberUtils.createBigDecimal(value);
-        } catch (final Exception e) {
-            LOG.trace("转换字符串[{}]到BigDecimal异常", value);
-            LOG.debug("转换字符串到BigDecimal异常", e);
+        } catch (final NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    @Nullable
+    public static BigDecimal createBigDecimal(
+        @NotNull final String value,
+        @NotNull final Function<@NotNull NumberFormatException, @Nullable BigDecimal> exceptionCallback) {
+
+        try
+        {
+            return NumberUtils.createBigDecimal(value);
+        } catch (final NumberFormatException e) {
+            return exceptionCallback.apply(e);
+        }
+    }
+
+    @Nullable
+    @Contract("null -> null")
+    public static BigDecimal createBigDecimal(
+        @Nullable final String value) {
+
+        if (value == null) {
             return null;
         }
+        return createBigDecimal(value, (BigDecimal)null);
     }
 }
