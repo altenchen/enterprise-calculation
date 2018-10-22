@@ -159,6 +159,8 @@ public final class CarNoticeBolt extends BaseRichBolt {
         final String noticeTopic = stormConf.get(SysDefine.KAFKA_TOPIC_NOTICE).toString();
 
         kafkaStreamVehicleNoticeSender = kafkaStreamSenderBuilder.build(noticeTopic);
+
+        faultCodeHandler.setKafkaStreamVehicleNoticeSender(kafkaStreamVehicleNoticeSender);
     }
 
     private void prepareStreamReceiver() {

@@ -16,6 +16,7 @@ import storm.constant.FormatConstant;
 import storm.dao.DataToRedis;
 import storm.dto.*;
 import storm.entity.NoticeMessage;
+import storm.stream.KafkaStream;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
@@ -57,6 +58,8 @@ public class FaultCodeHandler implements Serializable {
      * 多长时间算是离线, 默认600秒
      */
     private static long offlineTimeMillisecond = 600 * 1000;
+
+    private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
 
     static {
 
@@ -132,12 +135,139 @@ public class FaultCodeHandler implements Serializable {
             synchronized (autoPullRulesLock) {
                 if(requestTime - lastPullRuleTime > dbFlushTimeSpanMillisecond) {
                     // 从数据库重新构建完整的规则
-                    rules = conn.getFaultAlarmCodes();
-                    bitRules = conn.getFaultSingleBitRules();
+                    byteRoleInspect(conn.getFaultAlarmCodes());
+//                    rules = conn.getFaultAlarmCodes();
+                    bitRuleInspect(conn.getFaultSingleBitRules());
+//                    bitRules = conn.getFaultSingleBitRules();
                     lastPullRuleTime = System.currentTimeMillis();
                 }
             }
         }
+    }
+
+    /**
+     * 按字节解析规则检查
+     * @param _rules
+     */
+    private void byteRoleInspect(Collection<FaultCodeByteRule> _rules){
+        List<FaultCodeByteRule> needRemove = new ArrayList<>();
+        for( FaultCodeByteRule rule : rules ){
+            boolean has = false;
+            for( FaultCodeByteRule newRule : _rules ){
+                if( newRule.faultId.equals(rule.faultId) ){
+                    has = true;
+                    break;
+                }
+            }
+            if( !has ){
+                //如果同步的数据中没有这条规则的话，则结束该规则的所有通知
+                needRemove.add(rule);
+            }
+        }
+        if( needRemove.isEmpty() ){
+            rules = _rules;
+            return;
+        }
+        for( FaultCodeByteRule rule : needRemove ){
+            //判断该规则是否之f前有触发报警，有的话就结束报警
+            long start = System.currentTimeMillis();
+            String keyPrefix = REDIS_KEY_FAULT_NOTICE_PREFIX + rule.faultId + "_";
+            Set<String> faultNoticeKeys = redis.getKeys(REDIS_DATABASE_INDEX, keyPrefix);
+            long end = System.currentTimeMillis();
+            LOG.warn("c redis key 查询耗时：" + (end - start) / 1000 + " ms, size : " + faultNoticeKeys);
+            if (faultNoticeKeys == null || faultNoticeKeys.isEmpty()) {
+                continue;
+            }
+            final long currentTimeMillis = System.currentTimeMillis();
+            String location = "";
+            final String noticetime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
+            for( String faultNoticeKey : faultNoticeKeys ){
+                Map<String, Object> notice = queryNoticeMsgByRedis(faultNoticeKey);
+                if (MapUtils.isNotEmpty(notice)) {
+                    deleteNoticeMsg(
+                            notice,
+                            noticetime,
+                            location,
+                            noticetime);
+                    String vid = notice.get("vid") + "";
+                    String json = JsonUtils.getInstance().toJson(notice);
+                    kafkaStreamVehicleNoticeSender.emit(vid, json);
+                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                        LOG.info("VID[{}]按值解析EID[{}]解除", vid, notice.get("faultId"));
+                    });
+                    //从当前内存删掉<faultId, notice>
+                    Map<String, Map<String, Map<String,Object>>> faults = vidByteRuleMsg.get(vid);
+                    if( !MapUtils.isEmpty(faults) && faults.containsKey(rule.faultId)){
+                        faults.remove(rule.faultId);
+                    }
+                }
+            }
+        }
+        rules = _rules;
+    }
+
+    /**
+     * 按字节解析规则检查
+     * @param _bitRules
+     */
+    private void bitRuleInspect(Map<String, Map<String, FaultTypeSingleBit>> _bitRules){
+        List<String> needRemove = new ArrayList<>();
+        for (String type : bitRules.keySet()) {
+            //如果没有这种faultType则跳过
+            if (!_bitRules.containsKey(type)) {
+                continue;
+            }
+            Map<String, FaultTypeSingleBit> memory = bitRules.get(type);
+            Map<String, FaultTypeSingleBit> newData = _bitRules.get(type);
+            for (String faultId : memory.keySet()) {
+                if (!newData.containsKey(faultId)) {
+                    //如果同步的数据中没有这条规则的话，则结束该规则的所有通知
+                    needRemove.add(faultId);
+                    break;
+                }
+            }
+        }
+        if( needRemove.isEmpty() ){
+            bitRules = _bitRules;
+            return;
+        }
+        for( String faultId : needRemove ){
+            //判断该规则是否之前有触发报警，有的话就结束报警
+            long start = System.currentTimeMillis();
+            String keyPrefix = REDIS_KEY_FAULT_NOTICE_PREFIX + faultId + "_";
+            Set<String> faultNoticeKeys = redis.getKeys(REDIS_DATABASE_INDEX, keyPrefix);
+            long end = System.currentTimeMillis();
+            LOG.warn("bitRuleInspect redis key 查询耗时：" + (end - start) / 1000 + " ms, size : " + faultNoticeKeys);
+            if (faultNoticeKeys == null || faultNoticeKeys.isEmpty()) {
+                continue;
+            }
+            final long currentTimeMillis = System.currentTimeMillis();
+            String location = "";
+            final String noticetime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
+            for( String faultNoticeKey : faultNoticeKeys ){
+                Map<String, Object> notice = queryNoticeMsgByRedis(faultNoticeKey);
+                if (MapUtils.isNotEmpty(notice)) {
+                    deleteNoticeMsg(
+                            notice,
+                            noticetime,
+                            location,
+                            noticetime);
+                    String vid = notice.get("vid") + "";
+                    String json = JsonUtils.getInstance().toJson(notice);
+                    kafkaStreamVehicleNoticeSender.emit(vid, json);
+                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
+                        LOG.info("VID[{}]按值解析EID[{}]解除", vid, notice.get("faultId"));
+                    });
+                    //从当前内存删掉<faultId, notice>
+                    Map<String, Map<String, Map<String,Object>>> faults = vidBitRuleMsg.get(vid);
+                    if( !MapUtils.isEmpty(faults) && faults.containsKey(faultId)){
+                        faults.remove(faultId);
+                    }
+                }
+            }
+        }
+
+        bitRules = _bitRules;
     }
 
     private Collection<FaultCodeByteRule> getByteRules(){
@@ -588,10 +718,10 @@ public class FaultCodeHandler implements Serializable {
             if (MapUtils.isEmpty(faultNotices)) {
                 //如果当前的内存里没有该异常通知， 则从redis查询
                 long start = System.currentTimeMillis();
-                String keyPrefix = REDIS_KEY_FAULT_NOTICE_PREFIX + vid + "_" + normalRule.faultId + "_";
+                String keyPrefix = REDIS_KEY_FAULT_NOTICE_PREFIX + normalRule.faultId + "_" + vid + "_";
                 Set<String> faultNoticeKeys = redis.getKeys(REDIS_DATABASE_INDEX, keyPrefix);
                 long end = System.currentTimeMillis();
-                LOG.warn("redis key 查询耗时：" + (end - start) / 1000 + " ms");
+                LOG.warn("byteFaultMsg redis key 查询耗时：" + (end - start) / 1000 + " ms, size : " + faultNoticeKeys);
                 if (faultNoticeKeys == null || faultNoticeKeys.isEmpty()) {
                     continue;
                 }
@@ -713,11 +843,11 @@ public class FaultCodeHandler implements Serializable {
     }
 
     private String getRedisNoticeMessageKey(String vid, String faultId, long faultCode){
-        return REDIS_KEY_FAULT_NOTICE_PREFIX + vid + "_" + faultId + "_" + faultCode;
+        return REDIS_KEY_FAULT_NOTICE_PREFIX + faultId + "_" + vid + "_" + faultCode;
     }
 
     private String getRedisNoticeMessageKey(String vid, String faultId){
-        return REDIS_KEY_FAULT_NOTICE_PREFIX + vid + "_" + faultId;
+        return REDIS_KEY_FAULT_NOTICE_PREFIX + faultId + "_" + vid;
     }
 
     private void deleteNoticeMsg(
@@ -771,5 +901,9 @@ public class FaultCodeHandler implements Serializable {
         notice.put("faultId", noticeMessage.getFaultId());
         notice.put("analyzeType", noticeMessage.getAnalyzeType());
         return notice;
+    }
+
+    public void setKafkaStreamVehicleNoticeSender(KafkaStream.Sender kafkaStreamVehicleNoticeSender) {
+        this.kafkaStreamVehicleNoticeSender = kafkaStreamVehicleNoticeSender;
     }
 }
