@@ -4,7 +4,6 @@ import com.google.common.collect.*;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.storm.Config;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -17,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Jedis;
 import storm.dto.alarm.AlarmStatus;
 import storm.dto.alarm.CoefficientOffsetGetter;
 import storm.dto.alarm.EarlyWarn;
@@ -25,7 +25,6 @@ import storm.extension.ObjectExtension;
 import storm.protocol.CommandType;
 import storm.stream.KafkaStream;
 import storm.system.DataKey;
-import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.*;
 
@@ -33,6 +32,7 @@ import java.lang.reflect.Type;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -114,8 +114,6 @@ public class AlarmBolt extends BaseRichBolt {
 
     private transient OutputCollector collector;
 
-    private transient KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
-
     private transient KafkaStream.Sender kafkaStreamVehicleAlarmSender;
 
     private transient KafkaStream.Sender kafkaStreamVehicleAlarmStoreSender;
@@ -156,7 +154,7 @@ public class AlarmBolt extends BaseRichBolt {
                             TREE_MAP_STRING_STRING_TYPE);
                         final String status = startNotice.get(AlarmStatus.NOTICE_STATUS_KEY);
                         if(AlarmStatus.NOTICE_STATUS_START.equals(status)) {
-                            return new AlarmStatus(vehicleId, ImmutableMap.copyOf(startNotice));
+                            return new AlarmStatus(vehicleId, true);
                         } else if(AlarmStatus.NOTICE_STATUS_END.equals(status)) {
                             // 顺手清理下已结束未删除的状态
                             jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
@@ -164,7 +162,7 @@ public class AlarmBolt extends BaseRichBolt {
                             LOG.warn("redis中状态未知的平台报警通知[{}]", json);
                         }
                     }
-                    return new AlarmStatus(vehicleId);
+                    return new AlarmStatus(vehicleId, false);
                 }));
     }
 
@@ -196,7 +194,7 @@ public class AlarmBolt extends BaseRichBolt {
     private void prepareStreamSender(
         @NotNull final OutputCollector collector) {
 
-        kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
+        final KafkaStream.SenderBuilder kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
 
         kafkaStreamVehicleAlarmSender = kafkaStreamSenderBuilder.build(VEHICLE_ALARM_TOPIC);
         kafkaStreamVehicleAlarmStoreSender = kafkaStreamSenderBuilder.build(VEHICLE_ALARM_STORE_TOPIC);
@@ -248,49 +246,35 @@ public class AlarmBolt extends BaseRichBolt {
                     .collect(Collectors.toSet())
             );
 
-            ruleVehicleStatus.keySet().forEach(ruleId -> {
-                if(!enableRuleIds.contains(ruleId)) {
-                    final Map<String, AlarmStatus> vehicleStatus = ruleVehicleStatus.remove(ruleId);
-                    if (MapUtils.isNotEmpty(vehicleStatus)) {
-                        vehicleStatus.forEach((vehicleId, status)->
-                            status.finishNoticeIfStarted(
-                                notice -> emitNotice(input, vehicleId, ruleId, notice))
-                        );
-                    }
-                }
-            });
-
             JEDIS_POOL_UTILS.useResource(jedis -> {
                 jedis.select(REDIS_DATABASE_INDEX);
+
+                ruleVehicleStatus.keySet().forEach(ruleId -> {
+                    if (!enableRuleIds.contains(ruleId)) {
+                        final Map<String, AlarmStatus> vehicleStatus = ruleVehicleStatus.remove(ruleId);
+                        if (MapUtils.isNotEmpty(vehicleStatus)) {
+                            vehicleStatus.forEach((vehicleId, status) ->
+                                finishNoticeIfStarted(
+                                    jedis,
+                                    buildRedisField(vehicleId, ruleId),
+                                    notice -> emitNotice(input, vehicleId, ruleId, notice))
+                            );
+                        }
+                    }
+                });
 
                 final Set<String> fields = jedis.hkeys(IDLE_VEHICLE_REDIS_KEY);
                 fields.forEach(field ->{
                     final ImmutableList<String> parts = parseRedisField(field);
-                    if(2 == parts.size()) {
-                        final String vehicleId = parts.get(0);
-                        final String ruleId = parts.get(1);
+                    if(REDIS_FIELD_PARTS_COUNT == parts.size()) {
+                        final String vehicleId = parts.get(REDIS_FIELD_PARTS_VEHICLE_ID_INDEX);
+                        final String ruleId = parts.get(REDIS_FIELD_PARTS_RULE_ID_INDEX);
 
                         if(!enableRuleIds.contains(ruleId)) {
-
-                            final String json = jedis.hget(IDLE_VEHICLE_REDIS_KEY, field);
-                            // 如果 redis 中有未结束状态, 则加载未结束状态并结束
-                            if (StringUtils.isNotBlank(json)) {
-                                final TreeMap<String, String> startNotice = JSON_UTILS.fromJson(
-                                    json,
-                                    TREE_MAP_STRING_STRING_TYPE);
-                                final String status = startNotice.get(AlarmStatus.NOTICE_STATUS_KEY);
-                                if(AlarmStatus.NOTICE_STATUS_START.equals(status)) {
-                                    final AlarmStatus alarmStatus = new AlarmStatus(vehicleId, ImmutableMap.copyOf(startNotice));
-                                    alarmStatus.finishNoticeIfStarted(notice-> emitNotice(input, vehicleId, ruleId, notice));
-                                } else if(AlarmStatus.NOTICE_STATUS_END.equals(status)) {
-                                    // 顺手清理下已结束未删除的状态
-                                    jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
-                                } else {
-                                    LOG.warn("redis中状态未知的平台报警通知[{}]", json);
-                                }
-                            } else {
-                                jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
-                            }
+                            finishNoticeIfStarted(
+                                jedis,
+                                field,
+                                notice -> emitNotice(input, vehicleId, ruleId, notice));
                         }
                     } else {
                         jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
@@ -420,6 +404,53 @@ public class AlarmBolt extends BaseRichBolt {
         }
     }
 
+    private void finishNoticeIfStarted(
+        @NotNull final Jedis jedis,
+        @NotNull final String field,
+        @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
+
+        final String json = jedis.hget(IDLE_VEHICLE_REDIS_KEY, field);
+        // 如果 redis 中有未结束状态, 则加载未结束状态并结束
+        if (StringUtils.isNotBlank(json)) {
+            final ImmutableMap<String, String> startNotice = ImmutableMap.copyOf(
+                ObjectExtension.defaultIfNull(
+                    JSON_UTILS.fromJson(
+                        json,
+                        TREE_MAP_STRING_STRING_TYPE),
+                    Maps::newHashMap
+                )
+            );
+            final String status = startNotice.get(AlarmStatus.NOTICE_STATUS_KEY);
+            if(AlarmStatus.NOTICE_STATUS_START.equals(status)) {
+                finishNoticeIfStarted(
+                    startNotice,
+                    noticeCallback
+                );
+            } else if(AlarmStatus.NOTICE_STATUS_END.equals(status)) {
+                // 顺手清理下已结束未删除的状态
+                jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
+            } else {
+                LOG.warn("redis中状态未知的平台报警通知[{}]", json);
+            }
+        } else {
+            jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
+        }
+    }
+
+    private void finishNoticeIfStarted(
+        @NotNull final ImmutableMap<String, String> startNotice,
+        @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
+        if(MapUtils.isNotEmpty(startNotice)) {
+            final Map<String, String> endNotice = Maps.newHashMap();
+            endNotice.putAll(startNotice);
+            endNotice.put("STATUS", AlarmStatus.NOTICE_STATUS_END);
+            endNotice.put("eNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()));
+            endNotice.put("reason", "rule_unable");
+
+            noticeCallback.accept(ImmutableMap.copyOf(endNotice));
+        }
+    }
+
     private void emitNotice(
         @NotNull final Tuple input,
         @NotNull final String vehicleId,
@@ -445,6 +476,10 @@ public class AlarmBolt extends BaseRichBolt {
         }
     }
 
+    private static final int REDIS_FIELD_PARTS_COUNT = 2;
+    private static final int REDIS_FIELD_PARTS_VEHICLE_ID_INDEX = 0;
+    private static final int REDIS_FIELD_PARTS_RULE_ID_INDEX = 1;
+
     @NotNull
     @Contract(pure = true)
     private String buildRedisField(
@@ -455,8 +490,10 @@ public class AlarmBolt extends BaseRichBolt {
 
     private ImmutableList<String> parseRedisField(final String field) {
         final String[] parts = StringUtils.split(field, '_');
-        if(null != parts && 2 == parts.length) {
-            return ImmutableList.of(parts[0], parts[1]);
+        if(null != parts && REDIS_FIELD_PARTS_COUNT == parts.length) {
+            return ImmutableList.of(
+                parts[REDIS_FIELD_PARTS_VEHICLE_ID_INDEX],
+                parts[REDIS_FIELD_PARTS_RULE_ID_INDEX]);
         } else {
             return ImmutableList.of();
         }
