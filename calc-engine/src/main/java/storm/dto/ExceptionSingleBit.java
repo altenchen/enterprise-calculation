@@ -16,6 +16,11 @@ public class ExceptionSingleBit {
     public final String exceptionId;
 
     /**
+     * 故障码ID
+     */
+    public final String faultId;
+
+    /**
      * 码值偏移
      */
     public final short offset;
@@ -30,10 +35,11 @@ public class ExceptionSingleBit {
      */
     public final byte level;
 
-    public ExceptionSingleBit(@NotNull String exceptionId, short offset, int lazy, byte level) {
+    public ExceptionSingleBit(@NotNull String exceptionId, short offset, int lazy, byte level, String faultId) {
         this.exceptionId = exceptionId;
         this.offset = offset;
         this.lazy = lazy;
         this.level = level;
+        this.faultId = faultId;
     }
 }

@@ -350,115 +350,118 @@ public class FilterBolt extends BaseRichBolt {
     private void executeFromKafkaGeneralStream(
         @NotNull final Tuple input,
         @NotNull final String vehicleId,
-        @NotNull final String frame) {
+        @NotNull String frame) {
+        try{
+            final Matcher matcher = MSG_REGEX.matcher(frame);
+            if (!matcher.find()) {
+                LOG.warn("无效的元组[{}] 原始数据: {}", input.toString(), frame);
+                return;
+            }
 
-        collector.ack(input);
+            final String prefix = matcher.group(1);
+            final String serialNo = matcher.group(2);
+            final String vin = matcher.group(3);
+            final String cmd = matcher.group(4);
+            final String vid = matcher.group(5);
+            final String content = matcher.group(6);
 
-        final Matcher matcher = MSG_REGEX.matcher(frame);
-        if (!matcher.find()) {
-            LOG.warn("无效的元组[{}]", input.toString());
-            return;
-        }
+            // 只处理主动发送数据
+            if(!CommandType.SUBMIT.equals(prefix)) {
+                return;
+            }
 
-        final String prefix = matcher.group(1);
-        final String serialNo = matcher.group(2);
-        final String vin = matcher.group(3);
-        final String cmd = matcher.group(4);
-        final String vid = matcher.group(5);
-        final String content = matcher.group(6);
+            if(!StringUtils.equals(vehicleId, vid)) {
+                LOG.error("分组VID[{}]与解析VID[{}]不一致 原始数据: {}", vehicleId, vid, frame);
+                return;
+            }
 
-        // 只处理主动发送数据
-        if(!CommandType.SUBMIT.equals(prefix)) {
-            return;
-        }
+            // TODO: 从黑名单模式改成白名单模式
+            if (
+                // 如果是补发数据直接忽略
+                    CommandType.SUBMIT_HISTORY.equals(cmd)
+                            // 过滤租赁点更新数据
+                            || CommandType.RENTALSTATION.equals(cmd)
+                            // 过滤充电站更新数据
+                            || CommandType.CHARGESTATION.equals(cmd)) {
+                return;
+            }
 
-        if(!StringUtils.equals(vehicleId, vid)) {
-            LOG.error("分组VID[{}]与解析VID[{}]不一致", vehicleId, vid);
-            return;
-        }
+            final Map<String, String> data = Maps.newHashMapWithExpectedSize(300);
+            data.put(DataKey.PREFIX, prefix);
+            data.put(DataKey.SERIAL_NO, serialNo);
+            data.put(DataKey.VEHICLE_NUMBER, vin);
+            data.put(DataKey.MESSAGE_TYPE, cmd);
+            data.put(DataKey.VEHICLE_ID, vid);
+            parseData(data, content);
 
-        // TODO: 从黑名单模式改成白名单模式
-        if (
-            // 如果是补发数据直接忽略
-            CommandType.SUBMIT_HISTORY.equals(cmd)
-                // 过滤租赁点更新数据
-                || CommandType.RENTALSTATION.equals(cmd)
-                // 过滤充电站更新数据
-                || CommandType.CHARGESTATION.equals(cmd)) {
-            return;
-        }
+            final boolean isRealtimeInfo = CommandType.SUBMIT_REALTIME.equals(cmd);
+            if (isRealtimeInfo) {
 
-        final Map<String, String> data = Maps.newHashMapWithExpectedSize(300);
-        data.put(DataKey.PREFIX, prefix);
-        data.put(DataKey.SERIAL_NO, serialNo);
-        data.put(DataKey.VEHICLE_NUMBER, vin);
-        data.put(DataKey.MESSAGE_TYPE, cmd);
-        data.put(DataKey.VEHICLE_ID, vid);
-        parseData(data, content);
+                // 时间异常判断
+                final Map<String, String> notice = timeOutOfRangeNotice.process(data);
+                if(MapUtils.isNotEmpty(notice)) {
 
-        final boolean isRealtimeInfo = CommandType.SUBMIT_REALTIME.equals(cmd);
-        if (isRealtimeInfo) {
+                    if(ENABLE_TIME_OUT_OF_RANGE_NOTICE) {
+                        sendNotice(vid, notice);
+                    }
+                }
 
-            // 时间异常判断
-            final Map<String, String> notice = timeOutOfRangeNotice.process(data);
-            if(MapUtils.isNotEmpty(notice)) {
+                // 判断是否充电
+                chargeProcessor.fillChargingStatus(data);
 
-                if(ENABLE_TIME_OUT_OF_RANGE_NOTICE) {
-                    sendNotice(vid, notice);
+                // 北京地标: 动力蓄电池报警标志解析存储, 见表20
+                if (NumberUtils.isDigits(data.get(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801))) {
+                    powerBatteryAlarmFlagProcessor.fillPowerBatteryAlarm(data);
+                }
+
+                // 中国国标: 通用报警标志值, 见表18
+                if (NumberUtils.isDigits(data.get(DataKey._3801_ALARM_MARK))) {
+                    alarmProcessor.fillAlarm(data);
+                }
+
+                // 北京地标: 车载终端状态解析存储, 见表23
+                if (NumberUtils.isDigits(data.get(DataKey._3110_STATUS_FLAGS))) {
+                    statusFlagsProcessor.fillStatusFlags(data);
                 }
             }
 
-            // 判断是否充电
-            chargeProcessor.fillChargingStatus(data);
+            // 增加utc字段，插入数据进入 storm 的时间, 这个值可能并不好使, 集群主机如果时间有误差的话.....
+            // TODO: 使用服务器时间取代
+            data.put(SysDefine.ONLINE_UTC, String.valueOf(System.currentTimeMillis()));
 
-            // 北京地标: 动力蓄电池报警标志解析存储, 见表20
-            if (NumberUtils.isDigits(data.get(DataKey._2801_POWER_BATTERY_ALARM_FLAG_2801))) {
-                powerBatteryAlarmFlagProcessor.fillPowerBatteryAlarm(data);
+            // 计算在线状态(10002)和平台注册通知类型(TYPE)
+            onlineProcessor.fillIsOnline(cmd, data);
+
+            // 计算时间(TIME)加入data
+            timeProcessor.fillTime(cmd, data);
+
+            MapExtension.clearNullEntry(data);
+            final ImmutableMap<String, String> immutableData = ImmutableMap.copyOf(data);
+
+            emit(input, vid, cmd, immutableData);
+
+            if (isRealtimeInfo) {
+
+                final String platformTimeString = immutableData.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+                try {
+                    final long platformTime = DataUtils.parseFormatTime(platformTimeString);
+
+                    VEHICLE_CACHE.updateUsefulCache(immutableData);
+
+                    vehicleIdleHandler.updatePlatformReceiveTime(vid, platformTime)
+                            .forEach((key, json) -> {
+                                kafkaStreamVehicleNoticeSender.emit(input, key, json);
+                            });
+
+                } catch (final Exception e) {
+                    LOG.warn("时间解析异常", e);
+                    LOG.warn("无效的服务器接收时间: [{}] 原始数据: {} {}", platformTimeString, vehicleId, JsonUtils.getInstance().toJson(data));
+                }
             }
-
-            // 中国国标: 通用报警标志值, 见表18
-            if (NumberUtils.isDigits(data.get(DataKey._3801_ALARM_MARK))) {
-                alarmProcessor.fillAlarm(data);
-            }
-
-            // 北京地标: 车载终端状态解析存储, 见表23
-            if (NumberUtils.isDigits(data.get(DataKey._3110_STATUS_FLAGS))) {
-                statusFlagsProcessor.fillStatusFlags(data);
-            }
-        }
-
-        // 增加utc字段，插入数据进入 storm 的时间, 这个值可能并不好使, 集群主机如果时间有误差的话.....
-        // TODO: 使用服务器时间取代
-        data.put(SysDefine.ONLINE_UTC, String.valueOf(System.currentTimeMillis()));
-
-        // 计算在线状态(10002)和平台注册通知类型(TYPE)
-        onlineProcessor.fillIsOnline(cmd, data);
-
-        // 计算时间(TIME)加入data
-        timeProcessor.fillTime(cmd, data);
-
-        MapExtension.clearNullEntry(data);
-        final ImmutableMap<String, String> immutableData = ImmutableMap.copyOf(data);
-
-        emit(input, vid, cmd, immutableData);
-
-        if (isRealtimeInfo) {
-
-            final String platformTimeString = immutableData.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
-            try {
-                final long platformTime = DataUtils.parseFormatTime(platformTimeString);
-
-                VEHICLE_CACHE.updateUsefulCache(immutableData);
-
-                vehicleIdleHandler.updatePlatformReceiveTime(vid, platformTime)
-                    .forEach((key, json) -> {
-                        kafkaStreamVehicleNoticeSender.emit(input, key, json);
-                    });
-
-            } catch (final ParseException e) {
-                LOG.warn("时间解析异常", e);
-                LOG.warn("无效的服务器接收时间: [{}]", platformTimeString);
-            }
+            collector.ack(input);
+        }catch (Exception e){
+            e.printStackTrace();
+            collector.fail(input);
         }
     }
 
@@ -491,9 +494,9 @@ public class FilterBolt extends BaseRichBolt {
             if (StringUtils.isNotBlank(platformReceiveTimeString)) {
                 try {
                     platformReceiveTime = DataUtils.parseFormatTime(platformReceiveTimeString);
-                } catch (final ParseException e) {
+                } catch (final Exception e) {
                     LOG.warn("时间解析异常", e);
-                    LOG.warn("无效的服务器接收时间: [{}]", platformReceiveTimeString);
+                    LOG.warn("无效的服务器接收时间: [{}] 原始数据: {} {}", platformReceiveTimeString, vehicleId, JsonUtils.getInstance().toJson(data));
                 }
             }
         }
@@ -509,7 +512,7 @@ public class FilterBolt extends BaseRichBolt {
                     platformReceiveTime = Math.max(platformReceiveTime, totalMileageCacheTime);
                 } catch (final ParseException e) {
                     LOG.warn("时间解析异常", e);
-                    LOG.warn("无效的服务器接收时间: [{}]", totalMileageCacheTimeString);
+                    LOG.warn("无效的服务器接收时间: [{}] 原始数据: {} {}", totalMileageCacheTimeString, vehicleId, JsonUtils.getInstance().toJson(data));
                 }
             }
         } catch (ExecutionException e) {

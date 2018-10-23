@@ -1,19 +1,19 @@
 package storm.dao;
 
-import java.io.Serializable;
-import java.util.*;
-
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
 import storm.util.JedisPoolUtils;
+
+import java.io.Serializable;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Redis 数据访问对象
@@ -290,4 +290,51 @@ public final class DataToRedis implements Serializable {
 
         }
     }
+
+
+    public void del(int db, String key) {
+        del(db, key, JedisPoolUtils.getInstance().getJedisPool());
+    }
+
+    public void del(int db, String key, JedisPool jedisPool) {
+        Jedis jedis = null;
+        try {
+            jedis = jedisPool.getResource();
+            jedis.select(db);
+            jedis.del(key);
+        } catch (Exception ex) {
+            LOG.error("redis 删除数据异常:" + ex.getMessage(), ex);
+        } finally {
+            if (jedis != null) {
+                jedisPool.returnResourceObject(jedis);
+            }
+
+        }
+    }
+
+    /**
+     * 模糊查询key列表
+     * @param db
+     * @param keyPrefix
+     * @return
+     */
+    public Set<String> getKeys(int db, String keyPrefix){
+        Jedis jedis = null;
+        JedisPool jedisPool = JedisPoolUtils.getInstance().getJedisPool();
+        try {
+            jedis = jedisPool.getResource();
+            jedis.select(db);
+            Set<String> keys = jedis.keys(keyPrefix + "*");
+            return keys;
+        } catch (Exception ex) {
+            LOG.error("redis 删除数据异常:" + ex.getMessage(), ex);
+        } finally {
+            if (jedis != null) {
+                jedisPool.returnResourceObject(jedis);
+            }
+
+        }
+        return null;
+    }
+
 }

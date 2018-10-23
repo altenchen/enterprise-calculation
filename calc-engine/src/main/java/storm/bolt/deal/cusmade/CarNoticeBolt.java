@@ -159,6 +159,8 @@ public final class CarNoticeBolt extends BaseRichBolt {
         final String noticeTopic = stormConf.get(SysDefine.KAFKA_TOPIC_NOTICE).toString();
 
         kafkaStreamVehicleNoticeSender = kafkaStreamSenderBuilder.build(noticeTopic);
+
+        faultCodeHandler.setKafkaStreamVehicleNoticeSender(kafkaStreamVehicleNoticeSender);
     }
 
     private void prepareStreamReceiver() {
@@ -252,92 +254,97 @@ public final class CarNoticeBolt extends BaseRichBolt {
         @NotNull final Tuple input,
         @NotNull final String vid,
         @NotNull final ImmutableMap<String, String> data) {
+        try{
+            final long currentTimeMillis = System.currentTimeMillis();
 
-        collector.ack(input);
+            // region 离线判断: 如果时间差大于离线检查时间，则进行离线检查, 如果车辆离线，则发送此车辆的所有故障码结束通知
+            if (currentTimeMillis - lastOfflineCheckTimeMillisecond >= offlineCheckSpanMillisecond) {
 
-        final long currentTimeMillis = System.currentTimeMillis();
-
-        // region 离线判断: 如果时间差大于离线检查时间，则进行离线检查, 如果车辆离线，则发送此车辆的所有故障码结束通知
-        if (currentTimeMillis - lastOfflineCheckTimeMillisecond >= offlineCheckSpanMillisecond) {
-
-            lastOfflineCheckTimeMillisecond = currentTimeMillis;
-            List<Map<String, Object>> msgs = faultCodeHandler.generateNotice(currentTimeMillis);
-
-            if (null != msgs && msgs.size() > 0) {
-                for (Map<String, Object> map : msgs) {
-                    if (null != map && map.size() > 0) {
-                        Object vid2 = map.get("vid");
-                        String json = JSON_UTILS.toJson(map);
-                        kafkaStreamVehicleNoticeSender.emit((String) vid2, json);
+                lastOfflineCheckTimeMillisecond = currentTimeMillis;
+                List<Map<String, Object>> msgs = faultCodeHandler.generateNotice(currentTimeMillis);
+                if (null != msgs && msgs.size() > 0) {
+                    for (Map<String, Object> map : msgs) {
+                        if (null != map && map.size() > 0) {
+                            Object vid2 = map.get("vid");
+                            String json = JSON_UTILS.toJson(map);
+                            kafkaStreamVehicleNoticeSender.emit((String) vid2, json);
+                        }
                     }
                 }
-            }
 
-            //检查所有车辆是否离线，离线则发送离线通知。
-            msgs = carRuleHandler.offlineMethod(currentTimeMillis);
-            if (null != msgs && msgs.size() > 0) {
-                for (Map<String, Object> map : msgs) {
-                    if (null != map && map.size() > 0) {
-                        Object vid2 = map.get("vid");
-                        String json = JSON_UTILS.toJson(map);
-                        kafkaStreamVehicleNoticeSender.emit((String) vid2, json);
+                //检查所有车辆是否离线，离线则发送离线通知。
+                msgs = carRuleHandler.offlineMethod(currentTimeMillis);
+                if (null != msgs && msgs.size() > 0) {
+                    for (Map<String, Object> map : msgs) {
+                        if (null != map && map.size() > 0) {
+                            Object vid2 = map.get("vid");
+                            String json = JSON_UTILS.toJson(map);
+                            kafkaStreamVehicleNoticeSender.emit((String) vid2, json);
+                        }
                     }
                 }
+
+                carOnOffhandler.onOffCheck("TIMEOUT", 1, currentTimeMillis, offlineTimeMillisecond);
+            }
+            // endregion
+
+            if (MapUtils.isEmpty(data)) {
+                return;
             }
 
-            carOnOffhandler.onOffCheck("TIMEOUT", 1, currentTimeMillis, offlineTimeMillisecond);
-        }
-        // endregion
-
-        if (MapUtils.isEmpty(data)) {
-            return;
-        }
-
-        PARAMS_REDIS_UTIL.autoLog(vid, () -> LOG.warn("VID[{}]进入车辆通知处理", vid));
+            PARAMS_REDIS_UTIL.autoLog(vid, () -> LOG.warn("VID[{}]进入车辆通知处理", vid));
 
 
-        // region 缓存有效状态
+            // region 缓存有效状态
 
-        VEHICLE_CACHE.updateUsefulCache(data);
+            VEHICLE_CACHE.updateUsefulCache(data);
 
-        // endregion 缓存有效状态
+            // endregion 缓存有效状态
 
-        // region 更新实时缓存
-        try {
-            final String type = data.get(DataKey.MESSAGE_TYPE);
-            if (!CommandType.SUBMIT_LINKSTATUS.equals(type)) {
-                SysRealDataCache.updateCache(data, currentTimeMillis, idleTimeoutMillisecond);
+            // region 更新实时缓存
+            try {
+                final String type = data.get(DataKey.MESSAGE_TYPE);
+                if (!CommandType.SUBMIT_LINKSTATUS.equals(type)) {
+                    SysRealDataCache.updateCache(data, currentTimeMillis, idleTimeoutMillisecond);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        // endregion
+            // endregion
 
-        //返回车辆通知,(重要)
-        //先检查规则是否启用，启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
-        List<Map<String, Object>> msgs = carRuleHandler.generateNotices(data);
-        for (Map<String, Object> map : msgs) {
-            if (null != map && map.size() > 0) {
-                String json = JSON_UTILS.toJson(map);
-                kafkaStreamVehicleNoticeSender.emit(vid, json);
-            }
-        }
-
-        final List<Map<String, Object>> faultCodeMessages = faultCodeHandler.generateNotice(data);
-        if (CollectionUtils.isNotEmpty(faultCodeMessages)) {
-            for (Map<String, Object> map : faultCodeMessages) {
+            //返回车辆通知,(重要)
+            //先检查规则是否启用，启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
+            List<Map<String, Object>> msgs = carRuleHandler.generateNotices(data);
+            for (Map<String, Object> map : msgs) {
                 if (null != map && map.size() > 0) {
                     String json = JSON_UTILS.toJson(map);
                     kafkaStreamVehicleNoticeSender.emit(vid, json);
                 }
             }
+
+            final List<Map<String, Object>> faultCodeMessages = faultCodeHandler.generateNotice(data);
+            if (CollectionUtils.isNotEmpty(faultCodeMessages)) {
+                for (Map<String, Object> map : faultCodeMessages) {
+                    if (null != map && map.size() > 0) {
+                        String json = JSON_UTILS.toJson(map);
+                        kafkaStreamVehicleNoticeSender.emit(vid, json);
+                    }
+                }
+            }
+            //如果下线了，则发送上下线的里程值
+            Map<String, Object> map = carOnOffhandler.generateNotices(data, currentTimeMillis, offlineTimeMillisecond);
+            if (null != map && map.size() > 0) {
+                String json = JSON_UTILS.toJson(map);
+                kafkaStreamVehicleNoticeSender.emit(vid, json);
+            }
+            collector.ack(input);
+        }catch (Exception e){
+            LOG.error("异常vid is {}", vid);
+            e.printStackTrace();
+            collector.fail(input);
         }
-        //如果下线了，则发送上下线的里程值
-        Map<String, Object> map = carOnOffhandler.generateNotices(data, currentTimeMillis, offlineTimeMillisecond);
-        if (null != map && map.size() > 0) {
-            String json = JSON_UTILS.toJson(map);
-            kafkaStreamVehicleNoticeSender.emit(vid, json);
-        }
+
+
     }
 
     @Override
