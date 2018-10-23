@@ -172,6 +172,27 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
         ConfigUtils.readConfigFromRedis(redis);
 
+        // 每分钟同步一次配置
+        if(currentTimeMillis - lastUpdateConfigTime > TimeUnit.MINUTES.toMillis(1)) {
+
+            lastUpdateConfigTime = currentTimeMillis;
+
+            try {
+                // 更新配置
+//                CarRuleHandler.rebulid();
+                //从配置文件中读出超时时间
+                Object idleTimeoutMillisecond = ParamsRedisUtil.getInstance().PARAMS.get(
+                    ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
+                if (null != idleTimeoutMillisecond) {
+                    this.idleTimeoutMillisecond = NumberUtils.toLong(
+                        idleTimeoutMillisecond.toString()
+                    );
+                }
+            } catch (Exception e) {
+                LOG.error("同步配置异常", e);
+            }
+        }
+
     }
 
     @SuppressWarnings("AlibabaMethodTooLong")
