@@ -1,19 +1,15 @@
 package storm.handler.cusmade;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
 import storm.constant.FormatConstant;
-import storm.constant.RedisConstant;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.handler.ctx.Recorder;
@@ -24,15 +20,17 @@ import storm.util.*;
 
 import java.text.ParseException;
 import java.util.*;
-
-import static storm.cache.VehicleCache.REDIS_DB_INDEX;
-
+/**
+ * @author 于心沼
+ * SOC过低预警
+ */
 public class CarLowSocJudge {
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
     private static final Logger logger = LoggerFactory.getLogger(CarLowSocJudge.class);
     private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
 
     //region<<..........................................................数据库相关配置..........................................................>>
+
     DataToRedis redis;
     private Recorder recorder;
     static String socRedisKeys = "vehCache.qy.soc.notice";
@@ -43,15 +41,21 @@ public class CarLowSocJudge {
     //region<<..........................................................3个缓存.........................................................>>
     /**
      * SOC过低通知开始缓存
+     * 类型：
+     * Map<vid, Map<vid,socNotice>>
      */
     public static Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
 
     /**
      * SOC 过低计数器
+     * 类型：
+     * Map<vid, soc过低帧数计数>
      */
     public static Map<String, Integer> vidLowSocCount = new HashMap<>();
     /**
      * SOC 正常计数器
+     * 类型：
+     * Map<vid, soc正常帧数计数>
      */
     public static Map<String, Integer> vidNormSoc = new HashMap<>();
     //endregion
@@ -66,9 +70,9 @@ public class CarLowSocJudge {
     /**
      * SOC过低触发确认延时, 默认1分钟.
      */
-    private static Long lowSocFaultIntervalMillisecond = (long) 30000;
+    private static Long lowSocFaultIntervalMillisecond = (long) 60000;
     /**
-     * SOC过低恢复确认延时, 默认1分钟.
+     * SOC过低恢复确认延时, 默认0秒，即立刻触发.
      */
     private static Long lowSocNormalIntervalMillisecond = (long) 0;
 
@@ -99,7 +103,6 @@ public class CarLowSocJudge {
         if (MapUtils.isEmpty(data)) {
             return null;
         }
-
         final String vid = data.get(DataKey.VEHICLE_ID);
         final String timeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
         if (StringUtils.isBlank(vid)
@@ -385,7 +388,7 @@ public class CarLowSocJudge {
 
         if ((0 == longitude && 0 == latitude)
                 || Math.abs(longitude) > 180
-                || Math.abs(latitude) > 180) {
+                || Math.abs(latitude) > 90) {
             return null;
         }
         /**
@@ -397,7 +400,6 @@ public class CarLowSocJudge {
         Map<Double, FillChargeCar> carSortMap = new TreeMap<>();
 
         for (Map.Entry<String, FillChargeCar> entry : fillvidgps.entrySet()) {
-//            String fillvid = entry.getKey();
             FillChargeCar chargeCar = entry.getValue();
             double distance = GpsUtil.getDistance(longitude, latitude, chargeCar.longitude, chargeCar.latitude);
             carSortMap.put(distance, chargeCar);
@@ -420,6 +422,7 @@ public class CarLowSocJudge {
 
 
     //以下为6个可配置变量的get和set方法
+
     public int getLowSocAlarm_StartThreshold() {
         return lowSocAlarm_StartThreshold;
     }
