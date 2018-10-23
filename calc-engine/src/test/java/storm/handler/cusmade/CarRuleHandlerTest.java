@@ -47,14 +47,22 @@ class CarRuleHandlerTest {
 
         final CarRuleHandler CarRuleHandler = new CarRuleHandler();
         //设置只开启soc的规则
-        CarRuleHandler.enableCanRule = 0;
-        CarRuleHandler.igniteRule = 0;
-        CarRuleHandler.gpsRule = 0;
-        CarRuleHandler.abnormalRule = 0;
-        CarRuleHandler.flyRule = 0;
-        CarRuleHandler.onoffRule = 0;
-        CarRuleHandler.mileHopRule = 0;
-        CarRuleHandler.carLockStatueChangeJudgeRule = 0;
+        //TODO 统一通过ConfigUtil里面的SysDefineEntity来管理所有开关状态
+//        CarRuleHandler.socRule = 1;
+//        CarRuleHandler.enableCanRule = 0;
+//        CarRuleHandler.igniteRule = 0;
+//        CarRuleHandler.gpsRule = 0;
+//        CarRuleHandler.abnormalRule = 0;
+//        CarRuleHandler.flyRule = 0;
+//        CarRuleHandler.onoffRule = 0;
+//        CarRuleHandler.mileHopRule = 0;
+//        CarRuleHandler.carLockStatueChangeJudgeRule = 0;
+
+//        CarRuleHandler.setLowSocJudgeNum(3);
+//        CarRuleHandler.setSocAlarm(10);
+//        CarRuleHandler.setLowSocIntervalMillisecond((long)5000);
+
+
 
         Date date = new Date();
         Calendar calendar = Calendar.getInstance();

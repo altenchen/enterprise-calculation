@@ -3,8 +3,6 @@ package storm.system;
 import java.util.List;
 
 public final class SysDefine {
-    public static final String TOPOLOGY_NAME = "topology.name";
-
     public static final String DB_CACHE_FLUSH_TIME_SECOND = "db.cache.flushtime";
 
     public static final String KAFKA_ZOOKEEPER_SERVERS_KEY = "kafka.zookeeper.servers";
@@ -47,62 +45,6 @@ public final class SysDefine {
      * 车辆注册通知 kafka 消费组
      */
     public static final String KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP = "kafka.consumer.vehicle_register_data.group";
-
-    /**
-     * kafka 依赖的 zookeeper 集群主机
-     */
-    public static List<String> KAFKA_ZOOKEEPER_SERVERS;
-
-    /**
-     * kafka 依赖的 zookeeper 集群端口
-     */
-    public static int KAFKA_ZOOKEEPER_PORT;
-
-    /**
-     * kafka 依赖的 zookeeper 集群
-     */
-    public static String KAFKA_ZOOKEEPER_HOSTS;
-
-    /**
-     * kafka 元数据存储在 zookeeper 的路径
-     */
-    public static String KAFKA_ZOOKEEPER_PATH;
-
-    /**
-     * kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开.
-     */
-    public static String KAFKA_BOOTSTRAP_SERVERS;
-
-    /**
-     * 车辆原始报文 kafka 消费主题
-     */
-    public static String ERROR_DATA_TOPIC;
-
-    /**
-     * 车辆原始报文 kafka 消费组
-     */
-    public static String ERROR_DATA_GROUPID;
-
-    /**
-     * 车辆实时数据 kafka 消费主题
-     */
-    public static String VEH_REALINFO_DATA_TOPIC;
-
-    /**
-     * 车辆实时数据 kafka 消费组
-     */
-    public static String VEH_REALINFO_GROUPID;
-
-    /**
-     * 车辆注册通知 kafka 消费主题
-     */
-    public static String PLAT_REG_TOPIC;
-
-    /**
-     * 车辆注册通知 kafka 消费组
-     */
-    public static String PLAT_REG_GROUPID;
-
 
     //
     public static final String SPLIT_GROUP = "splitgroup";
@@ -252,16 +194,6 @@ public final class SysDefine {
     public static final String ALARM_START_TRIGGER_TIMEOUT_MILLISECOND = "alarm.start.trigger.timeout.millisecond";
 
     /**
-     * 触发平台报警结束需要的连续次数
-     */
-    public static final String ALARM_STOP_TRIGGER_CONTINUE_COUNT = "alarm.stop.trigger.continue.count";
-
-    /**
-     * 触发平台报警结束需要的持续时长
-     */
-    public static final String ALARM_STOP_TRIGGER_TIMEOUT_MILLISECOND = "alarm.stop.trigger.timeout.millisecond";
-
-    /**
      * 每隔多少时间推送一次,默认一分钟，60000毫秒。如果负数或者0代表实时推送, 单位秒.
      */
     public static final String ES_SEND_TIME = "es.send.time";
@@ -294,114 +226,16 @@ public final class SysDefine {
     public static final String NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND = "notice.can.normal.trigger.timeout.millisecond";
 
     /**
-     * 是否启用时间异常通知规则
-     */
-    public static final String NOTICE_TIME_ENABLE = "notice.time.enable";
-
-    /**
-     * 时间数值异常范围
-     */
-    public static final String NOTICE_TIME_RANGE_ABS_MILLISECOND = "notice.time.range.abs.millisecond";
-
-    /**
      * 规则覆盖, 默认为default
      */
     public static final String RULE_OVERRIDE = "rule.override";
 
-    /**
-     * 默认规则
-     */
-    public static final String RULE_OVERRIDE_VALUE_DEFAULT = "default";
-
-    /**
-     * 吉利规则
-     */
-    public static final String RULE_OVERRIDE_VALUE_JILI = "jili";
-
-    /**
-     * 是否启用soc过低通知
-     */
-    public static final String NOTICE_SOC_LOW_ENABLE = "notice.soc.low.enable";
-    /**
-     * soc过低开始通知触发器, 小于等于阈值
-     */
-    public static final String NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD = "notice.soc.low.begin.trigger.threshold";
-    /**
-     * soc过低开始通知触发器, 连续帧数
-     */
-    public static final String NOTICE_SOC_LOW_BEGIN_TRIGGER_CONTINUE_COUNT = "notice.soc.low.begin.trigger.continue.count";
-    /**
-     * soc过低开始通知触发器, 持续时长
-     */
-    public static final String NOTICE_SOC_LOW_BEGIN_TRIGGER_TIMEOUT_MILLISECOND = "notice.soc.low.begin.trigger.timeout.millisecond";
-    /**
-     * soc过低结束通知触发器, 大于阈值
-     */
-    public static final String NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD = "notice.soc.low.end.trigger.threshold";
-    /**
-     * soc过低结束通知触发器, 连续帧数
-     */
-    public static final String NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT = "notice.soc.low.end.trigger.continue.count";
-    /**
-     * soc过低结束通知触发器, 持续时长
-     */
-    public static final String NOTICE_SOC_LOW_END_TRIGGER_TIMEOUT_MILLISECOND = "notice.soc.low.end.trigger.timeout.millisecond";
-
-    /**
-     * 是否启用soc过高通知
-     */
-    public static final String NOTICE_SOC_HIGH_ENABLE = "notice.soc.high.enable";
-    /**
-     * soc过高开始通知触发器, 大于等于阈值
-     */
-    public static final String NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD = "notice.soc.high.begin.trigger.threshold";
-    /**
-     * soc过高开始通知触发器, 连续帧数
-     */
-    public static final String NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT = "notice.soc.high.begin.trigger.continue.count";
-    /**
-     * soc过高开始通知触发器, 持续时长
-     */
-    public static final String NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND = "notice.soc.high.begin.trigger.timeout.millisecond";
-    /**
-     * soc过高结束通知触发器, 小于阈值
-     */
-    public static final String NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD = "notice.soc.high.end.trigger.threshold";
-    /**
-     * soc过高结束通知触发器, 连续帧数
-     */
-    public static final String NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT = "notice.soc.high.end.trigger.continue.count";
-    /**
-     * soc过高结束通知触发器, 持续时长
-     */
-    public static final String NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND = "notice.soc.high.end.trigger.timeout.millisecond";
-
-    /**
-     * 未定位开始帧数判断
-     */
-    public static final String GPS_NOVALUE_CONTINUE_NO = "gps.novalue.continue.no";
-    /**
-     * 未定位结束帧数判断
-     */
-    public static final String GPS_HASVALUE_CONTINUE_NO = "gps.hasvalue.continue.no";
     /**
      * 未定位开始时间阈值
      */
     public static final String GPS_JUDGE_TIME = "gps.judge.time";
 
     public static class Redis {
-        /**
-         * Redis 地址
-         */
-        public static final String HOST = "redis.host";
-        /**
-         * Redis 端口
-         */
-        public static final String PORT = "redis.port";
-        /**
-         * Redis 密码
-         */
-        public static final String PASSWORD = "redis.pass";
         /**
          * Redis 最大连接数
          */
@@ -414,10 +248,6 @@ public final class SysDefine {
          * Redis 最长等待时间(毫秒)
          */
         public static final String JEDIS_POOL_MAX_WAIT_MILLISECOND = "redis.maxWait";
-        /**
-         * Redis 超时时间(毫秒)
-         */
-        public static final String TIMEOUT = "redis.timeOut";
 
     }
 }

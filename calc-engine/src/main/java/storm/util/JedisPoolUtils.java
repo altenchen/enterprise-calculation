@@ -1,7 +1,6 @@
 package storm.util;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,7 +13,6 @@ import redis.clients.jedis.exceptions.JedisException;
 import storm.system.SysDefine;
 
 import java.util.Objects;
-import java.util.Properties;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -43,38 +41,23 @@ public final class JedisPoolUtils {
     private final JedisPool JEDIS_POOL;
 
     @NotNull
-    private JedisPool buildJedisPool(@NotNull final Properties sysDefine) {
+    private JedisPool buildJedisPool() {
 
         logger.info("JedisPool 初始化开始");
 
         final JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
-
-        final String maxTotalString = sysDefine.getProperty(SysDefine.Redis.JEDIS_POOL_MAX_TOTAL);
-        if (NumberUtils.isNumber(maxTotalString)) {
-            final int maxTotal = Integer.parseInt(maxTotalString);
-            // 可用连接实例的最大数目, 默认为8.
-            // 如果赋值为-1, 则表示不限制, 如果pool已经分配了maxActive个jedis实例, 则此时pool的状态为exhausted(耗尽).
-            jedisPoolConfig.setMaxTotal(maxTotal);
-        }
+        // 可用连接实例的最大数目, 默认为8.
+        // 如果赋值为-1, 则表示不限制, 如果pool已经分配了maxActive个jedis实例, 则此时pool的状态为exhausted(耗尽).
+        jedisPoolConfig.setMaxTotal(ConfigUtils.getSysDefine().getRedisMaxActive());
         logger.info("{}={}", SysDefine.Redis.JEDIS_POOL_MAX_TOTAL, jedisPoolConfig.getMaxTotal());
 
-        final String maxIdleString = sysDefine.getProperty(SysDefine.Redis.JEDIS_POOL_MAX_IDLE);
-        final int maxIdle;
-        if (NumberUtils.isNumber(maxIdleString)) {
-            maxIdle = Integer.parseInt(maxIdleString);
-            // 控制一个pool最多有多少个状态为idle(空闲)的jedis实例, 默认值是8.
-            jedisPoolConfig.setMaxIdle(maxIdle);
-        }
+        // 控制一个pool最多有多少个状态为idle(空闲)的jedis实例, 默认值是8.
+        jedisPoolConfig.setMaxIdle(ConfigUtils.getSysDefine().getRedisMaxIdle());
         logger.info("{}={}", SysDefine.Redis.JEDIS_POOL_MAX_IDLE, jedisPoolConfig.getMaxIdle());
 
-        final String maxWaitMillisString = sysDefine.getProperty(SysDefine.Redis.JEDIS_POOL_MAX_WAIT_MILLISECOND);
-        final int maxWaitMillis;
-        if (NumberUtils.isNumber(maxWaitMillisString)) {
-            maxWaitMillis = Integer.parseInt(maxWaitMillisString);
-            // 等待可用连接的最大时间, 单位是毫秒, 默认值为-1, 表示永不超时.
-            // 如果超过等待时间, 则直接抛出JedisConnectionException
-            jedisPoolConfig.setMaxWaitMillis(maxWaitMillis);
-        }
+        // 等待可用连接的最大时间, 单位是毫秒, 默认值为-1, 表示永不超时.
+        // 如果超过等待时间, 则直接抛出JedisConnectionException
+        jedisPoolConfig.setMaxWaitMillis(ConfigUtils.getSysDefine().getRedisMaxWait());
         logger.info("{}={}", SysDefine.Redis.JEDIS_POOL_MAX_WAIT_MILLISECOND, jedisPoolConfig.getMaxWaitMillis());
 
         // 在borrow(用)一个jedis实例时，是否提前进行validate(验证)操作；
@@ -85,46 +68,24 @@ public final class JedisPoolUtils {
         // 如果为true，则返回的jedis实例均是可用的
         jedisPoolConfig.setTestOnReturn(true);
 
-        // 主机地址
-        final String host = sysDefine.getProperty(SysDefine.Redis.HOST, "localhost");
-
-        // 端口号
-        final String portString = sysDefine.getProperty(SysDefine.Redis.PORT);
-        final int port;
-        if (NumberUtils.isNumber(portString)) {
-            port = Integer.parseInt(portString);
-        } else {
-            port = 6379;
+        String password = ConfigUtils.getSysDefine().getRedisPass();
+        if(StringUtils.isEmpty(password)){
+            password = null;
         }
-
-        // 密码
-        final String password = StringUtils.defaultIfEmpty(sysDefine.getProperty(SysDefine.Redis.PASSWORD), null);
-
-        // 超时时间
-        final String timeOutString = sysDefine.getProperty(SysDefine.Redis.TIMEOUT);
-        final int timeout;
-        if (NumberUtils.isNumber(timeOutString)) {
-            timeout = Integer.parseInt(timeOutString);
-        } else {
-            timeout = 2000;
-        }
-
         if (null == password) {
-            logger.info("redis://{}:{}", host, port);
+            logger.info("redis://{}:{}", ConfigUtils.getSysDefine().getRedisHost(), ConfigUtils.getSysDefine().getRedisPort());
         } else {
-            logger.info("redis://:{}@{}:{}", password, host, port);
+            logger.info("redis://:{}@{}:{}", ConfigUtils.getSysDefine().getRedisPass(), ConfigUtils.getSysDefine().getRedisHost(), ConfigUtils.getSysDefine().getRedisPort());
         }
 
-        final JedisPool jedisPool = new JedisPool(jedisPoolConfig, host, port, timeout, password);
-
+        final JedisPool jedisPool = new JedisPool(jedisPoolConfig, ConfigUtils.getSysDefine().getRedisHost(), ConfigUtils.getSysDefine().getRedisPort(), ConfigUtils.getSysDefine().getRedisTimeOut(), password);
         logger.info("JedisPool 初始化完毕");
 
         return jedisPool;
     }
 
     {
-        final ConfigUtils configUtils = ConfigUtils.getInstance();
-        JEDIS_POOL = buildJedisPool(configUtils.sysDefine);
+        JEDIS_POOL = buildJedisPool();
     }
 
     private JedisPoolUtils() {

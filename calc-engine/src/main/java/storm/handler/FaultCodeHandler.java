@@ -18,8 +18,6 @@ import storm.dto.*;
 import storm.entity.NoticeMessage;
 import storm.stream.KafkaStream;
 import storm.system.DataKey;
-import storm.system.StormConfigKey;
-import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 import storm.util.JsonUtils;
@@ -40,39 +38,12 @@ public class FaultCodeHandler implements Serializable {
 
     private static final Logger LOG = LoggerFactory.getLogger(FaultCodeHandler.class);
 
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
-
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
 
     private static final DataToRedis redis = new DataToRedis();
 
     private static final int REDIS_DATABASE_INDEX = 6;
     private static final String REDIS_KEY_FAULT_NOTICE_PREFIX = "vehCache.fault.notice.";
-
-    /**
-     * 从数据库拉取规则的时间间隔, 默认360秒
-     */
-    private static long dbFlushTimeSpanMillisecond = 360 * 1000;
-
-    /**
-     * 多长时间算是离线, 默认600秒
-     */
-    private static long offlineTimeMillisecond = 600 * 1000;
-
-    private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
-
-    static {
-
-        String dbFlushTimeSpanSecond = CONFIG_UTILS.sysDefine.getProperty(SysDefine.DB_CACHE_FLUSH_TIME_SECOND);
-        if (StringUtils.isNotEmpty(dbFlushTimeSpanSecond) && StringUtils.isNumeric(dbFlushTimeSpanSecond)) {
-            dbFlushTimeSpanMillisecond = Long.parseLong(dbFlushTimeSpanSecond)*1000;
-        }
-
-        String offlineSecond = CONFIG_UTILS.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-        if (StringUtils.isNotEmpty(offlineSecond) && StringUtils.isNumeric(offlineSecond)) {
-            offlineTimeMillisecond = Long.parseLong(offlineSecond)*1000;
-        }
-    }
 
     /**
      * 最近一次从数据库拉取规则的时间
@@ -84,7 +55,6 @@ public class FaultCodeHandler implements Serializable {
      */
     private final Conn conn = new Conn();
 
-    // region 按字节解析
     /**
      * 故障码规则, 按时间周期从数据库拉取下来.
      */
@@ -96,9 +66,7 @@ public class FaultCodeHandler implements Serializable {
      * vidRuleMsgs是每辆车的故障码信息缓存, <vid, <faultId, <exceptionId,<k,v>>>>
      */
     private final Map<String, Map<String, Map<String, Map<String,Object>>>> vidByteRuleMsg = new ConcurrentHashMap<>();
-    // endregion
 
-    // region 按位解析
     /**
      * 按位解析故障码规则, 目前会覆盖按字节解析规则
      * <fault_type, <faultId, fault>>
@@ -109,8 +77,6 @@ public class FaultCodeHandler implements Serializable {
      * vidRuleMsgs是每辆车的故障码信息缓存, <vid, <faultId, <exceptionId, <k,v>>>>
      */
     private final Map<String, Map<String, Map<String, Map<String,Object>>>> vidBitRuleMsg = new ConcurrentHashMap<>();
-
-    // endregion 按位解析
 
     /**
      * 所有车辆的最后一帧报文的时间, <vid, lastFrameTimeMillisecond>
@@ -131,6 +97,7 @@ public class FaultCodeHandler implements Serializable {
      */
     private void autoPullRules() {
         long requestTime = System.currentTimeMillis();
+        long dbFlushTimeSpanMillisecond = ConfigUtils.getSysDefine().getDbCacheFlushTime() * 1000;
         if (requestTime - lastPullRuleTime > dbFlushTimeSpanMillisecond) {
             synchronized (autoPullRulesLock) {
                 if(requestTime - lastPullRuleTime > dbFlushTimeSpanMillisecond) {
@@ -293,6 +260,7 @@ public class FaultCodeHandler implements Serializable {
             final long last = entry.getValue();
             //如果这辆车已经离线，则把这辆车的故障码缓存移除，并且针对每个故障都发一个结束通知
             //offlinetime为车辆多长时间算是离线，
+            long offlineTimeMillisecond = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
             if (now - last <= offlineTimeMillisecond) {
                 continue;
             }

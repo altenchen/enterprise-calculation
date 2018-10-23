@@ -234,7 +234,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
             try {
                 // 更新配置
-                CarRuleHandler.rebulid();
+//                CarRuleHandler.rebulid();
                 //从配置文件中读出超时时间
                 Object idleTimeoutMillisecond = ParamsRedisUtil.getInstance().PARAMS.get(
                     ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);

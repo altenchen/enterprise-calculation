@@ -1,18 +1,13 @@
 package storm.kafka.bolt;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import storm.system.SysDefine;
 import storm.util.ConfigUtils;
-
-import java.util.Properties;
 
 /**
  * @author: xzp
  * @date: 2018-08-22
- * @description:
+ * @description: 这个类是否还有在用， 如果没有的话，在下一个版本的时候删除咯 - 许智杰 2018-10-23
  */
+@Deprecated
 public final class KafkaBoltTopic {
 
     private static final String DEFAULT_NOTICE_TOPIC = "notice_topic";
@@ -20,10 +15,6 @@ public final class KafkaBoltTopic {
     public static final String NOTICE_TOPIC;
 
     static {
-        final ConfigUtils configUtils = ConfigUtils.getInstance();
-        final Properties sysDefine = configUtils.sysDefine;
-
-        final String noticeTopic = sysDefine.getProperty(SysDefine.KAFKA_TOPIC_NOTICE);
-        NOTICE_TOPIC = StringUtils.defaultIfEmpty(noticeTopic, DEFAULT_NOTICE_TOPIC);
+        NOTICE_TOPIC = ConfigUtils.getSysDefine().getKafkaProducerVehicleNoticeTopic();
     }
 }

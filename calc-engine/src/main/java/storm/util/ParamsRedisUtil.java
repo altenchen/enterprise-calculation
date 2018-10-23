@@ -9,7 +9,6 @@ import storm.dao.DataToRedis;
 import storm.system.SysDefine;
 
 import java.util.Map;
-import java.util.Properties;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -26,8 +25,6 @@ public final class ParamsRedisUtil {
      * 日志组件
      */
     private static final Logger LOG = LoggerFactory.getLogger(ParamsRedisUtil.class);
-
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
     /**
      * SOC百分值
@@ -131,61 +128,23 @@ public final class ParamsRedisUtil {
         PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, 0);
         PARAMS.put(TRACE_VEHICLE_ID, "test\\d+");
 
-        final Properties properties = CONFIG_UTILS.sysDefine;
-        if(properties != null) {
-            // region 规则覆盖
-            {
-                final String ruleOverride = properties.getProperty(SysDefine.RULE_OVERRIDE);
-                if (!StringUtils.isBlank(ruleOverride)) {
-                    PARAMS.put(SysDefine.RULE_OVERRIDE, ruleOverride);
-                }
-            }
-            // endregion
-            // region 触发CAN故障需要的连续帧数
-            {
-                final String alarmCanFaultTriggerContinueCount = properties.getProperty(
-                    SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT);
-                if (!StringUtils.isBlank(alarmCanFaultTriggerContinueCount)) {
-                    PARAMS.put(
-                        SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT,
-                        alarmCanFaultTriggerContinueCount);
-                }
-            }
-            // endregion
-            // region 触发CAN故障需要的持续时长
-            {
-                final String alarmCanFaultTriggerTimeoutMillisecond = properties.getProperty(
-                    SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND);
-                if (!StringUtils.isBlank(alarmCanFaultTriggerTimeoutMillisecond)) {
-                    PARAMS.put(
-                        SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND,
-                        alarmCanFaultTriggerTimeoutMillisecond);
-                }
-            }
-            // endregion
-            // region 触发CAN正常需要的连续帧数
-            {
-                final String alarmCanNormalTriggerContinueCount = properties.getProperty(
-                    SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT);
-                if (!StringUtils.isBlank(alarmCanNormalTriggerContinueCount)) {
-                    PARAMS.put(
-                        SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT,
-                        alarmCanNormalTriggerContinueCount);
-                }
-            }
-            // endregion
-            //region 触发CAN正常需要的持续时长
-            {
-                final String alarmCanNormalTriggerTimeoutMillisecond = properties.getProperty(
-                    SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND);
-                if (!StringUtils.isBlank(alarmCanNormalTriggerTimeoutMillisecond)) {
-                    PARAMS.put(
-                        SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND,
-                        alarmCanNormalTriggerTimeoutMillisecond);
-                }
-            }
-            // endregion
+        // 规则覆盖
+        final String ruleOverride = ConfigUtils.getSysDefine().getRuleOverride();
+        if (!StringUtils.isBlank(ruleOverride)) {
+            PARAMS.put(SysDefine.RULE_OVERRIDE, ruleOverride);
         }
+
+        // 触发CAN故障需要的连续帧数
+        PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT, ConfigUtils.getSysDefine().getNoticeCanFaultTriggerContinueCount());
+
+        // 触发CAN故障需要的持续时长
+        PARAMS.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND, ConfigUtils.getSysDefine().getNoticeCanFaultTriggerTimeoutMillisecond());
+
+        // 触发CAN正常需要的连续帧数
+        PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT, ConfigUtils.getSysDefine().getNoticeCanNormalTriggerContinueCount());
+
+        // 触发CAN正常需要的持续时长
+        PARAMS.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, ConfigUtils.getSysDefine().getNoticeCanNormalTriggerTimeoutMillisecond());
     }
 
     private void initParams() {
@@ -193,7 +152,7 @@ public final class ParamsRedisUtil {
         if (null != paramCache && paramCache.size() > 0) {
             initParams(paramCache);
         }
-        if(PARAMS.containsKey(TRACE_VEHICLE_ID)) {
+        if (PARAMS.containsKey(TRACE_VEHICLE_ID)) {
             final String traceVehicleId = (String) PARAMS.get(TRACE_VEHICLE_ID);
             if (!StringUtils.isBlank(traceVehicleId)) {
                 final String message = "[" + TRACE_VEHICLE_ID + "]初始化为[" + traceVehicleId + "]";
@@ -203,25 +162,25 @@ public final class ParamsRedisUtil {
     }
 
     public boolean isTraceVehicleId(String vehicleId) {
-        if(StringUtils.isBlank(vehicleId)) {
+        if (StringUtils.isBlank(vehicleId)) {
             return false;
         }
 
-        final String traceVehicleId = (String)PARAMS.get(TRACE_VEHICLE_ID);
-        if(!StringUtils.isBlank(traceVehicleId)) {
+        final String traceVehicleId = (String) PARAMS.get(TRACE_VEHICLE_ID);
+        if (!StringUtils.isBlank(traceVehicleId)) {
             return vehicleId.matches(traceVehicleId);
         }
         return false;
     }
 
     public void autoLog(@NotNull String vehicleId, @NotNull Runnable func) {
-        if(isTraceVehicleId(vehicleId)) {
+        if (isTraceVehicleId(vehicleId)) {
             func.run();
         }
     }
 
     public <T> void autoLog(@NotNull String vehicleId, @NotNull T t, @NotNull BiConsumer<String, ? super T> func) {
-        if(isTraceVehicleId(vehicleId)) {
+        if (isTraceVehicleId(vehicleId)) {
             func.accept(vehicleId, t);
         }
     }
@@ -231,7 +190,7 @@ public final class ParamsRedisUtil {
             String key = entry.getKey();
             String value = entry.getValue();
             if (StringUtils.isBlank(key)
-                || StringUtils.isBlank(value)) {
+                    || StringUtils.isBlank(value)) {
             } else {
 
                 if (org.apache.commons.lang.math.NumberUtils.isNumber(value)) {
@@ -261,7 +220,7 @@ public final class ParamsRedisUtil {
     /**
      * 重新从Redis读取数据构建参数
      */
-    public void rebulid(){
+    public void rebulid() {
         initParams();
     }
 }

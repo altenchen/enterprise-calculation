@@ -1,10 +1,10 @@
 package storm.topology;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
+import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -32,8 +32,8 @@ import storm.util.ConfigUtils;
 import storm.util.function.TeConsumerE;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 /**
  * @author xzp
@@ -41,8 +41,6 @@ import java.util.Properties;
 public final class TopologiesByConf {
 
     private static final Logger LOG = LoggerFactory.getLogger(TopologiesByConf.class);
-
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
     /**
      * http://storm.apache.org/releases/current/index.html
@@ -56,21 +54,20 @@ public final class TopologiesByConf {
     public static void submitTopology(@NotNull final TeConsumerE<String, Map, StormTopology, Exception> stormSubmitter)
         throws Exception {
 
-        Properties properties = CONFIG_UTILS.sysDefine;
-
-        fillKafkaConf(properties);
-
-        Config stormConf = buildStormConf(properties);
-        StormTopology stormTopology = createTopology(properties);
-        final String topologyName = properties.getProperty(SysDefine.TOPOLOGY_NAME, "qyallStorm");
+        Config stormConf = buildStormConf();
+        StormTopology stormTopology = createTopology();
+        final String topologyName = ConfigUtils.getSysDefine().getTopologyName();
+        if( StringUtils.isEmpty(topologyName) ){
+            throw new Exception("topologyName is null");
+        }
         stormSubmitter.accept(topologyName, stormConf, stormTopology);
     }
 
-    private static Config buildStormConf(@NotNull Properties properties) {
+    private static Config buildStormConf() {
 
-        final int workerNo = Integer.valueOf(properties.getProperty("storm.worker.no"));
+        final int workerNo = ConfigUtils.getSysDefine().getStormWorkerNo();
 
-        final Config stormConf = readStormConf(properties);
+        final Config stormConf = readStormConf();
         stormConf.setDebug(false);
         stormConf.put(Config.TOPOLOGY_MAX_SPOUT_PENDING, 1000);
         stormConf.setMaxSpoutPending(1000);
@@ -85,85 +82,73 @@ public final class TopologiesByConf {
     /**
      * 读取Storm相关配置
      *
-     * @param properties 配置属性
      * @return Storm相关配置
      */
-    private static Config readStormConf(@NotNull Properties properties) {
+    private static Config readStormConf() {
 
         final Config stormConf = new Config();
 
         //region alarm
-        stormConf.put(SysDefine.ALARM_START_TRIGGER_CONTINUE_COUNT, properties.get(SysDefine.ALARM_START_TRIGGER_CONTINUE_COUNT));
-        stormConf.put(SysDefine.ALARM_START_TRIGGER_TIMEOUT_MILLISECOND, properties.get(SysDefine.ALARM_START_TRIGGER_TIMEOUT_MILLISECOND));
+        stormConf.put(SysDefine.ALARM_START_TRIGGER_CONTINUE_COUNT, ConfigUtils.getSysDefine().getAlarmStartTriggerContinueCount());
+        stormConf.put(SysDefine.ALARM_START_TRIGGER_TIMEOUT_MILLISECOND, ConfigUtils.getSysDefine().getAlarmStartTriggerTimeoutMillisecond());
         //endregion
 
         //region ctfo
-        stormConf.put("ctfo.cacheDB", properties.getProperty("ctfo.cacheDB"));
-        stormConf.put("ctfo.cacheHost", properties.getProperty("ctfo.cacheHost"));
-        stormConf.put("ctfo.cachePort", properties.getProperty("ctfo.cachePort"));
-        stormConf.put("ctfo.cacheTable", properties.getProperty("ctfo.cacheTable"));
+        stormConf.put("ctfo.cacheDB", ConfigUtils.getSysDefine().getCtfoCacheDB());
+        stormConf.put("ctfo.cacheHost", ConfigUtils.getSysDefine().getCtfoCacheHost());
+        stormConf.put("ctfo.cachePort", ConfigUtils.getSysDefine().getCtfoCachePort());
+        stormConf.put("ctfo.cacheTable", ConfigUtils.getSysDefine().getCtfoCacheTable());
         //endregion
 
-        stormConf.put(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, properties.get(SysDefine.DB_CACHE_FLUSH_TIME_SECOND));
+        stormConf.put(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, ConfigUtils.getSysDefine().getDbCacheFlushTime());
 
-        stormConf.put(SysDefine.ES_SEND_TIME, properties.get(SysDefine.ES_SEND_TIME));
+        stormConf.put(SysDefine.ES_SEND_TIME, ConfigUtils.getSysDefine().getEsSendTime());
 
         //region kafka
+        stormConf.put(SysDefine.KAFKA_ZOOKEEPER_SERVERS_KEY, ConfigUtils.getSysDefine().getKafkaZookeeperServers());
+        stormConf.put(SysDefine.KAFKA_ZOOKEEPER_PORT_KEY, ConfigUtils.getSysDefine().getKafkaZookeeperPort());
+        stormConf.put(SysDefine.KAFKA_ZOOKEEPER_PATH_KEY, ConfigUtils.getSysDefine().getKafkaZookeeperPath());
 
-        stormConf.put(SysDefine.KAFKA_ZOOKEEPER_SERVERS_KEY, properties.get(SysDefine.KAFKA_ZOOKEEPER_SERVERS_KEY));
-        stormConf.put(SysDefine.KAFKA_ZOOKEEPER_PORT_KEY, properties.get(SysDefine.KAFKA_ZOOKEEPER_PORT_KEY));
-        stormConf.put(SysDefine.KAFKA_ZOOKEEPER_PATH_KEY, properties.get(SysDefine.KAFKA_ZOOKEEPER_PATH_KEY));
+        stormConf.put(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY, ConfigUtils.getSysDefine().getKafkaBootstrapServers());
 
-        stormConf.put(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY, properties.get(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY));
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_TOPIC, ConfigUtils.getSysDefine().getKafkaConsumerVehiclePacketDataTopic());
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP, ConfigUtils.getSysDefine().getKafkaConsumerVehiclePacketDataGroup());
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_TOPIC, ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataTopic());
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP, ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataGroup());
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC, ConfigUtils.getSysDefine().getKafkaConsumerVehicleRegisterDataTopic());
+        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP, ConfigUtils.getSysDefine().getKafkaConsumerVehicleRegisterDataGroup());
 
-        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_TOPIC, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_TOPIC));
-        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP));
-        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_TOPIC, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_TOPIC));
-        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP));
-        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC));
-        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP, properties.get(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP));
+        stormConf.put(SysDefine.VEHICLE_ALARM_TOPIC, ConfigUtils.getSysDefine().getKafkaProducerVehicleAlarmTopic());
+        stormConf.put(SysDefine.VEHICLE_ALARM_STORE_TOPIC, ConfigUtils.getSysDefine().getKafkaProducerVehicleAlarmStoreTopic());
+        stormConf.put(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC, ConfigUtils.getSysDefine().getKafkaProducerVehicleFenceAlarmTopic());
+        stormConf.put(SysDefine.KAFKA_TOPIC_NOTICE, ConfigUtils.getSysDefine().getKafkaProducerVehicleNoticeTopic());
+        stormConf.put(SysDefine.KAFKA_TOPIC_ES_STATUS, ConfigUtils.getSysDefine().getKafkaProducerElasticSearchStatusTopic());
 
-        stormConf.put(SysDefine.VEHICLE_ALARM_TOPIC, properties.getProperty(SysDefine.VEHICLE_ALARM_TOPIC));
-        stormConf.put(SysDefine.VEHICLE_ALARM_STORE_TOPIC, properties.getProperty(SysDefine.VEHICLE_ALARM_STORE_TOPIC));
-        stormConf.put(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC, properties.get(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC));
-        stormConf.put(SysDefine.KAFKA_TOPIC_NOTICE, properties.get(SysDefine.KAFKA_TOPIC_NOTICE));
-        stormConf.put(SysDefine.KAFKA_TOPIC_ES_STATUS, properties.get(SysDefine.KAFKA_TOPIC_ES_STATUS));
+        stormConf.put("offline.check.time", ConfigUtils.getSysDefine().getOfflineCheckTime());
 
-        //endregion
+        stormConf.put("redis.cluster.data.syn", ConfigUtils.getSysDefine().getRedisClusterDataSyn());
+        stormConf.put("redis.host", ConfigUtils.getSysDefine().getRedisHost());
+        stormConf.put("redis.listenInterval", ConfigUtils.getSysDefine().getRedisListenInterval());
+        stormConf.put("redis.maxActive", ConfigUtils.getSysDefine().getRedisMaxActive());
+        stormConf.put("redis.maxIdle", ConfigUtils.getSysDefine().getRedisMaxIdle());
+        stormConf.put("redis.maxWait", ConfigUtils.getSysDefine().getRedisMaxWait());
+        stormConf.put("redis.pass", ConfigUtils.getSysDefine().getRedisPass());
+        stormConf.put("redis.port", ConfigUtils.getSysDefine().getRedisPort());
+        stormConf.put("redis.timeInterval", ConfigUtils.getSysDefine().getRedisTimeInterval());
+        stormConf.put("redis.timeOut", ConfigUtils.getSysDefine().getRedisTimeOut());
+        stormConf.put("redis.offline.checktime", ConfigUtils.getSysDefine().getRedisOfflineCheckTime());
+        stormConf.put(StormConfigKey.REDIS_OFFLINE_SECOND, ConfigUtils.getSysDefine().getRedisOfflineTime());
 
-        stormConf.put("offline.check.time", properties.get("offline.check.time"));
+        stormConf.put("storm.kafka.spout.no", ConfigUtils.getSysDefine().getStormKafkaSpoutNo());
+        stormConf.put("storm.worker.bolt.no", ConfigUtils.getSysDefine().getStormKafkaBoltNo());
+        stormConf.put("storm.worker.no", ConfigUtils.getSysDefine().getStormWorkerNo());
 
-        //region redis
-        stormConf.put("redis.cluster.data.syn", properties.get("redis.cluster.data.syn"));
-        stormConf.put("redis.host", properties.getProperty("redis.host"));
-        stormConf.put("redis.listenInterval", properties.getProperty("redis.listenInterval"));
-        stormConf.put("redis.maxActive", properties.getProperty("redis.maxActive"));
-        stormConf.put("redis.maxIdle", properties.getProperty("redis.maxIdle"));
-        stormConf.put("redis.maxWait", properties.getProperty("redis.maxWait"));
-        stormConf.put("redis.pass", properties.getProperty("redis.pass"));
-        stormConf.put("redis.port", properties.getProperty("redis.port"));
-        stormConf.put("redis.timeInterval", properties.getProperty("redis.timeInterval"));
-        stormConf.put("redis.timeOut", properties.getProperty("redis.timeOut"));
-        stormConf.put("redis.offline.checktime", properties.get("redis.offline.checktime"));
-        stormConf.put(StormConfigKey.REDIS_OFFLINE_SECOND, properties.get(StormConfigKey.REDIS_OFFLINE_SECOND));
-        //endregion
+        stormConf.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT, ConfigUtils.getSysDefine().getNoticeCanFaultTriggerContinueCount());
+        stormConf.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND, ConfigUtils.getSysDefine().getNoticeCanFaultTriggerTimeoutMillisecond());
+        stormConf.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT, ConfigUtils.getSysDefine().getNoticeCanNormalTriggerContinueCount());
+        stormConf.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, ConfigUtils.getSysDefine().getNoticeCanNormalTriggerTimeoutMillisecond());
 
-        //region storm
-        stormConf.put("storm.kafka.spout.no", properties.get("storm.kafka.spout.no"));
-        stormConf.put("storm.worker.bolt.no", properties.get("storm.worker.bolt.no"));
-        stormConf.put("storm.worker.no", properties.get("storm.worker.no"));
-        //endregion
-
-        // region notice.can
-        stormConf.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT, properties.getProperty(SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT));
-        stormConf.put(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND, properties.getProperty(SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND));
-        stormConf.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT, properties.getProperty(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT));
-        stormConf.put(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND, properties.getProperty(SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND));
-        // endregion
-
-        // region jili
-        stormConf.put(SysDefine.RULE_OVERRIDE, properties.getProperty(SysDefine.RULE_OVERRIDE));
-        // endregion
+        stormConf.put(SysDefine.RULE_OVERRIDE, ConfigUtils.getSysDefine().getRuleOverride());
 
         return stormConf;
     }
@@ -171,13 +156,12 @@ public final class TopologiesByConf {
     /**
      * 创建 Storm 拓扑
      *
-     * @param properties 配置属性
      * @return Storm 拓扑
      */
-    private static StormTopology createTopology(@NotNull Properties properties) {
+    private static StormTopology createTopology() {
 
-        final int realSpoutNo = Integer.valueOf(properties.getProperty("storm.kafka.spout.no"));
-        final int boltNo = Integer.valueOf(properties.getProperty("storm.worker.bolt.no"));
+        final int realSpoutNo = ConfigUtils.getSysDefine().getStormKafkaSpoutNo();
+        final int boltNo = ConfigUtils.getSysDefine().getStormKafkaBoltNo();
 
         TopologyBuilder builder = new TopologyBuilder();
 
@@ -208,9 +192,9 @@ public final class TopologiesByConf {
 
         // kafka 实时报文消息
         final KafkaSpout<String, String> generalKafkaSpout = new GeneralKafkaSpout(
-            SysDefine.KAFKA_BOOTSTRAP_SERVERS,
-            SysDefine.VEH_REALINFO_DATA_TOPIC,
-            SysDefine.VEH_REALINFO_GROUPID
+                ConfigUtils.getSysDefine().getKafkaBootstrapServers(),
+            ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataTopic(),
+            ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataGroup()
         );
         builder.setSpout(
             GeneralKafkaSpout.getComponentId(),
@@ -220,9 +204,9 @@ public final class TopologiesByConf {
 
         // kafka 平台注册报文消息
         final KafkaSpout<String, String> registerKafkaSpout = new RegisterKafkaSpout(
-            SysDefine.KAFKA_BOOTSTRAP_SERVERS,
-            SysDefine.PLAT_REG_TOPIC,
-            SysDefine.PLAT_REG_GROUPID
+                ConfigUtils.getSysDefine().getKafkaBootstrapServers(),
+                ConfigUtils.getSysDefine().getKafkaConsumerVehicleRegisterDataTopic(),
+                ConfigUtils.getSysDefine().getKafkaConsumerVehicleRegisterDataGroup()
         );
         builder.setSpout(
             RegisterKafkaSpout.getComponentId(),
@@ -316,7 +300,7 @@ public final class TopologiesByConf {
         @NotNull final TopologyBuilder builder,
         final int boltNo) {
 
-        final KafkaBolt<String, String> kafkaBolt = new KafkaSendBolt(SysDefine.KAFKA_BOOTSTRAP_SERVERS);
+        final KafkaBolt<String, String> kafkaBolt = new KafkaSendBolt(ConfigUtils.getSysDefine().getKafkaBootstrapServers());
 
         builder
             // 发送 kafka 消息
@@ -354,68 +338,36 @@ public final class TopologiesByConf {
 
     /**
      * 读取并填充Kafka相关配置
-     *
-     * @param properties 配置属性
      */
-    private static void fillKafkaConf(@NotNull final Properties properties) {
+    private static void fillKafkaConf() {
         // TODO: 转为存储到单例类
 
         // Kafka 依赖的 Zookeeper 集群, 为了兼容旧版 kafka
-        final String kafkaZookeeperServers = properties.getProperty(SysDefine.KAFKA_ZOOKEEPER_SERVERS_KEY);
-        final String kafkaZookeeperPort = properties.getProperty(SysDefine.KAFKA_ZOOKEEPER_PORT_KEY);
-        final String kafkaZookeeperPath = properties.getProperty(SysDefine.KAFKA_ZOOKEEPER_PATH_KEY);
-        initZookeeperConfig(kafkaZookeeperServers, kafkaZookeeperPort, kafkaZookeeperPath);
+        initZookeeperConfig();
 
         // Kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开. 从 kafka 0.10.1开始支持新的消费方式
-        SysDefine.KAFKA_BOOTSTRAP_SERVERS = properties.getProperty(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY);
-        LOG.info("ConsumerConfig: {}=[{}]", ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, SysDefine.KAFKA_BOOTSTRAP_SERVERS);
+        LOG.info("ConsumerConfig: {}=[{}]", ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigUtils.getSysDefine().getKafkaBootstrapServers());
         LOG.info("KafkaStream.Fields({}, {}, {})", KafkaStream.TOPIC, KafkaStream.BOLT_KEY, KafkaStream.BOLT_MESSAGE);
-        LOG.info("ProducerConfig: {}=[{}]", ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, SysDefine.KAFKA_BOOTSTRAP_SERVERS);
-
-        // region Spout 输入主题
-
-        // 车辆原始报文 topic, 依赖上游前置机, 请保持一致. 目前约定为 us_packet.
-        SysDefine.ERROR_DATA_TOPIC = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_TOPIC);
-        // 车辆原始报文 consumer-group
-        SysDefine.ERROR_DATA_GROUPID = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP);
-
-        // 车辆实时数据 topic, 依赖上游前置机, 请保持一致. 目前约定为 us_general.
-        SysDefine.VEH_REALINFO_DATA_TOPIC = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_TOPIC);
-        // 车辆实时数据 consumer-group
-        SysDefine.VEH_REALINFO_GROUPID = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP);
-
-        // 车辆注册通知 topic, 依赖上游前置机, 请保持一致. 目前约定为 SYNC_VEHICLE_REG.
-        SysDefine.PLAT_REG_TOPIC = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC);
-        // 车辆注册通知 consumer-group
-        SysDefine.PLAT_REG_GROUPID = properties.getProperty(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP);
-
-        // endregion Spout 输入主题
+        LOG.info("ProducerConfig: {}=[{}]", ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigUtils.getSysDefine().getKafkaBootstrapServers());
     }
 
-    public static void initZookeeperConfig(
-        final String kafkaZookeeperServers,
-        final String kafkaZookeeperPort,
-        final String kafkaZookeeperPath) {
+    public static void initZookeeperConfig() {
 
-        SysDefine.KAFKA_ZOOKEEPER_SERVERS = Arrays.asList(
-            StringUtils.split(
-                kafkaZookeeperServers,
-                ','));
-        SysDefine.KAFKA_ZOOKEEPER_PORT = NumberUtils.toInt(kafkaZookeeperPort, 2181);
+        List<String> servers = Arrays.asList(
+                StringUtils.split(
+                        ConfigUtils.getSysDefine().getKafkaZookeeperServers(),
+                        ','));
 
         StringBuilder zkServersBuilder = new StringBuilder(64);
-        zkServersBuilder.append(SysDefine.KAFKA_ZOOKEEPER_SERVERS.get(0));
+        zkServersBuilder.append(servers.get(0));
         zkServersBuilder.append(':');
-        zkServersBuilder.append(SysDefine.KAFKA_ZOOKEEPER_PORT);
-        for (int i = 1; i < SysDefine.KAFKA_ZOOKEEPER_SERVERS.size(); ++i) {
+        zkServersBuilder.append(ConfigUtils.getSysDefine().getKafkaZookeeperPort());
+        for (int i = 1; i < servers.size(); ++i) {
             zkServersBuilder.append(',');
-            zkServersBuilder.append(SysDefine.KAFKA_ZOOKEEPER_SERVERS.get(i));
+            zkServersBuilder.append(servers.get(i));
             zkServersBuilder.append(':');
-            zkServersBuilder.append(SysDefine.KAFKA_ZOOKEEPER_PORT);
+            zkServersBuilder.append(ConfigUtils.getSysDefine().getKafkaZookeeperPort());
         }
-        SysDefine.KAFKA_ZOOKEEPER_HOSTS = zkServersBuilder.toString();
-
-        SysDefine.KAFKA_ZOOKEEPER_PATH = kafkaZookeeperPath;
     }
 }
 

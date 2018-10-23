@@ -1,10 +1,7 @@
 package storm.cache;
 
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Queues;
@@ -18,10 +15,6 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-
 import storm.constant.FormatConstant;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
@@ -29,10 +22,15 @@ import storm.handler.cal.RedisClusterLoaderUseCtfo;
 import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.system.SysDefine;
-import storm.system.SysParams;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 import storm.util.ParamsRedisUtil;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 系统实时数据缓存
@@ -42,8 +40,6 @@ import storm.util.ParamsRedisUtil;
 public class SysRealDataCache {
 
     private static final Logger LOG = LoggerFactory.getLogger(SysRealDataCache.class);
-
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
     private static final DataToRedis DATA_TO_REDIS = new DataToRedis();
 
@@ -445,8 +441,7 @@ public class SysRealDataCache {
     }
 
     private static void initChargeCarTypeIds() {
-
-        final String chargeCarTypeIdParam = CONFIG_UTILS.sysParams.getProperty(SysParams.CHARGE_CAR_TYPE_ID);
+        final String chargeCarTypeIdParam = ConfigUtils.getSysParam().getChargeCarTypeId();
         if (!StringUtils.isEmpty(chargeCarTypeIdParam)) {
 
             final int commaIndex = chargeCarTypeIdParam.indexOf(",");

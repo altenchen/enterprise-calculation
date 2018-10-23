@@ -8,17 +8,14 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
-
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import storm.handler.cal.EsRealCalHandler;
 import storm.kafka.spout.RegisterKafkaSpout;
-import storm.stream.IStreamReceiver;
 import storm.stream.KafkaStream;
 import storm.stream.StreamReceiverFilter;
 import storm.system.DataKey;
 import storm.system.SysDefine;
-import storm.util.ConfigUtils;
 import storm.util.JsonUtils;
 
 import java.util.List;
@@ -33,8 +30,6 @@ public class SynEsculBolt extends BaseRichBolt {
 
     private static final long serialVersionUID = 1700001L;
 
-    // region Component
-
     @NotNull
     private static final String COMPONENT_ID = SynEsculBolt.class.getSimpleName();
 
@@ -43,10 +38,6 @@ public class SynEsculBolt extends BaseRichBolt {
     public static String getComponentId() {
         return COMPONENT_ID;
     }
-
-    // endregion Component
-
-    // region KafkaStream
 
     @NotNull
     private static final KafkaStream KAFKA_STREAM = KafkaStream.getInstance();
@@ -60,9 +51,6 @@ public class SynEsculBolt extends BaseRichBolt {
         return KAFKA_STREAM_ID;
     }
 
-    // endregion KafkaStream
-
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
     private OutputCollector collector;
@@ -77,7 +65,6 @@ public class SynEsculBolt extends BaseRichBolt {
     private EsRealCalHandler handler;
     public static ScheduledExecutorService service;
     private static int ispreCp = 0;
-
 
     private StreamReceiverFilter registerStreamReceiver;
 
@@ -169,7 +156,7 @@ public class SynEsculBolt extends BaseRichBolt {
     }
 
     private void prepareStreamSender(
-        @NotNull final OutputCollector collector) {
+            @NotNull final OutputCollector collector) {
 
         kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
 
@@ -183,7 +170,7 @@ public class SynEsculBolt extends BaseRichBolt {
         if (SysDefine.SYNES_GROUP.equals(input.getSourceStreamId())) {
             // 来自FilterBolt
             final String vid = input.getString(0);
-            final Map<String, String> data = Maps.newHashMap((Map < String, String >) input.getValue(1));
+            final Map<String, String> data = Maps.newHashMap((Map<String, String>) input.getValue(1));
             if (null == data.get(DataKey.VEHICLE_ID)) {
                 data.put(DataKey.VEHICLE_ID, vid);
             }
@@ -201,9 +188,9 @@ public class SynEsculBolt extends BaseRichBolt {
     }
 
     private void executeFromKafkaRegisterStream(
-        @NotNull final Tuple input,
-        @NotNull final String vehicleId,
-        @NotNull final String frame) {
+            @NotNull final Tuple input,
+            @NotNull final String vehicleId,
+            @NotNull final String frame) {
 
         if (null != frame && frame.length() > 26 && frame.indexOf(SysDefine.COMMA) > 0 && frame.indexOf(SysDefine.COLON) > 0) {
             String[] params = frame.split(SysDefine.COMMA);

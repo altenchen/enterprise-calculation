@@ -1,23 +1,25 @@
 package storm.dto.alarm;
 
-import java.math.BigDecimal;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.extension.ObjectExtension;
-import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.SqlUtils;
+
+import java.math.BigDecimal;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 /**
  * @author 徐志鹏
@@ -35,40 +37,9 @@ public final class CoefficientOffsetGetter {
     public static final String DEFAULT = "Default";
 
     /**
-     * 偏移系数规则查询 SQL
-     */
-    private static final String ALARM_RULE_SQL;
-
-    /**
-     * 数据库查询最小间隔
-     */
-    private static final long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND;
-
-    /**
      * 最近一次从数据库更新的时间
      */
     private static long lastRebuildTime = 0;
-
-    static {
-        final ConfigUtils configUtils = ConfigUtils.getInstance();
-        final Properties sysParams = configUtils.sysParams;
-        final Properties sysDefine = configUtils.sysDefine;
-
-        ALARM_RULE_SQL = StringUtils.defaultIfEmpty(
-            sysParams.getProperty("data.offset.coefficient.sql"),
-            "select id,seq_no,ifnull(offset,0),ifnull(factor,1),ifnull(dot,16),ifnull(item_type,2),ifnull(veh_model,'Default') from sys_data_item where id is not null and seq_no is not null and is_array=0 and (item_type is null or item_type=1 or item_type=2)"
-        );
-        LOG.debug("偏移系数数据库查询语句为[{}]", ALARM_RULE_SQL);
-
-        DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(
-            NumberUtils.toLong(
-                sysDefine.getProperty(
-                    SysDefine.DB_CACHE_FLUSH_TIME_SECOND),
-                60
-            )
-        );
-        LOG.info("偏移系数规则数据库更新最小间隔为[{}]毫秒", DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND);
-    }
 
     /**
      * <vehicleType, <dataKey, rule>>
@@ -77,7 +48,7 @@ public final class CoefficientOffsetGetter {
     private static ImmutableMap<String, ImmutableMap<String, CoefficientOffset>> rules = ImmutableMap.of();
 
     private static synchronized void rebuild(final long currentTimeMillis) {
-
+        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
         if (currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
 
             try {
@@ -99,7 +70,7 @@ public final class CoefficientOffsetGetter {
     @NotNull
     private static ImmutableMap<String, ImmutableMap<String, CoefficientOffset>> buildCoefficientOffsetFromDb() {
         return ObjectExtension.defaultIfNull(
-            SQL_UTILS.query(ALARM_RULE_SQL, resultSet -> {
+            SQL_UTILS.query(ConfigUtils.getSysParam().getDataOffsetCoefficientSql(), resultSet -> {
                 final Map<String, Map<String, CoefficientOffset>> rules = Maps.newHashMapWithExpectedSize(100);
                 final Set<String> duplicatedCheck = Sets.newHashSetWithExpectedSize(100);
 
@@ -198,6 +169,7 @@ public final class CoefficientOffsetGetter {
     public static ImmutableMap<String, ImmutableMap<String, CoefficientOffset>> getAllCoefficientOffsets() {
 
         final long currentTimeMillis = System.currentTimeMillis();
+        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
         if(currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
             rebuild(currentTimeMillis);
         }
@@ -211,6 +183,7 @@ public final class CoefficientOffsetGetter {
         @Nullable final String dataKey) {
 
         final long currentTimeMillis = System.currentTimeMillis();
+        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
         if (currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
             rebuild(currentTimeMillis);
         }

@@ -1,12 +1,5 @@
 package storm.util.dbconn;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.*;
-
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -25,8 +18,10 @@ import storm.handler.fence.input.AlarmRule;
 import storm.handler.fence.input.Rule;
 import storm.handler.fence.input.SpeedAlarmRule;
 import storm.handler.fence.input.StopAlarmRule;
-import storm.system.SysParams;
 import storm.util.ConfigUtils;
+
+import java.sql.*;
+import java.util.*;
 
 /**
  * @author wza
@@ -35,88 +30,22 @@ import storm.util.ConfigUtils;
 public final class Conn {
     private static final Logger LOG = LoggerFactory.getLogger(Conn.class);
 
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
-    private static final SysParams SYS_PARAMS = SysParams.getInstance();
-
-    private static String fence_sql = "SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,fe.VALID_TIME FROM SYS_FENCE_ELECTRONIC fe WHERE fe.FENCE_STATE=1";
-    private static String fence_rule_only_sql = "SELECT tl.FENCE_ID,tl.ALARM_TYPE_CODE,tl.HEIGHEST_SPEED,tl.MINIMUM_SPEED,tl.STOP_CAR_TIME FROM SYS_FENCE_ALARM_TYPE_LK tl WHERE tl.STATE=1";
-    private static String fence_vid_sql = "SELECT FENCE_ID,VEH_ID FROM SYS_FENCE_VEH_LK WHERE STATE=1";
-
-
-    /**
-     * 故障码按字节解析规则
-     */
-    private static String alarm_code_sql = "SELECT faultCode.id fault_id,faultCode.fault_type,faultCode.analyze_type,GROUP_CONCAT(model.id) model_num,'0' AS exception_type,faultCode.id AS exception_id,faultCode.normal_code exception_code,'0' AS response_level FROM sys_fault_code faultCode LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id WHERE faultCode.is_delete='0' AND faultCode.analyze_type='1' GROUP BY faultCode.id UNION ALL SELECT faultCode.id fault_id,faultCode.fault_type,faultCode.analyze_type,GROUP_CONCAT(model.id) model_num,'1' AS exception_type,excep.id AS exception_id,excep.exception_code exception_code,excep.response_level AS response_level FROM sys_fault_code_exception excep LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id WHERE excep.is_delete='0' AND faultCode.is_delete='0' AND faultCode.analyze_type='1' GROUP BY excep.id";
-
-    /**
-     * 故障码按位解析规则
-     */
-    private static String alarm_code_bit_sql = "SELECT faultCode.id fault_id,faultCode.fault_type,faultCode.analyze_type,faultCode.param_length,GROUP_CONCAT(model.id) model_num,excep.start_point,excep.id exception_id,excep.exception_code,faultCode.threshold time_threshold,excep.response_level FROM sys_fault_code_exception excep LEFT JOIN sys_fault_code faultCode ON excep.fault_code_id=faultCode.id LEFT JOIN sys_fault_code_model code_model ON faultCode.id=code_model.fault_code_id LEFT JOIN sys_veh_model model ON model.id=code_model.veh_model_id WHERE excep.is_delete='0' AND faultCode.is_delete='0' AND faultCode.analyze_type='2' GROUP BY excep.id";
-
-    /**
-     * 车辆车型表
-     */
-    private static String veh_model_sql = "SELECT veh.uuid vid,model.id mid FROM sys_vehicle veh LEFT JOIN sys_veh_model model ON veh.veh_model_id=model.id WHERE model.id IS NOT NULL";
-
-    /**
-     * 预警规则
-     */
-    private static String early_warning_sql = "SELECT ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL FROM SYS_DATA_CONST WHERE TYPE = 1 AND IS_VALID = 1 AND ID is not null AND R1_VAL is not null ";
-    /**
-     * 偏移系数自定义数据项
-     */
-    private static String item_coef_offset_sql = "SELECT SEQ_NO,IS_ARRAY,FACTOR,OFFSET,IS_CUSTOM FROM SYS_DATA_ITEM WHERE IS_VALID = 1 AND SEQ_NO IS NOT NULL AND (OFFSET is not null OR FACTOR is not null)";
-
-    static {
-        Properties sysParams = CONFIG_UTILS.sysParams;
-        if (sysParams.containsKey("fence.sql")) {
-            fence_sql = sysParams.getProperty("fence.sql");
-        }
-        if (sysParams.containsKey("fence.rule.only.sql")) {
-            fence_rule_only_sql = sysParams.getProperty("fence.rule.only.sql");
-        }
-        if (sysParams.containsKey("fence.vid.sql")) {
-            fence_vid_sql = sysParams.getProperty("fence.vid.sql");
-        }
-
-        final String alarmCodeSql = Conn.SYS_PARAMS.getAlarmCodeSql();
-        if (null != alarmCodeSql) {
-            alarm_code_sql = alarmCodeSql;
-        }
-        if (sysParams.containsKey("early.warning.sql")) {
-            early_warning_sql = sysParams.getProperty("early.warning.sql");
-        }
-        if (sysParams.containsKey("item.coef.offset.sql")) {
-            item_coef_offset_sql = sysParams.getProperty("item.coef.offset.sql");
-        }
-
-        alarm_code_bit_sql = sysParams.getProperty(
-            SysParams.ALARM_CODE_BIT_SQL,
-            alarm_code_bit_sql);
-        veh_model_sql = sysParams.getProperty(
-            SysParams.VEH_MODEL_SQL,
-            veh_model_sql);
-    }
-
     /**
      * 创建数据库连接
+     *
      * @return
      */
     @Nullable
     private static Connection getConn() {
-
-        final Properties sysDefine = CONFIG_UTILS.sysDefine;
-
-        final String driver = sysDefine.getProperty("jdbc.driver");
         try {
-            Class.forName(driver);
+            Class.forName(ConfigUtils.getSysDefine().getJdbcDriver());
         } catch (ClassNotFoundException e) {
             LOG.error("数据库驱动不存在", e);
         }
 
-        final String url = sysDefine.getProperty("jdbc.url");
-        final String username = sysDefine.getProperty("jdbc.username");
-        final String password = sysDefine.getProperty("jdbc.password");
+        final String url = ConfigUtils.getSysDefine().getJdbcUrl();
+        final String username = ConfigUtils.getSysDefine().getJdbcUsername();
+        final String password = ConfigUtils.getSysDefine().getJdbcPassword();
 
         try {
             return DriverManager.getConnection(url, username, password);
@@ -177,13 +106,13 @@ public final class Conn {
 
             // 适用车型, 车型Id用英文逗号衔接, 如果为空, 则适用于所有车型.
             final String[] modelNum = Arrays.stream(StringUtils
-                .defaultIfEmpty(
-                    objs[model_num],
-                    "")
-                .split("\\s*,\\s*"))
-                .filter(s -> StringUtils.isNotBlank(s))
-                .distinct()
-                .toArray(String[]::new);
+                    .defaultIfEmpty(
+                            objs[model_num],
+                            "")
+                    .split("\\s*,\\s*"))
+                    .filter(s -> StringUtils.isNotBlank(s))
+                    .distinct()
+                    .toArray(String[]::new);
             // 原逻辑没处理车型, 暂时不动
             // TODO: 加上车型处理
 
@@ -263,6 +192,7 @@ public final class Conn {
 
         final Map<String, String> vmd = new TreeMap<>();
 
+        String veh_model_sql = ConfigUtils.getSysParam().getVehModelSql();
         if (StringUtils.isBlank(veh_model_sql)) {
             return vmd;
         }
@@ -318,6 +248,7 @@ public final class Conn {
         // <fault_type, <faultId, fault>>
         final Map<String, Map<String, FaultTypeSingleBit>> faultTypes = new HashMap<>();
 
+        String alarm_code_bit_sql = ConfigUtils.getSysParam().getAlarmCodeBitSql();
         if (StringUtils.isBlank(alarm_code_bit_sql)) {
             LOG.info("按位解析故障码查询语句为空.");
             return faultTypes;
@@ -380,8 +311,8 @@ public final class Conn {
 
                     // 位长, 目前固定为1
                     final String param_length = StringUtils.defaultIfEmpty(
-                        analyzeBitResult.getString(4),
-                        "1");
+                            analyzeBitResult.getString(4),
+                            "1");
                     if (!NumberUtils.isDigits(param_length)) {
                         LOG.warn("故障码[{}]: 按位解析方式下, 无效的位长类型[{}].", fault_id, param_length);
                         continue;
@@ -395,13 +326,13 @@ public final class Conn {
 
                     // 适用车型, 车型Id用英文逗号衔接, 如果为空, 则适用于所有车型.
                     final String[] model_num = Arrays.stream(StringUtils
-                        .defaultIfEmpty(
-                            analyzeBitResult.getString(5),
-                            "")
-                        .split("\\s*,\\s*"))
-                        .filter(s -> StringUtils.isNotBlank(s))
-                        .distinct()
-                        .toArray(String[]::new);
+                            .defaultIfEmpty(
+                                    analyzeBitResult.getString(5),
+                                    "")
+                            .split("\\s*,\\s*"))
+                            .filter(s -> StringUtils.isNotBlank(s))
+                            .distinct()
+                            .toArray(String[]::new);
 
                     // 起始位偏移量
                     final String start_point = analyzeBitResult.getString(6);
@@ -423,10 +354,10 @@ public final class Conn {
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
                         LOG.warn(
-                            "故障码[{}]异常码[{}]: 起始位偏移量格式错误: {}",
-                            fault_id,
-                            exception_id,
-                            e.getLocalizedMessage());
+                                "故障码[{}]异常码[{}]: 起始位偏移量格式错误: {}",
+                                fault_id,
+                                exception_id,
+                                e.getLocalizedMessage());
                         continue;
                     }
 
@@ -439,8 +370,8 @@ public final class Conn {
 
                     // 时间阈值
                     final String time_threshold = StringUtils.defaultIfEmpty(
-                        analyzeBitResult.getString(9),
-                        "0");
+                            analyzeBitResult.getString(9),
+                            "0");
                     if (!NumberUtils.isDigits(time_threshold)) {
                         LOG.warn("故障码[{}]: 按位解析方式下, 无效的时间阈值[{}].", fault_id, time_threshold);
                         continue;
@@ -452,17 +383,17 @@ public final class Conn {
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
                         LOG.warn(
-                            "故障码[{}]异常码[{}]: 时间阈值格式错误: {}",
-                            fault_id,
-                            exception_id,
-                            e.getLocalizedMessage());
+                                "故障码[{}]异常码[{}]: 时间阈值格式错误: {}",
+                                fault_id,
+                                exception_id,
+                                e.getLocalizedMessage());
                         continue;
                     }
 
                     // 告警等级
                     final String response_level = StringUtils.defaultIfEmpty(
-                        analyzeBitResult.getString(10),
-                        "0");
+                            analyzeBitResult.getString(10),
+                            "0");
                     if (!NumberUtils.isDigits(response_level)) {
                         LOG.warn("故障码[{}]: 按位解析方式下, 无效的告警等级[{}].", fault_id, response_level);
                         continue;
@@ -474,28 +405,28 @@ public final class Conn {
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
                         LOG.warn(
-                            "故障码[{}]异常码[{}]: 告警等级格式错误: {}",
-                            fault_id,
-                            exception_id,
-                            e.getLocalizedMessage());
+                                "故障码[{}]异常码[{}]: 告警等级格式错误: {}",
+                                fault_id,
+                                exception_id,
+                                e.getLocalizedMessage());
                         continue;
                     }
 
                     // 故障类型规则集合
                     final Map<String, FaultTypeSingleBit> faultTypeRule = faultTypes.getOrDefault(
-                        fault_type,
-                        new HashMap<>()
+                            fault_type,
+                            new HashMap<>()
                     );
                     faultTypes.put(fault_type, faultTypeRule);
 
                     // 故障码规则
                     final FaultTypeSingleBit faultRule = faultTypeRule.getOrDefault(
-                        fault_id,
-                        new FaultTypeSingleBit(
                             fault_id,
-                            fault_type,
-                            analyze_type
-                        )
+                            new FaultTypeSingleBit(
+                                    fault_id,
+                                    fault_type,
+                                    analyze_type
+                            )
                     );
                     faultTypeRule.put(fault_id, faultRule);
 
@@ -512,16 +443,16 @@ public final class Conn {
                     final String[] vehicleModels = ArrayUtils.isEmpty(model_num) ? new String[]{""} : model_num;
                     for (final String vehicleModel : vehicleModels) {
                         final Map<String, ExceptionSingleBit> exceptions =
-                            faultRule.vehExceptions.getOrDefault(
-                                vehicleModel,
-                                new HashMap<>());
+                                faultRule.vehExceptions.getOrDefault(
+                                        vehicleModel,
+                                        new HashMap<>());
                         faultRule.vehExceptions.put(vehicleModel, exceptions);
                         if (exceptions.containsKey(exceptionRule.exceptionId)) {
                             LOG.warn(
-                                "故障码[{}]车型[{}]重复的异常码[{}].",
-                                faultRule.faultId,
-                                vehicleModel,
-                                exceptionRule.exceptionId);
+                                    "故障码[{}]车型[{}]重复的异常码[{}].",
+                                    faultRule.faultId,
+                                    vehicleModel,
+                                    exceptionRule.exceptionId);
                             continue;
                         }
                         exceptions.put(exceptionRule.exceptionId, exceptionRule);
@@ -575,6 +506,7 @@ public final class Conn {
         Statement statement = null;
         ResultSet resultSet = null;
 
+        String alarm_code_sql = ConfigUtils.getSysParam().getAlarmCodeSql();
         try {
             if (StringUtils.isEmpty(alarm_code_sql)) {
                 LOG.info("按值解析故障码查询语句为空.");
@@ -592,22 +524,22 @@ public final class Conn {
             resultSet = statement.executeQuery(alarm_code_sql);
             while (resultSet.next()) {
                 String[] rule = new String[]{
-                    // fault_id
-                    resultSet.getString(1),
-                    // fault_type
-                    resultSet.getString(2),
-                    // analyze_type
-                    resultSet.getString(3),
-                    // model_num
-                    resultSet.getString(4),
-                    // exception_type
-                    resultSet.getString(5),
-                    // exception_id
-                    resultSet.getString(6),
-                    // exception_code
-                    resultSet.getString(7),
-                    // response_level
-                    resultSet.getString(8),
+                        // fault_id
+                        resultSet.getString(1),
+                        // fault_type
+                        resultSet.getString(2),
+                        // analyze_type
+                        resultSet.getString(3),
+                        // model_num
+                        resultSet.getString(4),
+                        // exception_type
+                        resultSet.getString(5),
+                        // exception_id
+                        resultSet.getString(6),
+                        // exception_code
+                        resultSet.getString(7),
+                        // response_level
+                        resultSet.getString(8),
                 };
                 rules.add(rule);
             }
@@ -631,6 +563,7 @@ public final class Conn {
         Connection conn = null;
         Statement s = null;
         ResultSet rs = null;
+        String early_warning_sql = ConfigUtils.getSysParam().getEarlyWarningSql();
         try {
             if (StringUtils.isEmpty(early_warning_sql)) {
                 return null;
@@ -647,9 +580,9 @@ public final class Conn {
             //ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL
             while (rs.next()) {
                 Object[] objects = new Object[]{rs.getString(1), rs.getString(2),
-                    rs.getString(3), rs.getInt(4), rs.getString(5),
-                    rs.getString(6), rs.getString(7), rs.getString(8),
-                    rs.getString(9), rs.getFloat(10), rs.getFloat(11)};
+                        rs.getString(3), rs.getInt(4), rs.getString(5),
+                        rs.getString(6), rs.getString(7), rs.getString(8),
+                        rs.getString(9), rs.getFloat(10), rs.getFloat(11)};
                 rules.add(objects);
             }
 
@@ -677,6 +610,7 @@ public final class Conn {
         Statement s = null;
         ResultSet rs = null;
 
+        String item_coef_offset_sql = ConfigUtils.getSysParam().getItemCoefOffsetSql();
         try {
             if (StringUtils.isEmpty(item_coef_offset_sql)) {
                 return null;
@@ -742,7 +676,7 @@ public final class Conn {
             for (String[] strings : vidFenceMap) {
                 if (null != strings && strings.length == 2) {
                     if (null != strings[0] && !"".equals(strings[0].trim())
-                        && null != strings[1] && !"".equals(strings[1].trim())) {
+                            && null != strings[1] && !"".equals(strings[1].trim())) {
                         String fenceId = strings[0].trim();
                         String vid = strings[1].trim();
 //                    List<String> list = vidfenceIds.get(vid);
@@ -804,6 +738,7 @@ public final class Conn {
         Connection conn = null;
         Statement s = null;
         ResultSet rs = null;
+        String fence_sql = ConfigUtils.getSysParam().getFenceSql();
         try {
             if (StringUtils.isEmpty(fence_sql)) {
                 return null;
@@ -844,6 +779,7 @@ public final class Conn {
         Connection conn = null;
         Statement s = null;
         ResultSet rs = null;
+        String fence_vid_sql = ConfigUtils.getSysParam().getFenceVidSql();
         try {
             if (StringUtils.isEmpty(fence_vid_sql)) {
                 return null;
@@ -876,6 +812,7 @@ public final class Conn {
         Connection conn = null;
         Statement s = null;
         ResultSet rs = null;
+        String fence_rule_only_sql = ConfigUtils.getSysParam().getFenceRuleOnlySql();
         try {
             if (StringUtils.isEmpty(fence_rule_only_sql)) {
                 return null;
@@ -980,7 +917,7 @@ public final class Conn {
     }
 
     private int toInt(String str) {
-        return (int)NumberUtils.toDouble(str, -1);
+        return (int) NumberUtils.toDouble(str, -1);
     }
 
     private double toDouble(String str) {

@@ -42,8 +42,8 @@ public final class EarlyWarnsGetterTest {
     @Test
     void testRebuild() {
 
-        ConfigUtils.getInstance().sysDefine
-            .setProperty(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, "3");
+//        ConfigUtils.getInstance().sysDefine
+//            .setProperty(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, "3");
 
         Runnable test = ()->{
             final ImmutableMap<String, EarlyWarn> rules =

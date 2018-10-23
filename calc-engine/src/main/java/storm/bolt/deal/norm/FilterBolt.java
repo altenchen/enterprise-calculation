@@ -3,7 +3,6 @@ package storm.bolt.deal.norm;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.storm.Config;
@@ -30,7 +29,9 @@ import storm.kafka.spout.GeneralKafkaSpout;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.spout.MySqlSpout;
-import storm.stream.*;
+import storm.stream.DataStream;
+import storm.stream.KafkaStream;
+import storm.stream.StreamReceiverFilter;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
@@ -38,7 +39,6 @@ import storm.util.*;
 
 import java.text.ParseException;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -50,13 +50,9 @@ import java.util.regex.Pattern;
  */
 public class FilterBolt extends BaseRichBolt {
 
-    // region 类常量
-
     private static final long serialVersionUID = 1700001L;
 
     private static final Logger LOG = LoggerFactory.getLogger(FilterBolt.class);
-
-    // region Component
 
     @NotNull
     private static final String COMPONENT_ID = FilterBolt.class.getSimpleName();
@@ -66,10 +62,6 @@ public class FilterBolt extends BaseRichBolt {
     public static String getComponentId() {
         return COMPONENT_ID;
     }
-
-    // endregion Component
-
-    // region DataStream
 
     @NotNull
     private static final DataStream DATA_STREAM = DataStream.getInstance();
@@ -95,10 +87,6 @@ public class FilterBolt extends BaseRichBolt {
                 DATA_STREAM_ID);
     }
 
-    // endregion DataStream
-
-    // region KafkaStream
-
     @NotNull
     private static final KafkaStream KAFKA_STREAM = KafkaStream.getInstance();
 
@@ -111,10 +99,6 @@ public class FilterBolt extends BaseRichBolt {
         return KAFKA_STREAM_ID;
     }
 
-    // endregion KafkaStream
-
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
-
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
@@ -123,34 +107,12 @@ public class FilterBolt extends BaseRichBolt {
 
     private static final Pattern MSG_REGEX = Pattern.compile("^([^ ]+) (\\d+) ([^ ]+) ([^ ]+) \\{VID:([^,]*)(?:,([^}]+))*\\}$");
 
-    /**
-     * 是否启用时间异常通知
-     */
-    private static final boolean ENABLE_TIME_OUT_OF_RANGE_NOTICE;
-
     static {
-
-        final Properties sysDefine = CONFIG_UTILS.sysDefine;
-
-        {
-            final String noticeTimeEnableString = sysDefine.getProperty(SysDefine.NOTICE_TIME_ENABLE);
-            final boolean noticeTimeEnable = BooleanUtils.toBoolean(noticeTimeEnableString);
-            ENABLE_TIME_OUT_OF_RANGE_NOTICE = noticeTimeEnable;
-            if (LOG.isInfoEnabled()) {
-                LOG.info("时间异常通知已{}.", ENABLE_TIME_OUT_OF_RANGE_NOTICE ? "启用" : "禁用");
-            }
+        if (LOG.isInfoEnabled()) {
+            LOG.info("时间异常通知已{}.", ConfigUtils.getSysDefine().isNoticeTimeEnable() ? "启用" : "禁用");
         }
-
-        {
-            final String noticeTimeRangeAbsMillisecondString = sysDefine.getProperty(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND);
-            final long noticeTimeRangeAbsMillisecond = NumberUtils.toLong(noticeTimeRangeAbsMillisecondString, TimeOutOfRangeNotice.DEFAULT_TIME_RANGE_MILLISECOND);
-            TimeOutOfRangeNotice.setTimeRangeMillisecond(noticeTimeRangeAbsMillisecond);
-        }
+        TimeOutOfRangeNotice.setTimeRangeMillisecond(ConfigUtils.getSysDefine().getNoticeTimeRangeAbsMillisecond());
     }
-
-    // endregion 类常量
-
-    // region 对象变量
 
     private transient TimeOutOfRangeNotice timeOutOfRangeNotice;
 
@@ -175,8 +137,6 @@ public class FilterBolt extends BaseRichBolt {
 
     private transient Map<String, Map<String, String>> vehicleCache;
 
-    private transient int taskId;
-
     private transient OutputCollector collector;
 
     private transient DataStream.BoltSender dataStreamSender;
@@ -188,10 +148,6 @@ public class FilterBolt extends BaseRichBolt {
     private transient StreamReceiverFilter generalStreamReceiver;
 
     private transient StreamReceiverFilter ctfoBoltDataStreamReceiver;
-
-    // endregion 对象变量
-
-    // region IComponent
 
     @Override
     public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
@@ -211,19 +167,11 @@ public class FilterBolt extends BaseRichBolt {
         return config;
     }
 
-    // endregion IComponent
-
-    // region IBolt
-
     @Override
     public void prepare(
         @NotNull final Map stormConf,
         @NotNull final TopologyContext context,
         @NotNull final OutputCollector collector) {
-
-        final Properties sysDefine = CONFIG_UTILS.sysDefine;
-
-        taskId = context.getThisTaskId();
         this.collector = collector;
 
         timeOutOfRangeNotice = new TimeOutOfRangeNotice();
@@ -235,15 +183,7 @@ public class FilterBolt extends BaseRichBolt {
         statusFlagsProcessor = new StatusFlagsProcessor();
 
         vehicleIdleHandler = new VehicleIdleHandler();
-        final String idleTimeoutMillisecondString = sysDefine.getProperty(ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
-        if(NumberUtils.isDigits(idleTimeoutMillisecondString)) {
-
-            final long idleTimeoutMillisecond = NumberUtils.toLong(
-                idleTimeoutMillisecondString,
-                vehicleIdleHandler.getIdleTimeoutMillisecond());
-
-            vehicleIdleHandler.setIdleTimeoutMillisecond(idleTimeoutMillisecond);
-        }
+        vehicleIdleHandler.setIdleTimeoutMillisecond(ConfigUtils.getSysDefine().getVehicleIdleTimeoutMillisecond());
 
         vehicleCache = Maps.newHashMap();
 
@@ -271,8 +211,6 @@ public class FilterBolt extends BaseRichBolt {
         ctfoBoltDataStreamReceiver = MySqlSpout.prepareVehicleIdentityStreamReceiver(this::executeFromMySqlSpoutVehicleIdentityStream);
     }
 
-    // endregion prepare
-
     @Override
     public void execute(
         @NotNull final Tuple input) {
@@ -292,8 +230,6 @@ public class FilterBolt extends BaseRichBolt {
 
         collector.fail(input);
     }
-
-    // region execute
 
     private void executeFromSystemTickStream(
         @NotNull final Tuple input) {
@@ -390,9 +326,8 @@ public class FilterBolt extends BaseRichBolt {
                 final Map<String, String> notice = timeOutOfRangeNotice.process(data);
                 if(MapUtils.isNotEmpty(notice)) {
 
-                    if(ENABLE_TIME_OUT_OF_RANGE_NOTICE) {
-                        sendNotice(vid, notice);
-                    }
+                if(ConfigUtils.getSysDefine().isNoticeTimeEnable()) {
+                    sendNotice(vid, notice);
                 }
 
                 // 判断是否充电
@@ -483,10 +418,6 @@ public class FilterBolt extends BaseRichBolt {
             LOG.warn("从缓存获取有效累计里程异常", e);
         }
     }
-
-    // endregion execute
-
-    // endregion IBolt
 
     private void emit(
         @NotNull final Tuple anchors,
