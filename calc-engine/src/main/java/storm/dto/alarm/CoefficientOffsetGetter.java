@@ -86,7 +86,7 @@ public final class CoefficientOffsetGetter {
 
                 rules = buildCoefficientOffsetFromDb();
 
-                LOG.info("偏移系数规则重构完毕, 共获取到[{}]条规则.", rules.size());
+                LOG.info("偏移系数规则重构完毕, 共获取到[{}]条规则.", rules.values().stream().mapToInt(Map::size).sum());
 
                 lastRebuildTime = currentTimeMillis;
             } catch (final Exception e) {

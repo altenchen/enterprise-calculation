@@ -58,11 +58,11 @@ public final class DataUtils {
      * @param latitude 纬度
      * @return 经纬度
      */
-    @NotNull
+    @Nullable
     @Contract(pure = true)
     public static String buildLocation(
-        @NotNull final String longitude,
-        @NotNull final String latitude) {
+        @Nullable final String longitude,
+        @Nullable final String latitude) {
 
         if(NumberUtils.isDigits(longitude) && NumberUtils.isDigits(latitude)) {
             return new StringBuilder(32)

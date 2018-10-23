@@ -1,5 +1,7 @@
 package storm.util.function;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.Objects;
 
 /**
@@ -7,7 +9,7 @@ import java.util.Objects;
  *
  * Represents an operation that accepts two input arguments and returns no
  * result.  This is the two-arity specialization of {@link ConsumerE}.
- * Unlike most other functional interfaces, {@code BiConsumer} is expected
+ * Unlike most other functional interfaces, {@code BiConsumerE} is expected
  * to operate via side-effects.
  *
  * <p>This is a <a href="package-summary.html">functional interface</a>
@@ -30,24 +32,25 @@ public interface BiConsumerE<T, U, E extends Exception> {
      * @param u the second input argument
      * @throws E the function exception
      */
-    void accept(T t, U u) throws E;
+    void accept(final T t, final U u) throws E;
 
     /**
-     * Returns a composed {@code BiConsumer} that performs, in sequence, this
+     * Returns a composed {@code BiConsumerE} that performs, in sequence, this
      * operation followed by the {@code after} operation. If performing either
      * operation throws an exception, it is relayed to the caller of the
      * composed operation.  If performing this operation throws an exception,
      * the {@code after} operation will not be performed.
      *
      * @param after the operation to perform after this operation
-     * @return a composed {@code BiConsumer} that performs in sequence this
+     * @return a composed {@code BiConsumerE} that performs in sequence this
      * operation followed by the {@code after} operation
      * @throws NullPointerException if {@code after} is null
      */
-    default BiConsumerE<? extends T, ? extends U, ? super E> andThen(BiConsumerE<? super T, ? super U, ? extends E> after) {
+    default BiConsumerE<? extends T, ? extends U, ? super E> andThen(
+        @NotNull final BiConsumerE<? super T, ? super U, ? extends E> after) {
         Objects.requireNonNull(after);
 
-        return (l, r) -> {
+        return (final T l, final U r) -> {
             accept(l, r);
             after.accept(l, r);
         };

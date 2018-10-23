@@ -342,7 +342,7 @@ public final class AlarmStatus {
      */
     @Nullable
     @Contract(pure = true)
-    private Boolean getStatus() {
+    public Boolean getStatus() {
         final int switchStatus = delaySwitch.getSwitchStatus();
         if(switchStatus > 0) {
             return true;

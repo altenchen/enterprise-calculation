@@ -4,15 +4,13 @@ package storm.util.function;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * @author xzp
  * 虽然都可以用高阶函数科里化来做, 但是没有函数这么直观, 所以加了这么个函数式接口.
  *
  * Represents a function that accepts three arguments and produces a result.
- * This is the three-arity specialization of {@link Function}.
+ * This is the three-arity specialization of {@link FunctionE}.
  *
  * <p>This is a <a href="package-summary.html">functional interface</a>
  * whose functional method is {@link #apply(Object, Object, Object)}.
@@ -21,12 +19,13 @@ import java.util.function.Function;
  * @param <U> the type of the second argument to the function
  * @param <F> the type of the third argument to the function
  * @param <R> the type of the result of the function
+ * @param <E> the type of the exception of the function
  *
- * @see Function
+ * @see TeFunctionE
  * @since 1.8
  */
 @FunctionalInterface
-public interface TeFunction<T, U, F, R> {
+public interface TeFunctionE<T, U, F, R, E extends Exception> {
 
     /**
      * Applies this function to the given arguments.
@@ -35,8 +34,9 @@ public interface TeFunction<T, U, F, R> {
      * @param u the second function argument
      * @param f the third function argument
      * @return the function result
+     * @throws E the function exception
      */
-    R apply(final T t, final U u, final F f);
+    R apply(final T t, final U u, final F f) throws E;
 
     /**
      * Returns a composed function that first applies this function to
@@ -51,8 +51,8 @@ public interface TeFunction<T, U, F, R> {
      * applies the {@code after} function
      * @throws NullPointerException if after is null
      */
-    default <V> TeFunction<? extends T, ? extends U, ? extends F, ? super V> andThen(
-        @NotNull final Function<? super R, ? extends V> after) {
+    default <V> TeFunctionE<? extends T, ? extends U, ? extends F, ? super V, ? super E> andThen(
+        @NotNull final FunctionE<? super R, ? extends V, ? extends E> after) {
         Objects.requireNonNull(after);
 
         return (final T t, final U u, final F f) -> after.apply(apply(t, u, f));
@@ -70,8 +70,8 @@ public interface TeFunction<T, U, F, R> {
      * operation followed by the {@code after} operation
      * @throws NullPointerException if {@code after} is null
      */
-    default TeConsumer<? extends T, ? extends U, ? super F> andThen(
-        @NotNull final Consumer<? super R> after) {
+    default TeConsumerE<? extends T, ? extends U, ? extends F, ? super E> andThen(
+        @NotNull final ConsumerE<? super R, ? extends E> after) {
         Objects.requireNonNull(after);
 
         return (final T t, final U u, final F f) -> after.accept(apply(t, u, f));

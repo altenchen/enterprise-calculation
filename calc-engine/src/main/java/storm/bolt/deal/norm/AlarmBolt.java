@@ -3,6 +3,7 @@ package storm.bolt.deal.norm;
 import com.google.common.collect.*;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.storm.Config;
 import org.apache.storm.task.OutputCollector;
@@ -149,17 +150,41 @@ public class AlarmBolt extends BaseRichBolt {
                     final String json = jedis.hget(IDLE_VEHICLE_REDIS_KEY, field);
                     // 如果 redis 中有未结束状态, 则加载未结束状态初始化
                     if (StringUtils.isNotBlank(json)) {
-                        final TreeMap<String, String> startNotice = JSON_UTILS.fromJson(
-                            json,
-                            TREE_MAP_STRING_STRING_TYPE);
+                        final ImmutableMap<String, String> startNotice = ImmutableMap.copyOf(
+                            ObjectExtension.defaultIfNull(
+                                JSON_UTILS.fromJson(
+                                    json,
+                                    TREE_MAP_STRING_STRING_TYPE,
+                                    e -> {
+                                        LOG.warn(
+                                            "redis[{}][{}][{}]中不是合法json的异常平台报警通知[{}]",
+                                            REDIS_DATABASE_INDEX,
+                                            IDLE_VEHICLE_REDIS_KEY,
+                                            field,
+                                            json);
+                                        return null;
+                                    }),
+                                Maps::newTreeMap));
                         final String status = startNotice.get(AlarmStatus.NOTICE_STATUS_KEY);
                         if(AlarmStatus.NOTICE_STATUS_START.equals(status)) {
                             return new AlarmStatus(vehicleId, true);
                         } else if(AlarmStatus.NOTICE_STATUS_END.equals(status)) {
-                            // 顺手清理下已结束未删除的状态
+                            LOG.warn(
+                                "redis[{}][{}][{}]中已结束的平台报警通知[{}]",
+                                REDIS_DATABASE_INDEX,
+                                IDLE_VEHICLE_REDIS_KEY,
+                                field,
+                                json);
                             jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
                         } else {
-                            LOG.warn("redis中状态未知的平台报警通知[{}]", json);
+                            LOG.warn(
+                                "redis[{}][{}][{}]中状态为[{}]的异常平台报警通知[{}]",
+                                REDIS_DATABASE_INDEX,
+                                IDLE_VEHICLE_REDIS_KEY,
+                                field,
+                                status,
+                                json);
+                            jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
                         }
                     }
                     return new AlarmStatus(vehicleId, false);
@@ -249,17 +274,25 @@ public class AlarmBolt extends BaseRichBolt {
             JEDIS_POOL_UTILS.useResource(jedis -> {
                 jedis.select(REDIS_DATABASE_INDEX);
 
-                ruleVehicleStatus.keySet().forEach(ruleId -> {
-                    if (!enableRuleIds.contains(ruleId)) {
-                        final Map<String, AlarmStatus> vehicleStatus = ruleVehicleStatus.remove(ruleId);
+
+                ruleVehicleStatus.entrySet().removeIf(next -> {
+                    final String ruleId = next.getKey();
+                    if (enableRuleIds.contains(ruleId)) {
+                        return false;
+                    } else {
+                        final Map<String, AlarmStatus> vehicleStatus = next.getValue();
+
                         if (MapUtils.isNotEmpty(vehicleStatus)) {
-                            vehicleStatus.forEach((vehicleId, status) ->
-                                finishNoticeIfStarted(
-                                    jedis,
-                                    buildRedisField(vehicleId, ruleId),
-                                    notice -> emitNotice(input, vehicleId, ruleId, notice))
-                            );
+                            vehicleStatus.forEach((vehicleId, status) -> {
+                                if (null != status && BooleanUtils.isTrue(status.getStatus())) {
+                                    finishNoticeIfStarted(
+                                        jedis,
+                                        buildRedisField(vehicleId, ruleId),
+                                        notice -> emitNotice(input, vehicleId, ruleId, notice));
+                                }
+                            });
                         }
+                        return true;
                     }
                 });
 
@@ -270,16 +303,18 @@ public class AlarmBolt extends BaseRichBolt {
                         final String vehicleId = parts.get(REDIS_FIELD_PARTS_VEHICLE_ID_INDEX);
                         final String ruleId = parts.get(REDIS_FIELD_PARTS_RULE_ID_INDEX);
 
-                        if(!enableRuleIds.contains(ruleId)) {
+                        if(vehicleCache.containsKey(vehicleId) && !enableRuleIds.contains(ruleId)) {
                             finishNoticeIfStarted(
                                 jedis,
                                 field,
                                 notice -> emitNotice(input, vehicleId, ruleId, notice));
                         }
                     } else {
+                        LOG.warn("redis[{}][{}]无效的平台报警通知键[{}]", REDIS_DATABASE_INDEX, IDLE_VEHICLE_REDIS_KEY, field);
                         jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
                     }
                 });
+
             });
         }
     }
@@ -337,7 +372,7 @@ public class AlarmBolt extends BaseRichBolt {
 
         final String vehicleType = data.get(DataKey.VEHICLE_TYPE);
         if (StringUtils.isBlank(vehicleType)) {
-            LOG.warn("实时数据没有车型");
+            LOG.warn("[{}]实时数据没有车型[{}]", vehicleId, JSON_UTILS.toJson(data));
             return;
         }
 
@@ -416,10 +451,17 @@ public class AlarmBolt extends BaseRichBolt {
                 ObjectExtension.defaultIfNull(
                     JSON_UTILS.fromJson(
                         json,
-                        TREE_MAP_STRING_STRING_TYPE),
-                    Maps::newHashMap
-                )
-            );
+                        TREE_MAP_STRING_STRING_TYPE,
+                        e -> {
+                            LOG.warn(
+                                "redis[{}][{}][{}]中不是合法json的异常平台报警通知[{}]",
+                                REDIS_DATABASE_INDEX,
+                                IDLE_VEHICLE_REDIS_KEY,
+                                field,
+                                json);
+                            return null;
+                        }),
+                    Maps::newTreeMap));
             final String status = startNotice.get(AlarmStatus.NOTICE_STATUS_KEY);
             if(AlarmStatus.NOTICE_STATUS_START.equals(status)) {
                 finishNoticeIfStarted(
@@ -427,12 +469,29 @@ public class AlarmBolt extends BaseRichBolt {
                     noticeCallback
                 );
             } else if(AlarmStatus.NOTICE_STATUS_END.equals(status)) {
-                // 顺手清理下已结束未删除的状态
+                LOG.warn(
+                    "redis[{}][{}][{}]中已结束的平台报警通知[{}]",
+                    REDIS_DATABASE_INDEX,
+                    IDLE_VEHICLE_REDIS_KEY,
+                    field,
+                    json);
                 jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
-            } else {
-                LOG.warn("redis中状态未知的平台报警通知[{}]", json);
+            } else if(MapUtils.isNotEmpty(startNotice)) {
+                LOG.warn(
+                    "redis[{}][{}][{}]中状态为[{}]的异常平台报警通知[{}]",
+                    REDIS_DATABASE_INDEX,
+                    IDLE_VEHICLE_REDIS_KEY,
+                    field,
+                    status,
+                    json);
+                jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
             }
         } else {
+            LOG.warn(
+                "redis[{}][{}][{}]中为null的异常平台报警通知",
+                REDIS_DATABASE_INDEX,
+                IDLE_VEHICLE_REDIS_KEY,
+                field);
             jedis.hdel(IDLE_VEHICLE_REDIS_KEY, field);
         }
     }
@@ -441,8 +500,7 @@ public class AlarmBolt extends BaseRichBolt {
         @NotNull final ImmutableMap<String, String> startNotice,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
         if(MapUtils.isNotEmpty(startNotice)) {
-            final Map<String, String> endNotice = Maps.newHashMap();
-            endNotice.putAll(startNotice);
+            final Map<String, String> endNotice = Maps.newHashMap(startNotice);
             endNotice.put("STATUS", AlarmStatus.NOTICE_STATUS_END);
             endNotice.put("eNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()));
             endNotice.put("reason", "rule_unable");
@@ -459,8 +517,11 @@ public class AlarmBolt extends BaseRichBolt {
 
         if (MapUtils.isNotEmpty(notice)) {
             final String json = JSON_UTILS.toJson(notice);
+            LOG.info("输出平台报警通知[{}]", json);
+
             kafkaStreamVehicleAlarmSender.emit(input, vehicleId, json);
             kafkaStreamVehicleAlarmStoreSender.emit(input, vehicleId, json);
+
 
             JEDIS_POOL_UTILS.useResource(jedis -> {
                 jedis.select(REDIS_DATABASE_INDEX);

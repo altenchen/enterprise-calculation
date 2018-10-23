@@ -74,7 +74,7 @@ public final class RegisterKafkaSpout extends KafkaSpout<String, String> {
             .builder(bootstrapServers, consumerTopic)
             .setProp(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup)
             .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_LATEST)
-            .setProcessingGuarantee(KafkaSpoutConfig.ProcessingGuarantee.AT_LEAST_ONCE)
+            .setProcessingGuarantee(KafkaSpoutConfig.ProcessingGuarantee.AT_MOST_ONCE)
             .setRecordTranslator(new RegisterRecordTranslator(REGISTER_STREAM_SENDER))
             .build());
     }
