@@ -1,5 +1,7 @@
 package storm.util.function;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.Objects;
 
 /**
@@ -30,7 +32,7 @@ public interface BiFunctionE<T, U, R, E extends Exception> {
      * @return the function result
      * @throws E the function exception
      */
-    R apply(T t, U u) throws E;
+    R apply(final T t, final U u) throws E;
 
     /**
      * Returns a composed function that first applies this function to
@@ -45,8 +47,10 @@ public interface BiFunctionE<T, U, R, E extends Exception> {
      * applies the {@code after} function
      * @throws NullPointerException if after is null
      */
-    default <V> BiFunctionE<? extends T, ? extends U, ? super V, ? super E> andThen(FunctionE<? super R, ? extends V, ? extends E> after) {
+    default <V> BiFunctionE<? extends T, ? extends U, ? super V, ? super E> andThen(
+        @NotNull final FunctionE<? super R, ? extends V, ? extends E> after) {
         Objects.requireNonNull(after);
-        return (T t, U u) -> after.apply(apply(t, u));
+
+        return (final T t, final U u) -> after.apply(apply(t, u));
     }
 }

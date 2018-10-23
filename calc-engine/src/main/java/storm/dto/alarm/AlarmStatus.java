@@ -2,7 +2,6 @@ package storm.dto.alarm;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.Contract;
@@ -94,23 +93,12 @@ public final class AlarmStatus {
     @NotNull
     private ImmutableMap<String, String> continueStatus = ImmutableMap.of();
 
-    /**
-     * 开始通知
-     */
-    @NotNull
-    private ImmutableMap<String, String> startNotice;
-
-    public AlarmStatus(@NotNull final String vehicleId) {
-        this(vehicleId, ImmutableMap.of());
-    }
-
     public AlarmStatus(
         @NotNull final String vehicleId,
-        @NotNull final ImmutableMap<String, String> startNotice) {
+        final boolean started) {
 
         this.vehicleId = vehicleId;
-        this.startNotice = startNotice;
-        delaySwitch.setSwitchStatus(1);
+        setStatus(started);
     }
 
     public void updateVehicleAlarmData(
@@ -133,7 +121,7 @@ public final class AlarmStatus {
                         data,
                         rule,
                         noticeCallback);
-                    delaySwitch.setSwitchStatus(1);
+                    setStatus(true);
                 }
             }
 
@@ -178,16 +166,18 @@ public final class AlarmStatus {
         @NotNull final EarlyWarn rule,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
 
-        final ImmutableMap<String, String> startNotice = buildStartNotice(
-            positiveThreshold,
-            positiveTimeout,
-            ruleId,
-            level,
-            data,
-            rule);
+        final Boolean status = getStatus();
+        if (BooleanUtils.isNotTrue(status)) {
+            final ImmutableMap<String, String> startNotice = buildStartNotice(
+                positiveThreshold,
+                positiveTimeout,
+                ruleId,
+                level,
+                data,
+                rule);
 
-        this.startNotice = startNotice;
-        noticeCallback.accept(startNotice);
+            noticeCallback.accept(startNotice);
+        }
     }
     
     @NotNull
@@ -209,7 +199,7 @@ public final class AlarmStatus {
         final String right2Value = ObjectExtension.defaultIfNull(rule.right2Value, "");
 
         final Map<String, String> startNotice = Maps.newHashMap();
-        startNotice.putAll(this.continueStatus);
+        startNotice.putAll(continueStatus);
         startNotice.put(DataKey.VEHICLE_ID, vehicleId);
         startNotice.put("ALARM_ID", alarmId);
         startNotice.put(NOTICE_STATUS_KEY, NOTICE_STATUS_START);
@@ -247,7 +237,8 @@ public final class AlarmStatus {
         @NotNull final EarlyWarn rule,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
 
-        if(MapUtils.isNotEmpty(startNotice)) {
+        final Boolean status = getStatus();
+        if(BooleanUtils.isNotFalse(status)) {
 
             final ImmutableMap<String, String> endNotice = buildEndNotice(
                 negativeThreshold,
@@ -257,7 +248,6 @@ public final class AlarmStatus {
                 data,
                 rule);
 
-            this.startNotice = ImmutableMap.of();
             noticeCallback.accept(endNotice);
         }
     }
@@ -281,7 +271,7 @@ public final class AlarmStatus {
         final String right2Value = ObjectExtension.defaultIfNull(rule.right2Value, "");
 
         final Map<String, String> endNotice = Maps.newHashMap();
-        endNotice.putAll(this.continueStatus);
+        endNotice.putAll(continueStatus);
         endNotice.put(DataKey.VEHICLE_ID, vehicleId);
         endNotice.put("ALARM_ID", alarmId);
         endNotice.put(NOTICE_STATUS_KEY, NOTICE_STATUS_END);
@@ -319,6 +309,7 @@ public final class AlarmStatus {
         @NotNull final String vehicleId,
         @NotNull final String platformReceiveTimeString,
         @NotNull final String ruleId) {
+        //noinspection StringBufferReplaceableByString
         return new StringBuilder()
             .append(vehicleId)
             .append("_")
@@ -328,9 +319,30 @@ public final class AlarmStatus {
             .toString();
     }
 
+    /**
+     * 设置报警状态
+     * true 开始
+     * false 结束
+     * @param status 报警状态
+     */
+    private void setStatus(final boolean status) {
+        if(status) {
+            delaySwitch.setSwitchStatus(1);
+        } else {
+            delaySwitch.setSwitchStatus(-1);
+        }
+    }
+
+    /**
+     * 获取报警状态
+     * null 未知
+     * true 开始
+     * false 结束
+     * @return 报警状态
+     */
     @Nullable
     @Contract(pure = true)
-    private Boolean getStatus() {
+    public Boolean getStatus() {
         final int switchStatus = delaySwitch.getSwitchStatus();
         if(switchStatus > 0) {
             return true;
@@ -338,22 +350,6 @@ public final class AlarmStatus {
             return false;
         } else {
             return null;
-        }
-    }
-
-    public void finishNoticeIfStarted(
-        @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
-        if (BooleanUtils.isTrue(getStatus())) {
-            if(MapUtils.isNotEmpty(startNotice)) {
-                final Map<String, String> endNotice = Maps.newHashMap();
-                endNotice.putAll(this.startNotice);
-                endNotice.put("STATUS", NOTICE_STATUS_END);
-                endNotice.put("eNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()));
-                endNotice.put("reason", "rule_unable");
-
-                noticeCallback.accept(ImmutableMap.copyOf(endNotice));
-                delaySwitch.setSwitchStatus(-1);
-            }
         }
     }
 }

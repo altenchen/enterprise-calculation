@@ -60,7 +60,7 @@ public final class CoefficientOffset {
     public BigDecimal compute(
         @NotNull final ImmutableMap<String, String> data) {
 
-        final String valueString = data.get(getDataKey());
+        final String valueString = data.get(dataKey);
         if(!NumberUtils.isNumber(valueString)) {
             return null;
         }
@@ -74,7 +74,8 @@ public final class CoefficientOffset {
 
     @NotNull
     public BigDecimal compute(@NotNull BigDecimal value) {
-        return (value.subtract(getOffset())).divide(getCoefficient(), getPrecision(), BigDecimal.ROUND_HALF_UP);
+        // 输出 = ( 输入 * 系数 ) + 偏移量
+        return value.multiply(coefficient).add(offset);
     }
 
     /**

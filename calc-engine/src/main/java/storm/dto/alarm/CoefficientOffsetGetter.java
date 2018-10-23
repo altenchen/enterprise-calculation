@@ -56,7 +56,7 @@ public final class CoefficientOffsetGetter {
 
         ALARM_RULE_SQL = StringUtils.defaultIfEmpty(
             sysParams.getProperty("data.offset.coefficient.sql"),
-            "select id,seq_no,ifnull(offset,0),ifnull(factor,1),ifnull(dot,16),ifnull(item_type,2),ifnull(veh_model,'Default') from sys_data_item where is_valid=1 and id is not null and seq_no is not null and is_array=0 and (item_type is null or item_type=1 or item_type=2)"
+            "select id,seq_no,ifnull(offset,0),ifnull(factor,1),ifnull(dot,16),ifnull(item_type,2),ifnull(veh_model,'Default') from sys_data_item where id is not null and seq_no is not null and is_array=0 and (item_type is null or item_type=1 or item_type=2)"
         );
         LOG.debug("偏移系数数据库查询语句为[{}]", ALARM_RULE_SQL);
 
@@ -86,7 +86,7 @@ public final class CoefficientOffsetGetter {
 
                 rules = buildCoefficientOffsetFromDb();
 
-                LOG.info("偏移系数规则重构完毕.");
+                LOG.info("偏移系数规则重构完毕, 共获取到[{}]条规则.", rules.values().stream().mapToInt(Map::size).sum());
 
                 lastRebuildTime = currentTimeMillis;
             } catch (final Exception e) {

@@ -84,7 +84,7 @@ public class EarlyWarnsGetter {
 
                 rules = buildEarlyWarnFromDb();
 
-                LOG.info("平台报警规则重构完毕.");
+                LOG.info("平台报警规则重构完毕, 共获取到[{}]条规则.", rules.values().stream().mapToInt(Map::size).sum());
 
                 lastRebuildTime = currentTimeMillis;
             } catch (final Exception e) {

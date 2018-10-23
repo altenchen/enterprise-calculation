@@ -31,14 +31,16 @@ import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
+import storm.util.function.TeConsumerE;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Properties;
 
 /**
  * @author xzp
  */
-public class TopologiesByConf {
+public final class TopologiesByConf {
 
     private static final Logger LOG = LoggerFactory.getLogger(TopologiesByConf.class);
 
@@ -50,6 +52,11 @@ public class TopologiesByConf {
      * @throws Exception 拓扑启动异常
      */
     public static void main(String[] args) throws Exception {
+        submitTopology(StormSubmitter::submitTopology);
+    }
+
+    public static void submitTopology(@NotNull final TeConsumerE<String, Map, StormTopology, Exception> stormSubmitter)
+        throws Exception {
 
         Properties properties = CONFIG_UTILS.sysDefine;
 
@@ -58,7 +65,7 @@ public class TopologiesByConf {
         Config stormConf = buildStormConf(properties);
         StormTopology stormTopology = createTopology(properties);
         final String topologyName = properties.getProperty(SysDefine.TOPOLOGY_NAME, "qyallStorm");
-        StormSubmitter.submitTopology(topologyName, stormConf, stormTopology);
+        stormSubmitter.accept(topologyName, stormConf, stormTopology);
     }
 
     private static Config buildStormConf(@NotNull Properties properties) {

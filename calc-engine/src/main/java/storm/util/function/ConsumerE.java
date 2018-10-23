@@ -1,5 +1,7 @@
 package storm.util.function;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.Objects;
 
 /**
@@ -26,7 +28,7 @@ public interface ConsumerE<T, E extends Exception> {
      * @param t the input argument
      * @throws E the function exception
      */
-    void accept(T t) throws E;
+    void accept(final T t) throws E;
 
     /**
      * Returns a composed {@code ConsumerE} that performs, in sequence, this
@@ -40,8 +42,13 @@ public interface ConsumerE<T, E extends Exception> {
      * operation followed by the {@code after} operation
      * @throws NullPointerException if {@code after} is null
      */
-    default ConsumerE<? extends T, ? super E> andThen(ConsumerE<? super T, ? extends E> after) {
+    default ConsumerE<? extends T, ? super E> andThen(
+        @NotNull final ConsumerE<? super T, ? extends E> after) {
         Objects.requireNonNull(after);
-        return (T t) -> { accept(t); after.accept(t); };
+
+        return (final T t) -> {
+            accept(t);
+            after.accept(t);
+        };
     }
 }

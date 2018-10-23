@@ -29,7 +29,7 @@ public interface FunctionE<T, R, E extends Exception> {
      * @return the function result
      * @throws E the function exception
      */
-    R apply(T t) throws E;
+    R apply(final T t) throws E;
 
     /**
      * Returns a composed function that first applies the {@code before}
@@ -46,9 +46,11 @@ public interface FunctionE<T, R, E extends Exception> {
      *
      * @see #andThen(FunctionE)
      */
-    default <V> FunctionE<? extends V, ? super R, ? super E> compose(FunctionE<? super V, ? extends T, ? extends E> before) {
+    default <V> FunctionE<? extends V, ? super R, ? super E> compose(
+        @NotNull final FunctionE<? super V, ? extends T, ? extends E> before) {
         Objects.requireNonNull(before);
-        return (V v) -> apply(before.apply(v));
+
+        return (final V v) -> apply(before.apply(v));
     }
 
     /**
@@ -66,9 +68,11 @@ public interface FunctionE<T, R, E extends Exception> {
      *
      * @see #compose(FunctionE)
      */
-    default <V> FunctionE<? extends T, ? super V, ? super E> andThen(FunctionE<? super R, ? extends V, ? extends E> after) {
+    default <V> FunctionE<? extends T, ? super V, ? super E> andThen(
+        @NotNull final FunctionE<? super R, ? extends V, ? extends E> after) {
         Objects.requireNonNull(after);
-        return (T t) -> after.apply(apply(t));
+
+        return (final T t) -> after.apply(apply(t));
     }
 
     /**
@@ -80,7 +84,7 @@ public interface FunctionE<T, R, E extends Exception> {
      */
     @NotNull
     @Contract(pure = true)
-    static <T, E extends Exception> FunctionE<T, T, E> identity(){
-        return t -> t;
+    static <T, E extends Exception> FunctionE<? extends T, ? super T, ? extends E> identity(){
+        return (final T t) -> t;
     }
 }

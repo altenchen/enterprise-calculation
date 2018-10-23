@@ -454,7 +454,7 @@ public class FaultCodeHandler implements Serializable {
     }
 
     @NotNull
-    public static long[] parseFaultCodes(@NotNull String faultCodes) {
+    public static long[] parseFaultCodes(@Nullable String faultCodes) {
         if(StringUtils.isBlank(faultCodes)) {
             return new long[0];
         }
