@@ -52,7 +52,7 @@ public class CarLowSocJudge {
      * 类型：
      * Map<vid, Map<vid,socNotice>>
      */
-    public static Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
+    public static Map<String, Map<String, String>> vidSocNotice = new HashMap<>();
 
     /**
      * SOC 过低计数器
@@ -138,7 +138,7 @@ public class CarLowSocJudge {
      * @param data 车辆数据
      * @return 如果产生低电量通知, 则填充通知, 否则为空集合.
      */
-    public List<Map<String, Object>> processFrame(@NotNull Map<String, String> data) {
+    public List<Map<String, String>> processFrame(@NotNull Map<String, String> data) {
 
         //检查数据有效性
         if (dataIsInvalid(data)){
@@ -152,27 +152,27 @@ public class CarLowSocJudge {
         int socNum = Integer.parseInt(socString);
 
         //soc过低开始通知和附近补电车信息
-        List<Map<String, Object>> result = new LinkedList<>();
-        Map<String, Object> socLowNotice;
+        List<Map<String, String>> result = new LinkedList<>();
+        Map<String, String> socLowNotice;
         //soc过低结束通知
-        Map<String, Object> socNormalNotice;
+        Map<String, String> socNormalNotice;
 
         // 检验SOC是否小于过低开始阈值
         if (socNum < lowSocAlarm_StartThreshold) {
 
             socLowNotice = getSocLowNotice(data);
             //发送soc过低开始通知时，获取附近补电车信息，一并发送
-            if (socLowNotice != null){
+            if (null != socLowNotice){
                 result.add(socLowNotice);
                 try {
                     final double longitude = Double.parseDouble(NumberUtils.isNumber(longitudeString) ? longitudeString : "0") / 1000000.0;
                     final double latitude = Double.parseDouble(NumberUtils.isNumber(latitudeString) ? latitudeString : "0") / 1000000.0;
-                    Map<String, Object> chargeMap = getNoticesOfChargeCars(vid, longitude, latitude);
+                    Map<String, String> chargeMap = getNoticesOfChargeCars(vid, longitude, latitude);
                     if (MapUtils.isNotEmpty(chargeMap)) {
                         result.add(chargeMap);
                     }
                 } catch (Exception e) {
-                    logger.warn("获取补电车信息的时出现异常，位置在CarLowSocJudge类");
+                    logger.warn("获取补电车信息时出现异常，位置在CarLowSocJudge类");
                     logger.warn(e.getMessage());
                 }
             }
@@ -214,7 +214,7 @@ public class CarLowSocJudge {
     /**
      * SOC小于soc过低开始阈值时做的操作
      */
-    private Map<String, Object> getSocLowNotice(Map<String, String> data){
+    private Map<String, String> getSocLowNotice(Map<String, String> data){
         String vid = data.get(DataKey.VEHICLE_ID);
         String timeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
         String longitudeString = data.get(DataKey._2502_LONGITUDE);
@@ -232,10 +232,10 @@ public class CarLowSocJudge {
         vidNormSoc.remove(vid);
 
         //此车之前是否SOC过低状态
-        final Map<String, Object> lowSocNotice = vidSocNotice.getOrDefault(vid, new TreeMap<>());
+        final Map<String, String> lowSocNotice = vidSocNotice.getOrDefault(vid, new TreeMap<>());
         // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-        int status = (int)lowSocNotice.getOrDefault("status", 0);
-        if (status != 0 && status != 3) {
+        String status = lowSocNotice.getOrDefault("status", "0");
+        if (!"0".equals(status) && !"3".equals(status)) {
             return null;
         }
 
@@ -264,7 +264,7 @@ public class CarLowSocJudge {
             lowSocNotice.put("location", location);
             lowSocNotice.put("slocation", location);
             lowSocNotice.put("sthreshold", lowSocAlarm_StartThreshold);
-            lowSocNotice.put("ssoc", socNum);
+            lowSocNotice.put("ssoc", String.valueOf(socNum));
             // 兼容性处理, 暂留
             lowSocNotice.put("lowSocThreshold", lowSocAlarm_StartThreshold);
 
@@ -314,7 +314,7 @@ public class CarLowSocJudge {
         return result;
     }
 
-    private Map<String,Object> getSocNormalNotice(Map<String,String> data){
+    private Map<String,String> getSocNormalNotice(Map<String,String> data){
 
         String vid = data.get(DataKey.VEHICLE_ID);
         String timeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
@@ -338,11 +338,11 @@ public class CarLowSocJudge {
 
         // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
         int status = (int)normalSocNotice.getOrDefault("status", 0);
-        if (status != 1 && status != 2) {
+        if (1 != status && 2 != status) {
             return null;
         }
 
-        //检验SOC是否大于过低结束阈值(有点绕)
+        //如果小于soc过低结束阈值，则清空SOC正常帧数记录值，并返回
         if (socNum < lowSocAlarm_EndThreshold){
             //SOC正常帧数记录值清空
             vidNormSoc.remove(vid);
@@ -409,7 +409,7 @@ public class CarLowSocJudge {
      * @param longitude
      * @param latitude
      */
-    private Map<String, Object> getNoticesOfChargeCars(String vid, double longitude, double latitude) {
+    private Map<String, String> getNoticesOfChargeCars(String vid, double longitude, double latitude) {
         Map<String, FillChargeCar> fillvidgps = SysRealDataCache.getChargeCarCache();
         FindChargeCarsOfNearby findChargeCars = new FindChargeCarsOfNearby();
         Map<Double, List<FillChargeCar>> chargeCarInfo = findChargeCars.findChargeCarsOfNearby(longitude, latitude, fillvidgps);
@@ -471,7 +471,7 @@ public class CarLowSocJudge {
 //     */
 //    void restartInit(boolean isRestart) {
 //        if (isRestart) {
-//            recorder.rebootInit(REDIS_DB_INDEX, REDIS_TABLE_NAME, vidSocNotice);
+//            recorder.rebootInit(REDIS_DB_INDEX, REDIS_TABLE_NAME, vidHighSocNotice);
 //        }
 //    }
     /**
