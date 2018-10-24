@@ -15,6 +15,7 @@ import storm.constant.FormatConstant;
 import storm.constant.RedisConstant;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
+import storm.dto.alarm.AlarmStatus;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.system.DataKey;
@@ -31,6 +32,7 @@ public class CarLowSocJudge {
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
     private static final Logger logger = LoggerFactory.getLogger(CarLowSocJudge.class);
     private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
+    private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
     private static final int REDIS_DB_INDEX = 6;
     /**
@@ -113,18 +115,18 @@ public class CarLowSocJudge {
                 logger.info("从Redis还原lowSoc车辆信息:[{}]", vid);
 
                 final String json = notices.get(vid);
-                final Map<String, Object> notice = GSON_UTILS.fromJson(
+                final Map<String, String> notice = GSON_UTILS.fromJson(
                         json,
-                        new TypeToken<TreeMap<String, Object>>() {
+                        new TypeToken<TreeMap<String, String>>() {
                         }.getType());
 
                 try {
-                    final String statusString = notice.get(STATUS_KEY).toString();
+                    final String statusString = notice.get(STATUS_KEY);
                     final int statusValue = NumberUtils.toInt(statusString);
                     final AlarmStatus status = AlarmStatus.parseOf(statusValue);
 
                     if (AlarmStatus.Start == status || AlarmStatus.Continue == status) {
-                        vidSocNotice.put((String) notice.get("vid"), notice);
+                        vidSocNotice.put(notice.get("vid"), notice);
                     }
                 } catch (Exception ignore) {
                     logger.warn("初始化告警异常", ignore);
@@ -172,7 +174,7 @@ public class CarLowSocJudge {
                         result.add(chargeMap);
                     }
                 } catch (Exception e) {
-                    logger.warn("获取补电车信息时出现异常，位置在CarLowSocJudge类");
+                    logger.warn("获取补电车信息的时出现异常，位置在CarLowSocJudge类");
                     logger.warn(e.getMessage());
                 }
             }
@@ -226,7 +228,7 @@ public class CarLowSocJudge {
         Long currentTimeMillis = System.currentTimeMillis();
         String noticeTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
         // 返回的通知消息
-        Map<String, Object> result = new HashMap<>();
+        Map<String, String> result = new HashMap<>();
 
         //SOC正常帧数记录值清空
         vidNormSoc.remove(vid);
@@ -235,7 +237,7 @@ public class CarLowSocJudge {
         final Map<String, String> lowSocNotice = vidSocNotice.getOrDefault(vid, new TreeMap<>());
         // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
         String status = lowSocNotice.getOrDefault("status", "0");
-        if (!"0".equals(status) && !"3".equals(status)) {
+        if ("0".equals(status) && "3".equals(status)) {
             return null;
         }
 
@@ -263,10 +265,10 @@ public class CarLowSocJudge {
             lowSocNotice.put("stime", timeString);
             lowSocNotice.put("location", location);
             lowSocNotice.put("slocation", location);
-            lowSocNotice.put("sthreshold", lowSocAlarm_StartThreshold);
+            lowSocNotice.put("sthreshold", String.valueOf(lowSocAlarm_StartThreshold));
             lowSocNotice.put("ssoc", String.valueOf(socNum));
             // 兼容性处理, 暂留
-            lowSocNotice.put("lowSocThreshold", lowSocAlarm_StartThreshold);
+            lowSocNotice.put("lowSocThreshold", String.valueOf(lowSocAlarm_StartThreshold));
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
                 logger.info("VID[{}]SOC过低首帧更新", vid);
@@ -282,7 +284,7 @@ public class CarLowSocJudge {
         try {
             firstLowSocTime = DateUtils
                     .parseDate(
-                            lowSocNotice.get("stime").toString(),
+                            lowSocNotice.get("stime"),
                             new String[]{FormatConstant.DATE_FORMAT})
                     .getTime();
         } catch (ParseException e) {
@@ -297,19 +299,21 @@ public class CarLowSocJudge {
         }
 
         //记录连续SOC过低状态确定时的信息
-        lowSocNotice.put("status", 1);
-        lowSocNotice.put("slazy", lowSocFaultIntervalMillisecond);
+        lowSocNotice.put("status", "1");
+        lowSocNotice.put("slazy", String.valueOf(lowSocFaultIntervalMillisecond));
         lowSocNotice.put("noticeTime", noticeTime);
 
-        //把soc过低开始通知存储到redis中
-        recorder.save(REDIS_DB_INDEX, REDIS_TABLE_NAME, vid, lowSocNotice);
+        String json = JSON_UTILS.toJson(lowSocNotice);
+        JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(REDIS_DB_INDEX);
+            jedis.hset(REDIS_TABLE_NAME, vid, json);
+        });
 
         result = lowSocNotice;
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
             logger.info("VID[{}]SOC异常通知发送[{}]", vid, lowSocNotice.get("msgId"));
         });
-
 
         return result;
     }
@@ -331,14 +335,14 @@ public class CarLowSocJudge {
         vidLowSocCount.remove(vid);
 
         //此车之前是否为SOC过低状态
-        final Map<String, Object> normalSocNotice = vidSocNotice.get(vid);
+        final Map<String, String> normalSocNotice = vidSocNotice.get(vid);
         if(null == normalSocNotice) {
             return null;
         }
 
         // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-        int status = (int)normalSocNotice.getOrDefault("status", 0);
-        if (1 != status && 2 != status) {
+        String status = normalSocNotice.getOrDefault("status", "0");
+        if ("1".equals(status) && "2".equals(status)) {
             return null;
         }
 
@@ -361,8 +365,8 @@ public class CarLowSocJudge {
         if(1 == normalSocCount) {
             normalSocNotice.put("etime", timeString);
             normalSocNotice.put("elocation", location);
-            normalSocNotice.put("ethreshold", lowSocAlarm_StartThreshold);
-            normalSocNotice.put("esoc", socNum);
+            normalSocNotice.put("ethreshold", String.valueOf(lowSocAlarm_StartThreshold));
+            normalSocNotice.put("esoc", String.valueOf(socNum));
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
                 logger.info("VID[{}]SOC正常首帧初始化", vid);
@@ -376,7 +380,7 @@ public class CarLowSocJudge {
 
         final Long firstNormalSocTime;
         try {
-            firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
+            firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime"), new String[]{FormatConstant.DATE_FORMAT}).getTime();
         } catch (ParseException e) {
             logger.warn("解析结束时间异常", e);
             normalSocNotice.put("etime", timeString);
@@ -389,12 +393,16 @@ public class CarLowSocJudge {
         }
 
         //记录连续SOC正常状态确定时的信息
-        normalSocNotice.put("status", 3);
-        normalSocNotice.put("elazy", lowSocNormalIntervalMillisecond);
+        normalSocNotice.put("status", "3");
+        normalSocNotice.put("elazy", String.valueOf(lowSocNormalIntervalMillisecond));
         normalSocNotice.put("noticeTime", noticeTime);
 
         vidSocNotice.remove(vid);
-        recorder.del(REDIS_DB_INDEX, REDIS_TABLE_NAME, vid);
+
+        JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(REDIS_DB_INDEX);
+            jedis.hdel(REDIS_TABLE_NAME, vid);
+        });
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
             logger.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
@@ -415,8 +423,8 @@ public class CarLowSocJudge {
         Map<Double, List<FillChargeCar>> chargeCarInfo = findChargeCars.findChargeCarsOfNearby(longitude, latitude, fillvidgps);
 
         if (null != chargeCarInfo) {
-            Map<String, Object> chargeMap = new TreeMap<>();
-            List<Map<String, Object>> chargeCars = new LinkedList<>();
+            Map<String, String> chargeMap = new TreeMap<>();
+            List<Map<String, String>> chargeCars = new LinkedList<>();
             Map<String, String> topnCars = new TreeMap<>();
             int cts = 0;
             for (Map.Entry<Double, List<FillChargeCar>> entry : chargeCarInfo.entrySet()) {
@@ -428,23 +436,23 @@ public class CarLowSocJudge {
                 List<FillChargeCar> listOfChargeCar = entry.getValue();
                 for (FillChargeCar ChargeCar : listOfChargeCar) {
                     //save to redis map
-                    Map<String, Object> jsonMap = new TreeMap<>();
+                    Map<String, String> jsonMap = new TreeMap<>();
                     jsonMap.put("vid", ChargeCar.vid);
-                    jsonMap.put("LONGITUDE", ChargeCar.longitude);
-                    jsonMap.put("LATITUDE", ChargeCar.latitude);
-                    jsonMap.put("lastOnline", ChargeCar.lastOnline);
-                    jsonMap.put("distance", distance);
+                    jsonMap.put("LONGITUDE", String.valueOf(ChargeCar.longitude));
+                    jsonMap.put("LATITUDE", String.valueOf(ChargeCar.latitude));
+                    jsonMap.put("lastOnline", String.valueOf(ChargeCar.lastOnline));
+                    jsonMap.put("distance", String.valueOf(distance));
 
                     String jsonString = GSON_UTILS.toJson(jsonMap);
                     topnCars.put("" + cts, jsonString);
                     //send to kafka map
-                    Map<String, Object> kMap = new TreeMap<>();
+                    Map<String, String> kMap = new TreeMap<>();
                     kMap.put("vid", ChargeCar.vid);
                     kMap.put("location", ChargeCar.longitude + "," + ChargeCar.latitude);
                     kMap.put("lastOnline", ChargeCar.lastOnline);
-                    kMap.put("gpsDis", distance);
-                    kMap.put("ranking", cts);
-                    kMap.put("running", ChargeCar.running);
+                    kMap.put("gpsDis", String.valueOf(distance));
+                    kMap.put("ranking", String.valueOf(cts));
+                    kMap.put("running", String.valueOf(ChargeCar.running));
 
                     chargeCars.add(kMap);
                 }
@@ -454,11 +462,11 @@ public class CarLowSocJudge {
                 redis.saveMap(topnCars, 2, "charge-car-" + vid);
             }
             if (chargeCars.size() > 0) {
-
+                String listOfchargeCar = GSON_UTILS.toJson(chargeCars);
                 chargeMap.put("vid", vid);
                 chargeMap.put("msgType", NoticeType.CHARGE_CAR_NOTICE);
                 chargeMap.put("location", longitude * 1000000 + "," + latitude * 1000000);
-                chargeMap.put("fillChargeCars", chargeCars);
+                chargeMap.put("fillChargeCars", listOfchargeCar);
                 return chargeMap;
             }
         }

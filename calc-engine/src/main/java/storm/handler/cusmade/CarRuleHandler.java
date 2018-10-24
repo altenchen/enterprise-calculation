@@ -494,15 +494,37 @@ public class CarRuleHandler implements InfoNotice {
         }
 
         if (1 == socRule) {
-            //lowsoc(data)返回一个map，里面有vid和通知消息（treeMap）
-            // SOC
-            List<Map<String, Object>> socJudges = carLowSocJudge.processFrame(data);
-            if (!CollectionUtils.isEmpty(socJudges)) {
-                list.addAll(socJudges);
+
+            //为了兼容将Map<String,String>转换成Map<String,Object>
+            Map<String,Object> tmp_String = new HashMap<>();
+            List<Map<String, Object>> socNotices = new LinkedList<>();
+            List<Map<String, String>> socJudges = carLowSocJudge.processFrame(data);
+            for (Map<String, String> entry : socJudges) {
+                Iterator<Map.Entry<String, String>> iterator = entry.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<String, String> entry2 = iterator.next();
+                    tmp_String.put(entry2.getKey(),entry2.getValue());
+                    socNotices.add(tmp_String);
+                }
             }
-            List<Map<String, Object>> socHighJudges = carHighSocJudge.processFrame(data);
-            if (!CollectionUtils.isEmpty(socHighJudges)) {
-                list.addAll(socHighJudges);
+            if (!CollectionUtils.isEmpty(socNotices)) {
+                list.addAll(socNotices);
+            }
+
+            //为了兼容将Map<String,String>转换成Map<String,Object>
+            Map<String,Object> tmp_high_String = new HashMap<>();
+            List<Map<String, Object>> socHighNotices = new LinkedList<>();
+            List<Map<String, String>> socHighJudges = carHighSocJudge.processFrame(data);
+            for (Map<String, String> entry : socHighJudges) {
+                Iterator<Map.Entry<String, String>> iterator = entry.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<String, String> entry2 = iterator.next();
+                    tmp_high_String.put(entry2.getKey(),entry2.getValue());
+                    socNotices.add(tmp_high_String);
+                }
+            }
+            if (!CollectionUtils.isEmpty(socHighNotices)) {
+                list.addAll(socHighNotices);
             }
         }
         if (1 == enableCanRule) {
@@ -1543,14 +1565,36 @@ public class CarRuleHandler implements InfoNotice {
                         notices.add(msg);
                     }
                 }
-                msg = CarLowSocJudge.vidSocNotice.get(vid);
-                if (null != msg) {
+                //为了兼容将Map<String,String>转换成Map<String,Object>
+                Map<String, String> vidSocNotice = CarLowSocJudge.vidSocNotice.get(vid);
+                Iterator<Map.Entry<String, String>> iterator = vidSocNotice.entrySet().iterator();
+                while (iterator.hasNext()) {
+                        Map.Entry<String, String> entry3 = iterator.next();
+                        msg.put(entry3.getKey(),entry3.getValue());
+                }
 
+                if (null != msg) {
                     getOffline(msg, noticetime);
                     if (null != msg) {
                         notices.add(msg);
                     }
                 }
+
+                //为了兼容将Map<String,String>转换成Map<String,Object>
+                Map<String, String> vidHighSocNotice = CarLowSocJudge.vidSocNotice.get(vid);
+                Iterator<Map.Entry<String, String>> iterator_highSoc = vidSocNotice.entrySet().iterator();
+                while (iterator_highSoc.hasNext()) {
+                    Map.Entry<String, String> entry3 = iterator_highSoc.next();
+                    msg.put(entry3.getKey(),entry3.getValue());
+                }
+
+                if (null != msg) {
+                    getOffline(msg, noticetime);
+                    if (null != msg) {
+                        notices.add(msg);
+                    }
+                }
+
                 msg = vidcanNotice.get(vid);
                 if (null != msg) {
 
@@ -1601,6 +1645,7 @@ public class CarRuleHandler implements InfoNotice {
             lastTime.remove(vid);
             vidFlyNotice.remove(vid);
             CarLowSocJudge.vidSocNotice.remove(vid);
+            CarHighSocJudge.vidHighNormSoc.remove(vid);
             vidcanNotice.remove(vid);
             vidGpsNotice.remove(vid);
             vidSpeedGtZeroNotice.remove(vid);
@@ -1614,7 +1659,9 @@ public class CarRuleHandler implements InfoNotice {
             vidSpeedGtZero.remove(vid);
             vidSpeedZero.remove(vid);
             CarLowSocJudge.vidLowSocCount.remove(vid);
+            CarHighSocJudge.vidHighSocCount.remove(vid);
             CarLowSocJudge.vidNormSoc.remove(vid);
+            CarHighSocJudge.vidHighNormSoc.remove(vid);
             vidNoCanCount.remove(vid);
             vidNormalCanCount.remove(vid);
             vidGpsFaultCount.remove(vid);

@@ -32,6 +32,7 @@ public class CarHighSocJudge  {
     private static final Logger logger = LoggerFactory.getLogger(CarHighSocJudge.class);
     private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
+    private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
     private static final int REDIS_DB_INDEX = 6;
     private static final String REDIS_TABLE_NAME = "vehCache.qy.high.soc.notice";
@@ -50,7 +51,7 @@ public class CarHighSocJudge  {
      * 类型：
      * Map<vid, Map<vid,socNotice>>
      */
-    public static Map<String, Map<String, Object>> vidHighSocNotice = new HashMap<>();
+    public static Map<String, Map<String, String>> vidHighSocNotice = new HashMap<>();
 
     /**
      * SOC 过高计数器
@@ -110,9 +111,9 @@ public class CarHighSocJudge  {
                 logger.info("从Redis还原lowHigh车辆信息:[{}]", vid);
 
                 final String json = notices.get(vid);
-                final Map<String, Object> notice = GSON_UTILS.fromJson(
+                final Map<String, String> notice = GSON_UTILS.fromJson(
                         json,
-                        new TypeToken<TreeMap<String, Object>>() {
+                        new TypeToken<TreeMap<String, String>>() {
                         }.getType());
 
                 try {
@@ -135,24 +136,21 @@ public class CarHighSocJudge  {
      * @param data 车辆数据
      * @return 如果产生过高电量通知, 则填充通知, 否则为空集合.
      */
-    public List<Map<String, Object>> processFrame(@NotNull Map<String, String> data) {
+    public List<Map<String, String>> processFrame(@NotNull Map<String, String> data) {
 
         //检查数据有效性
         if (dataIsInvalid(data)){
             return null;
         }
 
-        String vid = data.get(DataKey.VEHICLE_ID);
-        String longitudeString = data.get(DataKey._2502_LONGITUDE);
-        String latitudeString = data.get(DataKey._2503_LATITUDE);
         String socString = data.get(DataKey._7615_STATE_OF_CHARGE);
         int socNum = Integer.parseInt(socString);
 
         //soc过高开始通知
-        List<Map<String, Object>> result = new LinkedList<>();
-        Map<String, Object> socHighNotice;
+        List<Map<String, String>> result = new LinkedList<>();
+        Map<String, String> socHighNotice;
         //soc过高结束通知
-        Map<String, Object> socNormalNotice;
+        Map<String, String> socNormalNotice;
 
         // 检验SOC是否大于过高开始阈值
         if (socNum > highSocAlarm_StartThreshold) {
@@ -199,7 +197,7 @@ public class CarHighSocJudge  {
     /**
      * SOC小于soc过低开始阈值时做的操作
      */
-    private Map<String, Object> getSocHighNotice(Map<String, String> data){
+    private Map<String, String> getSocHighNotice(Map<String, String> data){
         String vid = data.get(DataKey.VEHICLE_ID);
         String timeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
         String longitudeString = data.get(DataKey._2502_LONGITUDE);
@@ -211,16 +209,16 @@ public class CarHighSocJudge  {
         Long currentTimeMillis = System.currentTimeMillis();
         String noticeTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
         // 返回的通知消息
-        Map<String, Object> result = new HashMap<>();
+        Map<String, String> result = new HashMap<>();
 
         //SOC正常帧数记录值清空
         vidHighNormSoc.remove(vid);
 
         //此车之前是否为SOC过高状态
-        final Map<String, Object> highSocNotice = vidHighSocNotice.getOrDefault(vid, new TreeMap<>());
+        final Map<String, String> highSocNotice = vidHighSocNotice.getOrDefault(vid, new TreeMap<>());
         // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-        int status = (int)highSocNotice.getOrDefault("status", 0);
-        if (status != 0 && status != 3) {
+        String status = highSocNotice.getOrDefault("status", "0");
+        if ("0".equals(status) && "3".equals(status)) {
             return null;
         }
 
@@ -248,8 +246,8 @@ public class CarHighSocJudge  {
             highSocNotice.put("stime", timeString);
             highSocNotice.put("location", location);
             highSocNotice.put("slocation", location);
-            highSocNotice.put("sthreshold", highSocAlarm_StartThreshold);
-            highSocNotice.put("ssoc", socNum);
+            highSocNotice.put("sthreshold", String.valueOf(highSocAlarm_StartThreshold));
+            highSocNotice.put("ssoc", String.valueOf(socNum));
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
                 logger.info("VID[{}]SOC过低首帧更新", vid);
@@ -263,7 +261,7 @@ public class CarHighSocJudge  {
 
         final Long firstLowSocTime;
         try {
-            firstLowSocTime = DateUtils.parseDate(highSocNotice.get("stime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
+            firstLowSocTime = DateUtils.parseDate(highSocNotice.get("stime"), new String[]{FormatConstant.DATE_FORMAT}).getTime();
         } catch (ParseException e) {
             logger.warn("解析开始时间异常", e);
             highSocNotice.put("stime", timeString);
@@ -276,12 +274,15 @@ public class CarHighSocJudge  {
         }
 
         //记录连续SOC过高状态确定时的信息
-        highSocNotice.put("status", 1);
-        highSocNotice.put("slazy", highSocFaultIntervalMillisecond);
+        highSocNotice.put("status", "1");
+        highSocNotice.put("slazy", String.valueOf(highSocFaultIntervalMillisecond));
         highSocNotice.put("noticeTime", noticeTime);
 
-        //把soc过高开始通知存储到redis中
-        recorder.save(REDIS_DB_INDEX, REDIS_TABLE_NAME, vid, highSocNotice);
+        String json = JSON_UTILS.toJson(highSocNotice);
+        JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(REDIS_DB_INDEX);
+            jedis.hset(REDIS_TABLE_NAME, vid, json);
+        });
 
         result = highSocNotice;
 
@@ -292,7 +293,7 @@ public class CarHighSocJudge  {
         return result;
     }
 
-    private Map<String,Object> getSocNormalNotice(Map<String,String> data){
+    private Map<String,String> getSocNormalNotice(Map<String,String> data){
 
         String vid = data.get(DataKey.VEHICLE_ID);
         String timeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
@@ -309,14 +310,14 @@ public class CarHighSocJudge  {
         vidHighSocCount.remove(vid);
 
         //此车之前是否为SOC过高状态
-        final Map<String, Object> normalSocNotice = vidHighSocNotice.get(vid);
+        final Map<String, String> normalSocNotice = vidHighSocNotice.get(vid);
         if(null == normalSocNotice) {
             return null;
         }
 
         // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-        int status = (int)normalSocNotice.getOrDefault("status", 0);
-        if (1 != status && 2 != status) {
+        String status = normalSocNotice.getOrDefault("status", "0");
+        if ("1".equals(status) && "2".equals(status)) {
             return null;
         }
 
@@ -339,8 +340,8 @@ public class CarHighSocJudge  {
         if(1 == normalSocCount) {
             normalSocNotice.put("etime", timeString);
             normalSocNotice.put("elocation", location);
-            normalSocNotice.put("ethreshold", highSocAlarm_StartThreshold);
-            normalSocNotice.put("esoc", socNum);
+            normalSocNotice.put("ethreshold", String.valueOf(highSocAlarm_StartThreshold));
+            normalSocNotice.put("esoc", String.valueOf(socNum));
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
                 logger.info("VID[{}]SOC正常首帧初始化", vid);
@@ -354,7 +355,7 @@ public class CarHighSocJudge  {
 
         final Long firstNormalSocTime;
         try {
-            firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
+            firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime"), new String[]{FormatConstant.DATE_FORMAT}).getTime();
         } catch (ParseException e) {
             logger.warn("解析结束时间异常", e);
             normalSocNotice.put("etime", timeString);
@@ -367,12 +368,15 @@ public class CarHighSocJudge  {
         }
 
         //记录连续SOC正常状态确定时的信息
-        normalSocNotice.put("status", 3);
-        normalSocNotice.put("elazy", highSocNormalIntervalMillisecond);
+        normalSocNotice.put("status", "3");
+        normalSocNotice.put("elazy", String.valueOf(highSocNormalIntervalMillisecond));
         normalSocNotice.put("noticeTime", noticeTime);
 
         vidHighSocNotice.remove(vid);
-        recorder.del(REDIS_DB_INDEX, REDIS_TABLE_NAME, vid);
+        JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(REDIS_DB_INDEX);
+            jedis.hdel(REDIS_TABLE_NAME, vid);
+        });
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
             logger.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
