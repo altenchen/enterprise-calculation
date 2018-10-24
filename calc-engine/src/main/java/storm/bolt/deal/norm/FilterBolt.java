@@ -1,9 +1,7 @@
 package storm.bolt.deal.norm;
 
-import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import javafx.beans.binding.MapExpression;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
@@ -22,10 +20,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.bolt.CtfoDataBolt;
 import storm.cache.VehicleCache;
 import storm.constant.StreamFieldKey;
-import storm.extension.ImmutableMapExtension;
 import storm.extension.MapExtension;
 import storm.handler.cusmade.TimeOutOfRangeNotice;
 import storm.handler.cusmade.VehicleIdleHandler;
@@ -33,7 +29,7 @@ import storm.kafka.bolt.KafkaBoltTopic;
 import storm.kafka.spout.GeneralKafkaSpout;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.spout.IdleVehicleNoticeSpout;
+import storm.spout.MySqlSpout;
 import storm.stream.*;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
@@ -191,8 +187,6 @@ public class FilterBolt extends BaseRichBolt {
 
     private transient StreamReceiverFilter generalStreamReceiver;
 
-    private transient StreamReceiverFilter noticeStreamReceiver;
-
     private transient StreamReceiverFilter ctfoBoltDataStreamReceiver;
 
     // endregion 对象变量
@@ -274,9 +268,7 @@ public class FilterBolt extends BaseRichBolt {
 
         generalStreamReceiver = GeneralKafkaSpout.prepareGeneralStreamReceiver(this::executeFromKafkaGeneralStream);
 
-        noticeStreamReceiver = IdleVehicleNoticeSpout.prepareNoticeStreamReceiver(this::executeFromIdleVehicleNoticeStream);
-
-        ctfoBoltDataStreamReceiver = CtfoDataBolt.prepareDataStreamReceiver(this::executeFromCtfoBoltDataStream);
+        ctfoBoltDataStreamReceiver = MySqlSpout.prepareVehicleIdentityStreamReceiver(this::executeFromMySqlSpoutVehicleIdentityStream);
     }
 
     // endregion prepare
@@ -291,10 +283,6 @@ public class FilterBolt extends BaseRichBolt {
         }
 
         if (generalStreamReceiver.execute(input)) {
-            return;
-        }
-
-        if (noticeStreamReceiver.execute(input)) {
             return;
         }
 
@@ -331,14 +319,13 @@ public class FilterBolt extends BaseRichBolt {
 
                 final long idleTimeoutMillisecond = NumberUtils.toLong(
                     idleTimeoutMillisecondString,
-                    TimeUnit.MILLISECONDS.toMinutes(
-                        vehicleIdleHandler.getIdleTimeoutMillisecond()));
+                    vehicleIdleHandler.getIdleTimeoutMillisecond());
 
                 vehicleIdleHandler.setIdleTimeoutMillisecond(idleTimeoutMillisecond);
             }
 
             vehicleIdleHandler
-                .computeNotice()
+                .computeStartNotice()
                 .forEach((vid, json) -> {
                     kafkaStreamVehicleNoticeSender.emit(input, vid, json);
                 });
@@ -350,7 +337,7 @@ public class FilterBolt extends BaseRichBolt {
     private void executeFromKafkaGeneralStream(
         @NotNull final Tuple input,
         @NotNull final String vehicleId,
-        @NotNull String frame) {
+        @NotNull final String frame) {
         try{
             final Matcher matcher = MSG_REGEX.matcher(frame);
             if (!matcher.find()) {
@@ -441,65 +428,35 @@ public class FilterBolt extends BaseRichBolt {
             emit(input, vid, cmd, immutableData);
 
             if (isRealtimeInfo) {
+                VEHICLE_CACHE.updateUsefulCache(immutableData);
 
                 final String platformTimeString = immutableData.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
                 try {
+
                     final long platformTime = DataUtils.parseFormatTime(platformTimeString);
-
-                    VEHICLE_CACHE.updateUsefulCache(immutableData);
-
-                    vehicleIdleHandler.updatePlatformReceiveTime(vid, platformTime)
+                    if (platformTime > 0) {
+                        vehicleIdleHandler.updatePlatformReceiveTime(vid, platformTime)
                             .forEach((key, json) -> {
                                 kafkaStreamVehicleNoticeSender.emit(input, key, json);
                             });
-
-                } catch (final Exception e) {
+                    }
+                } catch (final ParseException e) {
                     LOG.warn("时间解析异常", e);
-                    LOG.warn("无效的服务器接收时间: [{}] 原始数据: {} {}", platformTimeString, vehicleId, JsonUtils.getInstance().toJson(data));
+                    LOG.warn("无效的服务器接收时间: [{}]", platformTimeString);
                 }
             }
             collector.ack(input);
-        }catch (Exception e){
-            e.printStackTrace();
+        }catch (final Exception e){
+            LOG.warn("预处理异常", e);
             collector.fail(input);
         }
     }
 
-    private void executeFromIdleVehicleNoticeStream(
+    private void executeFromMySqlSpoutVehicleIdentityStream(
         @NotNull final Tuple input,
-        @NotNull final String vid,
-        @NotNull final ImmutableMap<String, String> notice) {
+        @NotNull final String vehicleId) {
 
         collector.ack(input);
-
-        vehicleIdleHandler.initIdleNotice(vid, notice);
-    }
-
-    private void executeFromCtfoBoltDataStream(
-        @NotNull final Tuple input,
-        @NotNull final String vehicleId,
-        @NotNull final ImmutableMap<String, String> data) {
-
-        collector.ack(input);
-
-        long platformReceiveTime = 0;
-
-        final String messageType = data.get(DataKey.MESSAGE_TYPE);
-
-        final boolean isRealtimeInfo = CommandType.SUBMIT_REALTIME.equals(messageType);
-
-        if (isRealtimeInfo) {
-
-            final String platformReceiveTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
-            if (StringUtils.isNotBlank(platformReceiveTimeString)) {
-                try {
-                    platformReceiveTime = DataUtils.parseFormatTime(platformReceiveTimeString);
-                } catch (final Exception e) {
-                    LOG.warn("时间解析异常", e);
-                    LOG.warn("无效的服务器接收时间: [{}] 原始数据: {} {}", platformReceiveTimeString, vehicleId, JsonUtils.getInstance().toJson(data));
-                }
-            }
-        }
 
         try {
             final ImmutableMap<String, String> totalMileageCache = VEHICLE_CACHE.getField(
@@ -508,22 +465,21 @@ public class FilterBolt extends BaseRichBolt {
             final String totalMileageCacheTimeString = totalMileageCache.get(VehicleCache.VALUE_TIME_KEY);
             if (StringUtils.isNotBlank(totalMileageCacheTimeString)) {
                 try {
-                    final long totalMileageCacheTime = DataUtils.parseFormatTime(totalMileageCacheTimeString);
-                    platformReceiveTime = Math.max(platformReceiveTime, totalMileageCacheTime);
+                    final long platformReceiveTime = DataUtils.parseFormatTime(totalMileageCacheTimeString);
+
+                    if (platformReceiveTime > 0) {
+                        vehicleIdleHandler.initPlatformReceiveTime(vehicleId, platformReceiveTime)
+                            .forEach((vid, json) -> {
+                                kafkaStreamVehicleNoticeSender.emit(input, vid, json);
+                            });
+                    }
                 } catch (final ParseException e) {
-                    LOG.warn("时间解析异常", e);
-                    LOG.warn("无效的服务器接收时间: [{}] 原始数据: {} {}", totalMileageCacheTimeString, vehicleId, JsonUtils.getInstance().toJson(data));
+                    LOG.warn("累计里程缓存时间解析异常", e);
+                    LOG.warn("无效的累计里程缓存时间: [{}]", totalMileageCacheTimeString);
                 }
             }
-        } catch (ExecutionException e) {
+        } catch (final ExecutionException e) {
             LOG.warn("从缓存获取有效累计里程异常", e);
-        }
-
-        if (platformReceiveTime > 0) {
-            vehicleIdleHandler.updatePlatformReceiveTime(vehicleId, platformReceiveTime)
-                .forEach((vid, json) -> {
-                    kafkaStreamVehicleNoticeSender.emit(input, vid, json);
-                });
         }
     }
 

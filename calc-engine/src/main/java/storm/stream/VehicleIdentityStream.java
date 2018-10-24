@@ -1,5 +1,6 @@
 package storm.stream;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.storm.spout.SpoutOutputCollector;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -114,9 +115,9 @@ public final class VehicleIdentityStream implements IStreamFields {
 
         public <T> void emit(
             @NotNull final MessageId<T> messageId,
-            @NotNull final String vid) {
+            @NotNull final String vehicleId) {
 
-            collector.emit(streamId, new Values(vid), messageId);
+            collector.emit(streamId, new Values(vehicleId), messageId);
         }
     }
 
@@ -138,9 +139,9 @@ public final class VehicleIdentityStream implements IStreamFields {
 
         public void emit(
             @NotNull final Tuple anchors,
-            @NotNull final String vid) {
+            @NotNull final String vehicleId) {
 
-            collector.emit(streamId, anchors, new Values(vid));
+            collector.emit(streamId, anchors, new Values(vehicleId));
         }
     }
 
@@ -172,10 +173,10 @@ public final class VehicleIdentityStream implements IStreamFields {
          * 处理元组
          *
          * @param input 输入元组
-         * @param vid   车辆标识
+         * @param vehicleId   车辆标识
          */
         void execute(
             @NotNull final Tuple input,
-            @NotNull final String vid);
+            @NotNull final String vehicleId);
     }
 }

@@ -572,9 +572,8 @@ public final class VehicleCache {
         }
         try {
             DataUtils.parseFormatTime(platformReceiveTime);
-        } catch (Exception e) {
-            LOG.warn("时间解析异常", e);
-            LOG.warn("无效的格式化平台接收时间:[{}][{}]", FormatConstant.DATE_FORMAT, platformReceiveTime);
+        } catch (final Exception e) {
+            LOG.warn("无效的格式化平台接收时间:[{}][{}]", FormatConstant.DATE_FORMAT, platformReceiveTime, e);
             return;
         }
 

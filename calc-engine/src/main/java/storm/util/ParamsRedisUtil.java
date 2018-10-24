@@ -34,7 +34,7 @@ public final class ParamsRedisUtil {
      */
     public static final String LT_ALARM_SOC_PERCENT = "lt.alarm.soc";
     /**
-     * 车辆达到闲置状态的时间阈值, 默认1天, 单位分钟.
+     * 车辆达到闲置状态的时间阈值, 默认1天, 单位毫秒
      */
     public static final String VEHICLE_IDLE_TIMEOUT_MILLISECOND = "vehicle.idle.timeout.millisecond";
     /**

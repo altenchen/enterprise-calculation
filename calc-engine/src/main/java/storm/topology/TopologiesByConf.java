@@ -14,7 +14,6 @@ import org.apache.storm.tuple.Fields;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.bolt.CtfoDataBolt;
 import storm.bolt.deal.cusmade.CarNoticeBolt;
 import storm.bolt.deal.norm.AlarmBolt;
 import storm.bolt.deal.norm.EleFenceBolt;
@@ -24,8 +23,7 @@ import storm.constant.StreamFieldKey;
 import storm.kafka.bolt.KafkaSendBolt;
 import storm.kafka.spout.GeneralKafkaSpout;
 import storm.kafka.spout.RegisterKafkaSpout;
-import storm.spout.CtfoKeySpout;
-import storm.spout.IdleVehicleNoticeSpout;
+import storm.spout.MySqlSpout;
 import storm.stream.KafkaStream;
 import storm.system.DataKey;
 import storm.system.StormConfigKey;
@@ -196,15 +194,8 @@ public final class TopologiesByConf {
 
         builder
             .setSpout(
-                IdleVehicleNoticeSpout.getComponentId(),
-                new IdleVehicleNoticeSpout(),
-                1
-            );
-
-        builder
-            .setSpout(
-                CtfoKeySpout.getComponentId(),
-                new CtfoKeySpout(),
+                MySqlSpout.getComponentId(),
+                new MySqlSpout(),
                 1
             );
     }
@@ -249,16 +240,6 @@ public final class TopologiesByConf {
 
         builder
             .setBolt(
-                CtfoDataBolt.getComponentId(),
-                new CtfoDataBolt(),
-                boltNo)
-            .setNumTasks(boltNo * 3)
-            .shuffleGrouping(
-                CtfoKeySpout.getComponentId(),
-                CtfoKeySpout.getVehicleIdentityStreamId());
-
-        builder
-            .setBolt(
                 FilterBolt.getComponentId(),
                 new FilterBolt(),
                 boltNo)
@@ -269,12 +250,8 @@ public final class TopologiesByConf {
                 GeneralKafkaSpout.getGeneralStreamId(),
                 new Fields(StreamFieldKey.VEHICLE_ID))
             .fieldsGrouping(
-                IdleVehicleNoticeSpout.getComponentId(),
-                IdleVehicleNoticeSpout.getNoticeStreamId(),
-                new Fields(StreamFieldKey.VEHICLE_ID))
-            .fieldsGrouping(
-                CtfoDataBolt.getComponentId(),
-                CtfoDataBolt.getDataStreamId(),
+                MySqlSpout.getComponentId(),
+                MySqlSpout.getVehicleIdentityStreamId(),
                 new Fields(StreamFieldKey.VEHICLE_ID)
             );
 
