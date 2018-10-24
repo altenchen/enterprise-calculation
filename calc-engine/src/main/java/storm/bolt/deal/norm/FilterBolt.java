@@ -326,8 +326,8 @@ public class FilterBolt extends BaseRichBolt {
 
             vehicleIdleHandler
                 .computeStartNotice()
-                .forEach((vid, json) -> {
-                    kafkaStreamVehicleNoticeSender.emit(input, vid, json);
+                .forEach((vehicleId, json) -> {
+                    kafkaStreamVehicleNoticeSender.emit(input, vehicleId, json);
                 });
         }
 
@@ -338,6 +338,8 @@ public class FilterBolt extends BaseRichBolt {
         @NotNull final Tuple input,
         @NotNull final String vehicleId,
         @NotNull final String frame) {
+        collector.ack(input);
+
         try{
             final Matcher matcher = MSG_REGEX.matcher(frame);
             if (!matcher.find()) {
@@ -445,10 +447,9 @@ public class FilterBolt extends BaseRichBolt {
                     LOG.warn("无效的服务器接收时间: [{}]", platformTimeString);
                 }
             }
-            collector.ack(input);
         }catch (final Exception e){
             LOG.warn("预处理异常", e);
-            collector.fail(input);
+            e.printStackTrace();
         }
     }
 
