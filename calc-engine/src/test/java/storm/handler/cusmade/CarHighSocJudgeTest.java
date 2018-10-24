@@ -10,7 +10,6 @@ import storm.system.DataKey;
 
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
 
 class CarHighSocJudgeTest {
     //车辆vid

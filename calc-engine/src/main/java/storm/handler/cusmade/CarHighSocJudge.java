@@ -38,12 +38,6 @@ public class CarHighSocJudge  {
     private static final String REDIS_TABLE_NAME = "vehCache.qy.high.soc.notice";
     private static final String STATUS_KEY = "status";
 
-    //region<<..........................................................数据库相关配置..........................................................>>
-
-    DataToRedis redis;
-    private Recorder recorder;
-    static int topn = 20;
-    //endregion
 
     //region<<..........................................................3个缓存.........................................................>>
     /**
@@ -95,10 +89,6 @@ public class CarHighSocJudge  {
 
     // 实例初始化代码块，从redis加载lowHigh车辆
     {
-        redis = new DataToRedis();
-        recorder = new RedisRecorder(redis);
-//        restartInit(true);
-
         JEDIS_POOL_UTILS.useResource(jedis -> {
 
             final String select = jedis.select(REDIS_DB_INDEX);
@@ -143,8 +133,43 @@ public class CarHighSocJudge  {
             return null;
         }
 
+        String vid = data.get(DataKey.VEHICLE_ID);
         String socString = data.get(DataKey._7615_STATE_OF_CHARGE);
         int socNum = Integer.parseInt(socString);
+
+        //当有这辆车的数据过来的时候, 检查是处于(开始、结束、未知)三者之中的哪一种即可,
+        // 如果是"未知"状态, 通过 redis 查一次, 有"开始"的缓存, 那么状态就可以确定为开始,
+        // 没有缓存, 那么状态就可以确定为"结束", 至此就不存在"未知"的状态了.
+        String status = null;
+        if (null != vidHighSocNotice.get(vid)){
+            status = vidHighSocNotice.get(vid).get(STATUS_KEY);
+            if (AlarmStatus.Init.equals(status)){
+                JEDIS_POOL_UTILS.useResource(jedis -> {
+                    final String select = jedis.select(REDIS_DB_INDEX);
+                    if (!RedisConstant.Select.OK.equals(select)) {
+                        return;
+                    }
+                    final String json = jedis.hget(REDIS_TABLE_NAME, vid);
+                    final Map<String, String> notice = GSON_UTILS.fromJson(
+                            json,
+                            new TypeToken<TreeMap<String, String>>() {
+                            }.getType());
+                    if (null == notice){
+                        vidHighSocNotice.get(vid).put(STATUS_KEY,"3");
+                    }else{
+                        final String statusString = notice.get(STATUS_KEY);
+                        final int statusValue = NumberUtils.toInt(statusString);
+                        final AlarmStatus alarmStatus = AlarmStatus.parseOf(statusValue);
+
+                        if (AlarmStatus.Start == alarmStatus){
+                            vidHighSocNotice.get(vid).put(STATUS_KEY,"1");
+                        }
+                    }
+                });
+            }
+        }
+
+
 
         //soc过高开始通知
         List<Map<String, String>> result = new LinkedList<>();
