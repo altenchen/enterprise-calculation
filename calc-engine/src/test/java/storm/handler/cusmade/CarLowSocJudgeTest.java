@@ -2,16 +2,12 @@ package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import storm.constant.FormatConstant;
 import storm.system.DataKey;
-
 import java.util.*;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class CarLowSocJudgeTest {
     //vid

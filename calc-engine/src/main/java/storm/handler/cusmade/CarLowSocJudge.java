@@ -411,7 +411,8 @@ public class CarLowSocJudge {
      */
     private Map<String, Object> getNoticesOfChargeCars(String vid, double longitude, double latitude) {
         Map<String, FillChargeCar> fillvidgps = SysRealDataCache.getChargeCarCache();
-        Map<Double, List<FillChargeCar>> chargeCarInfo = findChargeCarsOfNearby(longitude, latitude, fillvidgps);
+        FindChargeCarsOfNearby findChargeCars = new FindChargeCarsOfNearby();
+        Map<Double, List<FillChargeCar>> chargeCarInfo = findChargeCars.findChargeCarsOfNearby(longitude, latitude, fillvidgps);
 
         if (null != chargeCarInfo) {
             Map<String, Object> chargeMap = new TreeMap<>();
@@ -460,42 +461,6 @@ public class CarLowSocJudge {
                 chargeMap.put("fillChargeCars", chargeCars);
                 return chargeMap;
             }
-        }
-        return null;
-    }
-
-    /**
-     * 查找附近的补电车
-     * @param longitude  经度
-     * @param latitude   纬度
-     * @param fillvidgps 缓存的补电车 vid [经度，纬度]
-     * @return <距离,补电车>
-     */
-    private Map<Double, List<FillChargeCar>> findChargeCarsOfNearby(double longitude, double latitude, Map<String, FillChargeCar> fillvidgps) {
-        if (null == fillvidgps || fillvidgps.size() == 0) {
-            return null;
-        }
-        //检查经纬度是否为无效值
-        boolean gpsIsInvalid = (0 == longitude && 0 == latitude) || Math.abs(longitude) > 180 || Math.abs(latitude) > 90;
-        if (gpsIsInvalid) {
-            return null;
-        }
-         //改用了list去存放，避免了当有距离相同的补电车时，会覆盖的问题
-        Map<Double, List<FillChargeCar>> carSortMap = new TreeMap<>();
-
-        for (Map.Entry<String, FillChargeCar> entry : fillvidgps.entrySet()) {
-            FillChargeCar chargeCar = entry.getValue();
-            double distance = GpsUtil.getDistance(longitude, latitude, chargeCar.longitude, chargeCar.latitude);
-            if (carSortMap.containsKey(distance)){
-                carSortMap.get(distance).add(chargeCar);
-            }
-
-            List<FillChargeCar> listOfChargeCar = new LinkedList<>();
-            listOfChargeCar.add(chargeCar);
-            carSortMap.put(distance, listOfChargeCar);
-        }
-        if (carSortMap.size() > 0) {
-            return carSortMap;
         }
         return null;
     }
