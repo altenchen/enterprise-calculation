@@ -1640,7 +1640,7 @@ public class CarRuleHandler implements InfoNotice {
     void restartInit(boolean isRestart) {
         if (isRestart) {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
-//            recorder.rebootInit(db, socHighRedisKeys, vidSocNotice);
+//            recorder.rebootInit(REDIS_DB_INDEX, socHighRedisKeys, vidSocNotice);
         }
     }
 

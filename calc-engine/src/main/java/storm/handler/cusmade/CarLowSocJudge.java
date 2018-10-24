@@ -19,7 +19,6 @@ import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.system.DataKey;
 import storm.system.NoticeType;
-import storm.system.SysDefine;
 import storm.util.*;
 
 import java.text.ParseException;
@@ -38,15 +37,12 @@ public class CarLowSocJudge {
      * 出于兼容性考虑暂留, 已存储到车辆缓存<code>VehicleCache</code>中
      */
     private static final String REDIS_TABLE_NAME = "vehCache.qy.soc.notice";
-
     private static final String STATUS_KEY = "status";
 
     //region<<..........................................................数据库相关配置..........................................................>>
 
     DataToRedis redis;
     private Recorder recorder;
-    static String socRedisKeys = "vehCache.qy.soc.notice";
-    static int db = 6;
     static int topn = 20;
     //endregion
 
@@ -102,7 +98,7 @@ public class CarLowSocJudge {
     {
         redis = new DataToRedis();
         recorder = new RedisRecorder(redis);
-        restartInit(false);
+//        restartInit(true);
 
         JEDIS_POOL_UTILS.useResource(jedis -> {
 
@@ -306,7 +302,7 @@ public class CarLowSocJudge {
         lowSocNotice.put("noticeTime", noticeTime);
 
         //把soc过低开始通知存储到redis中
-        recorder.save(db, socRedisKeys, vid, lowSocNotice);
+        recorder.save(REDIS_DB_INDEX, REDIS_TABLE_NAME, vid, lowSocNotice);
 
         result = lowSocNotice;
 
@@ -398,7 +394,7 @@ public class CarLowSocJudge {
         normalSocNotice.put("noticeTime", noticeTime);
 
         vidSocNotice.remove(vid);
-        recorder.del(db, socRedisKeys, vid);
+        recorder.del(REDIS_DB_INDEX, REDIS_TABLE_NAME, vid);
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
             logger.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
@@ -504,15 +500,15 @@ public class CarLowSocJudge {
         return null;
     }
 
-    /**
-     * 初始化lowSoc通知的缓存
-     * @param isRestart
-     */
-    void restartInit(boolean isRestart) {
-        if (isRestart) {
-            recorder.rebootInit(db, socRedisKeys, vidSocNotice);
-        }
-    }
+//    /**
+//     * 初始化lowSoc通知的缓存
+//     * @param isRestart
+//     */
+//    void restartInit(boolean isRestart) {
+//        if (isRestart) {
+//            recorder.rebootInit(REDIS_DB_INDEX, REDIS_TABLE_NAME, vidSocNotice);
+//        }
+//    }
     /**
      * 告警状态
      */
