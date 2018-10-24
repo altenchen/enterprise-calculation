@@ -300,51 +300,51 @@ public class CarHighSocJudge {
 
     //以下为6个可配置变量的get和set方法
 
-    public static int getHighSocFaultJudgeNum() {
+    public int getHighSocFaultJudgeNum() {
         return highSocFaultJudgeNum;
     }
 
-    public static void setHighSocFaultJudgeNum(int highSocFaultJudgeNum) {
+    public void setHighSocFaultJudgeNum(int highSocFaultJudgeNum) {
         CarHighSocJudge.highSocFaultJudgeNum = highSocFaultJudgeNum;
     }
 
-    public static int getHighSocNormalJudgeNum() {
+    public int getHighSocNormalJudgeNum() {
         return highSocNormalJudgeNum;
     }
 
-    public static void setHighSocNormalJudgeNum(int highSocNormalJudgeNum) {
+    public void setHighSocNormalJudgeNum(int highSocNormalJudgeNum) {
         CarHighSocJudge.highSocNormalJudgeNum = highSocNormalJudgeNum;
     }
 
-    public static Long getHighSocFaultIntervalMillisecond() {
+    public Long getHighSocFaultIntervalMillisecond() {
         return highSocFaultIntervalMillisecond;
     }
 
-    public static void setHighSocFaultIntervalMillisecond(Long highSocFaultIntervalMillisecond) {
+    public void setHighSocFaultIntervalMillisecond(Long highSocFaultIntervalMillisecond) {
         CarHighSocJudge.highSocFaultIntervalMillisecond = highSocFaultIntervalMillisecond;
     }
 
-    public static Long getHighSocNormalIntervalMillisecond() {
+    public Long getHighSocNormalIntervalMillisecond() {
         return highSocNormalIntervalMillisecond;
     }
 
-    public static void setHighSocNormalIntervalMillisecond(Long highSocNormalIntervalMillisecond) {
+    public void setHighSocNormalIntervalMillisecond(Long highSocNormalIntervalMillisecond) {
         CarHighSocJudge.highSocNormalIntervalMillisecond = highSocNormalIntervalMillisecond;
     }
 
-    public static int getHighSocAlarm_StartThreshold() {
+    public int getHighSocAlarm_StartThreshold() {
         return highSocAlarm_StartThreshold;
     }
 
-    public static void setHighSocAlarm_StartThreshold(int highSocAlarm_StartThreshold) {
+    public void setHighSocAlarm_StartThreshold(int highSocAlarm_StartThreshold) {
         CarHighSocJudge.highSocAlarm_StartThreshold = highSocAlarm_StartThreshold;
     }
 
-    public static int getHighSocAlarm_EndThreshold() {
+    public int getHighSocAlarm_EndThreshold() {
         return highSocAlarm_EndThreshold;
     }
 
-    public static void setHighSocAlarm_EndThreshold(int highSocAlarm_EndThreshold) {
+    public void setHighSocAlarm_EndThreshold(int highSocAlarm_EndThreshold) {
         CarHighSocJudge.highSocAlarm_EndThreshold = highSocAlarm_EndThreshold;
     }
 }

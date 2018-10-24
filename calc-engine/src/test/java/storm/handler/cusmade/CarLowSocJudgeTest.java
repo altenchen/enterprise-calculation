@@ -2,6 +2,7 @@ package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CarLowSocJudgeTest {
-    //³µÁ¾vid
+    //vid
     private static final String TEST_VID = "TV-" + UUID.randomUUID();
 
     @Test
@@ -24,7 +25,6 @@ class CarLowSocJudgeTest {
         Date date = new Date();
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
-        //µ±Ç°Ê±¼ä
         calendar.add(Calendar.SECOND, -10);
         calendar.getTime();
         date = calendar.getTime();
@@ -41,40 +41,35 @@ class CarLowSocJudgeTest {
         data.put(DataKey.TIME, DateFormatUtils.format(date1, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date1, FormatConstant.DATE_FORMAT));
         List<Map<String, Object>> result_1 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-        Assertions.assertTrue(result_1 == null,"µÚ1Ö¡²»¸Ã³öÏÖ¹ÊÕÏÍ¨Öª");
+        Assertions.assertTrue(0 == result_1.size(),"1ä¸åº”è¯¥å‡ºç°é€šçŸ¥");
 
         Date date2 = new Date(date .getTime() - 1002000);
         data.put(DataKey.TIME, DateFormatUtils.format(date2, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date2, FormatConstant.DATE_FORMAT));
         List<Map<String, Object>> result_2 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-        Assertions.assertTrue(null == result_2,"µÚ2Ö¡²»¸Ã³öÏÖ¹ÊÕÏÍ¨Öª");
+        Assertions.assertTrue(0 == result_2.size(),"2ä¸åº”è¯¥å‡ºç°é€šçŸ¥");
 
         Date date3 = new Date(date .getTime() - 1001000);
         data.put(DataKey.TIME, DateFormatUtils.format(date3, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date3, FormatConstant.DATE_FORMAT));
         List<Map<String, Object>> result_3 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-        Assertions.assertTrue(null != result_3,"µÚ3Ö¡³öÏÖ¹ÊÕÏÍ¨Öª");
+        Assertions.assertTrue(0 != result_3.size(),"3åº”è¯¥å‡ºç°é€šçŸ¥Öª");
 
-        //ÉèÖÃsocÖµ£¬Îª´óÓÚsoc¹ıµÍ¿ªÊ¼ãĞÖµ£¬Ğ¡ÓÚsoc¹ıµÍ½áÊøãĞÖµ
+        //å¤§äºsocè¿‡ä½é€šçŸ¥å¼€å§‹é˜ˆå€¼ï¼Œå°äºsocè¿‡ä½é€šçŸ¥ç»“æŸé˜ˆå€¼
         data.put(DataKey._7615_STATE_OF_CHARGE, "15");
         Date date4 = new Date(date .getTime() );
         data.put(DataKey.TIME, DateFormatUtils.format(date4, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date4, FormatConstant.DATE_FORMAT));
         List<Map<String, Object>> result_4 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-        Assertions.assertTrue(null == result_4,"µÚ4Ö¡²»Ó¦¸Ã¹ÊÕÏ½áÊø");
+        Assertions.assertTrue(0 == result_4.size(),"4ä¸åº”è¯¥å‡ºç°é€šçŸ¥");
 
-        //½«socÖµÉèÖÃÎª´óÓÚsoc¹ıµÍ½áÊøãĞÖµ£¬´ËÊ±Ó¦¸Ã½áÊø
+        //å¤§äºsocè¿‡ä½é€šçŸ¥ç»“æŸé˜ˆå€¼
         data.put(DataKey._7615_STATE_OF_CHARGE, "21");
         Date date5 = new Date(date .getTime() + 1000);
         data.put(DataKey.TIME, DateFormatUtils.format(date5, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date5, FormatConstant.DATE_FORMAT));
         List<Map<String, Object>> result_5 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-        Assertions.assertTrue(null != result_5,"µÚ5Ö¡¹ÊÕÏ½áÊø");
+        Assertions.assertTrue(0 != result_5.size(),"5åº”è¯¥å‡ºç°é€šçŸ¥");
 
-//        Date date6 = new Date(date .getTime() - 1003000);
-//        data.put(DataKey.TIME, DateFormatUtils.format(date6, FormatConstant.DATE_FORMAT));
-//        data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date6, FormatConstant.DATE_FORMAT));
-//        List<Map<String, Object>> result_6 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-//        Assertions.assertTrue(0 != result_6.size(),"µÚ3Ö¡³öÏÖ¹ÊÕÏÍ¨Öª");
     }
 }
