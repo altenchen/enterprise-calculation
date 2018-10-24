@@ -107,8 +107,6 @@ public final class CarNoCanJudge {
             final Map<String, String> notices = jedis.hgetAll(REDIS_TABLE_NAME);
             for (String vid : notices.keySet()) {
 
-                logger.info("从Redis还原无CAN车辆信息:[{}]", vid);
-
                 final String json = notices.get(vid);
                 final Map<String, String> notice = GSON_UTILS.fromJson(
                     json,
