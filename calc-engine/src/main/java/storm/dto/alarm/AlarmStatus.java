@@ -326,11 +326,7 @@ public final class AlarmStatus {
      * @param status 报警状态
      */
     private void setStatus(final boolean status) {
-        if(status) {
-            delaySwitch.setSwitchStatus(1);
-        } else {
-            delaySwitch.setSwitchStatus(-1);
-        }
+        delaySwitch.setSwitchStatus(status);
     }
 
     /**
@@ -343,13 +339,6 @@ public final class AlarmStatus {
     @Nullable
     @Contract(pure = true)
     public Boolean getStatus() {
-        final int switchStatus = delaySwitch.getSwitchStatus();
-        if(switchStatus > 0) {
-            return true;
-        } else if(switchStatus < 0) {
-            return false;
-        } else {
-            return null;
-        }
+        return delaySwitch.getStatus();
     }
 }

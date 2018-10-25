@@ -23,16 +23,19 @@ import java.util.*;
  * SOC过高预警
  */
 public class CarHighSocJudge  {
+    private static final Logger LOG = LoggerFactory.getLogger(CarHighSocJudge.class);
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
-    private static final Logger logger = LoggerFactory.getLogger(CarHighSocJudge.class);
-    private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
     private static final int REDIS_DB_INDEX = 6;
-    private static final String REDIS_TABLE_NAME = "vehCache.qy.high.soc.notice";
+    private static final String REDIS_TABLE_NAME = "vehCache.qy.soc.high.notice";
     private static final String STATUS_KEY = "status";
 
+
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    public void syncDelaySwitchConfig() {
+    }
 
     //region<<..........................................................3个缓存.........................................................>>
     /**
@@ -93,10 +96,10 @@ public class CarHighSocJudge  {
             final Map<String, String> notices = jedis.hgetAll(REDIS_TABLE_NAME);
             for (String vid : notices.keySet()) {
 
-                logger.info("从Redis还原lowHigh车辆信息:[{}]", vid);
+                LOG.info("从Redis还原lowHigh车辆信息:[{}]", vid);
 
                 final String json = notices.get(vid);
-                final Map<String, String> notice = GSON_UTILS.fromJson(
+                final Map<String, String> notice = JSON_UTILS.fromJson(
                         json,
                         new TypeToken<TreeMap<String, String>>() {
                         }.getType());
@@ -110,7 +113,7 @@ public class CarHighSocJudge  {
                         vidHighSocNotice.put((String) notice.get("vid"), notice);
                     }
                 } catch (Exception ignore) {
-                    logger.warn("初始化告警异常", ignore);
+                    LOG.warn("初始化告警异常", ignore);
                 }
             }
         });
@@ -145,7 +148,7 @@ public class CarHighSocJudge  {
                         return;
                     }
                     final String json = jedis.hget(REDIS_TABLE_NAME, vid);
-                    final Map<String, String> notice = GSON_UTILS.fromJson(
+                    final Map<String, String> notice = JSON_UTILS.fromJson(
                             json,
                             new TypeToken<TreeMap<String, String>>() {
                             }.getType());
@@ -234,7 +237,7 @@ public class CarHighSocJudge  {
             vidHighSocNotice.put(vid, highSocNotice);
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                logger.info("VID[{}]SOC首帧缓存初始化", vid);
+                LOG.info("VID[{}]SOC首帧缓存初始化", vid);
             });
         }
 
@@ -243,7 +246,7 @@ public class CarHighSocJudge  {
         vidHighSocCount.put(vid, highSocCount);
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            logger.info("VID[{}]判定为SOC过低第[{}]次", vid, highSocCount);
+            LOG.info("VID[{}]判定为SOC过低第[{}]次", vid, highSocCount);
         });
 
         // 记录连续SOC过高状态开始时的信息
@@ -255,7 +258,7 @@ public class CarHighSocJudge  {
             highSocNotice.put("ssoc", String.valueOf(socNum));
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                logger.info("VID[{}]SOC过低首帧更新", vid);
+                LOG.info("VID[{}]SOC过低首帧更新", vid);
             });
         }
 
@@ -268,7 +271,7 @@ public class CarHighSocJudge  {
         try {
             firstLowSocTime = DateUtils.parseDate(highSocNotice.get("stime"), new String[]{FormatConstant.DATE_FORMAT}).getTime();
         } catch (ParseException e) {
-            logger.warn("解析开始时间异常", e);
+            LOG.warn("解析开始时间异常", e);
             highSocNotice.put("stime", timeString);
             return null;
         }
@@ -292,7 +295,7 @@ public class CarHighSocJudge  {
         result = highSocNotice;
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            logger.info("VID[{}]SOC异常通知发送[{}]", vid, highSocNotice.get("msgId"));
+            LOG.info("VID[{}]SOC异常通知发送[{}]", vid, highSocNotice.get("msgId"));
         });
 
         return result;
@@ -338,7 +341,7 @@ public class CarHighSocJudge  {
         vidHighNormSoc.put(vid, normalSocCount);
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            logger.info("VID[{}]判定为SOC正常第[{}]次", vid, normalSocCount);
+            LOG.info("VID[{}]判定为SOC正常第[{}]次", vid, normalSocCount);
         });
 
         //记录首帧正常报文信息（即soc过低结束时信息）
@@ -349,7 +352,7 @@ public class CarHighSocJudge  {
             normalSocNotice.put("esoc", String.valueOf(socNum));
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                logger.info("VID[{}]SOC正常首帧初始化", vid);
+                LOG.info("VID[{}]SOC正常首帧初始化", vid);
             });
         }
 
@@ -362,7 +365,7 @@ public class CarHighSocJudge  {
         try {
             firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime"), new String[]{FormatConstant.DATE_FORMAT}).getTime();
         } catch (ParseException e) {
-            logger.warn("解析结束时间异常", e);
+            LOG.warn("解析结束时间异常", e);
             normalSocNotice.put("etime", timeString);
             return null;
         }
@@ -384,7 +387,7 @@ public class CarHighSocJudge  {
         });
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            logger.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
+            LOG.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
         });
 
         return normalSocNotice;

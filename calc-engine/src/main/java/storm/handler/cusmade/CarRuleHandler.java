@@ -199,38 +199,6 @@ public class CarRuleHandler implements InfoNotice {
             value = null;
         }
 //<<................................................从配置文件中读取SOC相关阈值..........................................>>
-        //过低SOC
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
-        if (!StringUtils.isEmpty(value)) {
-            carLowSocJudge.setLowSocFaultIntervalMillisecond(Long.parseLong(value));
-            value = null;
-        }
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_TIMEOUT_MILLISECOND);
-        if (!StringUtils.isEmpty(value)) {
-            carLowSocJudge.setLowSocNormalIntervalMillisecond(Long.parseLong(value));
-            value = null;
-        }
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_CONTINUE_COUNT);
-        if (!StringUtils.isEmpty(value)) {
-            carLowSocJudge.setLowSocFaultJudgeNum(Integer.parseInt(value));
-            value = null;
-        }
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT);
-        if (!StringUtils.isEmpty(value)) {
-            carLowSocJudge.setLowSocNormalJudgeNum(Integer.parseInt(value));
-            value = null;
-        }
-
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD);
-        if (!StringUtils.isEmpty(value)) {
-            carLowSocJudge.setSocLowAlarm_StartThreshold(Integer.parseInt(value));
-            value = null;
-        }
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD);
-        if (!StringUtils.isEmpty(value)) {
-            carLowSocJudge.setLowSocAlarm_EndThreshold(Integer.parseInt(value));
-            value = null;
-        }
 
         //过高SOC
         value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
@@ -291,59 +259,58 @@ public class CarRuleHandler implements InfoNotice {
     //以下参数可以通过读取redis定时进行重新加载
     static void init() {
         //<<...................................从redis中定时读取SOC相关阈值..................................>>
-        Object socVal_Start = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD);
-        if (null != socVal_Start) {
-            carLowSocJudge.setSocLowAlarm_StartThreshold((int) socVal_Start);
+        Object socLowValStart = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD);
+        if (null != socLowValStart) {
+            CarLowSocJudge.setSocLowBeginThreshold((int) socLowValStart);
         }
-        Object socVal_End = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD);
-        if (null != socVal_End) {
-            carLowSocJudge.setSocLowAlarm_StartThreshold((int) socVal_End);
-        }
-
-        // soc过低开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
         Object lowSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_CONTINUE_COUNT);
         if (null != lowSocFaultJudgeCount) {
-            carLowSocJudge.setLowSocFaultJudgeNum((int) lowSocFaultJudgeCount);
-        }
-        Object lowSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT);
-        if (null != lowSocNormalJudgeCount) {
-            carLowSocJudge.setLowSocNormalJudgeNum((int) lowSocNormalJudgeCount);
+            CarLowSocJudge.setSocLowBeginContinueCount((int) lowSocFaultJudgeCount);
         }
         Object lowSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != lowSocFaultJudgeTime) {
-            carLowSocJudge.setLowSocFaultIntervalMillisecond(((int) lowSocFaultJudgeTime)*1L);
+            CarLowSocJudge.setSocLowBeginContinueMillisecond((long) ((int) lowSocFaultJudgeTime));
+        }
+        Object socLowValEnd = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD);
+        if (null != socLowValEnd) {
+            CarLowSocJudge.setSocLowEndThreshold((int) socLowValEnd);
+        }
+        Object lowSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT);
+        if (null != lowSocNormalJudgeCount) {
+            CarLowSocJudge.setSocLowEndContinueCount((int) lowSocNormalJudgeCount);
         }
         Object lowSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != lowSocNormalJudgeTime) {
-            carLowSocJudge.setLowSocNormalIntervalMillisecond(((int) lowSocNormalJudgeTime)*1L);
+            CarLowSocJudge.setSocLowEndContinueMillisecond((long) ((int) lowSocNormalJudgeTime));
         }
-
-        Object socHighVal_Start = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD);
-        if (null != socHighVal_Start) {
-            carHighSocJudge.setHighSocAlarm_StartThreshold((int) socHighVal_Start);
-        }
-        Object socHighVal_End = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD);
-        if (null != socHighVal_End) {
-            carHighSocJudge.setHighSocAlarm_EndThreshold((int) socHighVal_End);
-        }
+        carLowSocJudge.syncDelaySwitchConfig();
 
         // soc过高开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
+        Object socHighValStart = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD);
+        if (null != socHighValStart) {
+            CarHighSocJudge.setHighSocAlarm_StartThreshold((int) socHighValStart);
+        }
         Object highSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT);
         if (null != highSocFaultJudgeCount) {
-            carHighSocJudge.setHighSocFaultJudgeNum((int) highSocFaultJudgeCount);
-        }
-        Object highSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT);
-        if (null != highSocNormalJudgeCount) {
-            carHighSocJudge.setHighSocNormalJudgeNum((int) highSocNormalJudgeCount);
+            CarHighSocJudge.setHighSocFaultJudgeNum((int) highSocFaultJudgeCount);
         }
         Object highSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != highSocFaultJudgeTime) {
-            carHighSocJudge.setHighSocFaultIntervalMillisecond(((int) highSocFaultJudgeTime)*1L);
+            CarHighSocJudge.setHighSocFaultIntervalMillisecond((long) ((int) highSocFaultJudgeTime));
+        }
+        Object socHighValEnd = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD);
+        if (null != socHighValEnd) {
+            CarHighSocJudge.setHighSocAlarm_EndThreshold((int) socHighValEnd);
+        }
+        Object highSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT);
+        if (null != highSocNormalJudgeCount) {
+            CarHighSocJudge.setHighSocNormalJudgeNum((int) highSocNormalJudgeCount);
         }
         Object highSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != highSocNormalJudgeTime) {
-            carHighSocJudge.setHighSocNormalIntervalMillisecond(((int) highSocNormalJudgeTime)*1L);
+            CarHighSocJudge.setHighSocNormalIntervalMillisecond((long) ((int) highSocNormalJudgeTime));
         }
+        carHighSocJudge.syncDelaySwitchConfig();
 
         Object nocanJugyObj = PARAMS_REDIS_UTIL.PARAMS.get("can.novalue.continue.no");
         if (null != nocanJugyObj) {
@@ -498,13 +465,13 @@ public class CarRuleHandler implements InfoNotice {
 
         if(ENABLE_SOC_LOW_NOTICE) {
             final String[] chargeCarsNoticeJson = new String[1];
-            final Map<String, String> socLowNotice = carLowSocJudge.processFrame(
-                clone,
+            final String socLowNoticeJson = carLowSocJudge.processFrame(
+                data,
                 (final String vehicleId, final Double longitude, final Double latitude) -> {
                     chargeCarsNoticeJson[0] = getNoticesOfChargeCars(vehicleId, longitude, latitude);
                 });
-            if (MapUtils.isNotEmpty(socLowNotice)) {
-                builder.add(JSON_UTILS.toJson(socLowNotice));
+            if (StringUtils.isNotBlank(socLowNoticeJson)) {
+                builder.add(socLowNoticeJson);
             }
             if (StringUtils.isNotBlank(chargeCarsNoticeJson[0])) {
                 builder.add(chargeCarsNoticeJson);
@@ -1598,137 +1565,6 @@ public class CarRuleHandler implements InfoNotice {
         if (notices.size() > 0) {
             return notices;
         }
-        return null;
-    }
-
-    public List<Map<String, Object>> offlineMethod2(long now) {
-        if (null == lastTime || lastTime.size() == 0) {
-            return null;
-        }
-        List<Map<String, Object>> notices = new LinkedList<>();
-        String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
-        List<String> needRemoves = new LinkedList<>();
-        for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
-            long last = entry.getValue();
-            if (now - last > offlinetime) {
-                String vid = entry.getKey();
-                needRemoves.add(vid);
-                Map<String, Object> msg = vidFlyNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                //为了兼容将Map<String,String>转换成Map<String,Object>
-                Map<String, String> vidSocNotice = CarLowSocJudge.vidSocNotice.get(vid);
-                Iterator<Map.Entry<String, String>> iterator = vidSocNotice.entrySet().iterator();
-                while (iterator.hasNext()) {
-                        Map.Entry<String, String> entry3 = iterator.next();
-                        msg.put(entry3.getKey(),entry3.getValue());
-                }
-
-                if (null != msg) {
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-
-                //为了兼容将Map<String,String>转换成Map<String,Object>
-                Map<String, String> vidHighSocNotice = CarLowSocJudge.vidSocNotice.get(vid);
-                Iterator<Map.Entry<String, String>> iterator_highSoc = vidSocNotice.entrySet().iterator();
-                while (iterator_highSoc.hasNext()) {
-                    Map.Entry<String, String> entry3 = iterator_highSoc.next();
-                    msg.put(entry3.getKey(),entry3.getValue());
-                }
-
-                if (null != msg) {
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-
-                msg = vidcanNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                msg = vidIgniteShutNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                Map<String, String> notice = vidGpsNotice.get(vid);
-                if (null != notice) {
-
-                    msg = new TreeMap<>();
-                    msg.putAll(notice);
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                msg = vidSpeedGtZeroNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                msg = vidOnOffNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-            }
-        }
-
-        for (String vid : needRemoves) {
-            lastTime.remove(vid);
-            vidFlyNotice.remove(vid);
-            CarLowSocJudge.vidSocNotice.remove(vid);
-            CarHighSocJudge.vidHighNormSoc.remove(vid);
-            vidcanNotice.remove(vid);
-            vidGpsNotice.remove(vid);
-            vidSpeedGtZeroNotice.remove(vid);
-            vidIgniteShutNotice.remove(vid);
-            vidOnOffNotice.remove(vid);
-
-            vidFlyEd.remove(vid);
-            vidFlySt.remove(vid);
-            vidShut.remove(vid);
-            vidIgnite.remove(vid);
-            vidSpeedGtZero.remove(vid);
-            vidSpeedZero.remove(vid);
-            CarLowSocJudge.vidLowSocCount.remove(vid);
-            CarHighSocJudge.vidHighSocCount.remove(vid);
-            CarLowSocJudge.vidNormSoc.remove(vid);
-            CarHighSocJudge.vidHighNormSoc.remove(vid);
-            vidNoCanCount.remove(vid);
-            vidNormalCanCount.remove(vid);
-            vidGpsFaultCount.remove(vid);
-            vidGpsNormalCount.remove(vid);
-
-        }
-        if (notices.size() > 0) {
-            return notices;
-        }
-
-
         return null;
     }
 

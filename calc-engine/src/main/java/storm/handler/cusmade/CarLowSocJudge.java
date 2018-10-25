@@ -1,564 +1,517 @@
 package storm.handler.cusmade;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.gson.reflect.TypeToken;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
-import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.cache.SysRealDataCache;
+import redis.clients.jedis.Jedis;
 import storm.constant.FormatConstant;
-import storm.constant.RedisConstant;
-import storm.dao.DataToRedis;
-import storm.dto.FillChargeCar;
-import storm.handler.ctx.Recorder;
-import storm.handler.ctx.RedisRecorder;
+import storm.extension.ObjectExtension;
 import storm.system.DataKey;
 import storm.system.NoticeType;
-import storm.util.*;
+import storm.system.SysDefine;
+import storm.tool.DelaySwitch;
+import storm.util.ConfigUtils;
+import storm.util.DataUtils;
+import storm.util.JedisPoolUtils;
+import storm.util.JsonUtils;
 import storm.util.function.TeConsumer;
 
+import java.lang.reflect.Type;
 import java.text.ParseException;
-import java.util.*;
+import java.util.Map;
+import java.util.Properties;
+import java.util.TreeMap;
+import java.util.UUID;
+
 /**
- * @author 于心沼
+ * @author 徐志鹏
  * SOC过低预警
  */
-public class CarLowSocJudge {
-    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
+class CarLowSocJudge {
+
     private static final Logger LOG = LoggerFactory.getLogger(CarLowSocJudge.class);
+
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
+    private static final String NOTICE_STATUS_KEY = "status";
+    private static final String NOTICE_STATUS_START = "1";
+    private static final String NOTICE_STATUS_END = "3";
+
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
-    private static final int REDIS_DB_INDEX = 6;
-    /**
-     * 出于兼容性考虑暂留, 已存储到车辆缓存<code>VehicleCache</code>中
-     */
-    private static final String REDIS_TABLE_NAME = "vehCache.qy.soc.notice";
-    private static final String STATUS_KEY = "status";
+    private static final int REDIS_DATABASE_INDEX = 6;
+    private static final String SOC_LOW_REDIS_KEY = "vehCache.qy.soc.notice";
+    private static final Type TREE_MAP_STRING_STRING_TYPE = new TypeToken<TreeMap<String, String>>() {
+    }.getType();
 
-    //region<<..........................................................数据库相关配置..........................................................>>
-
-    DataToRedis redis;
-    private Recorder recorder;
-    static int topn = 20;
-    //endregion
-
-    //region<<..........................................................3个缓存.........................................................>>
-    /**
-     * SOC过低通知开始缓存
-     * 类型：
-     * Map<vid, Map<vid,socNotice>>
-     */
-    public static Map<String, Map<String, String>> vidSocNotice = new HashMap<>();
+    // region 6个可以配置的阈值
 
     /**
-     * SOC 过低计数器
-     * 类型：
-     * Map<vid, soc过低帧数计数>
+     * soc过低开始通知触发器, 小于等于阈值, 默认10
      */
-    public static Map<String, Integer> vidLowSocCount = new HashMap<>();
+    private static int socLowBeginThreshold;
     /**
-     * SOC 正常计数器
-     * 类型：
-     * Map<vid, soc正常帧数计数>
+     * soc过低开始通知触发器, 连续帧数, 默认3帧
      */
-    public static Map<String, Integer> vidNormSoc = new HashMap<>();
-    //endregion
+    private static int socLowBeginContinueCount;
+    /**
+     * soc过低开始通知触发器, 持续时长, 默认30秒
+     */
+    private static long socLowBeginContinueMillisecond;
+    /**
+     * soc过低结束通知触发器, 大于阈值, 默认10
+     */
+    private static int socLowEndThreshold;
+    /**
+     * soc过低结束通知触发器, 连续帧数, 默认1
+     */
+    private static int socLowEndContinueCount;
+    /**
+     * soc过低结束通知触发器, 持续时长, 默认0表示立即触发.
+     */
+    private static long socLowEndContinueMillisecond;
 
-    //region<<.........................................................6个可以配置的阈值..........................................................>>
-    /**
-     * SOC过低确认帧数
-     */
-    private static int lowSocFaultJudgeNum = 3;
-    private static int lowSocNormalJudgeNum = 1;
-
-    /**
-     * SOC过低触发确认延时, 默认1分钟.
-     */
-    private static Long lowSocFaultIntervalMillisecond = (long) 60000;
-    /**
-     * SOC过低恢复确认延时, 默认0秒，即立刻触发.
-     */
-    private static Long lowSocNormalIntervalMillisecond = (long) 0;
+    // region 可配置变量的 get 和 set 方法
 
     /**
-     * SOC过低告警触发阈值
+     * soc过低开始通知触发器, 小于等于阈值, 默认10
      */
-    private static int lowSocAlarm_StartThreshold = 10;
+    @SuppressWarnings("unused")
+    @Contract(pure = true)
+    public static int getSocLowBeginThreshold() {
+        return socLowBeginThreshold;
+    }
+
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    public static void setSocLowBeginThreshold(int socLowBeginThreshold) {
+        CarLowSocJudge.socLowBeginThreshold = socLowBeginThreshold;
+    }
+
     /**
-     * SOC过低告警结束阈值
+     * soc过低开始通知触发器, 连续帧数, 默认3帧
      */
-    private static int lowSocAlarm_EndThreshold = 20;
-    //endregion
+    @SuppressWarnings("unused")
+    @Contract(pure = true)
+    public static int getSocLowBeginContinueCount() {
+        return socLowBeginContinueCount;
+    }
 
-    // 实例初始化代码块，从redis加载lowSoc车辆
-    {
-        redis = new DataToRedis();
-        recorder = new RedisRecorder(redis);
-//        restartInit(true);
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    public static void setSocLowBeginContinueCount(int socLowBeginContinueCount) {
+        CarLowSocJudge.socLowBeginContinueCount = socLowBeginContinueCount;
+    }
 
-        JEDIS_POOL_UTILS.useResource(jedis -> {
+    /**
+     * soc过低开始通知触发器, 持续时长, 默认30秒
+     */
+    @SuppressWarnings("unused")
+    @Contract(pure = true)
+    public static long getSocLowBeginContinueMillisecond() {
+        return socLowBeginContinueMillisecond;
+    }
 
-            final String select = jedis.select(REDIS_DB_INDEX);
-            if (!RedisConstant.Select.OK.equals(select)) {
-                return;
-            }
-            //这里难道不也是把数据全部加载到内存中了吗？
-            final Map<String, String> notices = jedis.hgetAll(REDIS_TABLE_NAME);
-            for (String vid : notices.keySet()) {
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    public static void setSocLowBeginContinueMillisecond(long socLowBeginContinueMillisecond) {
+        CarLowSocJudge.socLowBeginContinueMillisecond = socLowBeginContinueMillisecond;
+    }
 
-                LOG.info("从Redis还原lowSoc车辆信息:[{}]", vid);
+    /**
+     * soc过低结束通知触发器, 大于阈值, 默认10
+     */
+    @SuppressWarnings("unused")
+    @Contract(pure = true)
+    public static int getSocLowEndThreshold() {
+        return socLowEndThreshold;
+    }
 
-                final String json = notices.get(vid);
-                final Map<String, String> notice = JSON_UTILS.fromJson(
-                        json,
-                        new TypeToken<TreeMap<String, String>>() {
-                        }.getType());
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    public static void setSocLowEndThreshold(int socLowEndThreshold) {
+        CarLowSocJudge.socLowEndThreshold = socLowEndThreshold;
+    }
 
-                try {
-                    final String statusString = notice.get(STATUS_KEY);
-                    final int statusValue = NumberUtils.toInt(statusString);
-                    final AlarmStatus status = AlarmStatus.parseOf(statusValue);
+    /**
+     * soc过低结束通知触发器, 连续帧数, 默认1
+     */
+    @SuppressWarnings("unused")
+    @Contract(pure = true)
+    public static int getSocLowEndContinueCount() {
+        return socLowEndContinueCount;
+    }
 
-                    if (AlarmStatus.Start == status || AlarmStatus.Continue == status) {
-                        vidSocNotice.put(notice.get("vid"), notice);
-                    }
-                } catch (Exception ignore) {
-                    LOG.warn("初始化告警异常", ignore);
-                }
-            }
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    public static void setSocLowEndContinueCount(int socLowEndContinueCount) {
+        CarLowSocJudge.socLowEndContinueCount = socLowEndContinueCount;
+    }
+
+    /**
+     * soc过低结束通知触发器, 持续时长, 默认0表示立即触发.
+     */
+    @SuppressWarnings("unused")
+    @Contract(pure = true)
+    public static long getSocLowEndContinueMillisecond() {
+        return socLowEndContinueMillisecond;
+    }
+
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    public static void setSocLowEndContinueMillisecond(long socLowEndContinueMillisecond) {
+        CarLowSocJudge.socLowEndContinueMillisecond = socLowEndContinueMillisecond;
+    }
+
+    //endregion 可配置变量的 get 和 set 方法
+
+    @NotNull
+    @Contract(" -> new")
+    private static DelaySwitch buildDelaySwitch() {
+        return new DelaySwitch(
+            socLowBeginContinueCount,
+            socLowBeginContinueMillisecond,
+            socLowEndContinueCount,
+            socLowEndContinueMillisecond);
+    }
+
+    // endregion 6个可以配置的阈值
+
+    static {
+        final ConfigUtils configUtils = ConfigUtils.getInstance();
+        final Properties sysDefine = configUtils.sysDefine;
+
+        socLowBeginThreshold = NumberUtils.toInt(
+            sysDefine.getProperty(
+                SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD),
+            10
+        );
+        socLowBeginContinueCount = NumberUtils.toInt(
+            sysDefine.getProperty(
+                SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_CONTINUE_COUNT),
+            3
+        );
+        socLowBeginContinueMillisecond = NumberUtils.toLong(
+            sysDefine.getProperty(
+                SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_TIMEOUT_MILLISECOND),
+            30000
+        );
+        socLowEndThreshold = NumberUtils.toInt(
+            sysDefine.getProperty(
+                SysDefine.NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD),
+            10
+        );
+        socLowEndContinueCount = NumberUtils.toInt(
+            sysDefine.getProperty(
+                SysDefine.NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT),
+            1
+        );
+        socLowEndContinueMillisecond = NumberUtils.toLong(
+            sysDefine.getProperty(
+                SysDefine.NOTICE_SOC_LOW_END_TRIGGER_TIMEOUT_MILLISECOND),
+            0
+        );
+    }
+
+    // region 状态表
+
+    /**
+     * 车辆状态缓存表 <vehicleId, DelaySwitch></>
+     */
+    private final Map<String, DelaySwitch> vehicleStatus = Maps.newHashMap();
+
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    public void syncDelaySwitchConfig() {
+        vehicleStatus.forEach((vehicleId, delaySwitch)->{
+            delaySwitch.setPositiveThreshold(socLowBeginContinueCount);
+            delaySwitch.setPositiveTimeout(socLowBeginContinueMillisecond);
+            delaySwitch.setNegativeThreshold(socLowEndContinueCount);
+            delaySwitch.setNegativeTimeout(socLowEndContinueMillisecond);
         });
     }
 
+    @NotNull
+    private DelaySwitch ensureVehicleStatus(@NotNull final String vehicleId) {
+        return vehicleStatus.computeIfAbsent(
+            vehicleId,
+            k -> JEDIS_POOL_UTILS.useResource(jedis -> {
+                jedis.select(REDIS_DATABASE_INDEX);
+
+                final String json = jedis.hget(SOC_LOW_REDIS_KEY, vehicleId);
+                if (StringUtils.isNotBlank(json)) {
+                    final ImmutableMap<String, String> startNotice = loadSocLowNoticeFromRedis(jedis, vehicleId);
+                    final String status = startNotice.get(NOTICE_STATUS_KEY);
+                    if(NOTICE_STATUS_START.equals(status)) {
+                        return buildDelaySwitch().setSwitchStatus(true);
+                    } else if(NOTICE_STATUS_END.equals(status)) {
+                        LOG.warn(
+                            "redis[{}][{}][{}]中已结束的平台报警通知[{}]",
+                            REDIS_DATABASE_INDEX,
+                            SOC_LOW_REDIS_KEY,
+                            vehicleId,
+                            json);
+                        jedis.hdel(SOC_LOW_REDIS_KEY, vehicleId);
+                    } else {
+                        LOG.warn(
+                            "redis[{}][{}][{}]中状态为[{}]的异常平台报警通知[{}]",
+                            REDIS_DATABASE_INDEX,
+                            SOC_LOW_REDIS_KEY,
+                            vehicleId,
+                            status,
+                            json);
+                        jedis.hdel(SOC_LOW_REDIS_KEY, vehicleId);
+                    }
+                }
+                return buildDelaySwitch().setSwitchStatus(false);
+            })
+        );
+    }
+
+    @NotNull
+    private ImmutableMap<String, String> loadSocLowNoticeFromRedis(
+        @NotNull final Jedis jedis,
+        @NotNull final String vehicleId) {
+
+        final String json = jedis.hget(SOC_LOW_REDIS_KEY, vehicleId);
+        if (StringUtils.isNotBlank(json)) {
+            return ImmutableMap.copyOf(
+                ObjectExtension.defaultIfNull(
+                    JSON_UTILS.fromJson(
+                        json,
+                        TREE_MAP_STRING_STRING_TYPE,
+                        e -> {
+                            LOG.warn(
+                                "redis[{}][{}][{}]中不是合法json的SOC过低通知[{}]",
+                                REDIS_DATABASE_INDEX,
+                                SOC_LOW_REDIS_KEY,
+                                vehicleId,
+                                json);
+                            return null;
+                        }),
+                    Maps::newTreeMap)
+            );
+        } else {
+            return ImmutableMap.of();
+        }
+    }
+
+    /**
+     * 车辆通知缓存表 <vehicleId, partNotice>
+     */
+    private final Map<String, ImmutableMap<String, String>> vehicleNoticeCache = Maps.newHashMap();
+
+    // endregion 状态表
 
     /**
      * @param data 车辆数据
+     * @param processChargeCars 当soc过低开始被触发时, 回调该函数处理补电车事宜(车辆标识, 经度, 纬度)
      * @return 如果产生低电量通知, 则填充通知, 否则为空集合.
      */
-    public Map<String, String> processFrame(
-        @NotNull final Map<String, String> data,
-        @NotNull final TeConsumer<String, Double, Double> processChargeCars) {
+    @SuppressWarnings("WeakerAccess")
+    public String processFrame(
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final TeConsumer<@NotNull String, @NotNull Double, @NotNull Double> processChargeCars) {
+
+        final String vehicleId = data.get(DataKey.VEHICLE_ID);
+        final String platformReceiverTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+        final String socString = data.get(DataKey._7615_STATE_OF_CHARGE);
 
         //检查数据有效性
-        if (dataIsInvalid(data)){
+        if (StringUtils.isBlank(vehicleId)
+            || !NumberUtils.isDigits(platformReceiverTimeString)
+            || !NumberUtils.isDigits(socString)){
             return null;
         }
 
-        String vid = data.get(DataKey.VEHICLE_ID);
-        String longitudeString = data.get(DataKey._2502_LONGITUDE);
-        String latitudeString = data.get(DataKey._2503_LATITUDE);
-        String socString = data.get(DataKey._7615_STATE_OF_CHARGE);
-        int socNum = Integer.parseInt(socString);
-
-        //当有这辆车的数据过来的时候, 检查是处于(开始、结束、未知)三者之中的哪一种即可,
-        // 如果是"未知"状态, 通过 redis 查一次, 有"开始"的缓存, 那么状态就可以确定为开始,
-        // 没有缓存, 那么状态就可以确定为"结束", 至此就不存在"未知"的状态了.
-        String status = null;
-        if (null != vidSocNotice.get(vid)){
-            status = vidSocNotice.get(vid).get(STATUS_KEY);
-            if (AlarmStatus.Init.equals(status)){
-                JEDIS_POOL_UTILS.useResource(jedis -> {
-                    final String select = jedis.select(REDIS_DB_INDEX);
-                    if (!RedisConstant.Select.OK.equals(select)) {
-                        return;
-                    }
-                    final String json = jedis.hget(REDIS_TABLE_NAME, vid);
-                    final Map<String, String> notice = JSON_UTILS.fromJson(
-                            json,
-                            new TypeToken<TreeMap<String, String>>() {
-                            }.getType());
-                    if (null == notice){
-                        vidSocNotice.get(vid).put(STATUS_KEY,"3");
-                    }else{
-                        final String statusString = notice.get(STATUS_KEY);
-                        final int statusValue = NumberUtils.toInt(statusString);
-                        final AlarmStatus alarmStatus = AlarmStatus.parseOf(statusValue);
-
-                        if (AlarmStatus.Start == alarmStatus){
-                            vidSocNotice.get(vid).put(STATUS_KEY,"1");
-                        }
-                    }
-                });
-            }
+        final long platformReceiverTime;
+        try {
+            platformReceiverTime = DataUtils.parseFormatTime(platformReceiverTimeString);
+        } catch (@NotNull final ParseException e) {
+            LOG.warn("解析服务器时间异常", e);
+            return null;
         }
+        final int soc = Integer.parseInt(socString);
 
-
-        // 检验SOC是否小于过低开始阈值
-        if (socNum < lowSocAlarm_StartThreshold) {
-
-            //soc过低开始通知
-            final Map<String, String> socLowNotice = getSocLowNotice(data);
-            //发送soc过低开始通知时，获取附近补电车信息，一并发送
-            if (null != socLowNotice){
-                try {
-                    final double longitude = Double.parseDouble(NumberUtils.isNumber(longitudeString) ? longitudeString : "0") / 1000000.0;
-                    final double latitude = Double.parseDouble(NumberUtils.isNumber(latitudeString) ? latitudeString : "0") / 1000000.0;
-                    // 附近补电车信息
-                    processChargeCars.accept(vid, longitude, latitude);
-                } catch (Exception e) {
-                    LOG.warn("获取补电车信息的时出现异常，位置在CarLowSocJudge类");
-                    LOG.warn(e.getMessage());
+        // 检验SOC是否小于等于过低开始阈值
+        if(soc <= socLowBeginThreshold) {
+            final String[] result = new String[1];
+            final DelaySwitch delaySwitch = ensureVehicleStatus(vehicleId);
+            delaySwitch.positiveIncrease(
+                platformReceiverTime,
+                () -> socLowBeginReset(data, vehicleId, platformReceiverTimeString, soc),
+                (count, timeout) -> {
+                    socLowBeginOverflow(count, timeout, vehicleId, result);
+                    processChargeCars(data, vehicleId, processChargeCars);
                 }
-            }
-            return socLowNotice;
+            );
+            return result[0];
+        }
+        // 检验SOC是否大于过低结束阈值
+        else if(soc > socLowEndThreshold) {
+            final String[] result = new String[1];
+            final DelaySwitch delaySwitch = ensureVehicleStatus(vehicleId);
+            delaySwitch.negativeIncrease(
+                platformReceiverTime,
+                () -> socLowEndReset(data, vehicleId, platformReceiverTimeString, soc),
+                (count, timeout) -> socLowEndOverflow(count, timeout, vehicleId, result)
+            );
+            return result[0];
         } else {
-            //soc过低结束通知
-            return getSocNormalNotice(data);
+            return null;
         }
     }
 
-    /**
-     * 判断实时报文数据是否为无效数据
-     * @param data 实时报文数据
-     * @return
-     */
-    private boolean dataIsInvalid(Map<String, String> data){
-        if (MapUtils.isEmpty(data)) {
-            return true;
-        }
-        String vid = data.get(DataKey.VEHICLE_ID);
-        String timeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
-        String socString = data.get(DataKey._7615_STATE_OF_CHARGE);
-        if (StringUtils.isBlank(vid)
-                || StringUtils.isEmpty(timeString)
-                || !StringUtils.isNumeric(timeString)) {
-            return true;
-        }
-        if (StringUtils.isEmpty(socString)
-                || !StringUtils.isNumeric(socString)) {
-            return true;
-        }
-        return false;
+    // region SOC过低开始
+
+    private void socLowBeginReset(
+        final @NotNull ImmutableMap<String, String> data,
+        @NotNull final String vehicleId,
+        @NotNull final String platformReceiverTimeString,
+        final int soc) {
+
+        final String longitudeString = data.get(DataKey._2502_LONGITUDE);
+        final String latitudeString = data.get(DataKey._2503_LATITUDE);
+        @NotNull final String location = StringUtils.defaultString(
+            DataUtils.buildLocation(
+                longitudeString,
+                latitudeString
+            )
+        );
+
+        vehicleNoticeCache.put(
+            vehicleId,
+            new ImmutableMap.Builder<String, String>()
+                .put("msgType", NoticeType.SOC_LOW_NOTICE)
+                .put("msgId", UUID.randomUUID().toString())
+                .put("vid", vehicleId)
+                .put("stime", platformReceiverTimeString)
+                .put("location", location)
+                .put("slocation", location)
+                .put("sthreshold", String.valueOf(socLowBeginThreshold))
+                .put("ssoc", String.valueOf(soc))
+                // 兼容性处理, 暂留
+                .put("lowSocThreshold", String.valueOf(socLowBeginThreshold))
+                .build()
+        );
+
+        LOG.trace("VID[{}]SOC过低开始首帧缓存初始化", vehicleId);
     }
 
+    private void socLowBeginOverflow(
+        final int count,
+        final long timeout,
+        @NotNull final String vehicleId,
+        @NotNull final String[] result){
 
-    /**
-     * SOC小于soc过低开始阈值时做的操作
-     */
-    @Nullable
-    private Map<String, String> getSocLowNotice(Map<String, String> data){
-        String vid = data.get(DataKey.VEHICLE_ID);
-        String timeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
-        String longitudeString = data.get(DataKey._2502_LONGITUDE);
-        String latitudeString = data.get(DataKey._2503_LATITUDE);
-        String location = DataUtils.buildLocation(longitudeString, latitudeString);
-        String socString = data.get(DataKey._7615_STATE_OF_CHARGE);
-        int socNum = Integer.parseInt(socString);
+        final long currentTimeMillis = System.currentTimeMillis();
+        final String noticeTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
 
-        Long currentTimeMillis = System.currentTimeMillis();
-        String noticeTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
-        // 返回的通知消息
-        Map<String, String> result = new HashMap<>();
+        final Map<String, String> socLowStartNotice = Maps.newHashMap(
+            vehicleNoticeCache.get(vehicleId)
+        );
+        socLowStartNotice.put("status", "1");
+        socLowStartNotice.put("scontinue", String.valueOf(count));
+        socLowStartNotice.put("slazy", String.valueOf(timeout));
+        socLowStartNotice.put("noticeTime", noticeTime);
 
-        //SOC正常帧数记录值清空
-        vidNormSoc.remove(vid);
-
-        //此车之前是否SOC过低状态
-        final Map<String, String> lowSocNotice = vidSocNotice.getOrDefault(vid, new TreeMap<>());
-        // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-        String status = lowSocNotice.getOrDefault("status", "0");
-        if ("0".equals(status) && "3".equals(status)) {
-            return null;
-        }
-
-        if(MapUtils.isEmpty(lowSocNotice)) {
-            lowSocNotice.put("msgType", NoticeType.SOC_LOW_NOTICE);
-            lowSocNotice.put("msgId", UUID.randomUUID().toString());
-            lowSocNotice.put("vid", vid);
-            vidSocNotice.put(vid, lowSocNotice);
-
-            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                LOG.info("VID[{}]SOC首帧缓存初始化", vid);
-            });
-        }
-
-        //过低SOC帧数加1
-        final int lowSocCount = vidLowSocCount.getOrDefault(vid, 0) + 1;
-        vidLowSocCount.put(vid, lowSocCount);
-
-        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            LOG.info("VID[{}]判定为SOC过低第[{}]次", vid, lowSocCount);
-        });
-
-        // 记录连续SOC过低状态开始时的信息
-        if(1 == lowSocCount) {
-            lowSocNotice.put("stime", timeString);
-            lowSocNotice.put("location", location);
-            lowSocNotice.put("slocation", location);
-            lowSocNotice.put("sthreshold", String.valueOf(lowSocAlarm_StartThreshold));
-            lowSocNotice.put("ssoc", String.valueOf(socNum));
-            // 兼容性处理, 暂留
-            lowSocNotice.put("lowSocThreshold", String.valueOf(lowSocAlarm_StartThreshold));
-
-            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                LOG.info("VID[{}]SOC过低首帧更新", vid);
-            });
-        }
-
-        //过低soc帧数是否超过阈值
-        if(lowSocCount < lowSocFaultJudgeNum) {
-            return null;
-        }
-
-        final Long firstLowSocTime;
-        try {
-            firstLowSocTime = DateUtils
-                    .parseDate(
-                            lowSocNotice.get("stime"),
-                            new String[]{FormatConstant.DATE_FORMAT})
-                    .getTime();
-        } catch (ParseException e) {
-            LOG.warn("解析开始时间异常", e);
-            lowSocNotice.put("stime", timeString);
-            return null;
-        }
-
-        //故障时间是否超过阈值
-        if (currentTimeMillis - firstLowSocTime <= lowSocFaultIntervalMillisecond) {
-            return null;
-        }
-
-        //记录连续SOC过低状态确定时的信息
-        lowSocNotice.put("status", "1");
-        lowSocNotice.put("slazy", String.valueOf(lowSocFaultIntervalMillisecond));
-        lowSocNotice.put("noticeTime", noticeTime);
-
-        String json = JSON_UTILS.toJson(lowSocNotice);
+        final String json = JSON_UTILS.toJson(socLowStartNotice);
         JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(REDIS_DB_INDEX);
-            jedis.hset(REDIS_TABLE_NAME, vid, json);
+            jedis.select(REDIS_DATABASE_INDEX);
+            jedis.hset(SOC_LOW_REDIS_KEY, vehicleId, json);
         });
 
-        result = lowSocNotice;
+        result[0] = json;
 
-        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            LOG.info("VID[{}]SOC异常通知发送[{}]", vid, lowSocNotice.get("msgId"));
-        });
-
-        return result;
+        LOG.debug("VID[{}]SOC过低开始通知发送[{}]", vehicleId, socLowStartNotice.get("msgId"));
     }
 
-    @Nullable
-    private Map<String,String> getSocNormalNotice(Map<String,String> data){
+    private void processChargeCars(
+        final @NotNull ImmutableMap<String, String> data,
+        @NotNull final String vehicleId,
+        @NotNull final TeConsumer<@NotNull String, @NotNull Double, @NotNull Double> processChargeCars) {
 
-        String vid = data.get(DataKey.VEHICLE_ID);
-        String timeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
-        String longitudeString = data.get(DataKey._2502_LONGITUDE);
-        String latitudeString = data.get(DataKey._2503_LATITUDE);
-        String location = DataUtils.buildLocation(longitudeString, latitudeString);
-        String socString = data.get(DataKey._7615_STATE_OF_CHARGE);
-        int socNum = Integer.parseInt(socString);
-
-        Long currentTimeMillis = System.currentTimeMillis();
-        String noticeTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
-
-        //SOC过低帧数记录值清空
-        vidLowSocCount.remove(vid);
-
-        //此车之前是否为SOC过低状态
-        final Map<String, String> normalSocNotice = vidSocNotice.get(vid);
-        if(null == normalSocNotice) {
-            return null;
-        }
-
-        // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-        String status = normalSocNotice.getOrDefault("status", "0");
-        if ("1".equals(status) && "2".equals(status)) {
-            return null;
-        }
-
-        //如果小于soc过低结束阈值，则清空SOC正常帧数记录值，并返回
-        if (socNum < lowSocAlarm_EndThreshold){
-            //SOC正常帧数记录值清空
-            vidNormSoc.remove(vid);
-            return null;
-        }
-
-        //正常SOC帧数加1
-        final int normalSocCount = vidNormSoc.getOrDefault(vid, 0) + 1;
-        vidNormSoc.put(vid, normalSocCount);
-
-        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            LOG.info("VID[{}]判定为SOC正常第[{}]次", vid, normalSocCount);
-        });
-
-        //记录首帧正常报文信息（即soc过低结束时信息）
-        if(1 == normalSocCount) {
-            normalSocNotice.put("etime", timeString);
-            normalSocNotice.put("elocation", location);
-            normalSocNotice.put("ethreshold", String.valueOf(lowSocAlarm_StartThreshold));
-            normalSocNotice.put("esoc", String.valueOf(socNum));
-
-            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                LOG.info("VID[{}]SOC正常首帧初始化", vid);
-            });
-        }
-
-        //正常soc帧数是否超过阈值
-        if(normalSocCount < lowSocNormalJudgeNum) {
-            return null;
-        }
-
-        final Long firstNormalSocTime;
+        final String longitudeString = data.get(DataKey._2502_LONGITUDE);
+        final String latitudeString = data.get(DataKey._2503_LATITUDE);
         try {
-            firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime"), new String[]{FormatConstant.DATE_FORMAT}).getTime();
-        } catch (ParseException e) {
-            LOG.warn("解析结束时间异常", e);
-            normalSocNotice.put("etime", timeString);
-            return null;
+            final double longitude = NumberUtils.toDouble(longitudeString, 0);
+            final double latitude = NumberUtils.toDouble(latitudeString, 0);
+            //检查经纬度是否为无效值
+            final double absLongitude = Math.abs(longitude);
+            final double absLatitude = Math.abs(latitude);
+            if (0 == absLongitude || absLongitude > DataKey.MAX_2502_LONGITUDE || 0 == absLatitude || absLatitude > DataKey.MAX_2503_LATITUDE) {
+                return;
+            }
+            // 附近补电车信息
+            processChargeCars.accept(vehicleId, longitude / 1000000d, latitude / 1000000d);
+        } catch (final Exception e) {
+            LOG.warn("获取补电车信息的时出现异常", e);
         }
+    }
 
-        //正常时间是否超过阈值
-        if (currentTimeMillis - firstNormalSocTime <= lowSocNormalIntervalMillisecond) {
-            return null;
-        }
+    // endregion SOC过低开始
 
-        //记录连续SOC正常状态确定时的信息
-        normalSocNotice.put("status", "3");
-        normalSocNotice.put("elazy", String.valueOf(lowSocNormalIntervalMillisecond));
-        normalSocNotice.put("noticeTime", noticeTime);
+    // region SOC过低结束
 
-        vidSocNotice.remove(vid);
+    private void socLowEndReset(
+        final @NotNull ImmutableMap<String, String> data,
+        @NotNull final String vehicleId,
+        @NotNull final String platformReceiverTimeString,
+        final int soc) {
+
+        final String longitudeString = data.get(DataKey._2502_LONGITUDE);
+        final String latitudeString = data.get(DataKey._2503_LATITUDE);
+        @NotNull final String location = StringUtils.defaultString(
+            DataUtils.buildLocation(
+                longitudeString,
+                latitudeString
+            )
+        );
+
+        vehicleNoticeCache.put(
+            vehicleId,
+            new ImmutableMap.Builder<String, String>()
+                .put("etime", platformReceiverTimeString)
+                .put("elocation", location)
+                .put("ethreshold", String.valueOf(socLowEndThreshold))
+                .put("esoc", String.valueOf(soc))
+                .build()
+        );
+
+        LOG.trace("VID[{}]SOC过低结束首帧初始化", vehicleId);
+    }
+
+    private void socLowEndOverflow(
+        final int count,
+        final long timeout,
+        @NotNull final String vehicleId,
+        @NotNull final String[] result) {
 
         JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(REDIS_DB_INDEX);
-            jedis.hdel(REDIS_TABLE_NAME, vid);
+            jedis.select(REDIS_DATABASE_INDEX);
+
+            final ImmutableMap<String, String> socLowBeginNotice = loadSocLowNoticeFromRedis(jedis, vehicleId);
+            if(MapUtils.isNotEmpty(socLowBeginNotice)) {
+                final long currentTimeMillis = System.currentTimeMillis();
+                final String noticeTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
+
+                final Map<String, String> socLowEndNotice = Maps.newHashMap(
+                    socLowBeginNotice
+                );
+                socLowEndNotice.putAll(vehicleNoticeCache.get(vehicleId));
+                socLowEndNotice.put("status", "3");
+                socLowEndNotice.put("econtinue", String.valueOf(count));
+                socLowEndNotice.put("elazy", String.valueOf(timeout));
+                socLowEndNotice.put("noticeTime", noticeTime);
+
+                final String json = JSON_UTILS.toJson(socLowEndNotice);
+                jedis.hdel(SOC_LOW_REDIS_KEY, vehicleId);
+
+                result[0] = json;
+
+                LOG.debug("VID[{}]SOC过低结束通知发送", vehicleId, socLowEndNotice.get("msgId"));
+            }
         });
-
-        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            LOG.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
-        });
-
-        return normalSocNotice;
     }
 
-//    /**
-//     * 初始化lowSoc通知的缓存
-//     * @param isRestart
-//     */
-//    void restartInit(boolean isRestart) {
-//        if (isRestart) {
-//            recorder.rebootInit(REDIS_DB_INDEX, REDIS_TABLE_NAME, vidHighSocNotice);
-//        }
-//    }
-    /**
-     * 告警状态
-     */
-    private enum AlarmStatus {
-
-        /**
-         * 初始
-         */
-        Init(0),
-
-        /**
-         * 开始
-         */
-        Start(1),
-
-        /**
-         * 持续
-         */
-        Continue(2),
-
-        /**
-         * 结束
-         */
-        End(3),;
-
-        public final int value;
-
-        AlarmStatus(int value) {
-            this.value = value;
-        }
-
-        @Contract(pure = true)
-        public static AlarmStatus parseOf(int value) {
-            if (Init.value == value) {
-                return Init;
-            }
-            if (Start.value == value) {
-                return Start;
-            }
-            if (Continue.value == value) {
-                return Continue;
-            }
-            if (End.value == value) {
-                return End;
-            }
-
-            throw new UnknownFormatConversionException("无法识别的选项");
-        }
-
-        @Contract(pure = true)
-        public boolean equals(int value) {
-            return this.value == value;
-        }
-
-        @Contract("null -> false")
-        public boolean equals(String name) {
-            return this.name().equals(name);
-        }
-    }
-
-    //region   以下为6个可配置变量的get和set方法
-
-    public int getLowSocAlarm_StartThreshold() {
-        return lowSocAlarm_StartThreshold;
-    }
-
-    public void setSocLowAlarm_StartThreshold(int lowSocAlarm_StartThreshold) {
-        CarLowSocJudge.lowSocAlarm_StartThreshold = lowSocAlarm_StartThreshold;
-    }
-
-    public int getLowSocAlarm_EndThreshold() {
-        return lowSocAlarm_EndThreshold;
-    }
-
-    public void setLowSocAlarm_EndThreshold(int lowSocAlarm_EndThreshold) {
-        CarLowSocJudge.lowSocAlarm_EndThreshold = lowSocAlarm_EndThreshold;
-    }
-
-    public int getLowSocFaultJudgeNum() {
-        return lowSocFaultJudgeNum;
-    }
-
-    public void setLowSocFaultJudgeNum(int lowSocFaultJudgeNum) {
-        CarLowSocJudge.lowSocFaultJudgeNum = lowSocFaultJudgeNum;
-    }
-
-    public int getLowSocNormalJudgeNum() {
-        return lowSocNormalJudgeNum;
-    }
-
-    public void setLowSocNormalJudgeNum(int lowSocNormalJudgeNum) {
-        CarLowSocJudge.lowSocNormalJudgeNum = lowSocNormalJudgeNum;
-    }
-
-    public Long getLowSocFaultIntervalMillisecond() {
-        return lowSocFaultIntervalMillisecond;
-    }
-
-    public void setLowSocFaultIntervalMillisecond(Long lowSocFaultIntervalMillisecond) {
-        CarLowSocJudge.lowSocFaultIntervalMillisecond = lowSocFaultIntervalMillisecond;
-    }
-
-    public Long getLowSocNormalIntervalMillisecond() {
-        return lowSocNormalIntervalMillisecond;
-    }
-
-    public void setLowSocNormalIntervalMillisecond(Long lowSocNormalIntervalMillisecond) {
-        CarLowSocJudge.lowSocNormalIntervalMillisecond = lowSocNormalIntervalMillisecond;
-    }
-
-    //endregion
-
-
+    // endregion SOC过低结束
 }

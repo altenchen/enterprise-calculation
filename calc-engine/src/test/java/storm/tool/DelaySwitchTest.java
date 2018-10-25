@@ -42,7 +42,7 @@ public final class DelaySwitchTest {
                 1,
                 0);
             final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(0);
+            delaySwitch.setSwitchStatus(null);
             delaySwitch.positiveIncrease(
                 System.currentTimeMillis(),
                 () -> {
@@ -62,7 +62,7 @@ public final class DelaySwitchTest {
                 1,
                 0);
             final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(-1);
+            delaySwitch.setSwitchStatus(false);
             delaySwitch.positiveIncrease(
                 System.currentTimeMillis(),
                 () -> {
@@ -83,7 +83,7 @@ public final class DelaySwitchTest {
                 1,
                 0);
             final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(1);
+            delaySwitch.setSwitchStatus(true);
             delaySwitch.positiveIncrease(
                 System.currentTimeMillis(),
                 () -> {
@@ -108,7 +108,7 @@ public final class DelaySwitchTest {
                 1,
                 0);
             final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(0);
+            delaySwitch.setSwitchStatus(null);
             delaySwitch.negativeIncrease(
                 System.currentTimeMillis(),
                 () -> {
@@ -129,7 +129,7 @@ public final class DelaySwitchTest {
                 1,
                 0);
             final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(-1);
+            delaySwitch.setSwitchStatus(false);
             delaySwitch.negativeIncrease(
                 System.currentTimeMillis(),
                 () -> {
@@ -150,7 +150,7 @@ public final class DelaySwitchTest {
                 1,
                 0);
             final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(1);
+            delaySwitch.setSwitchStatus(true);
             delaySwitch.negativeIncrease(
                 System.currentTimeMillis(),
                 () -> {

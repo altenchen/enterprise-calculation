@@ -2,6 +2,7 @@ package storm.tool;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,12 +23,12 @@ public final class DelaySwitch {
     /**
      * 正向连续计数阈值
      */
-    private final int positiveThreshold;
+    private int positiveThreshold;
 
     /**
      * 正向连续超时阈值
      */
-    private final long positiveTimeout;
+    private long positiveTimeout;
 
     // endregion 正向区域
 
@@ -36,12 +37,12 @@ public final class DelaySwitch {
     /**
      * 反向连续计数阈值
      */
-    private final int negativeThreshold;
+    private int negativeThreshold;
 
     /**
      * 反向连续超时阈值
      */
-    private final long negativeTimeout;
+    private long negativeTimeout;
 
     // endregion 反向区域
 
@@ -77,18 +78,34 @@ public final class DelaySwitch {
     }
 
     /**
-     * 获取开关状态, 负数-反向, 0-未知, 正数-正向
+     * 获取开关状态, false-反向, null-未知, true-正向
      */
+    @Nullable
     @Contract(pure = true)
-    public int getSwitchStatus() {
-        return switchStatus;
+    public Boolean getStatus() {
+        final int switchStatus = this.switchStatus;
+        if(switchStatus > 0) {
+            return true;
+        } else if(switchStatus < 0) {
+            return false;
+        } else {
+            return null;
+        }
     }
 
     /**
-     * 设置开关状态, 负数-反向, 0-未知, 正数-正向
+     * 设置开关状态, false-反向, null-未知, true-正向
      */
-    public void setSwitchStatus(int switchStatus) {
-        this.switchStatus = switchStatus;
+    @Contract("_ -> this")
+    public DelaySwitch setSwitchStatus(@Nullable final Boolean switchStatus) {
+        if(null == switchStatus) {
+            this.switchStatus = 0;
+        } else if(switchStatus) {
+            this.switchStatus = 1;
+        } else {
+            this.switchStatus = -1;
+        }
+        return this;
     }
 
     /**
@@ -171,11 +188,29 @@ public final class DelaySwitch {
     }
 
     /**
+     * 正向连续计数阈值
+     */
+    @Contract("_ -> this")
+    public DelaySwitch setPositiveThreshold(final int positiveThreshold) {
+        this.positiveThreshold = positiveThreshold;
+        return this;
+    }
+
+    /**
      * 正向连续超时阈值
      */
     @Contract(pure = true)
     public long getPositiveTimeout() {
         return positiveTimeout;
+    }
+
+    /**
+     * 正向连续超时阈值
+     */
+    @Contract("_ -> this")
+    public DelaySwitch setPositiveTimeout(final long positiveTimeout) {
+        this.positiveTimeout = positiveTimeout;
+        return this;
     }
 
     /**
@@ -187,10 +222,28 @@ public final class DelaySwitch {
     }
 
     /**
+     * 反向连续计数阈值
+     */
+    @Contract("_ -> this")
+    public DelaySwitch setNegativeThreshold(final int negativeThreshold) {
+        this.negativeThreshold = negativeThreshold;
+        return this;
+    }
+
+    /**
      * 反向连续超时阈值
      */
     @Contract(pure = true)
     public long getNegativeTimeout() {
         return negativeTimeout;
+    }
+
+    /**
+     * 反向连续超时阈值
+     */
+    @Contract("_ -> this")
+    public DelaySwitch setNegativeTimeout(final long negativeTimeout) {
+        this.negativeTimeout = negativeTimeout;
+        return this;
     }
 }
