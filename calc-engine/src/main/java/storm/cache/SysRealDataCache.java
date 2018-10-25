@@ -207,11 +207,11 @@ public class SysRealDataCache {
         if(MapUtils.isEmpty(data)) {
             return false;
         }
-
+        String vid = null;
         try {
 
             final String msgType = data.get(DataKey.MESSAGE_TYPE);
-            final String vid = data.get(DataKey.VEHICLE_ID);
+            vid = data.get(DataKey.VEHICLE_ID);
             final String time = data.get(DataKey.TIME);
 
             if(StringUtils.isEmpty(msgType)
@@ -241,7 +241,7 @@ public class SysRealDataCache {
             }
 
         } catch (Exception e) {
-            LOG.warn("判断活跃车辆异常", e);
+            LOG.warn("VID:" + vid + " 判断活跃车辆异常", e);
         }
 
         return false;

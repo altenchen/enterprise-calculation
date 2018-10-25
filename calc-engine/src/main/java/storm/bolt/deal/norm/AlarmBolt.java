@@ -454,7 +454,7 @@ public class AlarmBolt extends BaseRichBolt {
 
         if (MapUtils.isNotEmpty(notice)) {
             final String json = JSON_UTILS.toJson(notice);
-            LOG.info("输出平台报警通知 {} ", json);
+            LOG.info("VID:{} 输出平台报警通知 {} ", vehicleId, json);
 
             kafkaStreamVehicleAlarmSender.emit(input, vehicleId, json);
             kafkaStreamVehicleAlarmStoreSender.emit(input, vehicleId, json);

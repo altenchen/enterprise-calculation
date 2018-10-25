@@ -82,7 +82,7 @@ public final class ConfigUtils {
         prevRedisReadTime = currentTime;
         Map<String, String> redisConfig = redis.getMap(REDIS_CACHE_DB, REDIS_CACHE_KEY);
         if (MapUtils.isEmpty(redisConfig)) {
-            LOG.info("Redis 未配置任何参数 DB:{}, KEY:{}", REDIS_CACHE_DB, REDIS_CACHE_KEY);
+            LOG.info("REDIS 未配置任何参数 DB:{}, KEY:{}", REDIS_CACHE_DB, REDIS_CACHE_KEY);
             return;
         }
         fillSysDefineEntity(redisConfig);

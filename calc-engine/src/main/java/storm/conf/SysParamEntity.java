@@ -41,6 +41,8 @@ public class SysParamEntity {
      */
     private String dataOffsetCoefficientSql = "select id,seq_no,ifnull(offset,0),ifnull(factor,1),ifnull(dot,16),ifnull(item_type,2),ifnull(veh_model,'Default') from sys_data_item where is_valid=1 and id is not null and seq_no is not null and is_array=0 and (item_type is null or item_type=1 or item_type=2)";
 
+    private String vehicleIdSql = "select uuid from sys_vehicle where uuid is not null";
+
     public String getChargeCarTypeId() {
         return chargeCarTypeId;
     }
@@ -127,5 +129,13 @@ public class SysParamEntity {
 
     public void setDataOffsetCoefficientSql(String dataOffsetCoefficientSql) {
         this.dataOffsetCoefficientSql = dataOffsetCoefficientSql;
+    }
+
+    public String getVehicleIdSql() {
+        return vehicleIdSql;
+    }
+
+    public void setVehicleIdSql(String vehicleIdSql) {
+        this.vehicleIdSql = vehicleIdSql;
     }
 }

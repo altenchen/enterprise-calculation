@@ -189,7 +189,7 @@ public final class VehicleCache {
                                 ImmutableMap.of()
                                 : new ImmutableMap.Builder<String, String>().putAll(map).build());
                     } catch (JsonSyntaxException e) {
-                        LOG.warn("错误的数据格式Redis[{}][{}][{}]->{}", REDIS_DB_INDEX, key, field, json);
+                        LOG.warn("错误的数据格式REDIS DB:{} KEY:{} FIELD:{} --> {}", REDIS_DB_INDEX, key, field, json);
                     }
                 }
             }
@@ -231,7 +231,7 @@ public final class VehicleCache {
                         ImmutableMap.of()
                         : new ImmutableMap.Builder<String, String>().putAll(map).build();
                 } catch (JsonSyntaxException e) {
-                    LOG.warn("错误的数据格式Redis[{}][{}][{}]->{}", REDIS_DB_INDEX, key, field, json);
+                    LOG.warn("错误的数据格式REDIS DB:{} KEY:{} FIELD:{} -->{}", REDIS_DB_INDEX, key, field, json);
                 }
             }
             return ImmutableMap.of();

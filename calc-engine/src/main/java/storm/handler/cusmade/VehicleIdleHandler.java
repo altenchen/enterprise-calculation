@@ -146,7 +146,7 @@ public final class VehicleIdleHandler {
                     jedis.hdel(IDLE_VEHICLE_REDIS_KEY, vehicleId);
 
                     final String json = JSON_UTILS.toJson(endNotice);
-                    LOG.info("车辆[{}]闲置结束.[{}]", vehicleId, json);
+                    LOG.info("VID:{} 车辆闲置结束. {}", vehicleId, json);
 
                     return ImmutableMap.of(vehicleId, json);
                 } else {
@@ -190,7 +190,7 @@ public final class VehicleIdleHandler {
                                 serverReceiveTime,
                                 idleTimeoutMillisecond);
                             final String json = JSON_UTILS.toJson(startNotice);
-                            LOG.info("车辆[{}]闲置开始.[{}]", vehicleId, json);
+                            LOG.info("VID:{} 车辆闲置开始. {}", vehicleId, json);
 
                             jedis.hset(IDLE_VEHICLE_REDIS_KEY, vehicleId, json);
 
