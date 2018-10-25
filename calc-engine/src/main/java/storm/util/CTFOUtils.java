@@ -102,7 +102,7 @@ public class CTFOUtils implements Serializable {
                             // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> xyn-realInfo-*
                             final String tableName = ConfigUtils.getSysDefine().getCtfoCacheTable();
                             if(StringUtils.isEmpty(dbName)) {
-                                LOG.error("配置[{}]不能为空", tableNameKey);
+                                LOG.error("配置 {} 不能为空", tableNameKey);
                                 return;
                             }
                             if(dbName.indexOf("-") != -1) {

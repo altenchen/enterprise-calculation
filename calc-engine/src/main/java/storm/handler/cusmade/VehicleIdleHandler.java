@@ -291,7 +291,7 @@ public final class VehicleIdleHandler {
         try {
             return VEHICLE_CACHE.getTotalMileageString(vid, "");
         } catch (final ExecutionException e) {
-            LOG.warn("获取累计里程缓存异常", e);
+            LOG.warn("VID:" + vid + " 获取累计里程缓存异常", e);
             return "";
         }
     }

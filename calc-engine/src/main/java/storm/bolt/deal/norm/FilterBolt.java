@@ -381,46 +381,15 @@ public class FilterBolt extends BaseRichBolt {
     }
 
     private void executeFromMySqlSpoutVehicleIdentityStream(
-        @NotNull final Tuple input,
-        @NotNull final String vehicleId) {
+            @NotNull final Tuple input,
+            @NotNull final String vehicleId) {
 
         collector.ack(input);
-
-        vehicleIdleHandler.initIdleNotice(vid, notice);
-    }
-
-    private void executeFromCtfoBoltDataStream(
-        @NotNull final Tuple input,
-        @NotNull final String vehicleId,
-        @NotNull final ImmutableMap<String, String> data) {
-
-        collector.ack(input);
-
-        long platformReceiveTime = 0;
-
-        final String messageType = data.get(DataKey.MESSAGE_TYPE);
-
-        final boolean isRealtimeInfo = CommandType.SUBMIT_REALTIME.equals(messageType);
-
-        if (isRealtimeInfo) {
-
-            final String platformReceiveTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
-            if (StringUtils.isNotBlank(platformReceiveTimeString)) {
-                try {
-                    platformReceiveTime = DataUtils.parseFormatTime(platformReceiveTimeString);
-                } catch (final Exception e) {
-                    LOG.warn("时间解析异常", e);
-                    LOG.warn("VID:{} 无效的服务器接收时间:{}", vehicleId, platformReceiveTimeString);
-                }
-            } else {
-                LOG.warn("VID:{} 空白的服务器接收时间:{}", vehicleId, platformReceiveTimeString);
-            }
-        }
 
         try {
             final ImmutableMap<String, String> totalMileageCache = VEHICLE_CACHE.getField(
-                vehicleId,
-                VehicleCache.TOTAL_MILEAGE_FIELD);
+                    vehicleId,
+                    VehicleCache.TOTAL_MILEAGE_FIELD);
             final String totalMileageCacheTimeString = totalMileageCache.get(VehicleCache.VALUE_TIME_KEY);
             if (StringUtils.isNotBlank(totalMileageCacheTimeString)) {
                 try {
@@ -428,16 +397,14 @@ public class FilterBolt extends BaseRichBolt {
 
                     if (platformReceiveTime > 0) {
                         vehicleIdleHandler.initPlatformReceiveTime(vehicleId, platformReceiveTime)
-                            .forEach((vid, json) -> {
-                                kafkaStreamVehicleNoticeSender.emit(input, vid, json);
-                            });
+                                .forEach((vid, json) -> {
+                                    kafkaStreamVehicleNoticeSender.emit(input, vid, json);
+                                });
                     }
                 } catch (final ParseException e) {
                     LOG.warn("时间解析异常", e);
-                    LOG.warn("VID:{} 无效的服务器接收时间:{}", vehicleId, totalMileageCacheTimeString);
+                    LOG.warn("VID:{} 无效的累计里程缓存时间: {}", vehicleId, totalMileageCacheTimeString);
                 }
-            } else {
-                LOG.warn("VID:{} 空白的服务器接收时间:{}", vehicleId, totalMileageCacheTimeString);
             }
         } catch (final ExecutionException e) {
             LOG.warn("VID:" + vehicleId + " 从缓存获取有效累计里程异常", e);

@@ -68,7 +68,7 @@ public final class TimeOutOfRangeNotice implements Serializable {
 
         final String platformTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
         if(!NumberUtils.isDigits(platformTimeString)) {
-            LOG.warn("平台接收时间格式错误[{}]", platformTimeString);
+            LOG.warn("VID:{} 平台接收时间格式错误[{}]", vid, platformTimeString);
             return result;
         }
         try {
@@ -76,7 +76,7 @@ public final class TimeOutOfRangeNotice implements Serializable {
             platformTime = DateUtils.parseDate(platformTimeString, new String[]{FormatConstant.DATE_FORMAT}).getTime();
         } catch (ParseException e) {
             LOG.warn("时间解析异常", e);
-            LOG.warn("无效的时间格式: 2000=[{}], 9999=[{}]", terminalTimeString, platformTimeString);
+            LOG.warn("VID:{} 无效的时间格式: 2000=[{}], 9999=[{}]", vid, terminalTimeString, platformTimeString);
             return result;
         }
 

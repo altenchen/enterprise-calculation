@@ -138,7 +138,7 @@ public class CarRuleHandler implements InfoNotice {
 
         lastTime.put(vid, System.currentTimeMillis());
 
-        LOG.trace("VID[" + vid + "]进入车辆规则处理");
+        LOG.trace("VID:" + vid + " 进入车辆规则处理");
 
         // 如果规则启用了，则把data放到相应的处理方法中。将返回结果放到list中，返回。
 

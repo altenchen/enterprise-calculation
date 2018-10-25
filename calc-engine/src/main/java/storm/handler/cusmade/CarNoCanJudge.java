@@ -249,7 +249,7 @@ public final class CarNoCanJudge {
         }
 
         if (result.containsKey(STATUS_KEY)) {
-            logger.info("VID[{}]收到无CAN告警通知, status[{}]", vid, result.get(STATUS_KEY));
+            logger.info("VID:{} 收到无CAN告警通知, status:{}", vid, result.get(STATUS_KEY));
         }
 
         return result;
@@ -285,7 +285,7 @@ public final class CarNoCanJudge {
             item.firstFrameEnterFault(time, totalMileageString, location);
         }
 
-        logger.info("VID[" + item.vid + "]判定为无CAN[" + item.continueCount + "]");
+        logger.info("VID:" + item.vid + " 判定为无CAN[" + item.continueCount + "]");
 
         if (item.continueCount > -getFaultTriggerContinueCount()) {
             --item.continueCount;
@@ -329,7 +329,7 @@ public final class CarNoCanJudge {
 
                 item.setAlarmStatus(AlarmStatus.Start);
 
-                logger.info("VID[" + item.vid + "]触发CAN故障[" + item.getAlarmStatus() + "]");
+                logger.info("VID:" + item.vid + " 触发CAN故障[" + item.getAlarmStatus() + "]");
 
                 final ImmutableMap<String, String> notice = item.generateNotice();
 
@@ -341,7 +341,7 @@ public final class CarNoCanJudge {
                         NoticeType.NO_CAN_VEH,
                         notice
                     );
-                    logger.info("VID[{}]CAN故障, 更新缓存.", item.vid);
+                    logger.info("VID:{} CAN故障, 更新缓存.", item.vid);
                 } catch (ExecutionException e) {
                     logger.error("存储CAN故障通知缓存异常");
                 }
@@ -378,7 +378,7 @@ public final class CarNoCanJudge {
             item.firstFrameLeaveFault(time, totalMileageString, location);
         }
 
-        logger.info("VID[" + item.vid + "]判定为有CAN[" + item.continueCount + "]");
+        logger.info("VID:" + item.vid + " 判定为有CAN[" + item.continueCount + "]");
 
         if (item.continueCount < getNormalTriggerContinueCount()) {
             ++item.continueCount;
@@ -421,7 +421,7 @@ public final class CarNoCanJudge {
 
                 item.setAlarmStatus(AlarmStatus.End);
 
-                logger.info("VID[" + item.vid + "]触发CAN正常[" + item.getAlarmStatus() + "]");
+                logger.info("VID:" + item.vid + " 触发CAN正常[" + item.getAlarmStatus() + "]");
 
                 final ImmutableMap<String, String> notice = item.generateNotice();
 
@@ -432,9 +432,9 @@ public final class CarNoCanJudge {
                         item.vid,
                         NoticeType.NO_CAN_VEH
                     );
-                    logger.info("VID[{}]CAN正常, 删除缓存.", item.vid);
+                    logger.info("VID:{} CAN正常, 删除缓存.", item.vid);
                 } catch (ExecutionException e) {
-                    logger.error("删除CAN正常通知缓存异常");
+                    logger.error("VID:{} 删除CAN正常通知缓存异常", item.vid);
                 }
 
                 // 出于兼容性考虑, 先暂留.
@@ -660,7 +660,7 @@ public final class CarNoCanJudge {
                 return;
             }
 
-            logger.info("VID[{}]无CAN状态从[{}]切换到[{}]", vid, this.alarmStatus, alarmStatus);
+            logger.info("VID:{} 无CAN状态从 {} 切换到 {} ", vid, this.alarmStatus, alarmStatus);
 
             this.alarmStatus = alarmStatus;
             properties.put(STATUS_KEY, String.valueOf(alarmStatus.value));

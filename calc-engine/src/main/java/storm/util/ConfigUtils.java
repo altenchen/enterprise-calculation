@@ -1,7 +1,5 @@
 package storm.util;
 
-import com.google.common.collect.Maps;
-import kafka.utils.Json;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -13,7 +11,6 @@ import storm.conf.SysParamEntity;
 import storm.dao.DataToRedis;
 
 import java.io.*;
-import java.sql.SQLOutput;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -73,6 +70,7 @@ public final class ConfigUtils {
      */
     public synchronized static void readConfigFromRedis(DataToRedis redis) {
         if (redis == null) {
+            LOG.error("REDIS 为null，未初始化");
             return;
         }
         long currentTime = System.currentTimeMillis();
@@ -80,15 +78,20 @@ public final class ConfigUtils {
             return;
         }
         prevRedisReadTime = currentTime;
+        LOG.info("开始从REDIS读取配置 DB:{}, KEY:{}", REDIS_CACHE_DB, REDIS_CACHE_KEY);
         Map<String, String> redisConfig = redis.getMap(REDIS_CACHE_DB, REDIS_CACHE_KEY);
         if (MapUtils.isEmpty(redisConfig)) {
             LOG.info("REDIS 未配置任何参数 DB:{}, KEY:{}", REDIS_CACHE_DB, REDIS_CACHE_KEY);
             return;
         }
         fillSysDefineEntity(redisConfig);
-
+        LOG.info("从REDIS读取配置完成 DB:{}, KEY:{}, 耗时: {} ms", REDIS_CACHE_DB, REDIS_CACHE_KEY, (System.currentTimeMillis() - currentTime));
     }
 
+    /**
+     * 将properties的值setg到sysDefine对象里面
+    * @param properties
+     */
     public static void fillSysDefineEntity(Properties properties) {
         if (properties.isEmpty()) {
             LOG.error("{} 未设置任何参数.", "sysDefine.properties");
@@ -103,12 +106,17 @@ public final class ConfigUtils {
                 }
                 String beanAttributeName = keyConvertAttributeName(paramKeyString);
                 BeanUtils.setProperty(sysDefine, beanAttributeName, properties.get(paramKey));
+                LOG.info("应用配置 {}={}", paramKey, value);
             } catch (Exception e) {
                 LOG.error("sysParamEntity 设置 beanAttributeName 出现异常, key:" + paramKey + ", value:" + properties.get(paramKey), e);
             }
         }
     }
 
+    /**
+     * 将properties的值setg到sysDefine对象里面
+     * @param properties
+     */
     private static void fillSysDefineEntity(Map<String, String> properties) {
         if (properties.isEmpty()) {
             LOG.error("{} 未设置任何参数.", "sysDefine.properties");
@@ -123,12 +131,17 @@ public final class ConfigUtils {
                 }
                 String beanAttributeName = keyConvertAttributeName(paramKeyString);
                 BeanUtils.setProperty(sysDefine, beanAttributeName, properties.get(paramKey));
+                LOG.info("应用配置 {}={}", paramKey, value);
             } catch (Exception e) {
                 LOG.error("sysParamEntity 设置 beanAttributeName 出现异常, key:" + paramKey + ", value:" + properties.get(paramKey), e);
             }
         }
     }
 
+    /**
+     * 将properties的值setg到sysParam对象里面
+     * @param properties
+     */
     private static void fillSysParamEntity(Properties properties) {
         if (properties.isEmpty()) {
             LOG.error("{} 未设置任何参数.", "params.properties");
@@ -143,26 +156,7 @@ public final class ConfigUtils {
                     continue;
                 }
                 BeanUtils.setProperty(sysParam, beanAttributeName, properties.get(paramKey));
-            } catch (Exception e) {
-                LOG.error("sysParamEntity 设置 beanAttributeName 出现异常, key:" + paramKey + ", value:" + properties.get(paramKey), e);
-            }
-        }
-    }
-
-    private static void fillSysParamEntity(Map<String, String> properties) {
-        if (properties.isEmpty()) {
-            LOG.error("{} 未设置任何参数.", "params.properties");
-            return;
-        }
-        for (Object paramKey : properties.keySet()) {
-            String paramKeyString = paramKey + "";
-            String beanAttributeName = keyConvertAttributeName(paramKeyString);
-            try {
-                Object value = properties.get(paramKey);
-                if (StringUtils.isEmpty(value.toString())) {
-                    continue;
-                }
-                BeanUtils.setProperty(sysParam, beanAttributeName, properties.get(paramKey));
+                LOG.info("应用配置 {}={}", paramKey, value);
             } catch (Exception e) {
                 LOG.error("sysParamEntity 设置 beanAttributeName 出现异常, key:" + paramKey + ", value:" + properties.get(paramKey), e);
             }
@@ -231,11 +225,4 @@ public final class ConfigUtils {
         return sysParam;
     }
 
-    public static String getRedisCacheKey(){
-        return REDIS_CACHE_KEY;
-    }
-
-    public static int getRedisCacheDb(){
-        return REDIS_CACHE_DB;
-    }
 }
