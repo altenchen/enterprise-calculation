@@ -433,8 +433,8 @@ public class FilterBolt extends BaseRichBolt {
                             });
                     }
                 } catch (final ParseException e) {
-                    LOG.warn("累计里程缓存时间解析异常", e);
-                    LOG.warn("无效的累计里程缓存时间: [{}]", totalMileageCacheTimeString);
+                    LOG.warn("时间解析异常", e);
+                    LOG.warn("VID:{} 无效的服务器接收时间:{}", vehicleId, totalMileageCacheTimeString);
                 }
             } else {
                 LOG.warn("VID:{} 空白的服务器接收时间:{}", vehicleId, totalMileageCacheTimeString);

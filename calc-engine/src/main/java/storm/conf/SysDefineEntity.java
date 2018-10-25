@@ -342,14 +342,22 @@ public class SysDefineEntity {
      */
     private String ruleOverride = "jili";
 
-    /**
-     * 以下配置在sysDefine.properties中没有找到，但是在CarRuleHandler中有使用到，并且是在redis同步过来的数据
-     * @return
-     */
 
+    // ############################################################################################
+    // 以下配置在sysDefine.properties中没有找到，但是在CarRuleHandler中有使用到，并且是在redis同步过来的数据
+    // ############################################################################################
+    /**
+     * 秒
+     */
     private int canJudgeTime = 600;
-    private int mileHopNum = 2;    //单位是km, 2表示2公里
+    /**
+     * 连续多少帧没有can状态，算为无can状态车辆
+     */
     private int canNovalueContinueNo = 5;
+    /**
+     * 里程跳变数，单位是km, 2表示2公里
+     */
+    private int mileHopNum = 2;
 
     public int getStormWorkerNo() {
         return stormWorkerNo;
@@ -973,5 +981,13 @@ public class SysDefineEntity {
 
     public void setMileHopNum(int mileHopNum) {
         this.mileHopNum = mileHopNum;
+    }
+
+    public int getCanNovalueContinueNo() {
+        return canNovalueContinueNo;
+    }
+
+    public void setCanNovalueContinueNo(int canNovalueContinueNo) {
+        this.canNovalueContinueNo = canNovalueContinueNo;
     }
 }
