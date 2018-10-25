@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
 import storm.constant.StreamFieldKey;
+import storm.dao.DataToRedis;
 import storm.extension.MapExtension;
 import storm.handler.cusmade.TimeOutOfRangeNotice;
 import storm.handler.cusmade.VehicleIdleHandler;
@@ -101,6 +102,8 @@ public class FilterBolt extends BaseRichBolt {
 
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
+    private static final DataToRedis redis = new DataToRedis();
+
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
@@ -172,6 +175,9 @@ public class FilterBolt extends BaseRichBolt {
         @NotNull final Map stormConf,
         @NotNull final TopologyContext context,
         @NotNull final OutputCollector collector) {
+        //首次从redis读取配置
+        ConfigUtils.readConfigFromRedis(redis);
+
         this.collector = collector;
 
         timeOutOfRangeNotice = new TimeOutOfRangeNotice();
@@ -236,6 +242,7 @@ public class FilterBolt extends BaseRichBolt {
 
         collector.ack(input);
 
+        ConfigUtils.readConfigFromRedis(redis);
         final long currentTimeMillis = System.currentTimeMillis();
 
         // 每分钟计算一次闲置车辆
@@ -243,22 +250,7 @@ public class FilterBolt extends BaseRichBolt {
 
             lastComputIdleTime = currentTimeMillis;
 
-            final String idleTimeoutMillisecondString = JEDIS_POOL_UTILS.useResource(jedis -> {
-
-                jedis.select(ParamsRedisUtil.CONFIG_DATABASE_INDEX);
-                return jedis.hget(
-                    ParamsRedisUtil.CAL_QY_CONF,
-                    ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
-            });
-
-            if(NumberUtils.isDigits(idleTimeoutMillisecondString)) {
-
-                final long idleTimeoutMillisecond = NumberUtils.toLong(
-                    idleTimeoutMillisecondString,
-                    vehicleIdleHandler.getIdleTimeoutMillisecond());
-
-                vehicleIdleHandler.setIdleTimeoutMillisecond(idleTimeoutMillisecond);
-            }
+            vehicleIdleHandler.setIdleTimeoutMillisecond(ConfigUtils.getSysDefine().getVehicleIdleTimeoutMillisecond());
 
             vehicleIdleHandler
                 .computeStartNotice()
@@ -279,7 +271,7 @@ public class FilterBolt extends BaseRichBolt {
         try{
             final Matcher matcher = MSG_REGEX.matcher(frame);
             if (!matcher.find()) {
-                LOG.warn("无效的元组[{}] 原始数据: {}", input.toString(), frame);
+                LOG.warn("无效的元组:{} 原始数据:{}", input.toString(), frame);
                 return;
             }
 
@@ -296,7 +288,7 @@ public class FilterBolt extends BaseRichBolt {
             }
 
             if(!StringUtils.equals(vehicleId, vid)) {
-                LOG.error("分组VID[{}]与解析VID[{}]不一致 原始数据: {}", vehicleId, vid, frame);
+                LOG.error("分组VID:{} 与解析VID:{} 不一致 原始数据: {}", vehicleId, vid, frame);
                 return;
             }
 
@@ -379,7 +371,7 @@ public class FilterBolt extends BaseRichBolt {
                     }
                 } catch (final ParseException e) {
                     LOG.warn("时间解析异常", e);
-                    LOG.warn("无效的服务器接收时间: [{}]", platformTimeString);
+                    LOG.warn("VID:{} 无效的服务器接收时间:{}", vehicleId, platformTimeString);
                 }
             }
         }catch (final Exception e){
@@ -393,6 +385,37 @@ public class FilterBolt extends BaseRichBolt {
         @NotNull final String vehicleId) {
 
         collector.ack(input);
+
+        vehicleIdleHandler.initIdleNotice(vid, notice);
+    }
+
+    private void executeFromCtfoBoltDataStream(
+        @NotNull final Tuple input,
+        @NotNull final String vehicleId,
+        @NotNull final ImmutableMap<String, String> data) {
+
+        collector.ack(input);
+
+        long platformReceiveTime = 0;
+
+        final String messageType = data.get(DataKey.MESSAGE_TYPE);
+
+        final boolean isRealtimeInfo = CommandType.SUBMIT_REALTIME.equals(messageType);
+
+        if (isRealtimeInfo) {
+
+            final String platformReceiveTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+            if (StringUtils.isNotBlank(platformReceiveTimeString)) {
+                try {
+                    platformReceiveTime = DataUtils.parseFormatTime(platformReceiveTimeString);
+                } catch (final Exception e) {
+                    LOG.warn("时间解析异常", e);
+                    LOG.warn("VID:{} 无效的服务器接收时间:{}", vehicleId, platformReceiveTimeString);
+                }
+            } else {
+                LOG.warn("VID:{} 空白的服务器接收时间:{}", vehicleId, platformReceiveTimeString);
+            }
+        }
 
         try {
             final ImmutableMap<String, String> totalMileageCache = VEHICLE_CACHE.getField(
@@ -413,9 +436,11 @@ public class FilterBolt extends BaseRichBolt {
                     LOG.warn("累计里程缓存时间解析异常", e);
                     LOG.warn("无效的累计里程缓存时间: [{}]", totalMileageCacheTimeString);
                 }
+            } else {
+                LOG.warn("VID:{} 空白的服务器接收时间:{}", vehicleId, totalMileageCacheTimeString);
             }
         } catch (final ExecutionException e) {
-            LOG.warn("从缓存获取有效累计里程异常", e);
+            LOG.warn("VID:" + vehicleId + " 从缓存获取有效累计里程异常", e);
         }
     }
 

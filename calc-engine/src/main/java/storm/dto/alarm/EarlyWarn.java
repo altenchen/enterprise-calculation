@@ -264,7 +264,7 @@ public class EarlyWarn {
         @Nullable final String arithmeticExpression) {
 
         if (StringUtils.isBlank(left1DataKey)) {
-            LOG.error("平台报警规则[{}][{}]左一键空白, 无法构建算术运算函数.", ruleId, ruleName);
+            LOG.error("平台报警规则 RULE_ID:{} ROLE_NAME:{} 左一键空白, 无法构建算术运算函数.", ruleId, ruleName);
             return null;
         }
 
@@ -280,7 +280,7 @@ public class EarlyWarn {
         } else {
 
             if (StringUtils.isBlank(left2DataKey)) {
-                LOG.error("平台报警规则[{}][{}]左二键空白, 无法构建算术运算函数.", ruleId, ruleName);
+                LOG.error("平台报警规则 RULE_ID:{} ROLE_NAME:{} 左二键空白, 无法构建算术运算函数.", ruleId, ruleName);
                 return null;
             }
 
@@ -395,7 +395,7 @@ public class EarlyWarn {
                     });
             }
             default:
-                LOG.error("平台报警规则[{}][{}]未识别的数值运算表达式[{}]", ruleId, ruleName, arithmeticExpression);
+                LOG.error("平台报警规则 RULE_ID:{} ROLE_NAME:{} 未识别的数值运算表达式 {}", ruleId, ruleName, arithmeticExpression);
                 return null;
         }
     }
@@ -441,7 +441,7 @@ public class EarlyWarn {
 
         final BigDecimal first = DataUtils.createBigDecimal(right1Value);
         if (null == first) {
-            LOG.error("平台报警规则[{}][{}]右一值不是小数, 无法构建逻辑运算函数.", ruleId, ruleName);
+            LOG.error("平台报警规则 RULE_ID:{} ROLE_NAME:{} 右一值不是小数, 无法构建逻辑运算函数.", ruleId, ruleName);
             return null;
         }
 
@@ -481,7 +481,7 @@ public class EarlyWarn {
 
                 final BigDecimal second = DataUtils.createBigDecimal(right2Value);
                 if (null == second) {
-                    LOG.warn("平台报警规则[{}][{}]右二值无效, 无法构建数值区间逻辑表达式: L ∈ (R1, R2)", ruleId, ruleName);
+                    LOG.warn("平台报警规则 RULE_ID:{} ROLE_NAME:{} 右二值无效, 无法构建数值区间逻辑表达式: L ∈ (R1, R2)", ruleId, ruleName);
                     return null;
                 }
                 final int maxScale = Math.max(first.scale(), second.scale());
@@ -494,7 +494,7 @@ public class EarlyWarn {
 
                 final BigDecimal second = DataUtils.createBigDecimal(right2Value);
                 if (null == second) {
-                    LOG.warn("平台报警规则[{}][{}]右二值无效, 无法构建数值区间逻辑表达式: L ∈ [R1, R2)", ruleId, ruleName);
+                    LOG.warn("平台报警规则 RULE_ID:{} ROLE_NAME:{} 右二值无效, 无法构建数值区间逻辑表达式: L ∈ (R1, R2)", ruleId, ruleName);
                     return null;
                 }
                 final int maxScale = Math.max(first.scale(), second.scale());
@@ -507,7 +507,7 @@ public class EarlyWarn {
 
                 final BigDecimal second = DataUtils.createBigDecimal(right2Value);
                 if (null == second) {
-                    LOG.warn("平台报警规则[{}][{}]右二值无效, 无法构建数值区间逻辑表达式: L ∈ (R1, R2]", ruleId, ruleName);
+                    LOG.warn("平台报警规则 RULE_ID:{} ROLE_NAME:{} 右二值无效, 无法构建数值区间逻辑表达式: L ∈ (R1, R2)", ruleId, ruleName);
                     return null;
                 }
                 final int maxScale = Math.max(first.scale(), second.scale());
@@ -520,7 +520,7 @@ public class EarlyWarn {
 
                 final BigDecimal second = DataUtils.createBigDecimal(right2Value);
                 if (null == second) {
-                    LOG.warn("平台报警规则[{}][{}]右二值无效, 无法构建数值区间逻辑表达式: L ∈ [R1, R2]", ruleId, ruleName);
+                    LOG.warn("平台报警规则 RULE_ID:{} ROLE_NAME:{} 右二值无效, 无法构建数值区间逻辑表达式: L ∈ (R1, R2)", ruleId, ruleName);
                     return null;
                 }
                 final int maxScale = Math.max(first.scale(), second.scale());
@@ -529,7 +529,7 @@ public class EarlyWarn {
                     leftValue -> (0 <= leftValue.compareTo(first)) && (leftValue.compareTo(second) <= 0));
             }
             default: {
-                LOG.warn("平台报警规则[{}][{}]未识别的逻辑运算表达式[{}]", ruleId, ruleName, logicExpression);
+                LOG.warn("平台报警规则 RULE_ID:{} ROLE_NAME:{} 未识别的逻辑运算表达式 {}", ruleId, ruleName, logicExpression);
                 return null;
             }
         }

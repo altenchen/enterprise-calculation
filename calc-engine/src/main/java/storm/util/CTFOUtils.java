@@ -81,14 +81,14 @@ public class CTFOUtils implements Serializable {
                     // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> xyn-*
                     final String dbName = ConfigUtils.getSysDefine().getCtfoCacheDB();
                     if(StringUtils.isEmpty(dbName)) {
-                        LOG.error("配置[{}]不能为空", dbNameKey);
+                        LOG.error("配置 {} 不能为空", dbNameKey);
                         return;
                     }
                     if("cfg".equals(dbName)) {
-                        LOG.warn("配置[{}]不能为cfg", dbNameKey);
+                        LOG.warn("配置 {} 不能为cfg", dbNameKey);
                     }
                     if(dbName.indexOf("-") != -1) {
-                        LOG.warn("配置[{}]不能为包含[-]", dbNameKey);
+                        LOG.warn("配置 {} 不能为包含[-]", dbNameKey);
                     }
                     ctfoCacheDB = ctfoDBManager.openCacheDB(dbName);
 
@@ -106,7 +106,7 @@ public class CTFOUtils implements Serializable {
                                 return;
                             }
                             if(dbName.indexOf("-") != -1) {
-                                LOG.warn("配置[{}]不能为包含[-]", tableNameKey);
+                                LOG.warn("配置 {} 不能为包含[-]", tableNameKey);
                             }
                             ctfoCacheTable = ctfoCacheDB.getTable(tableName);
 

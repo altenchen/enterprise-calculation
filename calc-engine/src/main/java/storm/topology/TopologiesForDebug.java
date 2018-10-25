@@ -23,9 +23,10 @@ public final class TopologiesForDebug {
      * @throws Exception 拓扑启动异常
      */
     public static void main(String[] args) throws Exception {
+//        args = new String[]{"E://sysDefine.properties"};
         LocalCluster cluster = new LocalCluster();
         LOG.info("本地集群启动");
-        TopologiesByConf.submitTopology(cluster::submitTopology);
+        TopologiesByConf.submitTopology(args, cluster::submitTopology);
         TimeUnit.DAYS.sleep(1);
         cluster.shutdown();
         LOG.info("本地集群关闭");

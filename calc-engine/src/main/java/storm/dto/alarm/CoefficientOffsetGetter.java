@@ -57,7 +57,7 @@ public final class CoefficientOffsetGetter {
 
                 rules = buildCoefficientOffsetFromDb();
 
-                LOG.info("偏移系数规则重构完毕, 共获取到[{}]条规则.", rules.values().stream().mapToInt(Map::size).sum());
+                LOG.info("偏移系数规则重构完毕, 共获取到 {} 条规则.", rules.values().stream().mapToInt(Map::size).sum());
 
                 lastRebuildTime = currentTimeMillis;
             } catch (final Exception e) {
@@ -82,13 +82,13 @@ public final class CoefficientOffsetGetter {
                         continue;
                     }
                     if (duplicatedCheck.contains(itemId)) {
-                        LOG.warn("重复的偏移系数规则[{}]", itemId);
+                        LOG.warn("重复的偏移系数规则 {}", itemId);
                         continue;
                     }
 
                     final String dataKey = resultSet.getString(2);
                     if (StringUtils.isBlank(itemId)) {
-                        LOG.warn("偏移系数规则[{}]:空白的偏移系数数据键", itemId);
+                        LOG.warn("偏移系数规则 {}:空白的偏移系数数据键", itemId);
                         continue;
                     }
 
@@ -100,23 +100,23 @@ public final class CoefficientOffsetGetter {
                     if (isSemaphore) {
                         final boolean isOffsetEqualZero = 0 == dataOffset.compareTo(BigDecimal.ZERO);
                         if (!isOffsetEqualZero) {
-                            LOG.warn("偏移系数规则[{}]:信号量偏移必须是0", itemId);
+                            LOG.warn("偏移系数规则 {}:信号量偏移必须是0", itemId);
                             continue;
                         }
                         final boolean isCoefficientEqualOne = 0 == dataCoefficient.compareTo(BigDecimal.ONE);
                         if (!isCoefficientEqualOne) {
-                            LOG.warn("偏移系数规则[{}]:信号量系数必须是1", itemId);
+                            LOG.warn("偏移系数规则 {}:信号量系数必须是1", itemId);
                             continue;
                         }
                         final boolean isPrecisionEqualZero = 0 == decimalPrecision;
                         if (!isPrecisionEqualZero) {
-                            LOG.warn("偏移系数规则[{}]:信号量小数精度必须是0", itemId);
+                            LOG.warn("偏移系数规则 {}:信号量小数精度必须是0", itemId);
                             continue;
                         }
                     } else {
                         final boolean isAnalog = 2 == itemType;
                         if (!isAnalog) {
-                            LOG.warn("偏移系数规则[{}]:既不是信号量也不是模拟量", itemId);
+                            LOG.warn("偏移系数规则 {}:既不是信号量也不是模拟量", itemId);
                             continue;
                         }
                     }
@@ -145,7 +145,7 @@ public final class CoefficientOffsetGetter {
                         );
                         if (dataCoefficientOffset.containsKey(dataKey)) {
                             final CoefficientOffset duplicated = dataCoefficientOffset.get(dataKey);
-                            LOG.warn("车型[{}]数据项[{}]重复的偏移系数[{}][{}]", vehicleModel, dataKey, duplicated.getItemId(), itemId);
+                            LOG.warn("车型:{} 数据项:{} 重复的偏移系数 {}:{}", vehicleModel, dataKey, duplicated.getItemId(), itemId);
                         } else {
                             dataCoefficientOffset.put(dataKey, coefficientOffset);
                         }

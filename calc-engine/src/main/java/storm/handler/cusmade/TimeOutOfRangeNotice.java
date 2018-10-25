@@ -40,7 +40,7 @@ public final class TimeOutOfRangeNotice implements Serializable {
 
     public static void setTimeRangeMillisecond(final long timeRangeMillisecond) {
         TimeOutOfRangeNotice.timeRangeMillisecond = timeRangeMillisecond;
-        LOG.info("时间数值异常范围被设定为[" + timeRangeMillisecond + "]毫秒");
+        LOG.info("时间数值异常范围被设定为 " + timeRangeMillisecond + " 毫秒");
     }
 
     /**

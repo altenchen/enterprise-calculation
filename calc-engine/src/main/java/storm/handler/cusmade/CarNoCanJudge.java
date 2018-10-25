@@ -18,12 +18,11 @@ import storm.constant.RedisConstant;
 import storm.dao.DataToRedis;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
-import storm.system.NoticeType;
 import storm.system.DataKey;
+import storm.system.NoticeType;
 import storm.util.DataUtils;
-import storm.util.JsonUtils;
 import storm.util.JedisPoolUtils;
-import storm.util.ParamsRedisUtil;
+import storm.util.JsonUtils;
 
 import java.text.ParseException;
 import java.util.*;
@@ -37,7 +36,6 @@ import java.util.concurrent.ExecutionException;
 public final class CarNoCanJudge {
 
     private static final Logger logger = LoggerFactory.getLogger(CarNoCanJudge.class);
-    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
     private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
@@ -208,13 +206,10 @@ public final class CarNoCanJudge {
 
         final String vid = data.get(DataKey.VEHICLE_ID);
         final String timeString = data.get(DataKey.TIME);
-        final boolean traceVehicle = PARAMS_REDIS_UTIL.isTraceVehicleId(vid);
 
         if (StringUtils.isBlank(vid)
             || StringUtils.isBlank(timeString)) {
-            if (traceVehicle) {
-                logger.info("无CAN放弃判定, 时间空白.");
-            }
+            logger.info("vid:{} 无CAN放弃判定, 时间空白.", vid);
             return result;
         }
         final long time;
@@ -253,11 +248,9 @@ public final class CarNoCanJudge {
             continueNormalIncrement(result, carNoCanItem, time, totalMileage, location);
         }
 
-        PARAMS_REDIS_UTIL.autoLog(vid, () -> {
-            if (result.containsKey(STATUS_KEY)) {
-                logger.info("VID[{}]收到无CAN告警通知, status[{}]", vid, result.get(STATUS_KEY));
-            }
-        });
+        if (result.containsKey(STATUS_KEY)) {
+            logger.info("VID[{}]收到无CAN告警通知, status[{}]", vid, result.get(STATUS_KEY));
+        }
 
         return result;
     }
@@ -272,7 +265,6 @@ public final class CarNoCanJudge {
         @Nullable final String totalMileage,
         @NotNull final String location
     ) {
-        final boolean traceVehicle = PARAMS_REDIS_UTIL.isTraceVehicleId(item.vid);
 
         if (item.continueCount > FIRST_FAULT_FRAME) {
             item.continueCount = FIRST_FAULT_FRAME;
@@ -293,9 +285,7 @@ public final class CarNoCanJudge {
             item.firstFrameEnterFault(time, totalMileageString, location);
         }
 
-        if (traceVehicle) {
-            logger.info("VID[" + item.vid + "]判定为无CAN[" + item.continueCount + "]");
-        }
+        logger.info("VID[" + item.vid + "]判定为无CAN[" + item.continueCount + "]");
 
         if (item.continueCount > -getFaultTriggerContinueCount()) {
             --item.continueCount;
@@ -339,9 +329,7 @@ public final class CarNoCanJudge {
 
                 item.setAlarmStatus(AlarmStatus.Start);
 
-                if (traceVehicle) {
-                    logger.info("VID[" + item.vid + "]触发CAN故障[" + item.getAlarmStatus() + "]");
-                }
+                logger.info("VID[" + item.vid + "]触发CAN故障[" + item.getAlarmStatus() + "]");
 
                 final ImmutableMap<String, String> notice = item.generateNotice();
 
@@ -353,7 +341,7 @@ public final class CarNoCanJudge {
                         NoticeType.NO_CAN_VEH,
                         notice
                     );
-                    PARAMS_REDIS_UTIL.autoLog(item.vid, () -> logger.info("VID[{}]CAN故障, 更新缓存.", item.vid));
+                    logger.info("VID[{}]CAN故障, 更新缓存.", item.vid);
                 } catch (ExecutionException e) {
                     logger.error("存储CAN故障通知缓存异常");
                 }
@@ -371,8 +359,6 @@ public final class CarNoCanJudge {
         @Nullable final String totalMileage,
         @NotNull final String location
     ) {
-        final boolean traceVehicle = PARAMS_REDIS_UTIL.isTraceVehicleId(item.vid);
-
         if (item.continueCount < FIRST_NORMAL_FRAME) {
             item.continueCount = FIRST_NORMAL_FRAME;
         }
@@ -392,9 +378,7 @@ public final class CarNoCanJudge {
             item.firstFrameLeaveFault(time, totalMileageString, location);
         }
 
-        if (traceVehicle) {
-            logger.info("VID[" + item.vid + "]判定为有CAN[" + item.continueCount + "]");
-        }
+        logger.info("VID[" + item.vid + "]判定为有CAN[" + item.continueCount + "]");
 
         if (item.continueCount < getNormalTriggerContinueCount()) {
             ++item.continueCount;
@@ -437,9 +421,7 @@ public final class CarNoCanJudge {
 
                 item.setAlarmStatus(AlarmStatus.End);
 
-                if (traceVehicle) {
-                    logger.info("VID[" + item.vid + "]触发CAN正常[" + item.getAlarmStatus() + "]");
-                }
+                logger.info("VID[" + item.vid + "]触发CAN正常[" + item.getAlarmStatus() + "]");
 
                 final ImmutableMap<String, String> notice = item.generateNotice();
 
@@ -450,7 +432,7 @@ public final class CarNoCanJudge {
                         item.vid,
                         NoticeType.NO_CAN_VEH
                     );
-                    PARAMS_REDIS_UTIL.autoLog(item.vid, () -> logger.info("VID[{}]CAN正常, 删除缓存.", item.vid));
+                    logger.info("VID[{}]CAN正常, 删除缓存.", item.vid);
                 } catch (ExecutionException e) {
                     logger.error("删除CAN正常通知缓存异常");
                 }
@@ -678,9 +660,7 @@ public final class CarNoCanJudge {
                 return;
             }
 
-            PARAMS_REDIS_UTIL.autoLog(vid, () -> {
-                logger.info("VID[{}]无CAN状态从[{}]切换到[{}]", vid, this.alarmStatus, alarmStatus);
-            });
+            logger.info("VID[{}]无CAN状态从[{}]切换到[{}]", vid, this.alarmStatus, alarmStatus);
 
             this.alarmStatus = alarmStatus;
             properties.put(STATUS_KEY, String.valueOf(alarmStatus.value));

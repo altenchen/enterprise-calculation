@@ -24,7 +24,6 @@ import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
-import storm.util.ParamsRedisUtil;
 
 import java.util.Map;
 import java.util.Set;
@@ -467,20 +466,6 @@ public class SysRealDataCache {
     }
 
     private static void initChargeCarCache() {
-
-        final Object idleTimeoutMillisecondFromRedis = ParamsRedisUtil.getInstance().PARAMS.get(
-            ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
-
-        final long idleTimeoutMillisecond;
-        if (null != idleTimeoutMillisecondFromRedis) {
-
-            idleTimeoutMillisecond = NumberUtils.toLong(
-                idleTimeoutMillisecondFromRedis.toString()
-            );
-        } else {
-            idleTimeoutMillisecond = TimeUnit.DAYS.toMillis(1);
-        }
-
         final Map<String, Map<String, String>> cluster = getLastDataCache();
 
         for (final Map.Entry<String, Map<String, String>> entry : cluster.entrySet()) {
@@ -489,7 +474,7 @@ public class SysRealDataCache {
 
             updateChargeCar(data);
 
-            updateAliveCar(data, carInfoRecentRefreshTime, idleTimeoutMillisecond);
+            updateAliveCar(data, carInfoRecentRefreshTime, ConfigUtils.getSysDefine().getVehicleIdleTimeoutMillisecond());
         }
     }
 

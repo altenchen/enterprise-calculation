@@ -17,6 +17,7 @@ import java.util.function.BiConsumer;
  * @author wza
  * 从Redis读取配置
  */
+@Deprecated
 public final class ParamsRedisUtil {
 
     // region 静态区

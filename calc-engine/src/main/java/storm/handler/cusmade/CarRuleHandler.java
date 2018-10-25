@@ -28,8 +28,8 @@ import storm.system.NoticeType;
 import storm.system.ProtocolItem;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
+import storm.util.GpsUtil;
 import storm.util.JsonUtils;
-import storm.util.ParamsRedisUtil;
 
 import java.text.ParseException;
 import java.util.*;
@@ -49,7 +49,6 @@ import java.util.concurrent.ExecutionException;
 public class CarRuleHandler implements InfoNotice {
 
     private static final Logger LOG = LoggerFactory.getLogger(CarRuleHandler.class);
-    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
@@ -139,9 +138,7 @@ public class CarRuleHandler implements InfoNotice {
 
         lastTime.put(vid, System.currentTimeMillis());
 
-        if(PARAMS_REDIS_UTIL.isTraceVehicleId(vid)) {
-            LOG.trace("VID[" + vid + "]进入车辆规则处理");
-        }
+        LOG.trace("VID[" + vid + "]进入车辆规则处理");
 
         // 如果规则启用了，则把data放到相应的处理方法中。将返回结果放到list中，返回。
 
@@ -746,12 +743,7 @@ public class CarRuleHandler implements InfoNotice {
                 final int gpsFaultCount = vidGpsFaultCount.getOrDefault(vid, 0) + 1;
                 vidGpsFaultCount.put(vid, gpsFaultCount);
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    ()-> LOG.info(
-                        "VID[{}]判定为GPS故障第[{}]次",
-                        vid,
-                        gpsFaultCount));
+                LOG.info("VID:{} 判定为GPS故障第 {} 次", vid, gpsFaultCount);
 
                 final Map<String, String> gpsFaultNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
                 if (MapUtils.isEmpty(gpsFaultNotice)) {
@@ -760,39 +752,19 @@ public class CarRuleHandler implements InfoNotice {
                     gpsFaultNotice.put("vid", vid);
                     gpsFaultNotice.put("status", "0");
                     vidGpsNotice.put(vid, gpsFaultNotice);
-
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS故障首帧缓存初始化",
-                            vid));
-
+                    LOG.info("VID:{} GPS故障首帧缓存初始化", vid);
                 }
 
                 // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
                 String status = gpsFaultNotice.getOrDefault("status", "0");
                 if (!"0".equals(status) && !"3".equals(status)) {
-
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        () -> LOG.info(
-                            "VID[{}][{}]GPS故障不是初始化或已结束状态",
-                            vid,
-                            status
-                        )
-                    );
+                    LOG.info("VID:{} STATUS:{} GPS故障不是初始化或已结束状态", vid, status);
                     return null;
                 }
 
                 if (1 == gpsFaultCount) {
-
                     gpsFaultNotice.put("stime", timeString);
-
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS故障首帧更新",
-                            vid));
+                    LOG.info("VID:{} GPS故障首帧更新", vid);
                 }
 
                 if (!gpsFaultNotice.containsKey("slocation")) {
@@ -803,18 +775,12 @@ public class CarRuleHandler implements InfoNotice {
                         // 兼容性暂留
                         gpsFaultNotice.put("location", locationFromCache);
                     } catch (ExecutionException e) {
-                        LOG.warn("获取定位缓存异常", e);
+                        LOG.warn("VID:" + vid + " 获取定位缓存异常", e);
                     }
                 }
 
                 if(gpsFaultCount < ConfigUtils.getSysDefine().getGpsNovalueContinueNo()) {
-
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS故障连续帧数不足[{}]帧",
-                            vid,
-                                ConfigUtils.getSysDefine().getGpsNovalueContinueNo()));
+                    LOG.info("VID:{} GPS故障连续帧数不足 {} 帧", vid, ConfigUtils.getSysDefine().getGpsNovalueContinueNo());
                     return null;
                 }
 
@@ -826,21 +792,14 @@ public class CarRuleHandler implements InfoNotice {
                             new String[]{FormatConstant.DATE_FORMAT})
                         .getTime();
                 } catch (ParseException e) {
-                    LOG.warn("解析开始时间异常", e);
+                    LOG.warn("VID:" + vid + " 解析开始时间异常", e);
                     gpsFaultNotice.put("stime", timeString);
                     return null;
                 }
 
                 long gpsFaultIntervalMillisecond = ConfigUtils.getSysDefine().getGpsJudgeTime() * 1000;
                 if (currentTimeMillis - firstGpsFaultTime <= gpsFaultIntervalMillisecond) {
-
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS故障时延不足[{}]毫秒",
-                            vid,
-                            gpsFaultIntervalMillisecond));
-
+                    LOG.info("VID:{} GPS故障时延不足 {} 毫秒", vid, gpsFaultIntervalMillisecond);
                     return null;
                 }
 
@@ -858,25 +817,20 @@ public class CarRuleHandler implements InfoNotice {
                             gpsFaultNotice.clear();
                             gpsFaultNotice.putAll(oldNotice);
 
-                            LOG.info("从缓存取回GPS故障告警, 不再发送通知.");
+                            LOG.info("VID:{} 从缓存取回GPS故障告警, 不再发送通知.", vid);
                             return null;
                         }
                     }
                 } catch (ExecutionException e) {
 
-                    LOG.warn("获取GPS故障通知缓存异常");
+                    LOG.warn("VID:{} 获取GPS故障通知缓存异常", vid);
                 }
 
                 gpsFaultNotice.put("status", "1");
                 gpsFaultNotice.put("slazy", String.valueOf(gpsFaultIntervalMillisecond));
                 gpsFaultNotice.put("noticeTime", noticeTime);
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    ()-> LOG.info(
-                        "VID[{}]GPS故障通知缓存[{}]",
-                        vid,
-                        gpsFaultNotice.get("msgId")));
+                LOG.info("VID:{} GPS故障通知缓存 MSGID:{}", vid, gpsFaultNotice.get("msgId"));
 
                 final ImmutableMap<String, String> notice = new ImmutableMap.Builder<String, String>()
                     .putAll(gpsFaultNotice)
@@ -887,13 +841,7 @@ public class CarRuleHandler implements InfoNotice {
                     NoticeType.NO_POSITION_VEH,
                     notice);
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    ()-> LOG.info(
-                        "VID[{}]GPS故障通知发送[{}]",
-                        vid,
-                        gpsFaultNotice.get("msgId")));
-
+                LOG.info("VID:{} GPS故障通知发送 MSGID:{}", vid, gpsFaultNotice.get("msgId"));
 
                 return gpsFaultNotice;
                 // endregion
@@ -905,12 +853,7 @@ public class CarRuleHandler implements InfoNotice {
                 final int gpsNormalCount = vidGpsNormalCount.getOrDefault(vid, 0) + 1;
                 vidGpsNormalCount.put(vid, gpsNormalCount);
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    ()-> LOG.info(
-                        "VID[{}]判定为GPS正常第[{}]次",
-                        vid,
-                        gpsNormalCount));
+                LOG.info("VID:{} 判定为GPS正常第 {} 次", vid, gpsNormalCount);
 
                 final Map<String, String> gpsNormalNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
                 if (MapUtils.isEmpty(gpsNormalNotice)) {
@@ -920,11 +863,7 @@ public class CarRuleHandler implements InfoNotice {
                     gpsNormalNotice.put("status", "0");
                     vidGpsNotice.put(vid, gpsNormalNotice);
 
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS正常首帧缓存初始化",
-                            vid));
+                    LOG.info("VID:{} GPS正常首帧缓存初始化", vid);
 
                 }
 
@@ -932,14 +871,7 @@ public class CarRuleHandler implements InfoNotice {
                 final String status = gpsNormalNotice.getOrDefault("status", "0");
                 if (!"1".equals(status) && !"2".equals(status)) {
 
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        () -> LOG.info(
-                            "VID[{}][{}]GPS正常不是已开始或持续中状态",
-                            vid,
-                            status
-                        )
-                    );
+                    LOG.info("VID:{} STATUS:{} GPS正常不是已开始或持续中状态", vid, status);
                     return null;
                 }
 
@@ -955,21 +887,12 @@ public class CarRuleHandler implements InfoNotice {
                     // 兼容性暂留
                     gpsNormalNotice.put("location", location);
 
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS正常首帧初始化",
-                            vid));
+                    LOG.info("VID:{} GPS正常首帧初始化", vid);
                 }
 
                 if(gpsNormalCount < ConfigUtils.getSysDefine().getGpsHasvalueContinueNo()) {
 
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS正常连续帧数不足[{}]帧",
-                            vid,
-                                ConfigUtils.getSysDefine().getGpsHasvalueContinueNo()));
+                    LOG.info("VID:{} GPS正常连续帧数不足 {} 帧", vid, ConfigUtils.getSysDefine().getGpsHasvalueContinueNo());
                     return null;
                 }
 
@@ -979,7 +902,7 @@ public class CarRuleHandler implements InfoNotice {
                         gpsNormalNotice.get("etime").toString(),
                         new String[]{FormatConstant.DATE_FORMAT}).getTime();
                 } catch (ParseException e) {
-                    LOG.warn("解析结束时间异常", e);
+                    LOG.warn("VID:" + vid + " 解析结束时间异常", e);
                     gpsNormalNotice.put("etime", timeString);
                     return null;
                 }
@@ -987,12 +910,7 @@ public class CarRuleHandler implements InfoNotice {
                 long gpsNormalIntervalMillisecond = ConfigUtils.getSysDefine().getGpsJudgeTime() * 1000;
                 if (currentTimeMillis - firstGpsNormalTime <= gpsNormalIntervalMillisecond) {
 
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS正常时延不足[{}]毫秒",
-                            vid,
-                            gpsNormalIntervalMillisecond));
+                    LOG.info("VID:{} GPS正常时延不足 {} 毫秒", vid, gpsNormalIntervalMillisecond);
                     return null;
                 }
 
@@ -1010,14 +928,14 @@ public class CarRuleHandler implements InfoNotice {
                             gpsNormalNotice.clear();
                             gpsNormalNotice.putAll(oldNotice);
 
-                            LOG.info("从缓存取回GPS正常告警, 不再发送通知.");
+                            LOG.info("VID:{} 从缓存取回GPS正常告警, 不再发送通知.", vid);
                             vidGpsNotice.remove(vid);
                             return null;
                         }
                     }
                 } catch (ExecutionException e) {
 
-                    LOG.warn("获取GPS正常通知缓存异常");
+                    LOG.warn("VID:{} 获取GPS正常通知缓存异常", vid);
                 }
 
                 gpsNormalNotice.put("status", "3");
@@ -1028,12 +946,7 @@ public class CarRuleHandler implements InfoNotice {
 
                 VEHICLE_CACHE.delField(vid, NoticeType.NO_POSITION_VEH);
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    ()-> LOG.info(
-                        "VID[{}]GPS正常通知发送",
-                        vid,
-                        gpsNormalNotice.get("msgId")));
+                LOG.info("VID:{} GPS正常通知发送", vid, gpsNormalNotice.get("msgId"));
 
                 return gpsNormalNotice;
                 // endregion
@@ -1068,33 +981,20 @@ public class CarRuleHandler implements InfoNotice {
         @Nullable String latitudeString) {
 
         if (!NumberUtils.isDigits(orientationString)) {
-            PARAMS_REDIS_UTIL.autoLog(
-                vid,
-                ()-> LOG.info(
-                    "定位状态[{}]非法, 判定为GPS故障.",
-                    orientationString));
+            LOG.info("VID:{} 定位状态 {} 非法, 判定为GPS故障.", vid, orientationString);
             return true;
         }
 
 
         final int orientationValue = NumberUtils.toInt(orientationString);
         if(!DataUtils.isOrientationUseful(orientationValue)) {
-            PARAMS_REDIS_UTIL.autoLog(
-                vid,
-                ()-> LOG.info(
-                    "定位状态[{}]无效, 判定为GPS故障.",
-                    orientationString));
+            LOG.info("VID:{} 定位状态 {} 无效, 判定为GPS故障.", vid, orientationString);
             return true;
         }
 
         if (!NumberUtils.isDigits(longitudeString)
             || !NumberUtils.isDigits(latitudeString)) {
-            PARAMS_REDIS_UTIL.autoLog(
-                vid,
-                ()-> LOG.info(
-                    "经度[{}]纬度[{}]非法, 判定为GPS故障.",
-                    longitudeString,
-                    latitudeString));
+            LOG.info("VID:{} 经度 {} 纬度 {} 非法, 判定为GPS故障.", vid, longitudeString, latitudeString);
             return true;
         }
 
@@ -1104,21 +1004,11 @@ public class CarRuleHandler implements InfoNotice {
         if(DataUtils.isOrientationLongitudeUseful(longitudeValue)
             && DataUtils.isOrientationLatitudeUseful(latitudeValue)) {
 
-            PARAMS_REDIS_UTIL.autoLog(
-                vid,
-                ()-> LOG.info(
-                    "经度[{}]纬度[{}]有效, 判定为GPS正常.",
-                    longitudeString,
-                    latitudeString));
+            LOG.info("VID:{} 经度 {} 纬度 {} 有效, 判定为GPS正常.", vid, longitudeString, latitudeString);
             return false;
         }
 
-        PARAMS_REDIS_UTIL.autoLog(
-            vid,
-            ()-> LOG.info(
-                "经度[{}]纬度[{}]无效, 判定为GPS故障.",
-                longitudeString,
-                latitudeString));
+        LOG.info("VID:{} 经度 {} 纬度 {} 无效, 判定为GPS故障.", vid, longitudeString, latitudeString);
 
         return true;
     }

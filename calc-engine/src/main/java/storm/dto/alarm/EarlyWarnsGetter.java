@@ -37,8 +37,8 @@ public class EarlyWarnsGetter {
     private static long lastRebuildTime = 0;
 
     static {
-        LOG.info("平台报警规则数据库查询语句为[{}]", ConfigUtils.getSysParam().getAlarmRuleSql());
-        LOG.info("平台报警规则数据库更新最小间隔为[{}]毫秒", TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime()));
+        LOG.info("平台报警规则数据库查询语句为 {} ", ConfigUtils.getSysParam().getAlarmRuleSql());
+        LOG.info("平台报警规则数据库更新最小间隔为 {} 毫秒", TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime()));
     }
 
     /**
@@ -84,13 +84,13 @@ public class EarlyWarnsGetter {
                     final String ruleName = resultSet.getString(2);
 
                     if (items.containsKey(ruleId)) {
-                        LOG.warn("重复的平台报警规则[{}]([{}],[{}])", ruleId, ruleName, items.get(ruleId).ruleName);
+                        LOG.warn("重复的平台报警规则 RULE_ID:{} ROLE_NAME:{} --> {})", ruleId, ruleName, items.get(ruleId).ruleName);
                         continue;
                     }
 
                     final String left1DataKey = resultSet.getString(3);
                     if (StringUtils.isBlank(left1DataKey)) {
-                        LOG.warn("平台报警规则[{}][{}]空白的左一数据键", ruleId, ruleName);
+                        LOG.warn("平台报警规则 RULE_ID:{} ROLE_NAME:{} 空白的左一数据键", ruleId, ruleName);
                         continue;
                     }
                     final boolean left1UsePrev = StringUtils.equals("1", resultSet.getString(4));
@@ -99,13 +99,13 @@ public class EarlyWarnsGetter {
                     final String arithmeticExpression = resultSet.getString(7);
                     final String right1Value = resultSet.getString(8);
                     if (StringUtils.isBlank(right1Value)) {
-                        LOG.warn("平台报警规则[{}][{}]空白的右一数据值", ruleId, ruleName);
+                        LOG.warn("平台报警规则 RULE_ID:{} ROLE_NAME:{} 空白的右一数据值", ruleId, ruleName);
                         continue;
                     }
                     final String right2Value = resultSet.getString(9);
                     final String logicExpression = resultSet.getString(10);
                     if (StringUtils.isBlank(logicExpression)) {
-                        LOG.warn("平台报警规则[{}][{}]空白的逻辑运算符", ruleId, ruleName);
+                        LOG.warn("平台报警规则 RULE_ID:{} ROLE_NAME:{} 空白的逻辑运算符", ruleId, ruleName);
                         continue;
                     }
 
@@ -116,7 +116,7 @@ public class EarlyWarnsGetter {
                             right1Value, right2Value, logicExpression
                         );
                     if (null == function) {
-                        LOG.warn("平台报警规则[{}][{}]无法构建表达式函数", ruleId, ruleName);
+                        LOG.warn("平台报警规则 RULE_ID:{} ROLE_NAME:{} 无法构建表达式函数", ruleId, ruleName);
                         continue;
                     }
 
@@ -124,7 +124,7 @@ public class EarlyWarnsGetter {
                         if (NumberUtils.isDigits(s)) {
                             return NumberUtils.toInt(s);
                         }
-                        LOG.warn("平台报警规则[{}][{}]报警等级[{}]非数字, 使用0表示的动态等级替代.", ruleId, ruleName, s);
+                        LOG.warn("平台报警规则 RULE_ID:{} ROLE_NAME:{} 报警等级 {} 非数字, 使用0表示的动态等级替代.", ruleId, ruleName, s);
                         return 0;
                     }).apply(resultSet.getString(11));
                     final String vehicleModelId = ((Function<String, String>) s -> {

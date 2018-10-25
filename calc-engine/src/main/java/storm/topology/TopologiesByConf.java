@@ -20,6 +20,7 @@ import storm.bolt.deal.norm.EleFenceBolt;
 import storm.bolt.deal.norm.FilterBolt;
 import storm.bolt.deal.norm.SynEsculBolt;
 import storm.constant.StreamFieldKey;
+import storm.dao.DataToRedis;
 import storm.kafka.bolt.KafkaSendBolt;
 import storm.kafka.spout.GeneralKafkaSpout;
 import storm.kafka.spout.RegisterKafkaSpout;
@@ -31,8 +32,8 @@ import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.function.TeConsumerE;
 
-import java.util.Arrays;
-import java.util.List;
+import java.io.File;
+import java.util.*;
 import java.util.Map;
 
 /**
@@ -48,12 +49,27 @@ public final class TopologiesByConf {
      * @throws Exception 拓扑启动异常
      */
     public static void main(String[] args) throws Exception {
-        submitTopology(StormSubmitter::submitTopology);
+        submitTopology(args, StormSubmitter::submitTopology);
     }
 
-    public static void submitTopology(@NotNull final TeConsumerE<String, Map, StormTopology, Exception> stormSubmitter)
+    public static void submitTopology(String[] args, @NotNull final TeConsumerE<String, Map, StormTopology, Exception> stormSubmitter)
         throws Exception {
-
+        if( args.length > 0 ){
+            //args[0] 自定义配置文件名
+            File file = new File(args[0]);
+            if( !file.exists() ){
+                LOG.error("配置文件 {} 不存在", args[0]);
+                return;
+            }
+            if( !file.getName().endsWith(".properties") ){
+                LOG.error("配置文件 {} 格式不正确", args[0]);
+                return;
+            }
+            //读取自定义文件
+            Properties properties = new Properties();
+            ConfigUtils.loadResourceFromLocal(file, properties);
+            ConfigUtils.fillSysDefineEntity(properties);
+        }
         Config stormConf = buildStormConf();
         StormTopology stormTopology = createTopology();
         final String topologyName = ConfigUtils.getSysDefine().getTopologyName();
