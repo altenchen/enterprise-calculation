@@ -1,9 +1,11 @@
 package storm.handler.cusmade;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -43,7 +45,6 @@ import java.util.concurrent.ExecutionException;
 public class CarRuleHandler implements InfoNotice {
 
     private static final Logger LOG = LoggerFactory.getLogger(CarRuleHandler.class);
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
@@ -107,7 +108,6 @@ public class CarRuleHandler implements InfoNotice {
 
     static int db = 6;
     // 1代表规则启用，0代表规则关闭
-    static int socRule = 0;
     static int enableCanRule = 0;
     static int igniteRule = 0;
     static int gpsRule = 0;
@@ -116,6 +116,15 @@ public class CarRuleHandler implements InfoNotice {
     static int onoffRule = 0;
     static int mileHopRule = 0;
     static int carLockStatueChangeJudgeRule = 0;
+
+    /**
+     * 是否启用 SOC 过低通知
+     */
+    private static final boolean ENABLE_SOC_LOW_NOTICE;
+    /**
+     * 是否启用 SOC 过高通知
+     */
+    private static final boolean ENABLE_SOC_HIGH_NOTICE;
 
     private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
 
@@ -127,210 +136,211 @@ public class CarRuleHandler implements InfoNotice {
 
     //以下参数可以通过读取配置文件进行重置
     static {
-        LOG.warn("运行静态代码块，读取配置文件中值");
-        if (null != CONFIG_UTILS.sysDefine) {
-            LOG.warn("运行静态代码块，判断配置文件是否存在");
-            String off = CONFIG_UTILS.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-            if (!StringUtils.isEmpty(off)) {
-                offlinetime = Long.parseLong(off) * 1000;
-            }
+        final ConfigUtils configUtils = ConfigUtils.getInstance();
+        final Properties sysDefine = configUtils.sysDefine;
 
-            String value = CONFIG_UTILS.sysDefine.getProperty("sys.carlockstatus.rule");
-            if (!StringUtils.isEmpty(value)) {
-                carLockStatueChangeJudgeRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.soc.rule");
-            if (!StringUtils.isEmpty(value)) {
-                socRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.can.rule");
-            if (!StringUtils.isEmpty(value)) {
-                enableCanRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.ignite.rule");
-            if (!StringUtils.isEmpty(value)) {
-                igniteRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.gps.rule");
-            if (!StringUtils.isEmpty(value)) {
-                gpsRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.abnormal.rule");
-            if (!StringUtils.isEmpty(value)) {
-                abnormalRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.fly.rule");
-            if (!StringUtils.isEmpty(value)) {
-                flyRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.onoff.rule");
-            if (!StringUtils.isEmpty(value)) {
-                onoffRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.milehop.rule");
-            if (!StringUtils.isEmpty(value)) {
-                mileHopRule = Integer.parseInt(value);
-                value = null;
-            }
-//<<................................................从配置文件中读取SOC相关阈值..........................................>>
-            //过低SOC
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_FAULT_JUDGE_TIME);
-            if (!StringUtils.isEmpty(value)) {
-                carLowSocJudge.setLowSocFaultIntervalMillisecond(Long.parseLong(value));
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_NORMAL_JUDGE_TIME);
-            if (!StringUtils.isEmpty(value)) {
-                carLowSocJudge.setLowSocNormalIntervalMillisecond(Long.parseLong(value));
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_FAULT_JUDGE_NO);
-            if (!StringUtils.isEmpty(value)) {
-                carLowSocJudge.setLowSocFaultJudgeNum(Integer.parseInt(value));
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_NORMAL_JUDGE_NO);
-            if (!StringUtils.isEmpty(value)) {
-                carLowSocJudge.setLowSocNormalJudgeNum(Integer.parseInt(value));
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC_START);
-            if (!StringUtils.isEmpty(value)) {
-                carLowSocJudge.setSocLowAlarm_StartThreshold(Integer.parseInt(value));
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC_END);
-            if (!StringUtils.isEmpty(value)) {
-                carLowSocJudge.setLowSocAlarm_EndThreshold(Integer.parseInt(value));
-                value = null;
-            }
-
-            //过高SOC
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_HIGH_FAULT_JUDGE_TIME);
-            if (!StringUtils.isEmpty(value)) {
-                carHighSocJudge.setHighSocFaultIntervalMillisecond(Long.parseLong(value));
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_HIGH_NORMAL_JUDGE_TIME);
-            if (!StringUtils.isEmpty(value)) {
-                carHighSocJudge.setHighSocNormalIntervalMillisecond(Long.parseLong(value));
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_HIGH_FAULT_JUDGE_NO);
-            if (!StringUtils.isEmpty(value)) {
-                carHighSocJudge.setHighSocFaultJudgeNum(Integer.parseInt(value));
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_HIGH_NORMAL_JUDGE_NO);
-            if (!StringUtils.isEmpty(value)) {
-                carHighSocJudge.setHighSocNormalJudgeNum(Integer.parseInt(value));
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC_HIGH_START);
-            if (!StringUtils.isEmpty(value)) {
-                carHighSocJudge.setHighSocAlarm_StartThreshold(Integer.parseInt(value));
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC_HIGH_END);
-            if (!StringUtils.isEmpty(value)) {
-                carHighSocJudge.setHighSocAlarm_EndThreshold(Integer.parseInt(value));
-                value = null;
-            }
-
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.GPS_NOVALUE_CONTINUE_NO);
-            if (NumberUtils.isDigits(value)) {
-                gpsFaultFrameTriggerCount = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.GPS_HASVALUE_CONTINUE_NO);
-            if (NumberUtils.isDigits(value)) {
-                gpsNormalFrameTriggerCount = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.GPS_JUDGE_TIME);
-            if (!StringUtils.isEmpty(value)) {
-                gpsFaultIntervalMillisecond = Long.parseLong(value);
-                gpsNormalIntervalMillisecond = gpsFaultIntervalMillisecond;
-                value = null;
-            }
+        String off = sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
+        if (!StringUtils.isEmpty(off)) {
+            offlinetime = Long.parseLong(off) * 1000;
         }
+
+        String value = sysDefine.getProperty("sys.carlockstatus.rule");
+        if (!StringUtils.isEmpty(value)) {
+            carLockStatueChangeJudgeRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        ENABLE_SOC_LOW_NOTICE = BooleanUtils.toBoolean(
+            sysDefine.getProperty(
+                SysDefine.NOTICE_SOC_LOW_ENABLE));
+        ENABLE_SOC_HIGH_NOTICE = BooleanUtils.toBoolean(
+            sysDefine.getProperty(
+                SysDefine.NOTICE_SOC_HIGH_ENABLE));
+
+        value = sysDefine.getProperty("sys.can.rule");
+        if (!StringUtils.isEmpty(value)) {
+            enableCanRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.ignite.rule");
+        if (!StringUtils.isEmpty(value)) {
+            igniteRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.gps.rule");
+        if (!StringUtils.isEmpty(value)) {
+            gpsRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.abnormal.rule");
+        if (!StringUtils.isEmpty(value)) {
+            abnormalRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.fly.rule");
+        if (!StringUtils.isEmpty(value)) {
+            flyRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.onoff.rule");
+        if (!StringUtils.isEmpty(value)) {
+            onoffRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.milehop.rule");
+        if (!StringUtils.isEmpty(value)) {
+            mileHopRule = Integer.parseInt(value);
+            value = null;
+        }
+//<<................................................从配置文件中读取SOC相关阈值..........................................>>
+        //过低SOC
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
+        if (!StringUtils.isEmpty(value)) {
+            carLowSocJudge.setLowSocFaultIntervalMillisecond(Long.parseLong(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_TIMEOUT_MILLISECOND);
+        if (!StringUtils.isEmpty(value)) {
+            carLowSocJudge.setLowSocNormalIntervalMillisecond(Long.parseLong(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_CONTINUE_COUNT);
+        if (!StringUtils.isEmpty(value)) {
+            carLowSocJudge.setLowSocFaultJudgeNum(Integer.parseInt(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT);
+        if (!StringUtils.isEmpty(value)) {
+            carLowSocJudge.setLowSocNormalJudgeNum(Integer.parseInt(value));
+            value = null;
+        }
+
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD);
+        if (!StringUtils.isEmpty(value)) {
+            carLowSocJudge.setSocLowAlarm_StartThreshold(Integer.parseInt(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD);
+        if (!StringUtils.isEmpty(value)) {
+            carLowSocJudge.setLowSocAlarm_EndThreshold(Integer.parseInt(value));
+            value = null;
+        }
+
+        //过高SOC
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setHighSocFaultIntervalMillisecond(Long.parseLong(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setHighSocNormalIntervalMillisecond(Long.parseLong(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setHighSocFaultJudgeNum(Integer.parseInt(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setHighSocNormalJudgeNum(Integer.parseInt(value));
+            value = null;
+        }
+
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setHighSocAlarm_StartThreshold(Integer.parseInt(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setHighSocAlarm_EndThreshold(Integer.parseInt(value));
+            value = null;
+        }
+
+
+        value = sysDefine.getProperty(SysDefine.GPS_NOVALUE_CONTINUE_NO);
+        if (NumberUtils.isDigits(value)) {
+            gpsFaultFrameTriggerCount = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty(SysDefine.GPS_HASVALUE_CONTINUE_NO);
+        if (NumberUtils.isDigits(value)) {
+            gpsNormalFrameTriggerCount = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty(SysDefine.GPS_JUDGE_TIME);
+        if (!StringUtils.isEmpty(value)) {
+            gpsFaultIntervalMillisecond = Long.parseLong(value);
+            gpsNormalIntervalMillisecond = gpsFaultIntervalMillisecond;
+            value = null;
+        }
+
         init();
     }
 
     //以下参数可以通过读取redis定时进行重新加载
     static void init() {
         //<<...................................从redis中定时读取SOC相关阈值..................................>>
-        Object socVal_Start = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.LT_ALARM_SOC_START);
+        Object socVal_Start = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD);
         if (null != socVal_Start) {
             carLowSocJudge.setSocLowAlarm_StartThreshold((int) socVal_Start);
         }
-        Object socVal_End = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.LT_ALARM_SOC_END);
+        Object socVal_End = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD);
         if (null != socVal_End) {
             carLowSocJudge.setSocLowAlarm_StartThreshold((int) socVal_End);
         }
 
         // soc过低开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
-        Object lowSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_FAULT_JUDGE_NO);
+        Object lowSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_CONTINUE_COUNT);
         if (null != lowSocFaultJudgeCount) {
             carLowSocJudge.setLowSocFaultJudgeNum((int) lowSocFaultJudgeCount);
         }
-        Object lowSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_NORMAL_JUDGE_NO);
+        Object lowSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT);
         if (null != lowSocNormalJudgeCount) {
             carLowSocJudge.setLowSocNormalJudgeNum((int) lowSocNormalJudgeCount);
         }
-        Object lowSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_FAULT_JUDGE_TIME);
+        Object lowSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != lowSocFaultJudgeTime) {
             carLowSocJudge.setLowSocFaultIntervalMillisecond(((int) lowSocFaultJudgeTime)*1L);
         }
-        Object lowSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_NORMAL_JUDGE_TIME);
+        Object lowSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != lowSocNormalJudgeTime) {
             carLowSocJudge.setLowSocNormalIntervalMillisecond(((int) lowSocNormalJudgeTime)*1L);
         }
 
-        Object socHighVal_Start = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.LT_ALARM_SOC_HIGH_START);
+        Object socHighVal_Start = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD);
         if (null != socHighVal_Start) {
             carHighSocJudge.setHighSocAlarm_StartThreshold((int) socHighVal_Start);
         }
-        Object socHighVal_End = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.LT_ALARM_SOC_HIGH_END);
+        Object socHighVal_End = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD);
         if (null != socHighVal_End) {
             carHighSocJudge.setHighSocAlarm_EndThreshold((int) socHighVal_End);
         }
 
         // soc过高开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
-        Object highSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_HIGH_FAULT_JUDGE_NO);
+        Object highSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT);
         if (null != highSocFaultJudgeCount) {
             carHighSocJudge.setHighSocFaultJudgeNum((int) highSocFaultJudgeCount);
         }
-        Object highSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_HIGH_NORMAL_JUDGE_NO);
+        Object highSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT);
         if (null != highSocNormalJudgeCount) {
             carHighSocJudge.setHighSocNormalJudgeNum((int) highSocNormalJudgeCount);
         }
-        Object highSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_HIGH_FAULT_JUDGE_TIME);
+        Object highSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != highSocFaultJudgeTime) {
             carHighSocJudge.setHighSocFaultIntervalMillisecond(((int) highSocFaultJudgeTime)*1L);
         }
-        Object highSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.SOC_HIGH_NORMAL_JUDGE_TIME);
+        Object highSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != highSocNormalJudgeTime) {
             carHighSocJudge.setHighSocNormalIntervalMillisecond(((int) highSocNormalJudgeTime)*1L);
         }
@@ -447,28 +457,28 @@ public class CarRuleHandler implements InfoNotice {
     /**
      * 生成通知
      *
-     * @param immutableMap
+     * @param data
      * @return
      */
     @NotNull
-    public List<Map<String, Object>> generateNotices(@NotNull final ImmutableMap<String, String> immutableMap) {
+    public ImmutableList<String> generateNotices(@NotNull final ImmutableMap<String, String> data) {
 
-        // 为下面的方法做准备，生成相应的容器。
-        final List<Map<String, Object>> list = new LinkedList<>();
+        // 存放json格式通知的集合
+        final ImmutableList.Builder<String> builder = new ImmutableList.Builder<>();
 
         // 验证data的有效性
-        if (MapUtils.isEmpty(immutableMap)
-                || !immutableMap.containsKey(DataKey.VEHICLE_ID)
-                || !immutableMap.containsKey(DataKey.TIME)) {
-            return list;
+        if (MapUtils.isEmpty(data)
+                || !data.containsKey(DataKey.VEHICLE_ID)
+                || !data.containsKey(DataKey.TIME)) {
+            return builder.build();
         }
 
-        final Map<String, String> data = Maps.newHashMap(immutableMap);
+        final Map<String, String> clone = Maps.newHashMap(data);
 
-        String vid = data.get(DataKey.VEHICLE_ID);
+        final String vid = data.get(DataKey.VEHICLE_ID);
         if (StringUtils.isEmpty(vid)
                 || StringUtils.isEmpty(data.get(DataKey.TIME))) {
-            return list;
+            return builder.build();
         }
 
         lastTime.put(vid, System.currentTimeMillis());
@@ -477,111 +487,157 @@ public class CarRuleHandler implements InfoNotice {
             LOG.trace("VID[" + vid + "]进入车辆规则处理");
         }
 
-        Map<String, Object> canJudge = null;
-        Map<String, Object> igniteJudge = null;
-        Map<String, Object> gpsJudge = null;
-        Map<String, Object> abnormalJudge = null;
-        Map<String, Object> flyJudge = null;
-        Map<String, Object> onOffJudge = null;
-        Map<String, Object> mileHopJudge = null;
-        //3、如果规则启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
+        // 如果规则启用了，则把data放到相应的处理方法中。将返回结果放到list中，返回。
 
         if (1 == carLockStatueChangeJudgeRule) {
-            final Map<String, Object> lockStatueChange = carLockStatusChangeJudge.carLockStatueChangeJudge(data);
-            if (!MapUtils.isEmpty(lockStatueChange)) {
-                list.add(lockStatueChange);
+            final Map<String, Object> lockStatueChange = carLockStatusChangeJudge.carLockStatueChangeJudge(clone);
+            if (MapUtils.isNotEmpty(lockStatueChange)) {
+                builder.add(JSON_UTILS.toJson(lockStatueChange));
             }
         }
 
-        if (1 == socRule) {
-
-            //为了兼容将Map<String,String>转换成Map<String,Object>
-            Map<String,Object> tmp_String = new HashMap<>();
-            List<Map<String, Object>> socNotices = new LinkedList<>();
-            List<Map<String, String>> socJudges = carLowSocJudge.processFrame(data);
-            for (Map<String, String> entry : socJudges) {
-                Iterator<Map.Entry<String, String>> iterator = entry.entrySet().iterator();
-                while (iterator.hasNext()) {
-                    Map.Entry<String, String> entry2 = iterator.next();
-                    tmp_String.put(entry2.getKey(),entry2.getValue());
-                    socNotices.add(tmp_String);
-                }
+        if(ENABLE_SOC_LOW_NOTICE) {
+            final String[] chargeCarsNoticeJson = new String[1];
+            final Map<String, String> socLowNotice = carLowSocJudge.processFrame(
+                clone,
+                (final String vehicleId, final Double longitude, final Double latitude) -> {
+                    chargeCarsNoticeJson[0] = getNoticesOfChargeCars(vehicleId, longitude, latitude);
+                });
+            if (MapUtils.isNotEmpty(socLowNotice)) {
+                builder.add(JSON_UTILS.toJson(socLowNotice));
             }
-            if (!CollectionUtils.isEmpty(socNotices)) {
-                list.addAll(socNotices);
-            }
-
-            //为了兼容将Map<String,String>转换成Map<String,Object>
-            Map<String,Object> tmp_high_String = new HashMap<>();
-            List<Map<String, Object>> socHighNotices = new LinkedList<>();
-            List<Map<String, String>> socHighJudges = carHighSocJudge.processFrame(data);
-            for (Map<String, String> entry : socHighJudges) {
-                Iterator<Map.Entry<String, String>> iterator = entry.entrySet().iterator();
-                while (iterator.hasNext()) {
-                    Map.Entry<String, String> entry2 = iterator.next();
-                    tmp_high_String.put(entry2.getKey(),entry2.getValue());
-                    socNotices.add(tmp_high_String);
-                }
-            }
-            if (!CollectionUtils.isEmpty(socHighNotices)) {
-                list.addAll(socHighNotices);
+            if (StringUtils.isNotBlank(chargeCarsNoticeJson[0])) {
+                builder.add(chargeCarsNoticeJson);
             }
         }
+
+        if(ENABLE_SOC_HIGH_NOTICE) {
+            final Map<String, String> notice = carHighSocJudge.processFrame(clone);
+            if(MapUtils.isNotEmpty(notice)) {
+                builder.add(JSON_UTILS.toJson(notice));
+            }
+        }
+
         if (1 == enableCanRule) {
             // 无CAN车辆
-            canJudge = carNoCanJudge.processFrame(data);
-            if (!MapUtils.isEmpty(canJudge)) {
-                list.add(canJudge);
+            final Map<String, Object> canJudge = carNoCanJudge.processFrame(clone);
+            if (MapUtils.isNotEmpty(canJudge)) {
+                builder.add(JSON_UTILS.toJson(canJudge));
             }
         }
         if (1 == igniteRule) {
             // 点火熄火
-            igniteJudge = igniteOrShut(data);
-            if (!MapUtils.isEmpty(igniteJudge)) {
-                list.add(igniteJudge);
+            final Map<String, Object> igniteJudge = igniteOrShut(clone);
+            if (MapUtils.isNotEmpty(igniteJudge)) {
+                builder.add(JSON_UTILS.toJson(igniteJudge));
             }
         }
         if (1 == gpsRule) {
             // 未定位车辆
-            gpsJudge = new TreeMap<>();
-            final Map<String, String> notice = noGps(data);
-            if(MapUtils.isNotEmpty(notice)) {
-                gpsJudge.putAll(notice);
+            final Map<String, String> notice = noGps(clone);
+            if (MapUtils.isNotEmpty(notice)) {
+                builder.add(JSON_UTILS.toJson(notice));
             }
         }
         if (1 == abnormalRule) {
             // 异常用车
-            abnormalJudge = abnormalCar(data);
+            final Map<String, Object> abnormalJudge = abnormalCar(clone);
+            if (MapUtils.isNotEmpty(abnormalJudge)) {
+                builder.add(JSON_UTILS.toJson(abnormalJudge));
+            }
         }
         if (1 == flyRule) {
             // 飞机功能（一般不用）
-            flyJudge = flySe(data);
+            final Map<String, Object> flyJudge = flySe(clone);
+            if (MapUtils.isNotEmpty(flyJudge)) {
+                builder.add(JSON_UTILS.toJson(flyJudge));
+            }
         }
         if (1 == onoffRule) {
             // 车辆上下线
-            onOffJudge = onOffline(data);
+            final Map<String, Object> onOffJudge = onOffline(clone);
+            if (MapUtils.isNotEmpty(onOffJudge)) {
+                builder.add(JSON_UTILS.toJson(onOffJudge));
+            }
         }
         if (1 == mileHopRule) {
             // 里程跳变处理
-            mileHopJudge = mileHopHandle(data);
-        }
-        if (!MapUtils.isEmpty(gpsJudge)) {
-            list.add(gpsJudge);
-        }
-        if (!MapUtils.isEmpty(abnormalJudge)) {
-            list.add(abnormalJudge);
-        }
-        if (!MapUtils.isEmpty(flyJudge)) {
-            list.add(flyJudge);
-        }
-        if (!MapUtils.isEmpty(onOffJudge)) {
-            list.add(onOffJudge);
-        }
-        if (!MapUtils.isEmpty(mileHopJudge)) {
-            list.add(mileHopJudge);
+            final Map<String, Object> mileHopJudge = mileHopHandle(clone);
+            if (MapUtils.isNotEmpty(mileHopJudge)) {
+                builder.add(JSON_UTILS.toJson(mileHopJudge));
+            }
         }
 
-        return list;
+        return builder.build();
+    }
+
+
+    /**
+     * 获得附近补电车的信息通知，并保存到 redis 中
+     * @param vid
+     * @param longitude
+     * @param latitude
+     */
+    private String getNoticesOfChargeCars(final String vid, final double longitude, final double latitude) {
+
+        final Map<Double, List<FillChargeCar>> chargeCarInfo = FindChargeCarsOfNearby.findChargeCarsOfNearby(
+            longitude,
+            latitude,
+            SysRealDataCache.getChargeCarCache());
+
+        if (MapUtils.isNotEmpty(chargeCarInfo)) {
+            final Map<String, String> topnCarsToRedis = new TreeMap<>();
+            final List<Map<String, String>> chargeCars = new LinkedList<>();
+            int cts = 0;
+            for (final Map.Entry<Double, List<FillChargeCar>> entry : chargeCarInfo.entrySet()) {
+                final double distance = entry.getKey();
+                final List<FillChargeCar> listOfChargeCar = entry.getValue();
+                for (FillChargeCar ChargeCar : listOfChargeCar) {
+                    cts += 1;
+                    if (cts > topn) {
+                        break;
+                    }
+
+                    //save to redis map
+                    final Map<String, String> jsonMap = Maps.newTreeMap();
+                    jsonMap.put("vid", ChargeCar.vid);
+                    jsonMap.put("LONGITUDE", String.valueOf(ChargeCar.longitude));
+                    jsonMap.put("LATITUDE", String.valueOf(ChargeCar.latitude));
+                    jsonMap.put("lastOnline", ChargeCar.lastOnline);
+                    jsonMap.put("distance", String.valueOf(distance));
+                    final String jsonToRedis = JSON_UTILS.toJson(jsonMap);
+                    topnCarsToRedis.put(String.valueOf(cts), jsonToRedis);
+
+                    //send to kafka map
+                    final Map<String, String> kMap = Maps.newTreeMap();
+                    kMap.put("vid", ChargeCar.vid);
+                    kMap.put("location", ChargeCar.longitude + "," + ChargeCar.latitude);
+                    kMap.put("lastOnline", ChargeCar.lastOnline);
+                    kMap.put("gpsDis", String.valueOf(distance));
+                    kMap.put("ranking", String.valueOf(cts));
+                    kMap.put("running", String.valueOf(ChargeCar.running));
+
+                    chargeCars.add(kMap);
+                }
+                if (cts > topn) {
+                    break;
+                }
+            }
+
+            if (MapUtils.isNotEmpty(topnCarsToRedis)) {
+                redis.saveMap(topnCarsToRedis, 2, "charge-car-" + vid);
+            }
+
+            if (CollectionUtils.isNotEmpty(chargeCars)) {
+                final Map<String, Object> chargeMap = Maps.newTreeMap();
+                chargeMap.put("vid", vid);
+                chargeMap.put("msgType", NoticeType.CHARGE_CAR_NOTICE);
+                chargeMap.put("location", longitude * 1000000 + "," + latitude * 1000000);
+                chargeMap.put("fillChargeCars", chargeCars);
+                return JSON_UTILS.toJson(chargeMap);
+            }
+        }
+        return null;
     }
 
     /**

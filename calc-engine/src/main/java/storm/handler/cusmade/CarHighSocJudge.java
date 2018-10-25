@@ -10,13 +10,8 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.cache.SysRealDataCache;
 import storm.constant.FormatConstant;
 import storm.constant.RedisConstant;
-import storm.dao.DataToRedis;
-import storm.dto.FillChargeCar;
-import storm.handler.ctx.Recorder;
-import storm.handler.ctx.RedisRecorder;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.*;
@@ -126,7 +121,7 @@ public class CarHighSocJudge  {
      * @param data 车辆数据
      * @return 如果产生过高电量通知, 则填充通知, 否则为空集合.
      */
-    public List<Map<String, String>> processFrame(@NotNull Map<String, String> data) {
+    public Map<String, String> processFrame(@NotNull Map<String, String> data) {
 
         //检查数据有效性
         if (dataIsInvalid(data)){
@@ -169,28 +164,13 @@ public class CarHighSocJudge  {
             }
         }
 
-
-
-        //soc过高开始通知
-        List<Map<String, String>> result = new LinkedList<>();
-        Map<String, String> socHighNotice;
-        //soc过高结束通知
-        Map<String, String> socNormalNotice;
-
         // 检验SOC是否大于过高开始阈值
         if (socNum > highSocAlarm_StartThreshold) {
-
-            socHighNotice = getSocHighNotice(data);
-            if (null != socHighNotice){
-                result.add(socHighNotice);
-            }
-            return result;
+            //soc过高开始通知
+            return getSocHighNotice(data);
         } else {
-            socNormalNotice = getSocNormalNotice(data);
-            if (MapUtils.isNotEmpty(socNormalNotice)){
-                result.add(socNormalNotice);
-            }
-            return result;
+            //soc过高结束通知
+            return getSocNormalNotice(data);
         }
     }
 
@@ -248,7 +228,7 @@ public class CarHighSocJudge  {
         }
 
         if(MapUtils.isEmpty(highSocNotice)) {
-            highSocNotice.put("msgType", NoticeType.SOC_HIGH_ALARM);
+            highSocNotice.put("msgType", NoticeType.SOC_HIGH_NOTICE);
             highSocNotice.put("msgId", UUID.randomUUID().toString());
             highSocNotice.put("vid", vid);
             vidHighSocNotice.put(vid, highSocNotice);

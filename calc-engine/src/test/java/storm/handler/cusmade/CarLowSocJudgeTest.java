@@ -2,6 +2,7 @@ package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -34,36 +35,36 @@ class CarLowSocJudgeTest {
         Date date1 = new Date(date .getTime() - 1003000);
         data.put(DataKey.TIME, DateFormatUtils.format(date1, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date1, FormatConstant.DATE_FORMAT));
-        List<Map<String, String>> result_1 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-        Assertions.assertTrue(0 == result_1.size(),"1不应该出现通知");
+        Map<String, String> result_1 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data), (_1,_2,_3) -> {});
+        Assertions.assertTrue(MapUtils.isEmpty(result_1),"1不应该出现通知");
 
         Date date2 = new Date(date .getTime() - 1002000);
         data.put(DataKey.TIME, DateFormatUtils.format(date2, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date2, FormatConstant.DATE_FORMAT));
-        List<Map<String, String>> result_2 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-        Assertions.assertTrue(0 == result_2.size(),"2不应该出现通知");
+        Map<String, String> result_2 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data), (_1,_2,_3) -> {});
+        Assertions.assertTrue(MapUtils.isEmpty(result_2),"2不应该出现通知");
 
         Date date3 = new Date(date .getTime() - 1001000);
         data.put(DataKey.TIME, DateFormatUtils.format(date3, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date3, FormatConstant.DATE_FORMAT));
-        List<Map<String, String>> result_3 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-        Assertions.assertTrue(0 != result_3.size(),"3应该出现通知֪");
+        Map<String, String> result_3 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data), (_1,_2,_3) -> {});
+        Assertions.assertTrue(MapUtils.isNotEmpty(result_3),"3应该出现通知֪");
 
         //大于soc过低通知开始阈值，小于soc过低通知结束阈值
         data.put(DataKey._7615_STATE_OF_CHARGE, "15");
         Date date4 = new Date(date .getTime() );
         data.put(DataKey.TIME, DateFormatUtils.format(date4, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date4, FormatConstant.DATE_FORMAT));
-        List<Map<String, String>> result_4 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-        Assertions.assertTrue(0 == result_4.size(),"4不应该出现通知");
+        Map<String, String> result_4 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data), (_1,_2,_3) -> {});
+        Assertions.assertTrue(MapUtils.isEmpty(result_4),"4不应该出现通知");
 
         //大于soc过低通知结束阈值
         data.put(DataKey._7615_STATE_OF_CHARGE, "21");
         Date date5 = new Date(date .getTime() + 1000);
         data.put(DataKey.TIME, DateFormatUtils.format(date5, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date5, FormatConstant.DATE_FORMAT));
-        List<Map<String, String>> result_5 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data));
-        Assertions.assertTrue(0 != result_5.size(),"5应该出现通知");
+        Map<String, String> result_5 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data), (_1,_2,_3) -> {});
+        Assertions.assertTrue(MapUtils.isNotEmpty(result_5),"5应该出现通知");
 
     }
 }

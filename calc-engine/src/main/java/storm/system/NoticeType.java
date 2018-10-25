@@ -59,12 +59,12 @@ public final class NoticeType {
     /**
      * SOC 过低通知
      */
-    public static final String SOC_ALARM = "SOC_ALARM";
+    public static final String SOC_LOW_NOTICE = "SOC_ALARM";
 
     /**
      * SOC 过高通知
      */
-    public static final String SOC_HIGH_ALARM = "SOC_HIGH_ALARM";
+    public static final String SOC_HIGH_NOTICE = "SOC_HIGH_ALARM";
 
     /**
      * 时间异常通知

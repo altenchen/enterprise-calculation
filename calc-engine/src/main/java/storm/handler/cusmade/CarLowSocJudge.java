@@ -1,6 +1,8 @@
 package storm.handler.cusmade;
 
+import com.google.common.collect.Maps;
 import com.google.gson.reflect.TypeToken;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -8,6 +10,7 @@ import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
@@ -15,12 +18,12 @@ import storm.constant.FormatConstant;
 import storm.constant.RedisConstant;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
-import storm.dto.alarm.AlarmStatus;
 import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.*;
+import storm.util.function.TeConsumer;
 
 import java.text.ParseException;
 import java.util.*;
@@ -30,8 +33,7 @@ import java.util.*;
  */
 public class CarLowSocJudge {
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
-    private static final Logger logger = LoggerFactory.getLogger(CarLowSocJudge.class);
-    private static final JsonUtils GSON_UTILS = JsonUtils.getInstance();
+    private static final Logger LOG = LoggerFactory.getLogger(CarLowSocJudge.class);
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
     private static final int REDIS_DB_INDEX = 6;
@@ -112,10 +114,10 @@ public class CarLowSocJudge {
             final Map<String, String> notices = jedis.hgetAll(REDIS_TABLE_NAME);
             for (String vid : notices.keySet()) {
 
-                logger.info("从Redis还原lowSoc车辆信息:[{}]", vid);
+                LOG.info("从Redis还原lowSoc车辆信息:[{}]", vid);
 
                 final String json = notices.get(vid);
-                final Map<String, String> notice = GSON_UTILS.fromJson(
+                final Map<String, String> notice = JSON_UTILS.fromJson(
                         json,
                         new TypeToken<TreeMap<String, String>>() {
                         }.getType());
@@ -129,7 +131,7 @@ public class CarLowSocJudge {
                         vidSocNotice.put(notice.get("vid"), notice);
                     }
                 } catch (Exception ignore) {
-                    logger.warn("初始化告警异常", ignore);
+                    LOG.warn("初始化告警异常", ignore);
                 }
             }
         });
@@ -140,7 +142,9 @@ public class CarLowSocJudge {
      * @param data 车辆数据
      * @return 如果产生低电量通知, 则填充通知, 否则为空集合.
      */
-    public List<Map<String, String>> processFrame(@NotNull Map<String, String> data) {
+    public Map<String, String> processFrame(
+        @NotNull final Map<String, String> data,
+        @NotNull final TeConsumer<String, Double, Double> processChargeCars) {
 
         //检查数据有效性
         if (dataIsInvalid(data)){
@@ -166,7 +170,7 @@ public class CarLowSocJudge {
                         return;
                     }
                     final String json = jedis.hget(REDIS_TABLE_NAME, vid);
-                    final Map<String, String> notice = GSON_UTILS.fromJson(
+                    final Map<String, String> notice = JSON_UTILS.fromJson(
                             json,
                             new TypeToken<TreeMap<String, String>>() {
                             }.getType());
@@ -186,40 +190,27 @@ public class CarLowSocJudge {
         }
 
 
-
-
-        //soc过低开始通知和附近补电车信息
-        List<Map<String, String>> result = new LinkedList<>();
-        Map<String, String> socLowNotice;
-        //soc过低结束通知
-        Map<String, String> socNormalNotice;
-
         // 检验SOC是否小于过低开始阈值
         if (socNum < lowSocAlarm_StartThreshold) {
 
-            socLowNotice = getSocLowNotice(data);
+            //soc过低开始通知
+            final Map<String, String> socLowNotice = getSocLowNotice(data);
             //发送soc过低开始通知时，获取附近补电车信息，一并发送
             if (null != socLowNotice){
-                result.add(socLowNotice);
                 try {
                     final double longitude = Double.parseDouble(NumberUtils.isNumber(longitudeString) ? longitudeString : "0") / 1000000.0;
                     final double latitude = Double.parseDouble(NumberUtils.isNumber(latitudeString) ? latitudeString : "0") / 1000000.0;
-                    Map<String, String> chargeMap = getNoticesOfChargeCars(vid, longitude, latitude);
-                    if (MapUtils.isNotEmpty(chargeMap)) {
-                        result.add(chargeMap);
-                    }
+                    // 附近补电车信息
+                    processChargeCars.accept(vid, longitude, latitude);
                 } catch (Exception e) {
-                    logger.warn("获取补电车信息的时出现异常，位置在CarLowSocJudge类");
-                    logger.warn(e.getMessage());
+                    LOG.warn("获取补电车信息的时出现异常，位置在CarLowSocJudge类");
+                    LOG.warn(e.getMessage());
                 }
             }
-            return result;
+            return socLowNotice;
         } else {
-            socNormalNotice = getSocNormalNotice(data);
-            if (MapUtils.isNotEmpty(socNormalNotice)){
-                result.add(socNormalNotice);
-            }
-            return result;
+            //soc过低结束通知
+            return getSocNormalNotice(data);
         }
     }
 
@@ -251,6 +242,7 @@ public class CarLowSocJudge {
     /**
      * SOC小于soc过低开始阈值时做的操作
      */
+    @Nullable
     private Map<String, String> getSocLowNotice(Map<String, String> data){
         String vid = data.get(DataKey.VEHICLE_ID);
         String timeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
@@ -277,13 +269,13 @@ public class CarLowSocJudge {
         }
 
         if(MapUtils.isEmpty(lowSocNotice)) {
-            lowSocNotice.put("msgType", NoticeType.SOC_ALARM);
+            lowSocNotice.put("msgType", NoticeType.SOC_LOW_NOTICE);
             lowSocNotice.put("msgId", UUID.randomUUID().toString());
             lowSocNotice.put("vid", vid);
             vidSocNotice.put(vid, lowSocNotice);
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                logger.info("VID[{}]SOC首帧缓存初始化", vid);
+                LOG.info("VID[{}]SOC首帧缓存初始化", vid);
             });
         }
 
@@ -292,7 +284,7 @@ public class CarLowSocJudge {
         vidLowSocCount.put(vid, lowSocCount);
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            logger.info("VID[{}]判定为SOC过低第[{}]次", vid, lowSocCount);
+            LOG.info("VID[{}]判定为SOC过低第[{}]次", vid, lowSocCount);
         });
 
         // 记录连续SOC过低状态开始时的信息
@@ -306,7 +298,7 @@ public class CarLowSocJudge {
             lowSocNotice.put("lowSocThreshold", String.valueOf(lowSocAlarm_StartThreshold));
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                logger.info("VID[{}]SOC过低首帧更新", vid);
+                LOG.info("VID[{}]SOC过低首帧更新", vid);
             });
         }
 
@@ -323,7 +315,7 @@ public class CarLowSocJudge {
                             new String[]{FormatConstant.DATE_FORMAT})
                     .getTime();
         } catch (ParseException e) {
-            logger.warn("解析开始时间异常", e);
+            LOG.warn("解析开始时间异常", e);
             lowSocNotice.put("stime", timeString);
             return null;
         }
@@ -347,12 +339,13 @@ public class CarLowSocJudge {
         result = lowSocNotice;
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            logger.info("VID[{}]SOC异常通知发送[{}]", vid, lowSocNotice.get("msgId"));
+            LOG.info("VID[{}]SOC异常通知发送[{}]", vid, lowSocNotice.get("msgId"));
         });
 
         return result;
     }
 
+    @Nullable
     private Map<String,String> getSocNormalNotice(Map<String,String> data){
 
         String vid = data.get(DataKey.VEHICLE_ID);
@@ -393,7 +386,7 @@ public class CarLowSocJudge {
         vidNormSoc.put(vid, normalSocCount);
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            logger.info("VID[{}]判定为SOC正常第[{}]次", vid, normalSocCount);
+            LOG.info("VID[{}]判定为SOC正常第[{}]次", vid, normalSocCount);
         });
 
         //记录首帧正常报文信息（即soc过低结束时信息）
@@ -404,7 +397,7 @@ public class CarLowSocJudge {
             normalSocNotice.put("esoc", String.valueOf(socNum));
 
             PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                logger.info("VID[{}]SOC正常首帧初始化", vid);
+                LOG.info("VID[{}]SOC正常首帧初始化", vid);
             });
         }
 
@@ -417,7 +410,7 @@ public class CarLowSocJudge {
         try {
             firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime"), new String[]{FormatConstant.DATE_FORMAT}).getTime();
         } catch (ParseException e) {
-            logger.warn("解析结束时间异常", e);
+            LOG.warn("解析结束时间异常", e);
             normalSocNotice.put("etime", timeString);
             return null;
         }
@@ -440,72 +433,10 @@ public class CarLowSocJudge {
         });
 
         PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            logger.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
+            LOG.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
         });
 
         return normalSocNotice;
-    }
-
-    /**
-     * 获得附近补电车的信息通知，并保存到 redis 中
-     * @param vid
-     * @param longitude
-     * @param latitude
-     */
-    private Map<String, String> getNoticesOfChargeCars(String vid, double longitude, double latitude) {
-        Map<String, FillChargeCar> fillvidgps = SysRealDataCache.getChargeCarCache();
-        FindChargeCarsOfNearby findChargeCars = new FindChargeCarsOfNearby();
-        Map<Double, List<FillChargeCar>> chargeCarInfo = findChargeCars.findChargeCarsOfNearby(longitude, latitude, fillvidgps);
-
-        if (null != chargeCarInfo) {
-            Map<String, String> chargeMap = new TreeMap<>();
-            List<Map<String, String>> chargeCars = new LinkedList<>();
-            Map<String, String> topnCars = new TreeMap<>();
-            int cts = 0;
-            for (Map.Entry<Double, List<FillChargeCar>> entry : chargeCarInfo.entrySet()) {
-                cts++;
-                if (cts > topn) {
-                    break;
-                }
-                double distance = entry.getKey();
-                List<FillChargeCar> listOfChargeCar = entry.getValue();
-                for (FillChargeCar ChargeCar : listOfChargeCar) {
-                    //save to redis map
-                    Map<String, String> jsonMap = new TreeMap<>();
-                    jsonMap.put("vid", ChargeCar.vid);
-                    jsonMap.put("LONGITUDE", String.valueOf(ChargeCar.longitude));
-                    jsonMap.put("LATITUDE", String.valueOf(ChargeCar.latitude));
-                    jsonMap.put("lastOnline", String.valueOf(ChargeCar.lastOnline));
-                    jsonMap.put("distance", String.valueOf(distance));
-
-                    String jsonString = GSON_UTILS.toJson(jsonMap);
-                    topnCars.put("" + cts, jsonString);
-                    //send to kafka map
-                    Map<String, String> kMap = new TreeMap<>();
-                    kMap.put("vid", ChargeCar.vid);
-                    kMap.put("location", ChargeCar.longitude + "," + ChargeCar.latitude);
-                    kMap.put("lastOnline", ChargeCar.lastOnline);
-                    kMap.put("gpsDis", String.valueOf(distance));
-                    kMap.put("ranking", String.valueOf(cts));
-                    kMap.put("running", String.valueOf(ChargeCar.running));
-
-                    chargeCars.add(kMap);
-                }
-            }
-
-            if (topnCars.size() > 0) {
-                redis.saveMap(topnCars, 2, "charge-car-" + vid);
-            }
-            if (chargeCars.size() > 0) {
-                String listOfchargeCar = GSON_UTILS.toJson(chargeCars);
-                chargeMap.put("vid", vid);
-                chargeMap.put("msgType", NoticeType.CHARGE_CAR_NOTICE);
-                chargeMap.put("location", longitude * 1000000 + "," + latitude * 1000000);
-                chargeMap.put("fillChargeCars", listOfchargeCar);
-                return chargeMap;
-            }
-        }
-        return null;
     }
 
 //    /**

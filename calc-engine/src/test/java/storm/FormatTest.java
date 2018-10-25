@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.sun.jersey.core.util.Base64;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
+import storm.extension.MapExtension;
 import storm.system.SysDefine;
 import storm.topology.TopologiesByConf;
 
@@ -529,6 +531,31 @@ final class FormatTest {
 
         final ImmutableSet<String> _11 = new ImmutableSet.Builder<String>().add("1").add("1").build();
         Assertions.assertEquals(1, _11.size());
+    }
+
+    @Disabled("验证Map值类型向基类转换")
+    @Test
+    void testMapConvert() {
+        {
+            final TreeMap<String, String> source = Maps.newTreeMap();
+            source.put("一二三四五", "上山打老虎");
+
+            final TreeMap<String, Object> destination = Maps.newTreeMap(source);
+            destination.forEach((k, v) -> LOG.trace("{} -> {}", k, v));
+
+            destination.put("六七八九十", 67890);
+            source.forEach((k, v) -> LOG.trace("{} -> {}", k, v));
+        }
+        {
+            final HashMap<String, String> source = Maps.newHashMap();
+            source.put("锄禾日当午", "汗滴禾下土");
+
+            final HashMap<String, Object> destination = Maps.newHashMap(source);
+            destination.forEach((k, v) -> LOG.trace("{} -> {}", k, v));
+
+            destination.put("谁知盘中餐", "粒粒皆辛苦");
+            source.forEach((k, v) -> LOG.trace("{} -> {}", k, v));
+        }
     }
 
     @SuppressWarnings("unused")
