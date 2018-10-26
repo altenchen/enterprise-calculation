@@ -203,33 +203,33 @@ public class CarRuleHandler implements InfoNotice {
         //过高SOC
         value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
         if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setHighSocFaultIntervalMillisecond(Long.parseLong(value));
+            carHighSocJudge.setSocHighBeginContinueMillisecond(Long.parseLong(value));
             value = null;
         }
         value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND);
         if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setHighSocNormalIntervalMillisecond(Long.parseLong(value));
+            carHighSocJudge.setSocHighEndContinueMillisecond(Long.parseLong(value));
             value = null;
         }
         value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT);
         if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setHighSocFaultJudgeNum(Integer.parseInt(value));
+            carHighSocJudge.setSocHighBeginContinueCount(Integer.parseInt(value));
             value = null;
         }
         value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT);
         if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setHighSocNormalJudgeNum(Integer.parseInt(value));
+            carHighSocJudge.setSocHighEndContinueCount(Integer.parseInt(value));
             value = null;
         }
 
         value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD);
         if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setHighSocAlarm_StartThreshold(Integer.parseInt(value));
+            carHighSocJudge.setSocHighBeginThreshold(Integer.parseInt(value));
             value = null;
         }
         value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD);
         if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setHighSocAlarm_EndThreshold(Integer.parseInt(value));
+            carHighSocJudge.setSocHighEndThreshold(Integer.parseInt(value));
             value = null;
         }
 
@@ -288,27 +288,27 @@ public class CarRuleHandler implements InfoNotice {
         // soc过高开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
         Object socHighValStart = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD);
         if (null != socHighValStart) {
-            CarHighSocJudge.setHighSocAlarm_StartThreshold((int) socHighValStart);
+            CarHighSocJudge.setSocHighBeginThreshold((int) socHighValStart);
         }
         Object highSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT);
         if (null != highSocFaultJudgeCount) {
-            CarHighSocJudge.setHighSocFaultJudgeNum((int) highSocFaultJudgeCount);
+            CarHighSocJudge.setSocHighBeginContinueCount((int) highSocFaultJudgeCount);
         }
         Object highSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != highSocFaultJudgeTime) {
-            CarHighSocJudge.setHighSocFaultIntervalMillisecond((long) ((int) highSocFaultJudgeTime));
+            CarHighSocJudge.setSocHighBeginContinueMillisecond((long) ((int) highSocFaultJudgeTime));
         }
         Object socHighValEnd = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD);
         if (null != socHighValEnd) {
-            CarHighSocJudge.setHighSocAlarm_EndThreshold((int) socHighValEnd);
+            CarHighSocJudge.setSocHighEndThreshold((int) socHighValEnd);
         }
         Object highSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT);
         if (null != highSocNormalJudgeCount) {
-            CarHighSocJudge.setHighSocNormalJudgeNum((int) highSocNormalJudgeCount);
+            CarHighSocJudge.setSocHighEndContinueCount((int) highSocNormalJudgeCount);
         }
         Object highSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != highSocNormalJudgeTime) {
-            CarHighSocJudge.setHighSocNormalIntervalMillisecond((long) ((int) highSocNormalJudgeTime));
+            CarHighSocJudge.setSocHighEndContinueMillisecond((long) ((int) highSocNormalJudgeTime));
         }
         carHighSocJudge.syncDelaySwitchConfig();
 
@@ -479,9 +479,9 @@ public class CarRuleHandler implements InfoNotice {
         }
 
         if(ENABLE_SOC_HIGH_NOTICE) {
-            final Map<String, String> notice = carHighSocJudge.processFrame(clone);
-            if(MapUtils.isNotEmpty(notice)) {
-                builder.add(JSON_UTILS.toJson(notice));
+            final String socLowNoticeJson = carHighSocJudge.processFrame(data);
+            if (StringUtils.isNotBlank(socLowNoticeJson)) {
+                builder.add(socLowNoticeJson);
             }
         }
 

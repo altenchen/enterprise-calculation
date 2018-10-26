@@ -409,7 +409,7 @@ class CarLowSocJudge {
         final Map<String, String> socLowStartNotice = Maps.newHashMap(
             vehicleNoticeCache.get(vehicleId)
         );
-        socLowStartNotice.put("status", "1");
+        socLowStartNotice.put("status", NOTICE_STATUS_START);
         socLowStartNotice.put("scontinue", String.valueOf(count));
         socLowStartNotice.put("slazy", String.valueOf(timeout));
         socLowStartNotice.put("noticeTime", noticeTime);
@@ -498,7 +498,7 @@ class CarLowSocJudge {
                     socLowBeginNotice
                 );
                 socLowEndNotice.putAll(vehicleNoticeCache.get(vehicleId));
-                socLowEndNotice.put("status", "3");
+                socLowEndNotice.put("status", NOTICE_STATUS_END);
                 socLowEndNotice.put("econtinue", String.valueOf(count));
                 socLowEndNotice.put("elazy", String.valueOf(timeout));
                 socLowEndNotice.put("noticeTime", noticeTime);
