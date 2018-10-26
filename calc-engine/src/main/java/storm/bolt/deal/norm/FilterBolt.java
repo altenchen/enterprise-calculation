@@ -175,7 +175,11 @@ public class FilterBolt extends BaseRichBolt {
         @NotNull final Map stormConf,
         @NotNull final TopologyContext context,
         @NotNull final OutputCollector collector) {
+        //将storm启动时的自定义参数设置进来
+        LOG.info("将STORM启动时设置的参数填充进来");
+        ConfigUtils.fillSysDefineEntity(stormConf);
         //首次从redis读取配置
+        LOG.info("将REDIS动态设置的参数填充进来");
         ConfigUtils.readConfigFromRedis(redis);
 
         this.collector = collector;

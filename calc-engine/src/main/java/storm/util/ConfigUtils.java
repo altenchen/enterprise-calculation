@@ -105,6 +105,9 @@ public final class ConfigUtils {
                     continue;
                 }
                 String beanAttributeName = keyConvertAttributeName(paramKeyString);
+                if( BeanUtils.getProperty(sysDefine, beanAttributeName) == null ){
+                    return;
+                }
                 BeanUtils.setProperty(sysDefine, beanAttributeName, properties.get(paramKey));
                 LOG.info("应用配置 {}={}", paramKey, value);
             } catch (Exception e) {
@@ -117,7 +120,7 @@ public final class ConfigUtils {
      * 将properties的值setg到sysDefine对象里面
      * @param properties
      */
-    private static void fillSysDefineEntity(Map<String, String> properties) {
+    public static void fillSysDefineEntity(Map<String, String> properties) {
         if (properties.isEmpty()) {
             LOG.error("{} 未设置任何参数.", "sysDefine.properties");
             return;
@@ -130,6 +133,9 @@ public final class ConfigUtils {
                     continue;
                 }
                 String beanAttributeName = keyConvertAttributeName(paramKeyString);
+                if( BeanUtils.getProperty(sysDefine, beanAttributeName) == null ){
+                    return;
+                }
                 BeanUtils.setProperty(sysDefine, beanAttributeName, properties.get(paramKey));
                 LOG.info("应用配置 {}={}", paramKey, value);
             } catch (Exception e) {
@@ -154,6 +160,9 @@ public final class ConfigUtils {
                 Object value = properties.get(paramKey);
                 if (StringUtils.isEmpty(value.toString())) {
                     continue;
+                }
+                if( BeanUtils.getProperty(sysParam, beanAttributeName) == null ){
+                    return;
                 }
                 BeanUtils.setProperty(sysParam, beanAttributeName, properties.get(paramKey));
                 LOG.info("应用配置 {}={}", paramKey, value);
