@@ -155,7 +155,7 @@ public final class MySqlSpout extends BaseRichSpout {
 
     // endregion
 
-    private static final long SUCCESSFUL_POLL_INTERVAL_IN_MILLISECONDS = TimeUnit.MINUTES.toMillis(1);
+    private static final long SUCCESSFUL_POLL_INTERVAL_IN_MILLISECONDS = TimeUnit.MINUTES.toMillis(3);
 
     static {
         final ConfigUtils configUtils = ConfigUtils.getInstance();

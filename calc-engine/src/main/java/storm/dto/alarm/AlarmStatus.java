@@ -110,6 +110,7 @@ public final class AlarmStatus {
         @NotNull final EarlyWarn rule,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
         if(result) {
+            //上次+本次 或 本次+上次 立即触发
             if(rule.left1UsePrev != rule.left2UsePrev) {
                 if (BooleanUtils.isNotTrue(getStatus())) {
                     this.startReset(data);
