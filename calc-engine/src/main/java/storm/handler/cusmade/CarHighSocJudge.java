@@ -353,8 +353,6 @@ public class CarHighSocJudge  {
                         .put("slocation", location)
                         .put("sthreshold", String.valueOf(socHighBeginThreshold))
                         .put("ssoc", String.valueOf(soc))
-                        // 兼容性处理, 暂留
-                        .put("highSocThreshold", String.valueOf(socHighBeginThreshold))
                         .build()
         );
 
