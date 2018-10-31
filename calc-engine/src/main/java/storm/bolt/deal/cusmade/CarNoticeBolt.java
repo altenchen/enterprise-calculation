@@ -1,5 +1,6 @@
 package storm.bolt.deal.cusmade;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -314,12 +315,9 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
             //返回车辆通知,(重要)
             //先检查规则是否启用，启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
-            List<Map<String, Object>> msgs = carRuleHandler.generateNotices(data);
-            for (Map<String, Object> map : msgs) {
-                if (null != map && map.size() > 0) {
-                    String json = JSON_UTILS.toJson(map);
-                    kafkaStreamVehicleNoticeSender.emit(vid, json);
-                }
+            final ImmutableList<String> jsonNotices = carRuleHandler.generateNotices(data);
+            for (final String json : jsonNotices) {
+                kafkaStreamVehicleNoticeSender.emit(vid, json);
             }
 
             final List<Map<String, Object>> faultCodeMessages = faultCodeHandler.generateNotice(data);

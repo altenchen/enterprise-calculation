@@ -319,27 +319,62 @@ public final class SysDefine {
     public static final String RULE_OVERRIDE_VALUE_JILI = "jili";
 
     /**
-     * soc过低阈值
+     * 是否启用soc过低通知
      */
-    public static final String LT_ALARM_SOC = "lt.alarm.soc";
+    public static final String NOTICE_SOC_LOW_ENABLE = "notice.soc.low.enable";
+    /**
+     * soc过低开始通知触发器, 小于等于阈值
+     */
+    public static final String NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD = "notice.soc.low.begin.trigger.threshold";
+    /**
+     * soc过低开始通知触发器, 连续帧数
+     */
+    public static final String NOTICE_SOC_LOW_BEGIN_TRIGGER_CONTINUE_COUNT = "notice.soc.low.begin.trigger.continue.count";
+    /**
+     * soc过低开始通知触发器, 持续时长
+     */
+    public static final String NOTICE_SOC_LOW_BEGIN_TRIGGER_TIMEOUT_MILLISECOND = "notice.soc.low.begin.trigger.timeout.millisecond";
+    /**
+     * soc过低结束通知触发器, 大于阈值
+     */
+    public static final String NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD = "notice.soc.low.end.trigger.threshold";
+    /**
+     * soc过低结束通知触发器, 连续帧数
+     */
+    public static final String NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT = "notice.soc.low.end.trigger.continue.count";
+    /**
+     * soc过低结束通知触发器, 持续时长
+     */
+    public static final String NOTICE_SOC_LOW_END_TRIGGER_TIMEOUT_MILLISECOND = "notice.soc.low.end.trigger.timeout.millisecond";
 
     /**
-     * soc故障判断时间阈值
+     * 是否启用soc过高通知
      */
-    public static final String SOC_FAULT_JUDGE_TIME = "notice.soc.fault.trigger.timeout.millisecond";
+    public static final String NOTICE_SOC_HIGH_ENABLE = "notice.soc.high.enable";
     /**
-     * soc正常判断时间阈值
+     * soc过高开始通知触发器, 大于等于阈值
      */
-    public static final String SOC_NORMAL_JUDGE_TIME = "notice.soc.normal.trigger.timeout.millisecond";
+    public static final String NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD = "notice.soc.high.begin.trigger.threshold";
     /**
-     * soc故障帧数判断
+     * soc过高开始通知触发器, 连续帧数
      */
-    public static final String SOC_FAULT_JUDGE_NO = "notice.soc.fault.trigger.continue.count";
+    public static final String NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT = "notice.soc.high.begin.trigger.continue.count";
     /**
-     * soc正常帧数判断
+     * soc过高开始通知触发器, 持续时长
      */
-    public static final String SOC_NORMAL_JUDGE_NO = "notice.soc.normal.trigger.continue.count";
-
+    public static final String NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND = "notice.soc.high.begin.trigger.timeout.millisecond";
+    /**
+     * soc过高结束通知触发器, 小于阈值
+     */
+    public static final String NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD = "notice.soc.high.end.trigger.threshold";
+    /**
+     * soc过高结束通知触发器, 连续帧数
+     */
+    public static final String NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT = "notice.soc.high.end.trigger.continue.count";
+    /**
+     * soc过高结束通知触发器, 持续时长
+     */
+    public static final String NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND = "notice.soc.high.end.trigger.timeout.millisecond";
 
     /**
      * 未定位开始帧数判断

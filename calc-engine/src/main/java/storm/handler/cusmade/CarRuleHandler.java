@@ -1,9 +1,11 @@
 package storm.handler.cusmade;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -43,7 +45,6 @@ import java.util.concurrent.ExecutionException;
 public class CarRuleHandler implements InfoNotice {
 
     private static final Logger LOG = LoggerFactory.getLogger(CarRuleHandler.class);
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
     private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
@@ -72,44 +73,6 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Double> lastSoc = new HashMap<>();
     private Map<String, Double> lastMile = new HashMap<>();
 
-    public static void setSocAlarm(int socAlarm) {
-        CarRuleHandler.socAlarm = socAlarm;
-    }
-
-    public static void setLowSocJudgeNum(int lowSocFaultJudgeNum) {
-        CarRuleHandler.lowSocFaultJudgeNum = lowSocFaultJudgeNum;
-    }
-    public static void setLowSocIntervalMillisecond(Long lowSocFaultIntervalMillisecond) {
-        CarRuleHandler.lowSocFaultIntervalMillisecond = lowSocFaultIntervalMillisecond;
-    }
-
-    /**
-     * SOC过低阈值, 默认 10%
-     */
-    private static int socAlarm = 10;
-    /**
-     * SOC过低确认帧数
-     */
-    private static int lowSocFaultJudgeNum = 3;
-    private static int lowSocNormalJudgeNum = 1;
-
-    /**
-     * SOC过低确认延时, 默认1分钟.
-     */
-    private static Long lowSocFaultIntervalMillisecond = (long) 30000;
-    private static Long lowSocNormalIntervalMillisecond = (long) 0;
-    /**
-     * SOC 过低计数器
-     */
-    private Map<String, Integer> vidLowSocCount = new HashMap<>();
-    /**
-     * SOC 正常计数器
-     */
-    private Map<String, Integer> vidNormSoc = new HashMap<>();
-    /**
-     * SOC过低通知开始到结束信息, 第一帧数据更新
-     */
-    private Map<String, Map<String, Object>> vidSocNotice = new HashMap<>();
 
     private Map<String, Integer> vidSpeedGtZero = new HashMap<>();
     private Map<String, Integer> vidSpeedZero = new HashMap<>();
@@ -130,7 +93,6 @@ public class CarRuleHandler implements InfoNotice {
     DataToRedis redis;
     private Recorder recorder;
     static String onOffRedisKeys = "vehCache.qy.onoff.notice";
-    static String socRedisKeys = "vehCache.qy.soc.notice";
 
     static int topn = 20;
     // 600秒
@@ -146,7 +108,6 @@ public class CarRuleHandler implements InfoNotice {
 
     static int db = 6;
     // 1代表规则启用，0代表规则关闭
-    static int socRule = 0;
     static int enableCanRule = 0;
     static int igniteRule = 0;
     static int gpsRule = 0;
@@ -156,148 +117,200 @@ public class CarRuleHandler implements InfoNotice {
     static int mileHopRule = 0;
     static int carLockStatueChangeJudgeRule = 0;
 
+    /**
+     * 是否启用 SOC 过低通知
+     */
+    private static final boolean ENABLE_SOC_LOW_NOTICE;
+    /**
+     * 是否启用 SOC 过高通知
+     */
+    private static final boolean ENABLE_SOC_HIGH_NOTICE;
+
     private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
+
+    private static final CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
+
+    private static final CarHighSocJudge carHighSocJudge = new CarHighSocJudge();
 
     private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
 
     //以下参数可以通过读取配置文件进行重置
     static {
-        LOG.warn("运行静态代码块，读取配置文件中值");
-        if (null != CONFIG_UTILS.sysDefine) {
-            LOG.warn("运行静态代码块，判断配置文件是否存在");
-            String off = CONFIG_UTILS.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-            if (!StringUtils.isEmpty(off)) {
-                offlinetime = Long.parseLong(off) * 1000;
-            }
+        final ConfigUtils configUtils = ConfigUtils.getInstance();
+        final Properties sysDefine = configUtils.sysDefine;
 
-            String value = CONFIG_UTILS.sysDefine.getProperty("sys.carlockstatus.rule");
-            if (!StringUtils.isEmpty(value)) {
-                carLockStatueChangeJudgeRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.soc.rule");
-            if (!StringUtils.isEmpty(value)) {
-                socRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.can.rule");
-            if (!StringUtils.isEmpty(value)) {
-                enableCanRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.ignite.rule");
-            if (!StringUtils.isEmpty(value)) {
-                igniteRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.gps.rule");
-            if (!StringUtils.isEmpty(value)) {
-                gpsRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.abnormal.rule");
-            if (!StringUtils.isEmpty(value)) {
-                abnormalRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.fly.rule");
-            if (!StringUtils.isEmpty(value)) {
-                flyRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.onoff.rule");
-            if (!StringUtils.isEmpty(value)) {
-                onoffRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty("sys.milehop.rule");
-            if (!StringUtils.isEmpty(value)) {
-                mileHopRule = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_FAULT_JUDGE_TIME);
-            if (!StringUtils.isEmpty(value)) {
-                lowSocFaultIntervalMillisecond = Long.parseLong(value);
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_NORMAL_JUDGE_TIME);
-            if (!StringUtils.isEmpty(value)) {
-                lowSocNormalIntervalMillisecond = Long.parseLong(value);
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_FAULT_JUDGE_NO);
-            if (!StringUtils.isEmpty(value)) {
-                lowSocFaultJudgeNum = Integer.parseInt(value);
-                value = null;
-            }
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.SOC_NORMAL_JUDGE_NO);
-            if (!StringUtils.isEmpty(value)) {
-                lowSocNormalJudgeNum = Integer.parseInt(value);
-                value = null;
-            }
-
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.LT_ALARM_SOC);
-            if (!StringUtils.isEmpty(value)) {
-                socAlarm = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.GPS_NOVALUE_CONTINUE_NO);
-            if (NumberUtils.isDigits(value)) {
-                gpsFaultFrameTriggerCount = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.GPS_HASVALUE_CONTINUE_NO);
-            if (NumberUtils.isDigits(value)) {
-                gpsNormalFrameTriggerCount = Integer.parseInt(value);
-                value = null;
-            }
-
-            value = CONFIG_UTILS.sysDefine.getProperty(SysDefine.GPS_JUDGE_TIME);
-            if (!StringUtils.isEmpty(value)) {
-                gpsFaultIntervalMillisecond = Long.parseLong(value);
-                gpsNormalIntervalMillisecond = gpsFaultIntervalMillisecond;
-                value = null;
-            }
+        String off = sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
+        if (!StringUtils.isEmpty(off)) {
+            offlinetime = Long.parseLong(off) * 1000;
         }
+
+        String value = sysDefine.getProperty("sys.carlockstatus.rule");
+        if (!StringUtils.isEmpty(value)) {
+            carLockStatueChangeJudgeRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        ENABLE_SOC_LOW_NOTICE = BooleanUtils.toBoolean(
+            sysDefine.getProperty(
+                SysDefine.NOTICE_SOC_LOW_ENABLE));
+        ENABLE_SOC_HIGH_NOTICE = BooleanUtils.toBoolean(
+            sysDefine.getProperty(
+                SysDefine.NOTICE_SOC_HIGH_ENABLE));
+
+        value = sysDefine.getProperty("sys.can.rule");
+        if (!StringUtils.isEmpty(value)) {
+            enableCanRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.ignite.rule");
+        if (!StringUtils.isEmpty(value)) {
+            igniteRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.gps.rule");
+        if (!StringUtils.isEmpty(value)) {
+            gpsRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.abnormal.rule");
+        if (!StringUtils.isEmpty(value)) {
+            abnormalRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.fly.rule");
+        if (!StringUtils.isEmpty(value)) {
+            flyRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.onoff.rule");
+        if (!StringUtils.isEmpty(value)) {
+            onoffRule = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty("sys.milehop.rule");
+        if (!StringUtils.isEmpty(value)) {
+            mileHopRule = Integer.parseInt(value);
+            value = null;
+        }
+//<<................................................从配置文件中读取SOC相关阈值..........................................>>
+
+        //过高SOC
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setSocHighBeginContinueMillisecond(Long.parseLong(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setSocHighEndContinueMillisecond(Long.parseLong(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setSocHighBeginContinueCount(Integer.parseInt(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setSocHighEndContinueCount(Integer.parseInt(value));
+            value = null;
+        }
+
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setSocHighBeginThreshold(Integer.parseInt(value));
+            value = null;
+        }
+        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD);
+        if (!StringUtils.isEmpty(value)) {
+            carHighSocJudge.setSocHighEndThreshold(Integer.parseInt(value));
+            value = null;
+        }
+
+
+        value = sysDefine.getProperty(SysDefine.GPS_NOVALUE_CONTINUE_NO);
+        if (NumberUtils.isDigits(value)) {
+            gpsFaultFrameTriggerCount = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty(SysDefine.GPS_HASVALUE_CONTINUE_NO);
+        if (NumberUtils.isDigits(value)) {
+            gpsNormalFrameTriggerCount = Integer.parseInt(value);
+            value = null;
+        }
+
+        value = sysDefine.getProperty(SysDefine.GPS_JUDGE_TIME);
+        if (!StringUtils.isEmpty(value)) {
+            gpsFaultIntervalMillisecond = Long.parseLong(value);
+            gpsNormalIntervalMillisecond = gpsFaultIntervalMillisecond;
+            value = null;
+        }
+
         init();
     }
 
     //以下参数可以通过读取redis定时进行重新加载
     static void init() {
-        Object socVal = PARAMS_REDIS_UTIL.PARAMS.get("lt.alarm.soc");
-        if (null != socVal) {
-            socAlarm = (int) socVal;
+        //<<...................................从redis中定时读取SOC相关阈值..................................>>
+        Object socLowValStart = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD);
+        if (null != socLowValStart) {
+            CarLowSocJudge.setSocLowBeginThreshold((int) socLowValStart);
         }
-        // soc过低开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
-        Object lowSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get("notice.soc.fault.trigger.continue.count");
+        Object lowSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_CONTINUE_COUNT);
         if (null != lowSocFaultJudgeCount) {
-            lowSocFaultJudgeNum = (int) lowSocFaultJudgeCount;
+            CarLowSocJudge.setSocLowBeginContinueCount((int) lowSocFaultJudgeCount);
         }
-        Object lowSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get("notice.soc.normal.trigger.continue.count");
-        if (null != lowSocNormalJudgeCount) {
-            lowSocNormalJudgeNum = (int) lowSocNormalJudgeCount;
-        }
-        Object lowSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get("notice.soc.fault.trigger.timeout.millisecond");
+        Object lowSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != lowSocFaultJudgeTime) {
-            lowSocFaultIntervalMillisecond = ((int) lowSocFaultJudgeTime)*1L;
+            CarLowSocJudge.setSocLowBeginContinueMillisecond((long) ((int) lowSocFaultJudgeTime));
         }
-        Object lowSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get("notice.soc.normal.trigger.timeout.millisecond");
+        Object socLowValEnd = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD);
+        if (null != socLowValEnd) {
+            CarLowSocJudge.setSocLowEndThreshold((int) socLowValEnd);
+        }
+        Object lowSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT);
+        if (null != lowSocNormalJudgeCount) {
+            CarLowSocJudge.setSocLowEndContinueCount((int) lowSocNormalJudgeCount);
+        }
+        Object lowSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_TIMEOUT_MILLISECOND);
         if (null != lowSocNormalJudgeTime) {
-            lowSocNormalIntervalMillisecond = ((int) lowSocNormalJudgeTime)*1L;
+            CarLowSocJudge.setSocLowEndContinueMillisecond((long) ((int) lowSocNormalJudgeTime));
         }
+        carLowSocJudge.syncDelaySwitchConfig();
 
+        // soc过高开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
+        Object socHighValStart = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD);
+        if (null != socHighValStart) {
+            CarHighSocJudge.setSocHighBeginThreshold((int) socHighValStart);
+        }
+        Object highSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT);
+        if (null != highSocFaultJudgeCount) {
+            CarHighSocJudge.setSocHighBeginContinueCount((int) highSocFaultJudgeCount);
+        }
+        Object highSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
+        if (null != highSocFaultJudgeTime) {
+            CarHighSocJudge.setSocHighBeginContinueMillisecond((long) ((int) highSocFaultJudgeTime));
+        }
+        Object socHighValEnd = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD);
+        if (null != socHighValEnd) {
+            CarHighSocJudge.setSocHighEndThreshold((int) socHighValEnd);
+        }
+        Object highSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT);
+        if (null != highSocNormalJudgeCount) {
+            CarHighSocJudge.setSocHighEndContinueCount((int) highSocNormalJudgeCount);
+        }
+        Object highSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND);
+        if (null != highSocNormalJudgeTime) {
+            CarHighSocJudge.setSocHighEndContinueMillisecond((long) ((int) highSocNormalJudgeTime));
+        }
+        carHighSocJudge.syncDelaySwitchConfig();
 
         Object nocanJugyObj = PARAMS_REDIS_UTIL.PARAMS.get("can.novalue.continue.no");
         if (null != nocanJugyObj) {
@@ -411,28 +424,28 @@ public class CarRuleHandler implements InfoNotice {
     /**
      * 生成通知
      *
-     * @param immutableMap
+     * @param data
      * @return
      */
     @NotNull
-    public List<Map<String, Object>> generateNotices(@NotNull final ImmutableMap<String, String> immutableMap) {
+    public ImmutableList<String> generateNotices(@NotNull final ImmutableMap<String, String> data) {
 
-        // 为下面的方法做准备，生成相应的容器。
-        final List<Map<String, Object>> list = new LinkedList<>();
+        // 存放json格式通知的集合
+        final ImmutableList.Builder<String> builder = new ImmutableList.Builder<>();
 
         // 验证data的有效性
-        if (MapUtils.isEmpty(immutableMap)
-                || !immutableMap.containsKey(DataKey.VEHICLE_ID)
-                || !immutableMap.containsKey(DataKey.TIME)) {
-            return list;
+        if (MapUtils.isEmpty(data)
+                || !data.containsKey(DataKey.VEHICLE_ID)
+                || !data.containsKey(DataKey.TIME)) {
+            return builder.build();
         }
 
-        final Map<String, String> data = Maps.newHashMap(immutableMap);
+        final Map<String, String> clone = Maps.newHashMap(data);
 
-        String vid = data.get(DataKey.VEHICLE_ID);
+        final String vid = data.get(DataKey.VEHICLE_ID);
         if (StringUtils.isEmpty(vid)
                 || StringUtils.isEmpty(data.get(DataKey.TIME))) {
-            return list;
+            return builder.build();
         }
 
         lastTime.put(vid, System.currentTimeMillis());
@@ -441,378 +454,155 @@ public class CarRuleHandler implements InfoNotice {
             LOG.trace("VID[" + vid + "]进入车辆规则处理");
         }
 
-        Map<String, Object> canJudge = null;
-        Map<String, Object> igniteJudge = null;
-        Map<String, Object> gpsJudge = null;
-        Map<String, Object> abnormalJudge = null;
-        Map<String, Object> flyJudge = null;
-        Map<String, Object> onOffJudge = null;
-        Map<String, Object> mileHopJudge = null;
-        //3、如果规则启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
+        // 如果规则启用了，则把data放到相应的处理方法中。将返回结果放到list中，返回。
 
         if (1 == carLockStatueChangeJudgeRule) {
-            final Map<String, Object> lockStatueChange = carLockStatusChangeJudge.carLockStatueChangeJudge(data);
-            if (!MapUtils.isEmpty(lockStatueChange)) {
-                list.add(lockStatueChange);
+            final Map<String, Object> lockStatueChange = carLockStatusChangeJudge.carLockStatueChangeJudge(clone);
+            if (MapUtils.isNotEmpty(lockStatueChange)) {
+                builder.add(JSON_UTILS.toJson(lockStatueChange));
             }
         }
 
-        if (1 == socRule) {
-            //lowsoc(data)返回一个map，里面有vid和通知消息（treeMap）
-            // SOC
-            List<Map<String, Object>> socJudges = lowSoc(data);
-            if (!CollectionUtils.isEmpty(socJudges)) {
-                list.addAll(socJudges);
+        if(ENABLE_SOC_LOW_NOTICE) {
+            final String[] chargeCarsNoticeJson = new String[1];
+            final String socLowNoticeJson = carLowSocJudge.processFrame(
+                data,
+                (final String vehicleId, final Double longitude, final Double latitude) -> {
+                    chargeCarsNoticeJson[0] = getNoticesOfChargeCars(vehicleId, longitude, latitude);
+                });
+            if (StringUtils.isNotBlank(socLowNoticeJson)) {
+                builder.add(socLowNoticeJson);
+            }
+            if (StringUtils.isNotBlank(chargeCarsNoticeJson[0])) {
+                builder.add(chargeCarsNoticeJson);
             }
         }
+
+        if(ENABLE_SOC_HIGH_NOTICE) {
+            final String socLowNoticeJson = carHighSocJudge.processFrame(data);
+            if (StringUtils.isNotBlank(socLowNoticeJson)) {
+                builder.add(socLowNoticeJson);
+            }
+        }
+
         if (1 == enableCanRule) {
             // 无CAN车辆
-            canJudge = carNoCanJudge.processFrame(data);
-            if (!MapUtils.isEmpty(canJudge)) {
-                list.add(canJudge);
+            final Map<String, Object> canJudge = carNoCanJudge.processFrame(clone);
+            if (MapUtils.isNotEmpty(canJudge)) {
+                builder.add(JSON_UTILS.toJson(canJudge));
             }
         }
         if (1 == igniteRule) {
             // 点火熄火
-            igniteJudge = igniteOrShut(data);
-            if (!MapUtils.isEmpty(igniteJudge)) {
-                list.add(igniteJudge);
+            final Map<String, Object> igniteJudge = igniteOrShut(clone);
+            if (MapUtils.isNotEmpty(igniteJudge)) {
+                builder.add(JSON_UTILS.toJson(igniteJudge));
             }
         }
         if (1 == gpsRule) {
             // 未定位车辆
-            gpsJudge = new TreeMap<>();
-            final Map<String, String> notice = noGps(data);
-            if(MapUtils.isNotEmpty(notice)) {
-                gpsJudge.putAll(notice);
+            final Map<String, String> notice = noGps(clone);
+            if (MapUtils.isNotEmpty(notice)) {
+                builder.add(JSON_UTILS.toJson(notice));
             }
         }
         if (1 == abnormalRule) {
             // 异常用车
-            abnormalJudge = abnormalCar(data);
+            final Map<String, Object> abnormalJudge = abnormalCar(clone);
+            if (MapUtils.isNotEmpty(abnormalJudge)) {
+                builder.add(JSON_UTILS.toJson(abnormalJudge));
+            }
         }
         if (1 == flyRule) {
             // 飞机功能（一般不用）
-            flyJudge = flySe(data);
+            final Map<String, Object> flyJudge = flySe(clone);
+            if (MapUtils.isNotEmpty(flyJudge)) {
+                builder.add(JSON_UTILS.toJson(flyJudge));
+            }
         }
         if (1 == onoffRule) {
             // 车辆上下线
-            onOffJudge = onOffline(data);
+            final Map<String, Object> onOffJudge = onOffline(clone);
+            if (MapUtils.isNotEmpty(onOffJudge)) {
+                builder.add(JSON_UTILS.toJson(onOffJudge));
+            }
         }
         if (1 == mileHopRule) {
             // 里程跳变处理
-            mileHopJudge = mileHopHandle(data);
-        }
-        if (!MapUtils.isEmpty(gpsJudge)) {
-            list.add(gpsJudge);
-        }
-        if (!MapUtils.isEmpty(abnormalJudge)) {
-            list.add(abnormalJudge);
-        }
-        if (!MapUtils.isEmpty(flyJudge)) {
-            list.add(flyJudge);
-        }
-        if (!MapUtils.isEmpty(onOffJudge)) {
-            list.add(onOffJudge);
-        }
-        if (!MapUtils.isEmpty(mileHopJudge)) {
-            list.add(mileHopJudge);
+            final Map<String, Object> mileHopJudge = mileHopHandle(clone);
+            if (MapUtils.isNotEmpty(mileHopJudge)) {
+                builder.add(JSON_UTILS.toJson(mileHopJudge));
+            }
         }
 
-        return list;
+        return builder.build();
     }
 
 
-    //soc<30 后面抽象成通用的规则
     /**
-     * soc 过低
-     */
-    private List<Map<String, Object>> lowSoc(Map<String, String> dat) {
-        if (MapUtils.isEmpty(dat)) {
-            return null;
-        }
-
-        final String vid = dat.get(DataKey.VEHICLE_ID);
-        final String timeString = dat.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
-        if (StringUtils.isBlank(vid)
-            || StringUtils.isEmpty(timeString)
-            || !StringUtils.isNumeric(timeString)) {
-            return null;
-        }
-
-        final String longitudeString = dat.get(DataKey._2502_LONGITUDE);
-        final String latitudeString = dat.get(DataKey._2503_LATITUDE);
-        final String location = DataUtils.buildLocation(longitudeString, latitudeString);
-
-        final Long currentTimeMillis = System.currentTimeMillis();
-        final String noticeTime = DateFormatUtils.format(
-            currentTimeMillis,
-            FormatConstant.DATE_FORMAT);
-
-        // 返回的通知消息
-        final List<Map<String, Object>> result = new LinkedList<>();
-
-        final String socString = dat.get(DataKey._7615_STATE_OF_CHARGE);
-        if (StringUtils.isEmpty(socString)
-            || !StringUtils.isNumeric(socString)) {
-            return null;
-        }
-        final int socNum = Integer.parseInt(socString);
-
-        // 想判断是一个车辆是否为低电量，不能根据一个报文就下结论，而是要连续多个报文都是报低电量才行。
-        // 其他的判断也都是类似的。
-        if (socNum < socAlarm) {
-
-            vidNormSoc.remove(vid);
-
-            final int lowSocCount = vidLowSocCount.getOrDefault(vid, 0) + 1;
-            vidLowSocCount.put(vid, lowSocCount);
-
-            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                LOG.info("VID[{}]判定为SOC过低第[{}]次", vid, lowSocCount);
-            });
-
-            final Map<String, Object> lowSocNotice = vidSocNotice.getOrDefault(vid, new TreeMap<>());
-            if(MapUtils.isEmpty(lowSocNotice)) {
-                lowSocNotice.put("msgType", NoticeType.SOC_ALARM);
-                lowSocNotice.put("msgId", UUID.randomUUID().toString());
-                lowSocNotice.put("vid", vid);
-                vidSocNotice.put(vid, lowSocNotice);
-
-                PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                    LOG.info("VID[{}]SOC首帧缓存初始化", vid);
-                });
-            }
-
-            // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-            int status = (int)lowSocNotice.getOrDefault("status", 0);
-            if (status != 0 && status != 3) {
-                return null;
-            }
-
-            if(1 == lowSocCount) {
-                lowSocNotice.put("stime", timeString);
-                lowSocNotice.put("location", location);
-                lowSocNotice.put("slocation", location);
-                lowSocNotice.put("sthreshold", socAlarm);
-                lowSocNotice.put("ssoc", socNum);
-                // 兼容性处理, 暂留
-                lowSocNotice.put("lowSocThreshold", socAlarm);
-
-                PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                    LOG.info("VID[{}]SOC过低首帧更新", vid);
-                });
-            }
-
-            if(lowSocCount < lowSocFaultJudgeNum) {
-                return null;
-            }
-
-            final Long firstLowSocTime;
-            try {
-                firstLowSocTime = DateUtils
-                    .parseDate(
-                        lowSocNotice.get("stime").toString(),
-                        new String[]{FormatConstant.DATE_FORMAT})
-                    .getTime();
-            } catch (ParseException e) {
-                LOG.warn("解析开始时间异常", e);
-                lowSocNotice.put("stime", timeString);
-                return null;
-            }
-
-            if (currentTimeMillis - firstLowSocTime <= lowSocFaultIntervalMillisecond) {
-                return null;
-            }
-
-            lowSocNotice.put("status", 1);
-            lowSocNotice.put("slazy", lowSocFaultIntervalMillisecond);
-            lowSocNotice.put("noticeTime", noticeTime);
-
-            //把soc过低开始通知存储到redis中
-            recorder.save(db, socRedisKeys, vid, lowSocNotice);
-
-            result.add(lowSocNotice);
-
-            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                LOG.info("VID[{}]SOC异常通知发送[{}]", vid, lowSocNotice.get("msgId"));
-            });
-
-            //查找附近补电车
-            try {
-                final double longitude = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(longitudeString) ? longitudeString : "0") / 1000000.0;
-                final double latitude = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(latitudeString) ? latitudeString : "0") / 1000000.0;
-                Map<String, Object> chargeMap = chargeCarNotice(vid, longitude, latitude);
-                if (MapUtils.isNotEmpty(chargeMap)) {
-                    result.add(chargeMap);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            return result;
-        } else {
-            vidLowSocCount.remove(vid);
-
-            final Map<String, Object> normalSocNotice = vidSocNotice.get(vid);
-            if(null == normalSocNotice) {
-                return null;
-            }
-
-            final int normalSocCount = vidNormSoc.getOrDefault(vid, 0) + 1;
-            vidNormSoc.put(vid, normalSocCount);
-
-            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                LOG.info("VID[{}]判定为SOC正常第[{}]次", vid, normalSocCount);
-            });
-
-            // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
-            int status = (int)normalSocNotice.getOrDefault("status", 0);
-            if (status != 1 && status != 2) {
-                return null;
-            }
-
-            if(1 == normalSocCount) {
-                normalSocNotice.put("etime", timeString);
-                normalSocNotice.put("elocation", location);
-                normalSocNotice.put("ethreshold", socAlarm);
-                normalSocNotice.put("esoc", socNum);
-
-                PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                    LOG.info("VID[{}]SOC正常首帧初始化", vid);
-                });
-            }
-
-            if(normalSocCount < lowSocNormalJudgeNum) {
-                return null;
-            }
-
-            final Long firstNormalSocTime;
-            try {
-                firstNormalSocTime = DateUtils.parseDate(normalSocNotice.get("etime").toString(), new String[]{FormatConstant.DATE_FORMAT}).getTime();
-            } catch (ParseException e) {
-                LOG.warn("解析结束时间异常", e);
-                normalSocNotice.put("etime", timeString);
-                return result;
-            }
-
-            if (currentTimeMillis - firstNormalSocTime <= lowSocNormalIntervalMillisecond) {
-                return result;
-            }
-
-            normalSocNotice.put("status", 3);
-            normalSocNotice.put("elazy", lowSocNormalIntervalMillisecond);
-            normalSocNotice.put("noticeTime", noticeTime);
-
-            vidSocNotice.remove(vid);
-            recorder.del(db, socRedisKeys, vid);
-
-            result.add(normalSocNotice);
-
-            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                LOG.info("VID[{}]SOC正常通知发送", vid, normalSocNotice.get("msgId"));
-            });
-
-            return result;
-        }
-    }
-
-    /**
-     * 查找附近补电车 保存到 redis 中
-     *
+     * 获得附近补电车的信息通知，并保存到 redis 中
      * @param vid
      * @param longitude
      * @param latitude
      */
-    private Map<String, Object> chargeCarNotice(String vid, double longitude, double latitude) {
-        Map<String, FillChargeCar> fillvidgps = SysRealDataCache.getChargeCarCache();
-        Map<Double, FillChargeCar> chargeCarInfo = findNearFill(longitude, latitude, fillvidgps);
+    private String getNoticesOfChargeCars(final String vid, final double longitude, final double latitude) {
 
-        if (null != chargeCarInfo) {
-            Map<String, Object> chargeMap = new TreeMap<>();
-            List<Map<String, Object>> chargeCars = new LinkedList<>();
-            Map<String, String> topnCars = new TreeMap<>();
+        final Map<Double, List<FillChargeCar>> chargeCarInfo = FindChargeCarsOfNearby.findChargeCarsOfNearby(
+            longitude,
+            latitude,
+            SysRealDataCache.getChargeCarCache());
+
+        if (MapUtils.isNotEmpty(chargeCarInfo)) {
+            final Map<String, String> topnCarsToRedis = new TreeMap<>();
+            final List<Map<String, String>> chargeCars = new LinkedList<>();
             int cts = 0;
-            for (Map.Entry<Double, FillChargeCar> entry : chargeCarInfo.entrySet()) {
-                cts++;
+            for (final Map.Entry<Double, List<FillChargeCar>> entry : chargeCarInfo.entrySet()) {
+                final double distance = entry.getKey();
+                final List<FillChargeCar> listOfChargeCar = entry.getValue();
+                for (FillChargeCar ChargeCar : listOfChargeCar) {
+                    cts += 1;
+                    if (cts > topn) {
+                        break;
+                    }
+
+                    //save to redis map
+                    final Map<String, String> jsonMap = Maps.newTreeMap();
+                    jsonMap.put("vid", ChargeCar.vid);
+                    jsonMap.put("LONGITUDE", String.valueOf(ChargeCar.longitude));
+                    jsonMap.put("LATITUDE", String.valueOf(ChargeCar.latitude));
+                    jsonMap.put("lastOnline", ChargeCar.lastOnline);
+                    jsonMap.put("distance", String.valueOf(distance));
+                    final String jsonToRedis = JSON_UTILS.toJson(jsonMap);
+                    topnCarsToRedis.put(String.valueOf(cts), jsonToRedis);
+
+                    //send to kafka map
+                    final Map<String, String> kMap = Maps.newTreeMap();
+                    kMap.put("vid", ChargeCar.vid);
+                    kMap.put("location", ChargeCar.longitude + "," + ChargeCar.latitude);
+                    kMap.put("lastOnline", ChargeCar.lastOnline);
+                    kMap.put("gpsDis", String.valueOf(distance));
+                    kMap.put("ranking", String.valueOf(cts));
+                    kMap.put("running", String.valueOf(ChargeCar.running));
+
+                    chargeCars.add(kMap);
+                }
                 if (cts > topn) {
                     break;
                 }
-                double distance = entry.getKey();
-                FillChargeCar chargeCar = entry.getValue();
-
-                //save to redis map
-                Map<String, Object> jsonMap = new TreeMap<>();
-                jsonMap.put("vid", chargeCar.vid);
-                jsonMap.put("LONGITUDE", chargeCar.longitude);
-                jsonMap.put("LATITUDE", chargeCar.latitude);
-                jsonMap.put("lastOnline", chargeCar.lastOnline);
-                jsonMap.put("distance", distance);
-
-                String jsonString = JSON_UTILS.toJson(jsonMap);
-                topnCars.put("" + cts, jsonString);
-                //send to kafka map
-                Map<String, Object> kMap = new TreeMap<>();
-                kMap.put("vid", chargeCar.vid);
-                kMap.put("location", chargeCar.longitude + "," + chargeCar.latitude);
-                kMap.put("lastOnline", chargeCar.lastOnline);
-                kMap.put("gpsDis", distance);
-                kMap.put("ranking", cts);
-                kMap.put("running", chargeCar.running);
-
-                chargeCars.add(kMap);
             }
 
-            if (topnCars.size() > 0) {
-                redis.saveMap(topnCars, 2, "charge-car-" + vid);
+            if (MapUtils.isNotEmpty(topnCarsToRedis)) {
+                redis.saveMap(topnCarsToRedis, 2, "charge-car-" + vid);
             }
-            if (chargeCars.size() > 0) {
 
+            if (CollectionUtils.isNotEmpty(chargeCars)) {
+                final Map<String, Object> chargeMap = Maps.newTreeMap();
                 chargeMap.put("vid", vid);
                 chargeMap.put("msgType", NoticeType.CHARGE_CAR_NOTICE);
                 chargeMap.put("location", longitude * 1000000 + "," + latitude * 1000000);
                 chargeMap.put("fillChargeCars", chargeCars);
-                return chargeMap;
+                return JSON_UTILS.toJson(chargeMap);
             }
-        }
-        return null;
-    }
-
-    /**
-     * 查找附件补电车
-     *
-     * @param longitude  经度
-     * @param latitude   纬度
-     * @param fillvidgps 缓存的补电车 vid [经度，纬度]
-     * @return 距离， 补电车
-     */
-    private Map<Double, FillChargeCar> findNearFill(double longitude, double latitude, Map<String, FillChargeCar> fillvidgps) {
-        //
-        if (null == fillvidgps || fillvidgps.size() == 0) {
-            return null;
-        }
-
-        if ((0 == longitude && 0 == latitude)
-                || Math.abs(longitude) > 180
-                || Math.abs(latitude) > 180) {
-            return null;
-        }
-        /**
-         * 按照此种方式加上远近排名的话可能会有 bug,
-         * 此方法假设 任意两点的 车子gps距离 的double值不可能相等
-         * 出现的 概率极低，暂时忽略
-         */
-
-        Map<Double, FillChargeCar> carSortMap = new TreeMap<>();
-
-        for (Map.Entry<String, FillChargeCar> entry : fillvidgps.entrySet()) {
-//            String fillvid = entry.getKey();
-            FillChargeCar chargeCar = entry.getValue();
-            double distance = GpsUtil.getDistance(longitude, latitude, chargeCar.longitude, chargeCar.latitude);
-            carSortMap.put(distance, chargeCar);
-        }
-        if (carSortMap.size() > 0) {
-            return carSortMap;
         }
         return null;
     }
@@ -1778,112 +1568,6 @@ public class CarRuleHandler implements InfoNotice {
         return null;
     }
 
-    public List<Map<String, Object>> offlineMethod2(long now) {
-        if (null == lastTime || lastTime.size() == 0) {
-            return null;
-        }
-        List<Map<String, Object>> notices = new LinkedList<>();
-        String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
-        List<String> needRemoves = new LinkedList<>();
-        for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
-            long last = entry.getValue();
-            if (now - last > offlinetime) {
-                String vid = entry.getKey();
-                needRemoves.add(vid);
-                Map<String, Object> msg = vidFlyNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                msg = vidSocNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                msg = vidcanNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                msg = vidIgniteShutNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                Map<String, String> notice = vidGpsNotice.get(vid);
-                if (null != notice) {
-
-                    msg = new TreeMap<>();
-                    msg.putAll(notice);
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                msg = vidSpeedGtZeroNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-                msg = vidOnOffNotice.get(vid);
-                if (null != msg) {
-
-                    getOffline(msg, noticetime);
-                    if (null != msg) {
-                        notices.add(msg);
-                    }
-                }
-            }
-        }
-
-        for (String vid : needRemoves) {
-            lastTime.remove(vid);
-            vidFlyNotice.remove(vid);
-            vidSocNotice.remove(vid);
-            vidcanNotice.remove(vid);
-            vidGpsNotice.remove(vid);
-            vidSpeedGtZeroNotice.remove(vid);
-            vidIgniteShutNotice.remove(vid);
-            vidOnOffNotice.remove(vid);
-
-            vidFlyEd.remove(vid);
-            vidFlySt.remove(vid);
-            vidShut.remove(vid);
-            vidIgnite.remove(vid);
-            vidSpeedGtZero.remove(vid);
-            vidSpeedZero.remove(vid);
-            vidLowSocCount.remove(vid);
-            vidNormSoc.remove(vid);
-            vidNoCanCount.remove(vid);
-            vidNormalCanCount.remove(vid);
-            vidGpsFaultCount.remove(vid);
-            vidGpsNormalCount.remove(vid);
-
-        }
-        if (notices.size() > 0) {
-            return notices;
-        }
-
-
-        return null;
-    }
-
     public void getOffline(Map<String, Object> msg, String noticetime) {
         if (null != msg) {
             msg.put("noticetime", noticetime);
@@ -1895,7 +1579,7 @@ public class CarRuleHandler implements InfoNotice {
     void restartInit(boolean isRestart) {
         if (isRestart) {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
-            recorder.rebootInit(db, socRedisKeys, vidSocNotice);
+//            recorder.rebootInit(REDIS_DB_INDEX, socHighRedisKeys, vidHighSocNotice);
         }
     }
 

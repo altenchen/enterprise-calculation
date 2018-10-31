@@ -110,9 +110,10 @@ public final class AlarmStatus {
         @NotNull final EarlyWarn rule,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
         if(result) {
-            if(rule.left1UsePrev || rule.left2UsePrev) {
+            //上次+本次 或 本次+上次 立即触发
+            if(rule.left1UsePrev != rule.left2UsePrev) {
                 if (BooleanUtils.isNotTrue(getStatus())) {
-                    this.startReset();
+                    this.startReset(data);
                     startOverflow(
                         1,
                         0,
@@ -127,7 +128,7 @@ public final class AlarmStatus {
 
             delaySwitch.positiveIncrease(
                 platformReceiveTime,
-                this::startReset,
+                () -> startReset(data),
                 (positiveThreshold, positiveTimeout)-> startOverflow(
                     positiveThreshold,
                     positiveTimeout,
@@ -139,7 +140,7 @@ public final class AlarmStatus {
         } else {
             delaySwitch.negativeIncrease(
                 platformReceiveTime,
-                this::endReset,
+                ()->endReset(data),
                 (negativeThreshold, negativeTimeout)-> endOverflow(
                     negativeThreshold,
                     negativeTimeout,
@@ -152,8 +153,11 @@ public final class AlarmStatus {
         }
     }
 
-    private void startReset() {
+    private void startReset(@NotNull final ImmutableMap<String, String> data) {
+        @NotNull final String platformReceiveTimeString = data.get(
+                DataKey._9999_PLATFORM_RECEIVE_TIME);
         continueStatus = new ImmutableMap.Builder<String, String>()
+            .put("TIME", platformReceiveTimeString)
             .build();
     }
 
@@ -203,7 +207,6 @@ public final class AlarmStatus {
         startNotice.put(DataKey.VEHICLE_ID, vehicleId);
         startNotice.put("ALARM_ID", alarmId);
         startNotice.put(NOTICE_STATUS_KEY, NOTICE_STATUS_START);
-        startNotice.put("TIME", platformReceiveTimeString);
         startNotice.put("CONST_ID", ruleId);
         startNotice.put("ALARM_LEVEL", String.valueOf(alarmLevel));
         //
@@ -223,8 +226,11 @@ public final class AlarmStatus {
         return ImmutableMap.copyOf(startNotice);
     }
 
-    private void endReset() {
+    private void endReset(@NotNull final ImmutableMap<String, String> data) {
+        @NotNull final String platformReceiveTimeString = data.get(
+                DataKey._9999_PLATFORM_RECEIVE_TIME);
         continueStatus = new ImmutableMap.Builder<String, String>()
+            .put("TIME", platformReceiveTimeString)
             .build();
     }
 
@@ -275,7 +281,7 @@ public final class AlarmStatus {
         endNotice.put(DataKey.VEHICLE_ID, vehicleId);
         endNotice.put("ALARM_ID", alarmId);
         endNotice.put(NOTICE_STATUS_KEY, NOTICE_STATUS_END);
-        endNotice.put("TIME", platformReceiveTimeString);
+//        endNotice.put("TIME", platformReceiveTimeString);
         endNotice.put("CONST_ID", ruleId);
         endNotice.put("ALARM_LEVEL", String.valueOf(alarmLevel));
         //
@@ -326,11 +332,7 @@ public final class AlarmStatus {
      * @param status 报警状态
      */
     private void setStatus(final boolean status) {
-        if(status) {
-            delaySwitch.setSwitchStatus(1);
-        } else {
-            delaySwitch.setSwitchStatus(-1);
-        }
+        delaySwitch.setSwitchStatus(status);
     }
 
     /**
@@ -343,13 +345,6 @@ public final class AlarmStatus {
     @Nullable
     @Contract(pure = true)
     public Boolean getStatus() {
-        final int switchStatus = delaySwitch.getSwitchStatus();
-        if(switchStatus > 0) {
-            return true;
-        } else if(switchStatus < 0) {
-            return false;
-        } else {
-            return null;
-        }
+        return delaySwitch.getStatus();
     }
 }
