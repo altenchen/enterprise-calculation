@@ -41,9 +41,7 @@ public final class EarlyWarnsGetterTest {
     @Disabled("测试从数据库导入规则")
     @Test
     void testRebuild() {
-
-        ConfigUtils.getInstance().sysDefine
-            .setProperty(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, "3");
+        ConfigUtils.getSysDefine().setDbCacheFlushTime(3);
 
         Runnable test = ()->{
             final ImmutableMap<String, EarlyWarn> rules =

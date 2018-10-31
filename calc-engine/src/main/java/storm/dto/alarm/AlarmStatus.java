@@ -11,13 +11,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.extension.ObjectExtension;
 import storm.system.DataKey;
-import storm.system.SysDefine;
 import storm.tool.DelaySwitch;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 
 import java.util.Map;
-import java.util.Properties;
 import java.util.function.Consumer;
 
 /**
@@ -36,53 +34,11 @@ public final class AlarmStatus {
 
     public static final String NOTICE_STATUS_END = "3";
 
-    /**
-     * 触发平台报警开始需要的连续次数
-     */
-    private static final int ALARM_START_TRIGGER_CONTINUE_COUNT;
-
-    /**
-     * 触发平台报警开始需要的持续时长
-     */
-    private static final int ALARM_START_TRIGGER_TIMEOUT_MILLISECOND;
-
-    /**
-     * 触发平台报警结束需要的连续次数
-     */
-    private static final int ALARM_STOP_TRIGGER_CONTINUE_COUNT;
-
-    /**
-     * 触发平台报警结束需要的持续时长
-     */
-    private static final int ALARM_STOP_TRIGGER_TIMEOUT_MILLISECOND;
-
-    static {
-
-        final ConfigUtils configUtils = ConfigUtils.getInstance();
-        final Properties sysDefine = configUtils.sysDefine;
-
-        ALARM_START_TRIGGER_CONTINUE_COUNT = NumberUtils.toInt(
-            sysDefine.getProperty(SysDefine.ALARM_START_TRIGGER_CONTINUE_COUNT),
-            3);
-
-        ALARM_START_TRIGGER_TIMEOUT_MILLISECOND = NumberUtils.toInt(
-            sysDefine.getProperty(SysDefine.ALARM_START_TRIGGER_TIMEOUT_MILLISECOND),
-            30000);
-
-        ALARM_STOP_TRIGGER_CONTINUE_COUNT = NumberUtils.toInt(
-            sysDefine.getProperty(SysDefine.ALARM_STOP_TRIGGER_CONTINUE_COUNT),
-            3);
-
-        ALARM_STOP_TRIGGER_TIMEOUT_MILLISECOND = NumberUtils.toInt(
-            sysDefine.getProperty(SysDefine.ALARM_STOP_TRIGGER_TIMEOUT_MILLISECOND),
-            30000);
-    }
-
     private final DelaySwitch delaySwitch = new DelaySwitch(
-        ALARM_START_TRIGGER_CONTINUE_COUNT,
-        ALARM_START_TRIGGER_TIMEOUT_MILLISECOND,
-        ALARM_STOP_TRIGGER_CONTINUE_COUNT,
-        ALARM_STOP_TRIGGER_TIMEOUT_MILLISECOND
+            ConfigUtils.getSysDefine().getAlarmStartTriggerContinueCount(),
+            ConfigUtils.getSysDefine().getAlarmStartTriggerTimeoutMillisecond(),
+            ConfigUtils.getSysDefine().getAlarmStopTriggerContinueCount(),
+            ConfigUtils.getSysDefine().getAlarmStopTriggerTimeoutMillisecond()
     );
 
     private final String vehicleId;

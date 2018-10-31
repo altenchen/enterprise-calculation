@@ -8,13 +8,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.util.function.FunctionE;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Properties;
-import storm.util.function.FunctionE;
 
 /**
  * @author: xzp
@@ -31,22 +30,13 @@ public final class SqlUtils {
     private static HikariDataSource dataSource;
 
     static {
-
-        final ConfigUtils configUtils = ConfigUtils.getInstance();
-        final Properties sysDefine = configUtils.sysDefine;
-
-        final String driverClassName = sysDefine.getProperty("jdbc.driver");
-        final String jdbcUrl = sysDefine.getProperty("jdbc.url");
-        final String username = sysDefine.getProperty("jdbc.username");
-        final String password = sysDefine.getProperty("jdbc.password");
-
         // https://github.com/brettwooldridge/HikariCP
 
         final HikariConfig config = new HikariConfig();
-        config.setDriverClassName(driverClassName);
-        config.setJdbcUrl(jdbcUrl);
-        config.setUsername(username);
-        config.setPassword(password);
+        config.setDriverClassName(ConfigUtils.getSysDefine().getJdbcDriver());
+        config.setJdbcUrl(ConfigUtils.getSysDefine().getJdbcUrl());
+        config.setUsername(ConfigUtils.getSysDefine().getJdbcUsername());
+        config.setPassword(ConfigUtils.getSysDefine().getJdbcPassword());
 
         // https://github.com/brettwooldridge/HikariCP/wiki/MySQL-Configuration
 

@@ -2,14 +2,17 @@ package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import storm.constant.FormatConstant;
 import storm.system.DataKey;
-import java.util.*;
+import storm.util.ConfigUtils;
+
+import java.util.Date;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 class CarLowSocJudgeTest {
@@ -20,12 +23,12 @@ class CarLowSocJudgeTest {
     void testProcessFrame() {
 
         CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
-        CarLowSocJudge.setSocLowBeginThreshold(10);
-        CarLowSocJudge.setSocLowBeginContinueCount(3);
-        CarLowSocJudge.setSocLowBeginContinueMillisecond(30000);
-        CarLowSocJudge.setSocLowEndThreshold(20);
-        CarLowSocJudge.setSocLowEndContinueCount(1);
-        CarLowSocJudge.setSocLowEndContinueMillisecond(0);
+        ConfigUtils.getSysDefine().setNoticeSocLowBeginTriggerThreshold(10);
+        ConfigUtils.getSysDefine().setNoticeSocLowBeginTriggerContinueCount(3);
+        ConfigUtils.getSysDefine().setNoticeSocLowBeginTriggerTimeoutMillisecond(30000);
+        ConfigUtils.getSysDefine().setNoticeSocLowEndTriggerThreshold(20);
+        ConfigUtils.getSysDefine().setNoticeSocLowEndTriggerContinueCount(1);
+        ConfigUtils.getSysDefine().setNoticeSocLowEndTriggerTimeoutMillisecond(0);
 
         final Map<String, String> data = Maps.newTreeMap();
         data.put(DataKey.VEHICLE_ID, TEST_VID);

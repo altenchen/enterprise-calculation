@@ -1,9 +1,5 @@
 package storm.handler.fence.output;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.*;
-
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -13,18 +9,17 @@ import storm.system.DataKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
 public class InvokeCtxMtd extends InvokeMtd implements Invoke {
-    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
 
     Map<String, List<Map<String, String>>> ctxData;//vid ,map data
     Map<String, Long> lastZeroSpeedTime;//vid time
-    static int datsize=6;
     {
         ctxData=new java.util.concurrent.ConcurrentHashMap<String, List<Map<String, String>>>();
         lastZeroSpeedTime=new java.util.concurrent.ConcurrentHashMap<String,Long>();
-        if(null != configUtils.sysDefine.getProperty("ctx.cache.no")) {
-            datsize=Integer.valueOf(configUtils.sysDefine.getProperty("ctx.cache.no"));
-        }
     }
 
     @Override
@@ -42,7 +37,7 @@ public class InvokeCtxMtd extends InvokeMtd implements Invoke {
         if(rule instanceof StopAlarmRule) {
             return invoke(rule,dat,vid);
         }
-        addData(vid,dat,datsize);
+        addData(vid,dat,ConfigUtils.getSysDefine().getCtxCacheNo());
         return invoke(vid,ctxData, rule);
     }
 
@@ -113,7 +108,7 @@ public class InvokeCtxMtd extends InvokeMtd implements Invoke {
     }
     boolean continuousZero(List<Map<String, String>> datas){
 
-        if (CollectionUtils.isEmpty(datas) || datas.size()<datsize) {
+        if (CollectionUtils.isEmpty(datas) || datas.size()<ConfigUtils.getSysDefine().getCtxCacheNo()) {
             return false;
         }
 

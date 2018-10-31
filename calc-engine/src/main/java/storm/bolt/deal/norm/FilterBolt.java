@@ -3,7 +3,6 @@ package storm.bolt.deal.norm;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.storm.Config;
@@ -22,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
 import storm.constant.StreamFieldKey;
+import storm.dao.DataToRedis;
 import storm.extension.MapExtension;
 import storm.handler.cusmade.TimeOutOfRangeNotice;
 import storm.handler.cusmade.VehicleIdleHandler;
@@ -30,7 +30,9 @@ import storm.kafka.spout.GeneralKafkaSpout;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.spout.MySqlSpout;
-import storm.stream.*;
+import storm.stream.DataStream;
+import storm.stream.KafkaStream;
+import storm.stream.StreamReceiverFilter;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
@@ -38,7 +40,6 @@ import storm.util.*;
 
 import java.text.ParseException;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -113,9 +114,9 @@ public class FilterBolt extends BaseRichBolt {
 
     // endregion KafkaStream
 
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
-
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
+
+    private static final DataToRedis redis = new DataToRedis();
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
@@ -123,29 +124,11 @@ public class FilterBolt extends BaseRichBolt {
 
     private static final Pattern MSG_REGEX = Pattern.compile("^([^ ]+) (\\d+) ([^ ]+) ([^ ]+) \\{VID:([^,]*)(?:,([^}]+))*\\}$");
 
-    /**
-     * 是否启用时间异常通知
-     */
-    private static final boolean ENABLE_TIME_OUT_OF_RANGE_NOTICE;
-
     static {
-
-        final Properties sysDefine = CONFIG_UTILS.sysDefine;
-
-        {
-            final String noticeTimeEnableString = sysDefine.getProperty(SysDefine.NOTICE_TIME_ENABLE);
-            final boolean noticeTimeEnable = BooleanUtils.toBoolean(noticeTimeEnableString);
-            ENABLE_TIME_OUT_OF_RANGE_NOTICE = noticeTimeEnable;
-            if (LOG.isInfoEnabled()) {
-                LOG.info("时间异常通知已{}.", ENABLE_TIME_OUT_OF_RANGE_NOTICE ? "启用" : "禁用");
-            }
+        if (LOG.isInfoEnabled()) {
+            LOG.info("时间异常通知已{}.", ConfigUtils.getSysDefine().isNoticeTimeEnable() ? "启用" : "禁用");
         }
-
-        {
-            final String noticeTimeRangeAbsMillisecondString = sysDefine.getProperty(SysDefine.NOTICE_TIME_RANGE_ABS_MILLISECOND);
-            final long noticeTimeRangeAbsMillisecond = NumberUtils.toLong(noticeTimeRangeAbsMillisecondString, TimeOutOfRangeNotice.DEFAULT_TIME_RANGE_MILLISECOND);
-            TimeOutOfRangeNotice.setTimeRangeMillisecond(noticeTimeRangeAbsMillisecond);
-        }
+        TimeOutOfRangeNotice.setTimeRangeMillisecond(ConfigUtils.getSysDefine().getNoticeTimeRangeAbsMillisecond());
     }
 
     // endregion 类常量
@@ -174,8 +157,6 @@ public class FilterBolt extends BaseRichBolt {
     private transient long lastComputIdleTime;
 
     private transient Map<String, Map<String, String>> vehicleCache;
-
-    private transient int taskId;
 
     private transient OutputCollector collector;
 
@@ -220,10 +201,13 @@ public class FilterBolt extends BaseRichBolt {
         @NotNull final Map stormConf,
         @NotNull final TopologyContext context,
         @NotNull final OutputCollector collector) {
+        //将storm启动时的自定义参数设置进来
+        LOG.info("将STORM启动时设置的参数填充进来");
+        ConfigUtils.fillSysDefineEntity(stormConf);
+        //首次从redis读取配置
+        LOG.info("将REDIS动态设置的参数填充进来");
+        ConfigUtils.readConfigFromRedis(redis);
 
-        final Properties sysDefine = CONFIG_UTILS.sysDefine;
-
-        taskId = context.getThisTaskId();
         this.collector = collector;
 
         timeOutOfRangeNotice = new TimeOutOfRangeNotice();
@@ -235,15 +219,7 @@ public class FilterBolt extends BaseRichBolt {
         statusFlagsProcessor = new StatusFlagsProcessor();
 
         vehicleIdleHandler = new VehicleIdleHandler();
-        final String idleTimeoutMillisecondString = sysDefine.getProperty(ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
-        if(NumberUtils.isDigits(idleTimeoutMillisecondString)) {
-
-            final long idleTimeoutMillisecond = NumberUtils.toLong(
-                idleTimeoutMillisecondString,
-                vehicleIdleHandler.getIdleTimeoutMillisecond());
-
-            vehicleIdleHandler.setIdleTimeoutMillisecond(idleTimeoutMillisecond);
-        }
+        vehicleIdleHandler.setIdleTimeoutMillisecond(ConfigUtils.getSysDefine().getVehicleIdleTimeoutMillisecond());
 
         vehicleCache = Maps.newHashMap();
 
@@ -300,6 +276,7 @@ public class FilterBolt extends BaseRichBolt {
 
         collector.ack(input);
 
+        ConfigUtils.readConfigFromRedis(redis);
         final long currentTimeMillis = System.currentTimeMillis();
 
         // 每分钟计算一次闲置车辆
@@ -307,22 +284,7 @@ public class FilterBolt extends BaseRichBolt {
 
             lastComputIdleTime = currentTimeMillis;
 
-            final String idleTimeoutMillisecondString = JEDIS_POOL_UTILS.useResource(jedis -> {
-
-                jedis.select(ParamsRedisUtil.CONFIG_DATABASE_INDEX);
-                return jedis.hget(
-                    ParamsRedisUtil.CAL_QY_CONF,
-                    ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
-            });
-
-            if(NumberUtils.isDigits(idleTimeoutMillisecondString)) {
-
-                final long idleTimeoutMillisecond = NumberUtils.toLong(
-                    idleTimeoutMillisecondString,
-                    vehicleIdleHandler.getIdleTimeoutMillisecond());
-
-                vehicleIdleHandler.setIdleTimeoutMillisecond(idleTimeoutMillisecond);
-            }
+            vehicleIdleHandler.setIdleTimeoutMillisecond(ConfigUtils.getSysDefine().getVehicleIdleTimeoutMillisecond());
 
             vehicleIdleHandler
                 .computeStartNotice()
@@ -343,7 +305,7 @@ public class FilterBolt extends BaseRichBolt {
         try{
             final Matcher matcher = MSG_REGEX.matcher(frame);
             if (!matcher.find()) {
-                LOG.warn("无效的元组[{}] 原始数据: {}", input.toString(), frame);
+                LOG.warn("无效的元组:{} 原始数据:{}", input.toString(), frame);
                 return;
             }
 
@@ -360,7 +322,7 @@ public class FilterBolt extends BaseRichBolt {
             }
 
             if(!StringUtils.equals(vehicleId, vid)) {
-                LOG.error("分组VID[{}]与解析VID[{}]不一致 原始数据: {}", vehicleId, vid, frame);
+                LOG.error("分组VID:{} 与解析VID:{} 不一致 原始数据: {}", vehicleId, vid, frame);
                 return;
             }
 
@@ -389,8 +351,7 @@ public class FilterBolt extends BaseRichBolt {
                 // 时间异常判断
                 final Map<String, String> notice = timeOutOfRangeNotice.process(data);
                 if(MapUtils.isNotEmpty(notice)) {
-
-                    if(ENABLE_TIME_OUT_OF_RANGE_NOTICE) {
+                    if (ConfigUtils.getSysDefine().isNoticeTimeEnable()) {
                         sendNotice(vid, notice);
                     }
                 }
@@ -444,7 +405,7 @@ public class FilterBolt extends BaseRichBolt {
                     }
                 } catch (final ParseException e) {
                     LOG.warn("时间解析异常", e);
-                    LOG.warn("无效的服务器接收时间: [{}]", platformTimeString);
+                    LOG.warn("VID:{} 无效的服务器接收时间:{}", vehicleId, platformTimeString);
                 }
             }
         }catch (final Exception e){
@@ -454,15 +415,15 @@ public class FilterBolt extends BaseRichBolt {
     }
 
     private void executeFromMySqlSpoutVehicleIdentityStream(
-        @NotNull final Tuple input,
-        @NotNull final String vehicleId) {
+            @NotNull final Tuple input,
+            @NotNull final String vehicleId) {
 
         collector.ack(input);
 
         try {
             final ImmutableMap<String, String> totalMileageCache = VEHICLE_CACHE.getField(
-                vehicleId,
-                VehicleCache.TOTAL_MILEAGE_FIELD);
+                    vehicleId,
+                    VehicleCache.TOTAL_MILEAGE_FIELD);
             final String totalMileageCacheTimeString = totalMileageCache.get(VehicleCache.VALUE_TIME_KEY);
             if (StringUtils.isNotBlank(totalMileageCacheTimeString)) {
                 try {
@@ -470,17 +431,17 @@ public class FilterBolt extends BaseRichBolt {
 
                     if (platformReceiveTime > 0) {
                         vehicleIdleHandler.initPlatformReceiveTime(vehicleId, platformReceiveTime)
-                            .forEach((vid, json) -> {
-                                kafkaStreamVehicleNoticeSender.emit(input, vid, json);
-                            });
+                                .forEach((vid, json) -> {
+                                    kafkaStreamVehicleNoticeSender.emit(input, vid, json);
+                                });
                     }
                 } catch (final ParseException e) {
                     LOG.warn("累计里程缓存时间解析异常", e);
-                    LOG.warn("无效的累计里程缓存时间: [{}]", totalMileageCacheTimeString);
+                    LOG.warn("VID:{} 无效的累计里程缓存时间: {}", vehicleId, totalMileageCacheTimeString);
                 }
             }
         } catch (final ExecutionException e) {
-            LOG.warn("从缓存获取有效累计里程异常", e);
+            LOG.warn("VID:" + vehicleId + " 从缓存获取有效累计里程异常", e);
         }
     }
 

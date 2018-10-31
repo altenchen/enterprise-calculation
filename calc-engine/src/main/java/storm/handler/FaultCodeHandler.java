@@ -18,12 +18,9 @@ import storm.dto.*;
 import storm.entity.NoticeMessage;
 import storm.stream.KafkaStream;
 import storm.system.DataKey;
-import storm.system.StormConfigKey;
-import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 import storm.util.JsonUtils;
-import storm.util.ParamsRedisUtil;
 import storm.util.dbconn.Conn;
 
 import java.io.Serializable;
@@ -40,39 +37,10 @@ public class FaultCodeHandler implements Serializable {
 
     private static final Logger LOG = LoggerFactory.getLogger(FaultCodeHandler.class);
 
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
-
-    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
-
     private static final DataToRedis redis = new DataToRedis();
 
     private static final int REDIS_DATABASE_INDEX = 6;
     private static final String REDIS_KEY_FAULT_NOTICE_PREFIX = "vehCache.fault.notice.";
-
-    /**
-     * 从数据库拉取规则的时间间隔, 默认360秒
-     */
-    private static long dbFlushTimeSpanMillisecond = 360 * 1000;
-
-    /**
-     * 多长时间算是离线, 默认600秒
-     */
-    private static long offlineTimeMillisecond = 600 * 1000;
-
-    private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
-
-    static {
-
-        String dbFlushTimeSpanSecond = CONFIG_UTILS.sysDefine.getProperty(SysDefine.DB_CACHE_FLUSH_TIME_SECOND);
-        if (StringUtils.isNotEmpty(dbFlushTimeSpanSecond) && StringUtils.isNumeric(dbFlushTimeSpanSecond)) {
-            dbFlushTimeSpanMillisecond = Long.parseLong(dbFlushTimeSpanSecond)*1000;
-        }
-
-        String offlineSecond = CONFIG_UTILS.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-        if (StringUtils.isNotEmpty(offlineSecond) && StringUtils.isNumeric(offlineSecond)) {
-            offlineTimeMillisecond = Long.parseLong(offlineSecond)*1000;
-        }
-    }
 
     /**
      * 最近一次从数据库拉取规则的时间
@@ -84,7 +52,8 @@ public class FaultCodeHandler implements Serializable {
      */
     private final Conn conn = new Conn();
 
-    // region 按字节解析
+    private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
+
     /**
      * 故障码规则, 按时间周期从数据库拉取下来.
      */
@@ -96,9 +65,7 @@ public class FaultCodeHandler implements Serializable {
      * vidRuleMsgs是每辆车的故障码信息缓存, <vid, <faultId, <exceptionId,<k,v>>>>
      */
     private final Map<String, Map<String, Map<String, Map<String,Object>>>> vidByteRuleMsg = new ConcurrentHashMap<>();
-    // endregion
 
-    // region 按位解析
     /**
      * 按位解析故障码规则, 目前会覆盖按字节解析规则
      * <fault_type, <faultId, fault>>
@@ -109,8 +76,6 @@ public class FaultCodeHandler implements Serializable {
      * vidRuleMsgs是每辆车的故障码信息缓存, <vid, <faultId, <exceptionId, <k,v>>>>
      */
     private final Map<String, Map<String, Map<String, Map<String,Object>>>> vidBitRuleMsg = new ConcurrentHashMap<>();
-
-    // endregion 按位解析
 
     /**
      * 所有车辆的最后一帧报文的时间, <vid, lastFrameTimeMillisecond>
@@ -131,6 +96,7 @@ public class FaultCodeHandler implements Serializable {
      */
     private void autoPullRules() {
         long requestTime = System.currentTimeMillis();
+        long dbFlushTimeSpanMillisecond = ConfigUtils.getSysDefine().getDbCacheFlushTime() * 1000;
         if (requestTime - lastPullRuleTime > dbFlushTimeSpanMillisecond) {
             synchronized (autoPullRulesLock) {
                 if(requestTime - lastPullRuleTime > dbFlushTimeSpanMillisecond) {
@@ -192,9 +158,7 @@ public class FaultCodeHandler implements Serializable {
                     String vid = notice.get("vid") + "";
                     String json = JsonUtils.getInstance().toJson(notice);
                     kafkaStreamVehicleNoticeSender.emit(vid, json);
-                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                        LOG.info("VID[{}]按值解析EID[{}]解除", vid, notice.get("faultId"));
-                    });
+                    LOG.info("VID:{} 按值解析 EID:{} 解除", vid, notice.get("faultId"));
                     //从当前内存删掉<faultId, notice>
                     Map<String, Map<String, Map<String,Object>>> faults = vidByteRuleMsg.get(vid);
                     if( !MapUtils.isEmpty(faults) && faults.containsKey(rule.faultId)){
@@ -255,9 +219,7 @@ public class FaultCodeHandler implements Serializable {
                     String vid = notice.get("vid") + "";
                     String json = JsonUtils.getInstance().toJson(notice);
                     kafkaStreamVehicleNoticeSender.emit(vid, json);
-                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                        LOG.info("VID[{}]按值解析EID[{}]解除", vid, notice.get("faultId"));
-                    });
+                    LOG.info("VID:{} 按值解析 EID:{} 解除", vid, notice.get("faultId"));
                     //从当前内存删掉<faultId, notice>
                     Map<String, Map<String, Map<String,Object>>> faults = vidBitRuleMsg.get(vid);
                     if( !MapUtils.isEmpty(faults) && faults.containsKey(faultId)){
@@ -293,6 +255,7 @@ public class FaultCodeHandler implements Serializable {
             final long last = entry.getValue();
             //如果这辆车已经离线，则把这辆车的故障码缓存移除，并且针对每个故障都发一个结束通知
             //offlinetime为车辆多长时间算是离线，
+            long offlineTimeMillisecond = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
             if (now - last <= offlineTimeMillisecond) {
                 continue;
             }
@@ -418,28 +381,20 @@ public class FaultCodeHandler implements Serializable {
 
         final String codeValues = data.get(faultType);
         if( StringUtils.isEmpty(codeValues) ){
-            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                LOG.info("VID[{}]故障码为空, 忽略处理.", vid);
-            });
+            LOG.info("VID:{} 故障码为空, 忽略处理.", vid);
             return;
         }
         final @NotNull long[] values = parseFaultCodes(codeValues);
         if(ArrayUtils.isEmpty(values)) {
-            PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                LOG.info("VID[{}]故障码为空, 忽略处理.", vid);
-            });
+            LOG.info("VID:{} 故障码为空, 忽略处理.", vid);
             return;
         }
-        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            LOG.info("VID[{}]故障码解析[{}]:[{}]->[{}].", vid, faultType, ArrayUtils.toString(codeValues), ArrayUtils.toString(values));
-        });
+        LOG.info("VID:{} 故障码解析 FAULT_TYPE:{} FAULT_CODE_VALUE:{} -> {}.", vid, faultType, ArrayUtils.toString(codeValues), ArrayUtils.toString(values));
 
         // 车型, 空字符串代表没有配置, 只匹配默认规则
         final String vehModel = VehicleModelCache.getInstance().getVehicleModel(vid);
 
-        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-            LOG.info("VID[{}]解析车型为[{}], 故障类型[{}]", vid, vehModel, faultType);
-        });
+        LOG.info("VID:{} 解析车型为 {}, 故障类型 {}", vid, vehModel, faultType);
         String noticeTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
 
         boolean processByBit = false;
@@ -456,28 +411,12 @@ public class FaultCodeHandler implements Serializable {
                 final Map<String, ExceptionSingleBit> exceptions = getVehicleExceptions(vehModel, faultTypeRule);
 
                 if( MapUtils.isEmpty(exceptions) ){
-                    PARAMS_REDIS_UTIL.autoLog(
-                            vid,
-                            () -> LOG.info(
-                                    "VID[{}]故障类型[{}]按位解析, 故障码[{}]没有异常码规则.",
-                                    vid,
-                                    faultId,
-                                    exceptions.size()
-                            )
-                    );
+                    LOG.info("VID:{} 故障类型 {} 按位解析, 故障码 {} 没有异常码规则.", vid, faultId, exceptions.size());
                     continue;
                 }
                 processByBit = true;
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    () -> LOG.info(
-                        "VID[{}]故障类型[{}]按位解析, 一共[{}]条异常码.",
-                        vid,
-                        faultType,
-                        exceptions.size()
-                    )
-                );
+                LOG.info("VID:{} 故障类型 {} 按位解析, 一共 {} 条异常码.", vid, faultType, exceptions.size());
 
                 // <faultId, <exceptionId, <k,v>>>
                 final Map<String, Map<String, Map<String, Object>>> vidNotice = vidBitRuleMsg.getOrDefault(
@@ -513,13 +452,9 @@ public class FaultCodeHandler implements Serializable {
                         final int status = (int) exceptionNotice.get(NOTICE_STATUS);
                         if (1 == status) {
                             notices.add(exceptionNotice);
-                            PARAMS_REDIS_UTIL.autoLog(vid, () -> {
-                                LOG.info("VID[{}]按位解析EID[{}]触发", vid, exceptionId);
-                            });
+                            LOG.info("VID:{} 按位解析 EID:{} 触发", vid, exceptionId);
                         } else {
-                            PARAMS_REDIS_UTIL.autoLog(vid, () -> {
-                                LOG.info("VID[{}]按位解析EID[{}]持续", vid, exceptionId);
-                            });
+                            LOG.info("VID:{} 按位解析 EID:{} 持续", vid, exceptionId);
                         }
                     } else {
                         Map<String, Object> normalNotice = faultNotice.remove(exceptionId);
@@ -530,9 +465,7 @@ public class FaultCodeHandler implements Serializable {
                         }
                         //如果从redis也找不到就跳过
                         if( MapUtils.isEmpty(normalNotice) ){
-                            PARAMS_REDIS_UTIL.autoLog(vid, () -> {
-                                LOG.info("VID[{}]按位解析EID[{}]无效", vid, exceptionId);
-                            });
+                            LOG.info("VID:{} 按位解析 EID:{} 无效", vid, exceptionId);
                             continue;
                         }
                         deleteNoticeMsg(
@@ -542,21 +475,12 @@ public class FaultCodeHandler implements Serializable {
                                 noticeTime);
                         notices.add(normalNotice);
 
-                        PARAMS_REDIS_UTIL.autoLog(vid, () -> {
-                            LOG.info("VID[{}]按位解析EID[{}]解除", vid, exceptionId);
-                        });
+                        LOG.info("VID:{} 按位解析 EID:{} 解除", vid, exceptionId);
                     }
                 }
             }
         } else {
-            PARAMS_REDIS_UTIL.autoLog(
-                vid,
-                () -> LOG.info(
-                    "VID[{}]故障类型[{}]没有按位解析规则",
-                    vid,
-                    faultType
-                )
-            );
+            LOG.info("VID:{} 故障类型 {} 没有按位解析规则", vid, faultType);
         }
 
         // 没有匹配按位处理规则, 转为按字节处理
@@ -566,30 +490,9 @@ public class FaultCodeHandler implements Serializable {
             final FaultCodeByteRule[] faultCodeByteRules = byteRules.stream()
                 .filter(r -> StringUtils.equals(r.faultType, faultType) && r.effective(vehModel))
                 .toArray(FaultCodeByteRule[]::new);
-
-            PARAMS_REDIS_UTIL.autoLog(
-                vid,
-                () -> LOG.info(
-                    "VID[{}]故障类型[{}]按值解析, 一共[{}]组故障规则.",
-                    vid,
-                    faultType,
-                    faultCodeByteRules.length
-                )
-            );
-
+            LOG.info("VID:{} 故障类型 {} 按值解析, 一共 {} 组故障规则.", vid, faultType, faultCodeByteRules.length);
             for (FaultCodeByteRule rule: faultCodeByteRules) {
-
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    () -> LOG.info(
-                        "VID[{}]故障类型[{}]按值解析, 故障码[{}]共[{}]个异常码.",
-                        vid,
-                        faultType,
-                        rule.faultId,
-                        rule.getFaultCodes().size()
-                    )
-                );
-
+                LOG.info("VID:{} 故障类型 {} 按值解析, 故障码 {} 共 {} 个异常码.", vid, faultType, rule.faultId, rule.getFaultCodes().size());
                 List<Map<String, Object>> msgs = byteFaultMsg(data, values, rule);
                 if (null != msgs) {
                     notices.addAll(msgs);
@@ -691,9 +594,7 @@ public class FaultCodeHandler implements Serializable {
             //添加通知消息
             if(1 == (int)notice.get(NOTICE_STATUS)) {
                 notices.add(notice);
-                PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                    LOG.info("VID[{}]按值解析EID[{}]触发", vid, exceptionId);
-                });
+                LOG.info("VID:{} 按值解析 EID:{} 触发", vid, exceptionId);
             }
             //添加缓存
             faultNotices.put(exceptionId, notice);
@@ -701,7 +602,7 @@ public class FaultCodeHandler implements Serializable {
         // endregion
         // region 当没有异常码时, 才处理正常码.
         if (hasExceptionCode) {
-            LOG.info("VID[{}]按值解析FID[{}], 异常码和正常码同时出现, 忽略正常码.", vid, faultId);
+            LOG.info("VID:{} 按值解析 FID:{} 异常码和正常码同时出现, 忽略正常码.", vid, faultId);
             return notices;
         }
         for (final FaultCodeByte normalRule : rules) {
@@ -734,9 +635,7 @@ public class FaultCodeHandler implements Serializable {
                                 location,
                                 noticetime);
                         notices.add(notice);
-                        PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                            LOG.info("VID[{}]按值解析EID[{}]解除", vid, faultId);
-                        });
+                        LOG.info("VID:{} 按值解析 EID:{} 解除", vid, faultId);
                     }
                 }
                 continue;
@@ -754,9 +653,7 @@ public class FaultCodeHandler implements Serializable {
                         location,
                         noticetime);
                     notices.add(notice);
-                    PARAMS_REDIS_UTIL.autoLog(vid, ()->{
-                        LOG.info("VID[{}]按值解析EID[{}]解除", vid, exceptionId);
-                    });
+                    LOG.info("VID:{} 按值解析 EID:{} 解除", vid, exceptionId);
                 }
 
                 faultNotices.remove(exceptionId);

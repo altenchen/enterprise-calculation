@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import storm.constant.FormatConstant;
 import storm.system.DataKey;
+import storm.util.ConfigUtils;
 
 import java.util.Date;
 import java.util.Map;
@@ -36,12 +37,13 @@ class CarHighSocJudgeTest {
     private void reset(){
         //初始化测试对象
         carHighSocJudge = new CarHighSocJudge();
-        carHighSocJudge.setSocHighBeginThreshold(90);
-        carHighSocJudge.setSocHighBeginContinueCount(3);
-        carHighSocJudge.setSocHighBeginContinueMillisecond(30000);
-        carHighSocJudge.setSocHighEndThreshold(80);
-        carHighSocJudge.setSocHighEndContinueCount(1);
-        carHighSocJudge.setSocHighEndContinueMillisecond(0);
+        ConfigUtils.getSysDefine().setNoticeSocHighBeginTriggerThreshold(90);
+        ConfigUtils.getSysDefine().setNoticeSocHighBeginTriggerContinueCount(3);
+        ConfigUtils.getSysDefine().setNoticeSocHighBeginTriggerTimeoutMillisecond(30000);
+        ConfigUtils.getSysDefine().setNoticeSocHighEndTriggerThreshold(80);
+        ConfigUtils.getSysDefine().setNoticeSocHighEndTriggerContinueCount(1);
+        ConfigUtils.getSysDefine().setNoticeSocHighEndTriggerTimeoutMillisecond(0);
+
 
         //初始化车辆基础数据
         data = Maps.newTreeMap();

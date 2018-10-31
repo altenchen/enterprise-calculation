@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class CTFOUtils implements Serializable {
@@ -15,8 +14,6 @@ public class CTFOUtils implements Serializable {
     private static final long serialVersionUID = 193000000001L;
 
     private static Logger LOG = LoggerFactory.getLogger(CTFOUtils.class);
-
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
 
     /**
      * RedisUtil.getConfigKey("address") -> "cfg-sys-address"
@@ -57,10 +54,10 @@ public class CTFOUtils implements Serializable {
     private final CTFOCacheKeys ctfoCacheKeys = null;
 
     static {
-        initCTFO(CONFIG_UTILS.sysDefine);
+        initCTFO();
     }
 
-    private synchronized static void initCTFO(Properties conf) {
+    private synchronized static void initCTFO() {
 
         boolean sucess = false;
 
@@ -70,7 +67,7 @@ public class CTFOUtils implements Serializable {
             LOG.info("初始化 CTFODBManager 开始.");
 
             // 192.168.1.185:6379 -> 0 -> cfg-sys-address -> [192.168.1.104:1001, 192.168.1.104:1002]
-            final String address = conf.getProperty("ctfo.cacheHost") + ":" + conf.getProperty("ctfo.cachePort");
+            final String address = ConfigUtils.getSysDefine().getCtfoCacheHost() + ":" + ConfigUtils.getSysDefine().getCtfoCachePort();
             LOG.info("CTFO address is tcp://{}", address);
             ctfoDBManager = DataCenter.newCTFOInstance("cache", address);
 
@@ -82,16 +79,16 @@ public class CTFOUtils implements Serializable {
 
                     final String dbNameKey = "ctfo.cacheDB";
                     // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> xyn-*
-                    final String dbName = conf.getProperty(dbNameKey);
+                    final String dbName = ConfigUtils.getSysDefine().getCtfoCacheDB();
                     if(StringUtils.isEmpty(dbName)) {
-                        LOG.error("配置[{}]不能为空", dbNameKey);
+                        LOG.error("配置 {} 不能为空", dbNameKey);
                         return;
                     }
                     if("cfg".equals(dbName)) {
-                        LOG.warn("配置[{}]不能为cfg", dbNameKey);
+                        LOG.warn("配置 {} 不能为cfg", dbNameKey);
                     }
                     if(dbName.indexOf("-") != -1) {
-                        LOG.warn("配置[{}]不能为包含[-]", dbNameKey);
+                        LOG.warn("配置 {} 不能为包含[-]", dbNameKey);
                     }
                     ctfoCacheDB = ctfoDBManager.openCacheDB(dbName);
 
@@ -103,13 +100,13 @@ public class CTFOUtils implements Serializable {
 
                             final String tableNameKey = "ctfo.cacheTable";
                             // [192.168.1.104:1001, 192.168.1.104:1002] -> 0 -> xyn-realInfo-*
-                            final String tableName = conf.getProperty(tableNameKey);
+                            final String tableName = ConfigUtils.getSysDefine().getCtfoCacheTable();
                             if(StringUtils.isEmpty(dbName)) {
-                                LOG.error("配置[{}]不能为空", tableNameKey);
+                                LOG.error("配置 {} 不能为空", tableNameKey);
                                 return;
                             }
                             if(dbName.indexOf("-") != -1) {
-                                LOG.warn("配置[{}]不能为包含[-]", tableNameKey);
+                                LOG.warn("配置 {} 不能为包含[-]", tableNameKey);
                             }
                             ctfoCacheTable = ctfoCacheDB.getTable(tableName);
 
@@ -139,18 +136,18 @@ public class CTFOUtils implements Serializable {
 
         if(!sucess) {
             LOG.info("初始化 CTFO 失败, 尝试重连.");
-            reconnectionDefaultRedis(conf);
+            reconnectionDefaultRedis();
         }
     }
 
-    private static void reconnectionDefaultRedis(Properties conf) {
+    private static void reconnectionDefaultRedis() {
         int retryCount = 0;
         while (true) {
             try {
                 retryCount++;
                 if (null == ctfoCacheDB) {
                     try {
-                        final String address = conf.getProperty("ctfo.cacheHost") + ":" + conf.getProperty("ctfo.cachePort");
+                        final String address = ConfigUtils.getSysDefine().getCtfoCacheHost() + ":" + ConfigUtils.getSysDefine().getCtfoCachePort();
                         ctfoDBManager = DataCenter.newCTFOInstance("cache", address);
                     } catch (Exception e) {
                         LOG.warn("初始化 CTFODBManager 异常.", e);
@@ -158,14 +155,14 @@ public class CTFOUtils implements Serializable {
 
                     if (null != ctfoDBManager) {
 
-                        final String dbName = conf.getProperty("ctfo.cacheDB");
+                        final String dbName = ConfigUtils.getSysDefine().getCtfoCacheDB();
                         ctfoCacheDB = ctfoDBManager.openCacheDB(dbName);
                     }
                 }
 
                 if (null != ctfoCacheDB) {
 
-                    final String tableName = conf.getProperty("ctfo.cacheTable");
+                    final String tableName = ConfigUtils.getSysDefine().getCtfoCacheTable();
                     ctfoCacheTable = ctfoCacheDB.getTable(tableName);
                 }
 
@@ -207,7 +204,7 @@ public class CTFOUtils implements Serializable {
     public static final CTFOCacheTable getDefaultCTFOCacheTable() {
 
         if (null == ctfoCacheTable) {
-            reconnectionDefaultRedis(CONFIG_UTILS.sysDefine);
+            reconnectionDefaultRedis();
         }
 
         return ctfoCacheTable;

@@ -7,12 +7,10 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.dbconn.Conn;
 
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
@@ -26,32 +24,7 @@ public class VehicleModelCache {
 
     private static final Logger logger = LoggerFactory.getLogger(VehicleModelCache.class);
 
-    private static final ConfigUtils config = ConfigUtils.getInstance();
-
     private static final VehicleModelCache INSTANCE = new VehicleModelCache();
-
-    /**
-     * 缓存刷新间隔(毫秒), 默认15分钟
-     */
-    private static long veh_model_cache_refresh_millisecond = 15 * 60 * 1000;
-
-    {
-        final Properties sysDefine = config.sysDefine;
-        if(sysDefine.containsKey(SysDefine.DB_CACHE_FLUSH_TIME_SECOND)) {
-            final String property = sysDefine.getProperty(SysDefine.DB_CACHE_FLUSH_TIME_SECOND);
-            if(StringUtils.isNotEmpty(property) && StringUtils.isNumeric(property)) {
-                try {
-                    final long second = Long.parseUnsignedLong(property);
-                    veh_model_cache_refresh_millisecond = second * 1000;
-                } catch (NumberFormatException e) {
-                    e.printStackTrace();
-                    logger.warn("配置节[{}]不是正整数", SysDefine.DB_CACHE_FLUSH_TIME_SECOND);
-                }
-            } else {
-                logger.warn("配置节[{}]不是整数", SysDefine.DB_CACHE_FLUSH_TIME_SECOND);
-            }
-        }
-    }
 
     @Contract(pure = true)
     public static VehicleModelCache getInstance() {
@@ -97,6 +70,7 @@ public class VehicleModelCache {
     private String refreshCache(@NotNull String vid) {
         String mid = "";
         final long now = System.currentTimeMillis();
+        long veh_model_cache_refresh_millisecond = ConfigUtils.getSysDefine().getDbCacheFlushTime() * 1000;
         if(now - lastUpdateTime > veh_model_cache_refresh_millisecond) {
             synchronized (refreshCacheLock) {
                 if(now - lastUpdateTime > veh_model_cache_refresh_millisecond) {

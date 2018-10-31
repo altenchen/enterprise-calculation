@@ -23,13 +23,14 @@ import storm.constant.RedisConstant;
 import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.util.DataUtils;
-import storm.util.JsonUtils;
 import storm.util.JedisPoolUtils;
-import storm.util.ParamsRedisUtil;
+import storm.util.JsonUtils;
 
 import java.lang.reflect.Type;
-import java.text.ParseException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -69,8 +70,6 @@ public final class VehicleCache {
     }.getType();
 
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
-
-    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
 
     @Contract(pure = true)
     @NotNull
@@ -190,7 +189,7 @@ public final class VehicleCache {
                                 ImmutableMap.of()
                                 : new ImmutableMap.Builder<String, String>().putAll(map).build());
                     } catch (JsonSyntaxException e) {
-                        LOG.warn("错误的数据格式Redis[{}][{}][{}]->{}", REDIS_DB_INDEX, key, field, json);
+                        LOG.warn("错误的数据格式REDIS DB:{} KEY:{} FIELD:{} --> {}", REDIS_DB_INDEX, key, field, json);
                     }
                 }
             }
@@ -232,7 +231,7 @@ public final class VehicleCache {
                         ImmutableMap.of()
                         : new ImmutableMap.Builder<String, String>().putAll(map).build();
                 } catch (JsonSyntaxException e) {
-                    LOG.warn("错误的数据格式Redis[{}][{}][{}]->{}", REDIS_DB_INDEX, key, field, json);
+                    LOG.warn("错误的数据格式REDIS DB:{} KEY:{} FIELD:{} -->{}", REDIS_DB_INDEX, key, field, json);
                 }
             }
             return ImmutableMap.of();

@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -24,8 +23,12 @@ import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
-import storm.system.*;
-import storm.util.*;
+import storm.system.DataKey;
+import storm.system.NoticeType;
+import storm.system.ProtocolItem;
+import storm.util.ConfigUtils;
+import storm.util.DataUtils;
+import storm.util.JsonUtils;
 
 import java.text.ParseException;
 import java.util.*;
@@ -45,18 +48,11 @@ import java.util.concurrent.ExecutionException;
 public class CarRuleHandler implements InfoNotice {
 
     private static final Logger LOG = LoggerFactory.getLogger(CarRuleHandler.class);
-    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
-    
-
     private final Map<String, Integer> vidGpsFaultCount = new HashMap<>();
     private final Map<String, Integer> vidGpsNormalCount = new HashMap<>();
-    private static int gpsFaultFrameTriggerCount = 5;
-    private static int gpsNormalFrameTriggerCount = 10;
-    private static long gpsFaultIntervalMillisecond = 60000L;
-    private static long gpsNormalIntervalMillisecond = 60000L;
 
     /**
      * 无CAN计数器
@@ -72,7 +68,6 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Double> igniteShutMaxSpeed = new HashMap<>();
     private Map<String, Double> lastSoc = new HashMap<>();
     private Map<String, Double> lastMile = new HashMap<>();
-
 
     private Map<String, Integer> vidSpeedGtZero = new HashMap<>();
     private Map<String, Integer> vidSpeedZero = new HashMap<>();
@@ -95,36 +90,8 @@ public class CarRuleHandler implements InfoNotice {
     static String onOffRedisKeys = "vehCache.qy.onoff.notice";
 
     static int topn = 20;
-    // 600秒
-    static long offlinetime = 600000;
-    // 5次
-    static int nocanJudgeNum = 5;
-    // 10次
-    static int hascanJudgeNum = 10;
-    // 2公里 ，单位是0.1km
-    static int mileHop = 20;
-    // 600秒
-    static long nocanIntervalTime = 600000L;
 
     static int db = 6;
-    // 1代表规则启用，0代表规则关闭
-    static int enableCanRule = 0;
-    static int igniteRule = 0;
-    static int gpsRule = 0;
-    static int abnormalRule = 0;
-    static int flyRule = 0;
-    static int onoffRule = 0;
-    static int mileHopRule = 0;
-    static int carLockStatueChangeJudgeRule = 0;
-
-    /**
-     * 是否启用 SOC 过低通知
-     */
-    private static final boolean ENABLE_SOC_LOW_NOTICE;
-    /**
-     * 是否启用 SOC 过高通知
-     */
-    private static final boolean ENABLE_SOC_HIGH_NOTICE;
 
     private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
 
@@ -134,291 +101,10 @@ public class CarRuleHandler implements InfoNotice {
 
     private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
 
-    //以下参数可以通过读取配置文件进行重置
-    static {
-        final ConfigUtils configUtils = ConfigUtils.getInstance();
-        final Properties sysDefine = configUtils.sysDefine;
-
-        String off = sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-        if (!StringUtils.isEmpty(off)) {
-            offlinetime = Long.parseLong(off) * 1000;
-        }
-
-        String value = sysDefine.getProperty("sys.carlockstatus.rule");
-        if (!StringUtils.isEmpty(value)) {
-            carLockStatueChangeJudgeRule = Integer.parseInt(value);
-            value = null;
-        }
-
-        ENABLE_SOC_LOW_NOTICE = BooleanUtils.toBoolean(
-            sysDefine.getProperty(
-                SysDefine.NOTICE_SOC_LOW_ENABLE));
-        ENABLE_SOC_HIGH_NOTICE = BooleanUtils.toBoolean(
-            sysDefine.getProperty(
-                SysDefine.NOTICE_SOC_HIGH_ENABLE));
-
-        value = sysDefine.getProperty("sys.can.rule");
-        if (!StringUtils.isEmpty(value)) {
-            enableCanRule = Integer.parseInt(value);
-            value = null;
-        }
-
-        value = sysDefine.getProperty("sys.ignite.rule");
-        if (!StringUtils.isEmpty(value)) {
-            igniteRule = Integer.parseInt(value);
-            value = null;
-        }
-
-        value = sysDefine.getProperty("sys.gps.rule");
-        if (!StringUtils.isEmpty(value)) {
-            gpsRule = Integer.parseInt(value);
-            value = null;
-        }
-
-        value = sysDefine.getProperty("sys.abnormal.rule");
-        if (!StringUtils.isEmpty(value)) {
-            abnormalRule = Integer.parseInt(value);
-            value = null;
-        }
-
-        value = sysDefine.getProperty("sys.fly.rule");
-        if (!StringUtils.isEmpty(value)) {
-            flyRule = Integer.parseInt(value);
-            value = null;
-        }
-
-        value = sysDefine.getProperty("sys.onoff.rule");
-        if (!StringUtils.isEmpty(value)) {
-            onoffRule = Integer.parseInt(value);
-            value = null;
-        }
-
-        value = sysDefine.getProperty("sys.milehop.rule");
-        if (!StringUtils.isEmpty(value)) {
-            mileHopRule = Integer.parseInt(value);
-            value = null;
-        }
-//<<................................................从配置文件中读取SOC相关阈值..........................................>>
-
-        //过高SOC
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
-        if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setSocHighBeginContinueMillisecond(Long.parseLong(value));
-            value = null;
-        }
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND);
-        if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setSocHighEndContinueMillisecond(Long.parseLong(value));
-            value = null;
-        }
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT);
-        if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setSocHighBeginContinueCount(Integer.parseInt(value));
-            value = null;
-        }
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT);
-        if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setSocHighEndContinueCount(Integer.parseInt(value));
-            value = null;
-        }
-
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD);
-        if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setSocHighBeginThreshold(Integer.parseInt(value));
-            value = null;
-        }
-        value = sysDefine.getProperty(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD);
-        if (!StringUtils.isEmpty(value)) {
-            carHighSocJudge.setSocHighEndThreshold(Integer.parseInt(value));
-            value = null;
-        }
-
-
-        value = sysDefine.getProperty(SysDefine.GPS_NOVALUE_CONTINUE_NO);
-        if (NumberUtils.isDigits(value)) {
-            gpsFaultFrameTriggerCount = Integer.parseInt(value);
-            value = null;
-        }
-
-        value = sysDefine.getProperty(SysDefine.GPS_HASVALUE_CONTINUE_NO);
-        if (NumberUtils.isDigits(value)) {
-            gpsNormalFrameTriggerCount = Integer.parseInt(value);
-            value = null;
-        }
-
-        value = sysDefine.getProperty(SysDefine.GPS_JUDGE_TIME);
-        if (!StringUtils.isEmpty(value)) {
-            gpsFaultIntervalMillisecond = Long.parseLong(value);
-            gpsNormalIntervalMillisecond = gpsFaultIntervalMillisecond;
-            value = null;
-        }
-
-        init();
-    }
-
-    //以下参数可以通过读取redis定时进行重新加载
-    static void init() {
-        //<<...................................从redis中定时读取SOC相关阈值..................................>>
-        Object socLowValStart = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD);
-        if (null != socLowValStart) {
-            CarLowSocJudge.setSocLowBeginThreshold((int) socLowValStart);
-        }
-        Object lowSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_CONTINUE_COUNT);
-        if (null != lowSocFaultJudgeCount) {
-            CarLowSocJudge.setSocLowBeginContinueCount((int) lowSocFaultJudgeCount);
-        }
-        Object lowSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
-        if (null != lowSocFaultJudgeTime) {
-            CarLowSocJudge.setSocLowBeginContinueMillisecond((long) ((int) lowSocFaultJudgeTime));
-        }
-        Object socLowValEnd = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD);
-        if (null != socLowValEnd) {
-            CarLowSocJudge.setSocLowEndThreshold((int) socLowValEnd);
-        }
-        Object lowSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT);
-        if (null != lowSocNormalJudgeCount) {
-            CarLowSocJudge.setSocLowEndContinueCount((int) lowSocNormalJudgeCount);
-        }
-        Object lowSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_LOW_END_TRIGGER_TIMEOUT_MILLISECOND);
-        if (null != lowSocNormalJudgeTime) {
-            CarLowSocJudge.setSocLowEndContinueMillisecond((long) ((int) lowSocNormalJudgeTime));
-        }
-        carLowSocJudge.syncDelaySwitchConfig();
-
-        // soc过高开始的帧数和时间阈值，soc正常的开始帧数和时间阈值
-        Object socHighValStart = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD);
-        if (null != socHighValStart) {
-            CarHighSocJudge.setSocHighBeginThreshold((int) socHighValStart);
-        }
-        Object highSocFaultJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT);
-        if (null != highSocFaultJudgeCount) {
-            CarHighSocJudge.setSocHighBeginContinueCount((int) highSocFaultJudgeCount);
-        }
-        Object highSocFaultJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND);
-        if (null != highSocFaultJudgeTime) {
-            CarHighSocJudge.setSocHighBeginContinueMillisecond((long) ((int) highSocFaultJudgeTime));
-        }
-        Object socHighValEnd = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD);
-        if (null != socHighValEnd) {
-            CarHighSocJudge.setSocHighEndThreshold((int) socHighValEnd);
-        }
-        Object highSocNormalJudgeCount = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT);
-        if (null != highSocNormalJudgeCount) {
-            CarHighSocJudge.setSocHighEndContinueCount((int) highSocNormalJudgeCount);
-        }
-        Object highSocNormalJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND);
-        if (null != highSocNormalJudgeTime) {
-            CarHighSocJudge.setSocHighEndContinueMillisecond((long) ((int) highSocNormalJudgeTime));
-        }
-        carHighSocJudge.syncDelaySwitchConfig();
-
-        Object nocanJugyObj = PARAMS_REDIS_UTIL.PARAMS.get("can.novalue.continue.no");
-        if (null != nocanJugyObj) {
-            nocanJudgeNum = (int) nocanJugyObj;
-        }
-        Object hascanJugyObj = PARAMS_REDIS_UTIL.PARAMS.get("can.novalue.continue.no");
-        if (null != hascanJugyObj) {
-            hascanJudgeNum = (int) hascanJugyObj;
-        }
-
-
-        Object nogpsNum = PARAMS_REDIS_UTIL.PARAMS.get("gps.novalue.continue.no");
-        if (null != nogpsNum) {
-            gpsFaultFrameTriggerCount = (int) nogpsNum;
-        }
-        Object hasgpsNum = PARAMS_REDIS_UTIL.PARAMS.get("gps.novalue.continue.no");
-        if (null != hasgpsNum) {
-            gpsNormalFrameTriggerCount = (int) hasgpsNum;
-        }
-        Object hopnum = PARAMS_REDIS_UTIL.PARAMS.get("mile.hop.num");
-        if (null != hopnum) {
-            mileHop = ((int) hopnum) * 10;
-        }
-        Object nogpsJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get(SysDefine.GPS_JUDGE_TIME);
-        if (null != nogpsJudgeTime) {
-            gpsFaultIntervalMillisecond = ((int) nogpsJudgeTime) * 1000L;
-            gpsNormalIntervalMillisecond = gpsFaultIntervalMillisecond;
-        }
-        Object nocanJudgeTime = PARAMS_REDIS_UTIL.PARAMS.get("can.judge.time");
-        if (null != nocanJudgeTime) {
-            nocanIntervalTime = ((int) nocanJudgeTime) * 1000L;
-        }
-
-        {
-            final String ruleOverride = PARAMS_REDIS_UTIL.PARAMS.getOrDefault(
-                SysDefine.RULE_OVERRIDE,
-                SysDefine.RULE_OVERRIDE_VALUE_DEFAULT).toString();
-            if(!StringUtils.isBlank(ruleOverride)) {
-                if(SysDefine.RULE_OVERRIDE_VALUE_DEFAULT.equals(ruleOverride)) {
-                    if(!(CarNoCanJudge.getCarNoCanDecide() instanceof CarNoCanDecideDefault)) {
-                        CarNoCanJudge.setCarNoCanDecide(new CarNoCanDecideDefault());
-                    }
-                } else if(SysDefine.RULE_OVERRIDE_VALUE_JILI.equals(ruleOverride)) {
-                    if(!(CarNoCanJudge.getCarNoCanDecide() instanceof CarNoCanDecideJili)) {
-                        CarNoCanJudge.setCarNoCanDecide(new CarNoCanDecideJili());
-                    }
-                }
-            }
-        }
-        {
-            try {
-                final String alarmCanFaultTriggerContinueCountString = PARAMS_REDIS_UTIL.PARAMS.get(
-                    SysDefine.NOTICE_CAN_FAULT_TRIGGER_CONTINUE_COUNT).toString();
-                final int alarmCanFaultTriggerContinueCount = Integer.parseInt(alarmCanFaultTriggerContinueCountString);
-                if(alarmCanFaultTriggerContinueCount >= 0) {
-                    CarNoCanJudge.setFaultTriggerContinueCount(alarmCanFaultTriggerContinueCount);
-                }
-            } catch (Exception ignored) {
-
-            }
-        }
-        {
-            try {
-                final String alarmCanFaultTriggerTimeoutMillisecondString = PARAMS_REDIS_UTIL.PARAMS.get(
-                    SysDefine.NOTICE_CAN_FAULT_TRIGGER_TIMEOUT_MILLISECOND).toString();
-                final long alarmCanFaultTriggerTimeoutMillisecond = Long.parseLong(alarmCanFaultTriggerTimeoutMillisecondString);
-                if(alarmCanFaultTriggerTimeoutMillisecond >= 0) {
-                    CarNoCanJudge.setFaultTriggerTimeoutMillisecond(alarmCanFaultTriggerTimeoutMillisecond);
-                }
-            } catch (Exception ignored) {
-
-            }
-        }
-        {
-            try {
-                final String alarmCanNormalTriggerContinueCountString = PARAMS_REDIS_UTIL.PARAMS.get(
-                    SysDefine.NOTICE_CAN_NORMAL_TRIGGER_CONTINUE_COUNT).toString();
-                final int alarmCanNormalTriggerContinueCount = Integer.parseInt(alarmCanNormalTriggerContinueCountString);
-                if(alarmCanNormalTriggerContinueCount >= 0) {
-                    CarNoCanJudge.setNormalTriggerContinueCount(alarmCanNormalTriggerContinueCount);
-                }
-            } catch (Exception ignored) {
-
-            }
-        }
-        {
-            try {
-                final String alarmCanNormalTriggerTimeoutMillisecondString = PARAMS_REDIS_UTIL.PARAMS.get(
-                    SysDefine.NOTICE_CAN_NORMAL_TRIGGER_TIMEOUT_MILLISECOND).toString();
-                final long alarmCanNormalTriggerTimeoutMillisecond = Long.parseLong(alarmCanNormalTriggerTimeoutMillisecondString);
-                if(alarmCanNormalTriggerTimeoutMillisecond >= 0) {
-                    CarNoCanJudge.setNormalTriggerTimeoutMillisecond(alarmCanNormalTriggerTimeoutMillisecond);
-                }
-            } catch (Exception ignored) {
-
-            }
-        }
-    }
-
     {
         redis = new DataToRedis();
         recorder = new RedisRecorder(redis);
         restartInit(true);
-    }
-
-    public static void rebulid() {
-        PARAMS_REDIS_UTIL.rebulid();
-        init();
     }
 
     /**
@@ -450,20 +136,18 @@ public class CarRuleHandler implements InfoNotice {
 
         lastTime.put(vid, System.currentTimeMillis());
 
-        if(PARAMS_REDIS_UTIL.isTraceVehicleId(vid)) {
-            LOG.trace("VID[" + vid + "]进入车辆规则处理");
-        }
+        LOG.trace("VID:" + vid + " 进入车辆规则处理");
 
         // 如果规则启用了，则把data放到相应的处理方法中。将返回结果放到list中，返回。
 
-        if (1 == carLockStatueChangeJudgeRule) {
+        if (1 == ConfigUtils.getSysDefine().getSysCarLockStatusRule()) {
             final Map<String, Object> lockStatueChange = carLockStatusChangeJudge.carLockStatueChangeJudge(clone);
             if (MapUtils.isNotEmpty(lockStatueChange)) {
                 builder.add(JSON_UTILS.toJson(lockStatueChange));
             }
         }
 
-        if(ENABLE_SOC_LOW_NOTICE) {
+        if(ConfigUtils.getSysDefine().isNoticeSocLowEnable()) {
             final String[] chargeCarsNoticeJson = new String[1];
             final String socLowNoticeJson = carLowSocJudge.processFrame(
                 data,
@@ -478,56 +162,56 @@ public class CarRuleHandler implements InfoNotice {
             }
         }
 
-        if(ENABLE_SOC_HIGH_NOTICE) {
+        if(ConfigUtils.getSysDefine().isNoticeSocHighEnable()) {
             final String socLowNoticeJson = carHighSocJudge.processFrame(data);
             if (StringUtils.isNotBlank(socLowNoticeJson)) {
                 builder.add(socLowNoticeJson);
             }
         }
 
-        if (1 == enableCanRule) {
+        if (1 == ConfigUtils.getSysDefine().getSysCanRule()) {
             // 无CAN车辆
             final Map<String, Object> canJudge = carNoCanJudge.processFrame(clone);
             if (MapUtils.isNotEmpty(canJudge)) {
                 builder.add(JSON_UTILS.toJson(canJudge));
             }
         }
-        if (1 == igniteRule) {
+        if (1 == ConfigUtils.getSysDefine().getSysIgniteRule()) {
             // 点火熄火
             final Map<String, Object> igniteJudge = igniteOrShut(clone);
             if (MapUtils.isNotEmpty(igniteJudge)) {
                 builder.add(JSON_UTILS.toJson(igniteJudge));
             }
         }
-        if (1 == gpsRule) {
+        if (1 == ConfigUtils.getSysDefine().getSysGpsRule()) {
             // 未定位车辆
             final Map<String, String> notice = noGps(clone);
             if (MapUtils.isNotEmpty(notice)) {
                 builder.add(JSON_UTILS.toJson(notice));
             }
         }
-        if (1 == abnormalRule) {
+        if (1 == ConfigUtils.getSysDefine().getSysAbnormalRule()) {
             // 异常用车
             final Map<String, Object> abnormalJudge = abnormalCar(clone);
             if (MapUtils.isNotEmpty(abnormalJudge)) {
                 builder.add(JSON_UTILS.toJson(abnormalJudge));
             }
         }
-        if (1 == flyRule) {
+        if (1 == ConfigUtils.getSysDefine().getSysFlyRule()) {
             // 飞机功能（一般不用）
             final Map<String, Object> flyJudge = flySe(clone);
             if (MapUtils.isNotEmpty(flyJudge)) {
                 builder.add(JSON_UTILS.toJson(flyJudge));
             }
         }
-        if (1 == onoffRule) {
+        if (1 == ConfigUtils.getSysDefine().getSysOnOffRule()) {
             // 车辆上下线
             final Map<String, Object> onOffJudge = onOffline(clone);
             if (MapUtils.isNotEmpty(onOffJudge)) {
                 builder.add(JSON_UTILS.toJson(onOffJudge));
             }
         }
-        if (1 == mileHopRule) {
+        if (1 == ConfigUtils.getSysDefine().getSysMilehopRule()) {
             // 里程跳变处理
             final Map<String, Object> mileHopJudge = mileHopHandle(clone);
             if (MapUtils.isNotEmpty(mileHopJudge)) {
@@ -640,6 +324,7 @@ public class CarRuleHandler implements InfoNotice {
                         int lastMile = (int) lastMap.get(DataKey._2202_TOTAL_MILEAGE);//上一帧的总里程
                         int nowmileHop = Math.abs(mile - lastMile);//里程跳变
 
+                        int mileHop = ConfigUtils.getSysDefine().getMileHopNum() * 10;
                         if (nowmileHop >= mileHop) {
                             String lastTime = (String) lastMap.get(DataKey.TIME);//上一帧的时间即为跳变的开始时间
                             String vin = dat.get(DataKey.VEHICLE_NUMBER);
@@ -1056,12 +741,7 @@ public class CarRuleHandler implements InfoNotice {
                 final int gpsFaultCount = vidGpsFaultCount.getOrDefault(vid, 0) + 1;
                 vidGpsFaultCount.put(vid, gpsFaultCount);
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    ()-> LOG.info(
-                        "VID[{}]判定为GPS故障第[{}]次",
-                        vid,
-                        gpsFaultCount));
+                LOG.info("VID:{} 判定为GPS故障第 {} 次", vid, gpsFaultCount);
 
                 final Map<String, String> gpsFaultNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
                 if (MapUtils.isEmpty(gpsFaultNotice)) {
@@ -1070,39 +750,19 @@ public class CarRuleHandler implements InfoNotice {
                     gpsFaultNotice.put("vid", vid);
                     gpsFaultNotice.put("status", "0");
                     vidGpsNotice.put(vid, gpsFaultNotice);
-
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS故障首帧缓存初始化",
-                            vid));
-
+                    LOG.info("VID:{} GPS故障首帧缓存初始化", vid);
                 }
 
                 // 0-初始化, 1-异常开始, 2-异常持续, 3-异常结束
                 String status = gpsFaultNotice.getOrDefault("status", "0");
                 if (!"0".equals(status) && !"3".equals(status)) {
-
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        () -> LOG.info(
-                            "VID[{}][{}]GPS故障不是初始化或已结束状态",
-                            vid,
-                            status
-                        )
-                    );
+                    LOG.info("VID:{} STATUS:{} GPS故障不是初始化或已结束状态", vid, status);
                     return null;
                 }
 
                 if (1 == gpsFaultCount) {
-
                     gpsFaultNotice.put("stime", timeString);
-
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS故障首帧更新",
-                            vid));
+                    LOG.info("VID:{} GPS故障首帧更新", vid);
                 }
 
                 if (!gpsFaultNotice.containsKey("slocation")) {
@@ -1113,18 +773,12 @@ public class CarRuleHandler implements InfoNotice {
                         // 兼容性暂留
                         gpsFaultNotice.put("location", locationFromCache);
                     } catch (ExecutionException e) {
-                        LOG.warn("获取定位缓存异常", e);
+                        LOG.warn("VID:" + vid + " 获取定位缓存异常", e);
                     }
                 }
 
-                if(gpsFaultCount < gpsFaultFrameTriggerCount) {
-
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS故障连续帧数不足[{}]帧",
-                            vid,
-                            gpsFaultFrameTriggerCount));
+                if(gpsFaultCount < ConfigUtils.getSysDefine().getGpsNovalueContinueNo()) {
+                    LOG.info("VID:{} GPS故障连续帧数不足 {} 帧", vid, ConfigUtils.getSysDefine().getGpsNovalueContinueNo());
                     return null;
                 }
 
@@ -1136,20 +790,14 @@ public class CarRuleHandler implements InfoNotice {
                             new String[]{FormatConstant.DATE_FORMAT})
                         .getTime();
                 } catch (ParseException e) {
-                    LOG.warn("解析开始时间异常", e);
+                    LOG.warn("VID:" + vid + " 解析开始时间异常", e);
                     gpsFaultNotice.put("stime", timeString);
                     return null;
                 }
 
+                long gpsFaultIntervalMillisecond = ConfigUtils.getSysDefine().getGpsJudgeTime() * 1000;
                 if (currentTimeMillis - firstGpsFaultTime <= gpsFaultIntervalMillisecond) {
-
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS故障时延不足[{}]毫秒",
-                            vid,
-                            gpsFaultIntervalMillisecond));
-
+                    LOG.info("VID:{} GPS故障时延不足 {} 毫秒", vid, gpsFaultIntervalMillisecond);
                     return null;
                 }
 
@@ -1167,25 +815,20 @@ public class CarRuleHandler implements InfoNotice {
                             gpsFaultNotice.clear();
                             gpsFaultNotice.putAll(oldNotice);
 
-                            LOG.info("从缓存取回GPS故障告警, 不再发送通知.");
+                            LOG.info("VID:{} 从缓存取回GPS故障告警, 不再发送通知.", vid);
                             return null;
                         }
                     }
                 } catch (ExecutionException e) {
 
-                    LOG.warn("获取GPS故障通知缓存异常");
+                    LOG.warn("VID:{} 获取GPS故障通知缓存异常", vid);
                 }
 
                 gpsFaultNotice.put("status", "1");
                 gpsFaultNotice.put("slazy", String.valueOf(gpsFaultIntervalMillisecond));
                 gpsFaultNotice.put("noticeTime", noticeTime);
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    ()-> LOG.info(
-                        "VID[{}]GPS故障通知缓存[{}]",
-                        vid,
-                        gpsFaultNotice.get("msgId")));
+                LOG.info("VID:{} GPS故障通知缓存 MSGID:{}", vid, gpsFaultNotice.get("msgId"));
 
                 final ImmutableMap<String, String> notice = new ImmutableMap.Builder<String, String>()
                     .putAll(gpsFaultNotice)
@@ -1196,13 +839,7 @@ public class CarRuleHandler implements InfoNotice {
                     NoticeType.NO_POSITION_VEH,
                     notice);
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    ()-> LOG.info(
-                        "VID[{}]GPS故障通知发送[{}]",
-                        vid,
-                        gpsFaultNotice.get("msgId")));
-
+                LOG.info("VID:{} GPS故障通知发送 MSGID:{}", vid, gpsFaultNotice.get("msgId"));
 
                 return gpsFaultNotice;
                 // endregion
@@ -1214,12 +851,7 @@ public class CarRuleHandler implements InfoNotice {
                 final int gpsNormalCount = vidGpsNormalCount.getOrDefault(vid, 0) + 1;
                 vidGpsNormalCount.put(vid, gpsNormalCount);
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    ()-> LOG.info(
-                        "VID[{}]判定为GPS正常第[{}]次",
-                        vid,
-                        gpsNormalCount));
+                LOG.info("VID:{} 判定为GPS正常第 {} 次", vid, gpsNormalCount);
 
                 final Map<String, String> gpsNormalNotice = vidGpsNotice.getOrDefault(vid, new TreeMap<>());
                 if (MapUtils.isEmpty(gpsNormalNotice)) {
@@ -1229,11 +861,7 @@ public class CarRuleHandler implements InfoNotice {
                     gpsNormalNotice.put("status", "0");
                     vidGpsNotice.put(vid, gpsNormalNotice);
 
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS正常首帧缓存初始化",
-                            vid));
+                    LOG.info("VID:{} GPS正常首帧缓存初始化", vid);
 
                 }
 
@@ -1241,14 +869,7 @@ public class CarRuleHandler implements InfoNotice {
                 final String status = gpsNormalNotice.getOrDefault("status", "0");
                 if (!"1".equals(status) && !"2".equals(status)) {
 
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        () -> LOG.info(
-                            "VID[{}][{}]GPS正常不是已开始或持续中状态",
-                            vid,
-                            status
-                        )
-                    );
+                    LOG.info("VID:{} STATUS:{} GPS正常不是已开始或持续中状态", vid, status);
                     return null;
                 }
 
@@ -1264,21 +885,12 @@ public class CarRuleHandler implements InfoNotice {
                     // 兼容性暂留
                     gpsNormalNotice.put("location", location);
 
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS正常首帧初始化",
-                            vid));
+                    LOG.info("VID:{} GPS正常首帧初始化", vid);
                 }
 
-                if(gpsNormalCount < gpsNormalFrameTriggerCount) {
+                if(gpsNormalCount < ConfigUtils.getSysDefine().getGpsHasvalueContinueNo()) {
 
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS正常连续帧数不足[{}]帧",
-                            vid,
-                            gpsNormalFrameTriggerCount));
+                    LOG.info("VID:{} GPS正常连续帧数不足 {} 帧", vid, ConfigUtils.getSysDefine().getGpsHasvalueContinueNo());
                     return null;
                 }
 
@@ -1288,19 +900,15 @@ public class CarRuleHandler implements InfoNotice {
                         gpsNormalNotice.get("etime").toString(),
                         new String[]{FormatConstant.DATE_FORMAT}).getTime();
                 } catch (ParseException e) {
-                    LOG.warn("解析结束时间异常", e);
+                    LOG.warn("VID:" + vid + " 解析结束时间异常", e);
                     gpsNormalNotice.put("etime", timeString);
                     return null;
                 }
 
+                long gpsNormalIntervalMillisecond = ConfigUtils.getSysDefine().getGpsJudgeTime() * 1000;
                 if (currentTimeMillis - firstGpsNormalTime <= gpsNormalIntervalMillisecond) {
 
-                    PARAMS_REDIS_UTIL.autoLog(
-                        vid,
-                        ()-> LOG.info(
-                            "VID[{}]GPS正常时延不足[{}]毫秒",
-                            vid,
-                            gpsNormalIntervalMillisecond));
+                    LOG.info("VID:{} GPS正常时延不足 {} 毫秒", vid, gpsNormalIntervalMillisecond);
                     return null;
                 }
 
@@ -1318,14 +926,14 @@ public class CarRuleHandler implements InfoNotice {
                             gpsNormalNotice.clear();
                             gpsNormalNotice.putAll(oldNotice);
 
-                            LOG.info("从缓存取回GPS正常告警, 不再发送通知.");
+                            LOG.info("VID:{} 从缓存取回GPS正常告警, 不再发送通知.", vid);
                             vidGpsNotice.remove(vid);
                             return null;
                         }
                     }
                 } catch (ExecutionException e) {
 
-                    LOG.warn("获取GPS正常通知缓存异常");
+                    LOG.warn("VID:{} 获取GPS正常通知缓存异常", vid);
                 }
 
                 gpsNormalNotice.put("status", "3");
@@ -1336,12 +944,7 @@ public class CarRuleHandler implements InfoNotice {
 
                 VEHICLE_CACHE.delField(vid, NoticeType.NO_POSITION_VEH);
 
-                PARAMS_REDIS_UTIL.autoLog(
-                    vid,
-                    ()-> LOG.info(
-                        "VID[{}]GPS正常通知发送",
-                        vid,
-                        gpsNormalNotice.get("msgId")));
+                LOG.info("VID:{} GPS正常通知发送", vid, gpsNormalNotice.get("msgId"));
 
                 return gpsNormalNotice;
                 // endregion
@@ -1376,33 +979,20 @@ public class CarRuleHandler implements InfoNotice {
         @Nullable String latitudeString) {
 
         if (!NumberUtils.isDigits(orientationString)) {
-            PARAMS_REDIS_UTIL.autoLog(
-                vid,
-                ()-> LOG.info(
-                    "定位状态[{}]非法, 判定为GPS故障.",
-                    orientationString));
+            LOG.info("VID:{} 定位状态 {} 非法, 判定为GPS故障.", vid, orientationString);
             return true;
         }
 
 
         final int orientationValue = NumberUtils.toInt(orientationString);
         if(!DataUtils.isOrientationUseful(orientationValue)) {
-            PARAMS_REDIS_UTIL.autoLog(
-                vid,
-                ()-> LOG.info(
-                    "定位状态[{}]无效, 判定为GPS故障.",
-                    orientationString));
+            LOG.info("VID:{} 定位状态 {} 无效, 判定为GPS故障.", vid, orientationString);
             return true;
         }
 
         if (!NumberUtils.isDigits(longitudeString)
             || !NumberUtils.isDigits(latitudeString)) {
-            PARAMS_REDIS_UTIL.autoLog(
-                vid,
-                ()-> LOG.info(
-                    "经度[{}]纬度[{}]非法, 判定为GPS故障.",
-                    longitudeString,
-                    latitudeString));
+            LOG.info("VID:{} 经度 {} 纬度 {} 非法, 判定为GPS故障.", vid, longitudeString, latitudeString);
             return true;
         }
 
@@ -1412,21 +1002,11 @@ public class CarRuleHandler implements InfoNotice {
         if(DataUtils.isOrientationLongitudeUseful(longitudeValue)
             && DataUtils.isOrientationLatitudeUseful(latitudeValue)) {
 
-            PARAMS_REDIS_UTIL.autoLog(
-                vid,
-                ()-> LOG.info(
-                    "经度[{}]纬度[{}]有效, 判定为GPS正常.",
-                    longitudeString,
-                    latitudeString));
+            LOG.info("VID:{} 经度 {} 纬度 {} 有效, 判定为GPS正常.", vid, longitudeString, latitudeString);
             return false;
         }
 
-        PARAMS_REDIS_UTIL.autoLog(
-            vid,
-            ()-> LOG.info(
-                "经度[{}]纬度[{}]无效, 判定为GPS故障.",
-                longitudeString,
-                latitudeString));
+        LOG.info("VID:{} 经度 {} 纬度 {} 无效, 判定为GPS故障.", vid, longitudeString, latitudeString);
 
         return true;
     }
@@ -1543,6 +1123,7 @@ public class CarRuleHandler implements InfoNotice {
         List<Map<String, Object>> notices = new LinkedList<>();
         String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
         List<String> needRemoves = new LinkedList<>();
+        long offlinetime = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
         for (Map.Entry<String, Long> entry : lastTime.entrySet()) {
             long last = entry.getValue();
             if (now - last > offlinetime) {
@@ -1581,26 +1162,6 @@ public class CarRuleHandler implements InfoNotice {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
 //            recorder.rebootInit(REDIS_DB_INDEX, socHighRedisKeys, vidHighSocNotice);
         }
-    }
-
-
-
-    public static void main(String[] args) {
-        /*Map<Double, String> carSortMap = new TreeMap<Double, String>();
-        carSortMap.put(256.3, "tttttt");
-        carSortMap.put(122.3, "tttttt");
-        carSortMap.put(356.3, "tttttt");
-        carSortMap.put(299.3, "tttttt");
-        carSortMap.put(156.3, "tttttt");
-        carSortMap.put(756.3, "tttttt");
-
-        for (Map.Entry<Double, String> entry : carSortMap.entrySet()) {
-
-            System.out.println(entry.getKey()+":"+entry.getValue());
-        }*/
-        String la = null;
-        String lt = null;
-        System.out.println(la + "," + lt);
     }
 
 }

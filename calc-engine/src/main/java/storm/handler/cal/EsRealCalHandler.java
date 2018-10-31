@@ -1,23 +1,7 @@
 package storm.handler.cal;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-//import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -27,25 +11,24 @@ import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
-import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class EsRealCalHandler {
 
     private static Logger LOG = LoggerFactory.getLogger(EsRealCalHandler.class);
 
-    private static final ConfigUtils CONFIG_UTILS = ConfigUtils.getInstance();
-
     private static ThreadLocal<SimpleDateFormat> inFormatlocal = new ThreadLocal<>();
     private static ThreadLocal<SimpleDateFormat> outFormatlocal = new ThreadLocal<>();
     private static Map<String, Map<String, String>> zeroCache = new java.util.concurrent.ConcurrentHashMap<>();
-    private static long onlinetime = 180 * 1000;
-    private static long stoptime = 180 * 1000;
-    private static long oncesend = 60000;//每隔多少时间推送一次,默认一分钟，60000毫秒。如果负数或者0代表实时推送;
     private static boolean clusterSend = false;
     private static boolean carinfoSend = false;
-    private long lastsendtime;//最后一次推送时间
     private Map<String, Long> carlasttimes;//最后一条数据时间
     private RegHanler regHanler;
 
@@ -68,35 +51,13 @@ public class EsRealCalHandler {
      */
     private final Set<String> aliveSet = new HashSet<>(buffsize / 5);
 
-    static {
-        setTime();
-    }
-
-    //    boolean cansend;
     {
         try {
-            lastsendtime = 0L;
             carlasttimes = new HashMap<>();
             regHanler = new RegHanler();
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    public boolean isNowSend() {
-        if (oncesend <= 0) {
-            return true;
-        }
-
-        long now = System.currentTimeMillis();
-        if (now - lastsendtime > oncesend
-            && now - lastsendtime <= 2 * oncesend) {//判断是否处于可推送状态
-            return true;
-        }
-        if (now - lastsendtime > 2 * oncesend) {
-            lastsendtime = now;
-        }
-        return false;
     }
 
     /**
@@ -428,6 +389,7 @@ public class EsRealCalHandler {
         if (data.containsKey(SysDefine.ONLINE_UTC)) {
 
             long lastTime = Long.valueOf(data.get(SysDefine.ONLINE_UTC));
+            long onlinetime = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
             if (now - lastTime < onlinetime) {
                 esMap.put(EsField.carStatus, 1);
                 boolean isstop = isStop(data);
@@ -465,28 +427,6 @@ public class EsRealCalHandler {
             if (km < 10000000) {
                 esMap.put(EsField.tenthKm, km);
             }
-        }
-    }
-
-    private static void setTime() {
-        try {
-            Properties pties = CONFIG_UTILS.sysDefine;
-            if (null != pties) {
-                String oncetime = pties.getProperty(SysDefine.ES_SEND_TIME);
-                if (null != oncetime) {
-                    oncesend = Long.valueOf(oncetime) * 1000;
-                }
-                String offli = pties.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-                if (null != offli) {
-                    onlinetime = 1000 * Long.valueOf(offli);
-                }
-                String stopli = pties.getProperty("redis.offline.stoptime");
-                if (null != stopli) {
-                    stoptime = 1000 * Long.valueOf(stopli);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
@@ -572,6 +512,7 @@ public class EsRealCalHandler {
             }
             if (lastTime > 0) {
                 //最后一条报文时间小于当前系统时间 + 30秒的误差
+                long onlinetime = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
                 if (now - lastTime <= onlinetime && lastTime < now + 30000) {
                     if (!aliveSet.contains(vid)) {
                         alives.offer(vid);
@@ -643,6 +584,7 @@ public class EsRealCalHandler {
                     lastTime = date.getTime();
                 }
             }
+            long onlinetime = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
             if (now - lastTime <= onlinetime) {
                 return true;
             }
@@ -680,6 +622,7 @@ public class EsRealCalHandler {
                 } else {
                     long lastTime = Long.valueOf(map.get(SysDefine.ONLINE_UTC));
                     long starttime = Long.valueOf(startZero.get(SysDefine.ONLINE_UTC));
+                    long stoptime = ConfigUtils.getSysDefine().getRedisOfflineStopTime() * 1000;
                     if (lastTime - starttime >= stoptime) {
                         String slon = startZero.get(DataKey._2502_LONGITUDE);//经度
                         String slan = startZero.get(DataKey._2503_LATITUDE);//纬度

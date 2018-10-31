@@ -4,9 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.ObjectUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.storm.Config;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -21,25 +18,20 @@ import org.slf4j.LoggerFactory;
 import storm.bolt.deal.norm.FilterBolt;
 import storm.cache.SysRealDataCache;
 import storm.cache.VehicleCache;
+import storm.dao.DataToRedis;
 import storm.handler.FaultCodeHandler;
 import storm.handler.cusmade.CarOnOffHandler;
 import storm.handler.cusmade.CarRuleHandler;
-import storm.handler.cusmade.ScanRange;
 import storm.protocol.CommandType;
 import storm.stream.KafkaStream;
 import storm.stream.StreamReceiverFilter;
 import storm.system.DataKey;
-import storm.system.StormConfigKey;
 import storm.system.SysDefine;
-import storm.util.DataUtils;
+import storm.util.ConfigUtils;
 import storm.util.JsonUtils;
-import storm.util.ParamsRedisUtil;
 
-import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -80,7 +72,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
     // endregion KafkaStream
 
-    private static final ParamsRedisUtil PARAMS_REDIS_UTIL = ParamsRedisUtil.getInstance();
+    private static final DataToRedis redis = new DataToRedis();
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
@@ -94,18 +86,6 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
     private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
 
-    /**
-     * 闲置车辆判定, 达到闲置状态时长, 默认1天
-     */
-    private long idleTimeoutMillisecond = 86400000L;
-    /**
-     * 离线检查, 多长时间检查一下是否离线, 默认2分钟
-     */
-    private long offlineCheckSpanMillisecond = 120000L;
-    /**
-     * 离线判定, 多长时间算是离线, 默认10分钟
-     */
-    private long offlineTimeMillisecond = 600000L;
     /**
      * 最后进行离线检查的时间, 用于离线判断
      */
@@ -126,16 +106,17 @@ public final class CarNoticeBolt extends BaseRichBolt {
      */
     private transient FaultCodeHandler faultCodeHandler;
 
-    /**
-     * 最后一次同步配置时间
-     */
-    private transient long lastUpdateConfigTime = 0;
-
     @Override
     public void prepare(
         @NotNull final Map stormConf,
         @NotNull final TopologyContext context,
         @NotNull final OutputCollector collector) {
+        //将storm启动时的自定义参数设置进来
+        LOG.info("将STORM启动时设置的参数填充进来");
+        ConfigUtils.fillSysDefineEntity(stormConf);
+        //首次从redis读取配置
+        LOG.info("将REDIS动态设置的参数填充进来");
+        ConfigUtils.readConfigFromRedis(redis);
 
         this.collector = collector;
 
@@ -147,7 +128,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
         prepareStreamReceiver();
 
-        prepareIdleVehicleThread(stormConf);
+        prepareIdleVehicleThread();
     }
 
     private void prepareStreamSender(
@@ -170,34 +151,10 @@ public final class CarNoticeBolt extends BaseRichBolt {
     }
 
     @SuppressWarnings("AlibabaMethodTooLong")
-    private void prepareIdleVehicleThread(
-        @NotNull final Map stormConf) {
+    private void prepareIdleVehicleThread() {
 
         final long currentTimeMillis = System.currentTimeMillis();
         lastOfflineCheckTimeMillisecond = currentTimeMillis;
-
-        final ParamsRedisUtil paramsRedisUtil = ParamsRedisUtil.getInstance();
-        paramsRedisUtil.rebulid();
-        // 从Redis读取车辆闲置超时时间
-        final Object idleTimeoutMillisecond = paramsRedisUtil.PARAMS.get(
-            ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
-        if (null != idleTimeoutMillisecond) {
-            this.idleTimeoutMillisecond = NumberUtils.toLong(
-                idleTimeoutMillisecond.toString()
-            );
-        }
-
-        // 多长时间算是离线
-        final String offLineSecond = MapUtils.getString(stormConf, StormConfigKey.REDIS_OFFLINE_SECOND);
-        if (!StringUtils.isEmpty(offLineSecond)) {
-            offlineTimeMillisecond = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(offLineSecond) ? offLineSecond : "0") * 1000;
-        }
-
-        // 多长时间检查一下是否离线
-        final String offLineCheckSpanSecond = MapUtils.getString(stormConf, StormConfigKey.REDIS_OFFLINE_CHECK_SPAN_SECOND);
-        if (!StringUtils.isEmpty(offLineCheckSpanSecond)) {
-            offlineCheckSpanMillisecond = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(offLineCheckSpanSecond) ? offLineCheckSpanSecond : "0") * 1000;
-        }
 
         SysRealDataCache.init();
     }
@@ -225,28 +182,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
         collector.ack(input);
 
-        final long currentTimeMillis = System.currentTimeMillis();
-
-        // 每分钟同步一次配置
-        if(currentTimeMillis - lastUpdateConfigTime > TimeUnit.MINUTES.toMillis(1)) {
-
-            lastUpdateConfigTime = currentTimeMillis;
-
-            try {
-                // 更新配置
-                CarRuleHandler.rebulid();
-                //从配置文件中读出超时时间
-                Object idleTimeoutMillisecond = ParamsRedisUtil.getInstance().PARAMS.get(
-                    ParamsRedisUtil.VEHICLE_IDLE_TIMEOUT_MILLISECOND);
-                if (null != idleTimeoutMillisecond) {
-                    this.idleTimeoutMillisecond = NumberUtils.toLong(
-                        idleTimeoutMillisecond.toString()
-                    );
-                }
-            } catch (Exception e) {
-                LOG.error("同步配置异常", e);
-            }
-        }
+        ConfigUtils.readConfigFromRedis(redis);
 
     }
 
@@ -255,9 +191,11 @@ public final class CarNoticeBolt extends BaseRichBolt {
         @NotNull final Tuple input,
         @NotNull final String vid,
         @NotNull final ImmutableMap<String, String> data) {
+        collector.ack(input);
         try{
             final long currentTimeMillis = System.currentTimeMillis();
 
+            long offlineCheckSpanMillisecond = ConfigUtils.getSysDefine().getRedisOfflineCheckTime() * 1000;
             // region 离线判断: 如果时间差大于离线检查时间，则进行离线检查, 如果车辆离线，则发送此车辆的所有故障码结束通知
             if (currentTimeMillis - lastOfflineCheckTimeMillisecond >= offlineCheckSpanMillisecond) {
 
@@ -285,6 +223,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
                     }
                 }
 
+                long offlineTimeMillisecond = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
                 carOnOffhandler.onOffCheck("TIMEOUT", 1, currentTimeMillis, offlineTimeMillisecond);
             }
             // endregion
@@ -293,8 +232,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
                 return;
             }
 
-            PARAMS_REDIS_UTIL.autoLog(vid, () -> LOG.warn("VID[{}]进入车辆通知处理", vid));
-
+            LOG.warn("VID:{} 进入车辆通知处理", vid);
 
             // region 缓存有效状态
 
@@ -306,6 +244,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
             try {
                 final String type = data.get(DataKey.MESSAGE_TYPE);
                 if (!CommandType.SUBMIT_LINKSTATUS.equals(type)) {
+                    long idleTimeoutMillisecond = ConfigUtils.getSysDefine().getVehicleIdleTimeoutMillisecond() * 1000;
                     SysRealDataCache.updateCache(data, currentTimeMillis, idleTimeoutMillisecond);
                 }
             } catch (Exception e) {
@@ -330,16 +269,15 @@ public final class CarNoticeBolt extends BaseRichBolt {
                 }
             }
             //如果下线了，则发送上下线的里程值
+            long offlineTimeMillisecond = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
             Map<String, Object> map = carOnOffhandler.generateNotices(data, currentTimeMillis, offlineTimeMillisecond);
             if (null != map && map.size() > 0) {
                 String json = JSON_UTILS.toJson(map);
                 kafkaStreamVehicleNoticeSender.emit(vid, json);
             }
-            collector.ack(input);
         }catch (Exception e){
-            LOG.error("异常vid is {}", vid);
+            LOG.error("VID:" + vid + " 异常", e);
             e.printStackTrace();
-            collector.fail(input);
         }
 
 

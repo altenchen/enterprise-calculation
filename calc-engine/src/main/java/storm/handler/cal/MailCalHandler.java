@@ -1,36 +1,23 @@
 package storm.handler.cal;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
+import com.ctfo.datacenter.cache.handle.CTFOCacheKeys;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.ctfo.datacenter.cache.handle.CTFOCacheKeys;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-
 import storm.cache.util.RedisOrganizationUtil;
 import storm.dao.DataToRedis;
 import storm.system.DataKey;
-import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.CTFOUtils;
 import storm.util.ConfigUtils;
+
+import java.io.Serializable;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * 计算碳排里程等数据的处理类
@@ -39,14 +26,9 @@ import storm.util.ConfigUtils;
  */
 public class MailCalHandler {
     private static Logger logger = LoggerFactory.getLogger(MailCalHandler.class);
-    private static final ConfigUtils configUtils = ConfigUtils.getInstance();
     public static final String unknow="UNKNOW";
-    public static final String unknowAndunknow="UNKNOW,UNKNOW";
-    public static final String unknowString="UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW";
     public static final String [] unknowArray =new String[]{"UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW"};
     private static DataToRedis redis;
-    private static long time = 180 * 1000 ;
-    private static long stoptime = 180 * 1000 ;
     public static boolean redisclusterIsload;
     public static Cache<String, String[]>carInfoArray = CacheBuilder.newBuilder()
             .expireAfterAccess(60,TimeUnit.MINUTES)
@@ -68,7 +50,6 @@ public class MailCalHandler {
             .build();
     private static Map<String, Map<String,String>> zeroCache = new java.util.concurrent.ConcurrentHashMap<String, Map<String,String>>();
     static{
-        setTime();
         redis=new DataToRedis();
         Map<String, String> map = redis.hashGetAllMapByKeyAndDb("XNY.CARINFO", 0);
         Map<String,Set<String>> carUsers = RedisOrganizationUtil.getCarUser(false);
@@ -123,34 +104,10 @@ public class MailCalHandler {
         }
         resetUserCache();
     }
-    private static void setTime(){
-        String offli= configUtils.sysDefine.getProperty(StormConfigKey.REDIS_OFFLINE_SECOND);
-        if(null != offli) {
-            time=1000*Long.valueOf(offli);
-        }
-        String stopli= configUtils.sysDefine.getProperty("redis.offline.stoptime");
-        if(null != stopli) {
-            stoptime=1000*Long.valueOf(stopli);
-        }
-    }
+
     private static void tasks(){
-        long clustertime = 180L;
-        long stattime = 600L;
-        try {
-            String cltt = configUtils.sysDefine.getProperty("redis.totalInterval");
-            String stt = configUtils.sysDefine.getProperty("redis.monitor.time");
-            if (null != cltt) {
-                clustertime=Long.parseLong(cltt);
-            }
-            if (null != stt) {
-                stattime=Long.parseLong(stt);
-            }
-
-        } catch (Exception e) {
-
-        }
-        Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new TimerThread(), 0, clustertime, TimeUnit.SECONDS);
-        Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new StatCarinfoThread(), 0, stattime, TimeUnit.SECONDS);
+        Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new TimerThread(), 0, ConfigUtils.getSysDefine().getRedisMonitorTime(), TimeUnit.SECONDS);
+        Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new StatCarinfoThread(), 0, ConfigUtils.getSysDefine().getRedisTotalInterval(), TimeUnit.SECONDS);
     }
 
     private static boolean loadLastrecordByRediscluster(){
@@ -395,10 +352,7 @@ public class MailCalHandler {
             setComplete(false);
 
             stime = 1506790800000L;//2017/10/01/01:00:00的long值时间
-            String threads= configUtils.sysDefine.getProperty("stat.thread.no");
-            if(null != threads) {
-                poolsz=Integer.valueOf(threads);
-            }
+            poolsz = ConfigUtils.getSysDefine().getStatThreadNo();
         }
         void setComplete(boolean complete) {
             this.complete = complete;
@@ -687,6 +641,7 @@ public class MailCalHandler {
                 String str = map.get(DataKey._2202_TOTAL_MILEAGE);
                 mileage +=Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0");
                 long lastTime=Long.valueOf(map.get(SysDefine.ONLINE_UTC));
+                long time = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
                 if (System.currentTimeMillis()-lastTime<time){
                     online++;
                     boolean isstop=isStop(map);
@@ -746,6 +701,7 @@ public class MailCalHandler {
                     } else {
                         long lastTime=Long.valueOf(map.get(SysDefine.ONLINE_UTC));
                         long starttime=Long.valueOf(startZero.get(SysDefine.ONLINE_UTC));
+                        long stoptime = ConfigUtils.getSysDefine().getRedisOfflineStopTime() * 1000;
                         if (lastTime - starttime >= stoptime) {
                             String slon = startZero.get("2502");//经度
                             String slan = startZero.get("2503");//纬度
@@ -839,10 +795,7 @@ public class MailCalHandler {
             staplantOnlyCarTypeMap = new ConcurrentHashMap<String, Map<String, String>>();
             stauserTotalDistAndTypeMap = new ConcurrentHashMap<String,Map<String, Map<String, String>>>();
             stauserTotalOnlyDistMap = new ConcurrentHashMap<String,Map<String, Map<String, String>>>();
-            String threads= configUtils.sysDefine.getProperty("stat.thread.no");
-            if(null != threads) {
-                poolsz=Integer.valueOf(threads);
-            }
+            poolsz = ConfigUtils.getSysDefine().getStatThreadNo();
             threadPools = Executors.newFixedThreadPool(poolsz);
         }
 

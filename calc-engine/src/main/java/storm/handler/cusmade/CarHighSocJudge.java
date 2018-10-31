@@ -16,7 +16,6 @@ import storm.constant.FormatConstant;
 import storm.extension.ObjectExtension;
 import storm.system.DataKey;
 import storm.system.NoticeType;
-import storm.system.SysDefine;
 import storm.tool.DelaySwitch;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
@@ -26,7 +25,6 @@ import storm.util.JsonUtils;
 import java.lang.reflect.Type;
 import java.text.ParseException;
 import java.util.Map;
-import java.util.Properties;
 import java.util.TreeMap;
 import java.util.UUID;
 /**
@@ -52,132 +50,14 @@ public class CarHighSocJudge  {
     private static final Type TREE_MAP_STRING_STRING_TYPE = new TypeToken<TreeMap<String, String>>() {
     }.getType();
 
-    // region 6个可以配置的阈值
-
-    /**
-     * SOC过高开始通知触发器, 小于等于阈值, 默认10
-     */
-    private static int socHighBeginThreshold;
-    /**
-     * SOC过高开始通知触发器, 连续帧数, 默认3帧
-     */
-    private static int socHighBeginContinueCount;
-    /**
-     * SOC过高开始通知触发器, 持续时长, 默认30秒
-     */
-    private static long socHighBeginContinueMillisecond;
-    /**
-     * SOC过高结束通知触发器, 大于阈值, 默认10
-     */
-    private static int socHighEndThreshold;
-    /**
-     * SOC过高结束通知触发器, 连续帧数, 默认1
-     */
-    private static int socHighEndContinueCount;
-    /**
-     * SOC过高结束通知触发器, 持续时长, 默认0表示立即触发.
-     */
-    private static long socHighEndContinueMillisecond;
-
-    // region 可配置变量的 get 和 set 方法
-
-    public static int getSocHighBeginThreshold() {
-        return socHighBeginThreshold;
-    }
-
-    public static void setSocHighBeginThreshold(int socHighBeginThreshold) {
-        CarHighSocJudge.socHighBeginThreshold = socHighBeginThreshold;
-    }
-
-    public static int getSocHighBeginContinueCount() {
-        return socHighBeginContinueCount;
-    }
-
-    public static void setSocHighBeginContinueCount(int socHighBeginContinueCount) {
-        CarHighSocJudge.socHighBeginContinueCount = socHighBeginContinueCount;
-    }
-
-    public static long getSocHighBeginContinueMillisecond() {
-        return socHighBeginContinueMillisecond;
-    }
-
-    public static void setSocHighBeginContinueMillisecond(long socHighBeginContinueMillisecond) {
-        CarHighSocJudge.socHighBeginContinueMillisecond = socHighBeginContinueMillisecond;
-    }
-
-    public static int getSocHighEndThreshold() {
-        return socHighEndThreshold;
-    }
-
-    public static void setSocHighEndThreshold(int socHighEndThreshold) {
-        CarHighSocJudge.socHighEndThreshold = socHighEndThreshold;
-    }
-
-    public static int getSocHighEndContinueCount() {
-        return socHighEndContinueCount;
-    }
-
-    public static void setSocHighEndContinueCount(int socHighEndContinueCount) {
-        CarHighSocJudge.socHighEndContinueCount = socHighEndContinueCount;
-    }
-
-    public static long getSocHighEndContinueMillisecond() {
-        return socHighEndContinueMillisecond;
-    }
-
-    public static void setSocHighEndContinueMillisecond(long socHighEndContinueMillisecond) {
-        CarHighSocJudge.socHighEndContinueMillisecond = socHighEndContinueMillisecond;
-    }
-
-
-    //endregion 可配置变量的 get 和 set 方法
-
     @NotNull
     @Contract(" -> new")
     private static DelaySwitch buildDelaySwitch() {
         return new DelaySwitch(
-                socHighBeginContinueCount,
-                socHighBeginContinueMillisecond,
-                socHighEndContinueCount,
-                socHighEndContinueMillisecond);
-    }
-
-    // endregion 6个可以配置的阈值
-
-    static {
-        final ConfigUtils configUtils = ConfigUtils.getInstance();
-        final Properties sysDefine = configUtils.sysDefine;
-
-        socHighBeginThreshold = NumberUtils.toInt(
-                sysDefine.getProperty(
-                        SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_THRESHOLD),
-                90
-        );
-        socHighBeginContinueCount = NumberUtils.toInt(
-                sysDefine.getProperty(
-                        SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_CONTINUE_COUNT),
-                3
-        );
-        socHighBeginContinueMillisecond = NumberUtils.toLong(
-                sysDefine.getProperty(
-                        SysDefine.NOTICE_SOC_HIGH_BEGIN_TRIGGER_TIMEOUT_MILLISECOND),
-                30000
-        );
-        socHighEndThreshold = NumberUtils.toInt(
-                sysDefine.getProperty(
-                        SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_THRESHOLD),
-                80
-        );
-        socHighEndContinueCount = NumberUtils.toInt(
-                sysDefine.getProperty(
-                        SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_CONTINUE_COUNT),
-                1
-        );
-        socHighEndContinueMillisecond = NumberUtils.toLong(
-                sysDefine.getProperty(
-                        SysDefine.NOTICE_SOC_HIGH_END_TRIGGER_TIMEOUT_MILLISECOND),
-                0
-        );
+                ConfigUtils.getSysDefine().getNoticeSocHighBeginTriggerContinueCount(),
+                ConfigUtils.getSysDefine().getNoticeSocHighBeginTriggerTimeoutMillisecond(),
+                ConfigUtils.getSysDefine().getNoticeSocHighEndTriggerContinueCount(),
+                ConfigUtils.getSysDefine().getNoticeSocHighEndTriggerTimeoutMillisecond());
     }
 
     // region 状态表
@@ -190,10 +70,10 @@ public class CarHighSocJudge  {
     @SuppressWarnings({"unused", "WeakerAccess"})
     public void syncDelaySwitchConfig() {
         vehicleStatus.forEach((vehicleId, delaySwitch)->{
-            delaySwitch.setPositiveThreshold(socHighBeginContinueCount);
-            delaySwitch.setPositiveTimeout(socHighBeginContinueMillisecond);
-            delaySwitch.setNegativeThreshold(socHighEndContinueCount);
-            delaySwitch.setNegativeTimeout(socHighEndContinueMillisecond);
+            delaySwitch.setPositiveThreshold(ConfigUtils.getSysDefine().getNoticeSocHighBeginTriggerContinueCount());
+            delaySwitch.setPositiveTimeout(ConfigUtils.getSysDefine().getNoticeSocHighBeginTriggerTimeoutMillisecond());
+            delaySwitch.setNegativeThreshold(ConfigUtils.getSysDefine().getNoticeSocHighEndTriggerContinueCount());
+            delaySwitch.setNegativeTimeout(ConfigUtils.getSysDefine().getNoticeSocHighEndTriggerTimeoutMillisecond());
         });
     }
 
@@ -211,21 +91,10 @@ public class CarHighSocJudge  {
                         if(NOTICE_STATUS_START.equals(status)) {
                             return buildDelaySwitch().setSwitchStatus(true);
                         } else if(NOTICE_STATUS_END.equals(status)) {
-                            LOG.warn(
-                                    "redis[{}][{}][{}]中已结束的平台报警通知[{}]",
-                                    REDIS_DATABASE_INDEX,
-                                    SOC_HIGH_REDIS_KEY,
-                                    vehicleId,
-                                    json);
+                            LOG.warn("VID:{} REDIS DB:{} KEY:{} 中已结束的平台报警通知 {}", vehicleId, REDIS_DATABASE_INDEX, SOC_HIGH_REDIS_KEY, json);
                             jedis.hdel(SOC_HIGH_REDIS_KEY, vehicleId);
                         } else {
-                            LOG.warn(
-                                    "redis[{}][{}][{}]中状态为[{}]的异常平台报警通知[{}]",
-                                    REDIS_DATABASE_INDEX,
-                                    SOC_HIGH_REDIS_KEY,
-                                    vehicleId,
-                                    status,
-                                    json);
+                            LOG.warn("VID:{} REDIS DB:{} KEY:{} 中状态为 {} 的异常平台报警通知 {}", vehicleId, REDIS_DATABASE_INDEX, SOC_HIGH_REDIS_KEY, status, json);
                             jedis.hdel(SOC_HIGH_REDIS_KEY, vehicleId);
                         }
                     }
@@ -247,12 +116,7 @@ public class CarHighSocJudge  {
                                     json,
                                     TREE_MAP_STRING_STRING_TYPE,
                                     e -> {
-                                        LOG.warn(
-                                                "redis[{}][{}][{}]中不是合法json的SOC过高通知[{}]",
-                                                REDIS_DATABASE_INDEX,
-                                                SOC_HIGH_REDIS_KEY,
-                                                vehicleId,
-                                                json);
+                                        LOG.warn("VID:{} REDIS DB:{} KEY:{} 中不是合法json的SOC过高通知 {}", vehicleId, REDIS_DATABASE_INDEX, SOC_HIGH_REDIS_KEY, json);
                                         return null;
                                     }),
                             Maps::newTreeMap)
@@ -298,7 +162,7 @@ public class CarHighSocJudge  {
         final int soc = Integer.parseInt(socString);
 
         // 检验SOC是否大于等于过高开始阈值
-        if(soc >= socHighBeginThreshold) {
+        if(soc >= ConfigUtils.getSysDefine().getNoticeSocHighBeginTriggerThreshold()) {
             final String[] result = new String[1];
             final DelaySwitch delaySwitch = ensureVehicleStatus(vehicleId);
             delaySwitch.positiveIncrease(
@@ -311,7 +175,7 @@ public class CarHighSocJudge  {
             return result[0];
         }
         // 检验SOC是否小于过高结束阈值
-        else if(soc < socHighEndThreshold) {
+        else if(soc < ConfigUtils.getSysDefine().getNoticeSocHighEndTriggerThreshold()) {
             final String[] result = new String[1];
             final DelaySwitch delaySwitch = ensureVehicleStatus(vehicleId);
             delaySwitch.negativeIncrease(
@@ -351,12 +215,12 @@ public class CarHighSocJudge  {
                         .put("stime", platformReceiverTimeString)
                         .put("location", location)
                         .put("slocation", location)
-                        .put("sthreshold", String.valueOf(socHighBeginThreshold))
+                        .put("sthreshold", String.valueOf(ConfigUtils.getSysDefine().getNoticeSocHighBeginTriggerThreshold()))
                         .put("ssoc", String.valueOf(soc))
                         .build()
         );
 
-        LOG.trace("VID[{}]SOC过高开始首帧缓存初始化", vehicleId);
+        LOG.trace("VID:{} SOC过高开始首帧缓存初始化", vehicleId);
     }
 
     private void socHighBeginOverflow(
@@ -384,7 +248,7 @@ public class CarHighSocJudge  {
 
         result[0] = json;
 
-        LOG.debug("VID[{}]SOC过高开始通知发送[{}]", vehicleId, socHighStartNotice.get("msgId"));
+        LOG.debug("VID:{} SOC过高开始通知发送 MSGID:{}", vehicleId, socHighStartNotice.get("msgId"));
     }
     // endregion SOC过高开始
 
@@ -410,12 +274,12 @@ public class CarHighSocJudge  {
                 new ImmutableMap.Builder<String, String>()
                         .put("etime", platformReceiverTimeString)
                         .put("elocation", location)
-                        .put("ethreshold", String.valueOf(socHighEndThreshold))
+                        .put("ethreshold", String.valueOf(ConfigUtils.getSysDefine().getNoticeSocHighEndTriggerThreshold()))
                         .put("esoc", String.valueOf(soc))
                         .build()
         );
 
-        LOG.trace("VID[{}]SOC过高结束首帧初始化", vehicleId);
+        LOG.trace("VID:{} SOC过高结束首帧初始化", vehicleId);
     }
 
     private void socHighEndOverflow(
@@ -446,7 +310,7 @@ public class CarHighSocJudge  {
 
                 result[0] = json;
 
-                LOG.debug("VID[{}]SOC过高结束通知发送", vehicleId, socHighEndNotice.get("msgId"));
+                LOG.debug("VID:{} SOC过高结束通知发送 MSGID:{}", vehicleId, socHighEndNotice.get("msgId"));
             }
         });
     }

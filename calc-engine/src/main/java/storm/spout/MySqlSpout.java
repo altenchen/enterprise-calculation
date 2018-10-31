@@ -2,8 +2,6 @@ package storm.spout;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.storm.spout.SpoutOutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -17,12 +15,10 @@ import storm.extension.ObjectExtension;
 import storm.stream.MessageId;
 import storm.stream.StreamReceiverFilter;
 import storm.stream.VehicleIdentityStream;
-import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.SqlUtils;
 
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -88,16 +84,6 @@ public final class MySqlSpout extends BaseRichSpout {
     // region 数据库查询
 
     /**
-     * 车辆标识数据库查询 SQL
-     */
-    private static final String VEHICLE_ID_SQL;
-
-    /**
-     * 数据库查询最小间隔
-     */
-    private static final long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND;
-
-    /**
      * 最近一次从数据库更新的时间
      */
     private static long lastRebuildTime = 0;
@@ -109,6 +95,7 @@ public final class MySqlSpout extends BaseRichSpout {
 
     private static ImmutableSet<String> getVehicleIdSet() {
         final long currentTimeMillis = System.currentTimeMillis();
+		long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
         if(currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
             rebuild(currentTimeMillis);
         }
@@ -117,7 +104,7 @@ public final class MySqlSpout extends BaseRichSpout {
     }
 
     private static synchronized void rebuild(final long currentTimeMillis) {
-
+		long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
         if(currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
 
             try {
@@ -140,7 +127,7 @@ public final class MySqlSpout extends BaseRichSpout {
     private static synchronized ImmutableSet<String> buildVehicleIdFromDb() {
         return ObjectExtension.defaultIfNull(
             SQL_UTILS.query(
-                VEHICLE_ID_SQL,
+                    ConfigUtils.getSysParam().getVehicleIdSql(),
                 resultSet -> {
                     ImmutableSet.Builder<String> builder = new ImmutableSet.Builder<>();
                     while (resultSet.next()) {
@@ -158,24 +145,8 @@ public final class MySqlSpout extends BaseRichSpout {
     private static final long SUCCESSFUL_POLL_INTERVAL_IN_MILLISECONDS = TimeUnit.MINUTES.toMillis(3);
 
     static {
-        final ConfigUtils configUtils = ConfigUtils.getInstance();
-        final Properties sysParams = configUtils.sysParams;
-        final Properties sysDefine = configUtils.sysDefine;
-
-        VEHICLE_ID_SQL = StringUtils.defaultIfEmpty(
-            sysParams.getProperty("vehicle.id.sql"),
-            "select uuid from sys_vehicle where uuid is not null"
-        );
-        LOG.info("车辆标识数据库查询语句为[{}]", VEHICLE_ID_SQL);
-
-        DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(
-            NumberUtils.toLong(
-                sysDefine.getProperty(
-                    SysDefine.DB_CACHE_FLUSH_TIME_SECOND),
-                60
-            )
-        );
-        LOG.info("车辆标识数据库更新最小间隔为[{}]毫秒", DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND);
+        LOG.info("车辆标识数据库查询语句为 {} ", ConfigUtils.getSysParam().getVehicleIdSql());
+        LOG.info("车辆标识数据库更新最小间隔为 {} 毫秒", TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime()));
     }
 
     @SuppressWarnings({"unused", "FieldCanBeLocal"})

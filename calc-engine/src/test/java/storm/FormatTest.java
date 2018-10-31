@@ -17,6 +17,7 @@ import storm.constant.FormatConstant;
 import storm.extension.MapExtension;
 import storm.system.SysDefine;
 import storm.topology.TopologiesByConf;
+import storm.util.ConfigUtils;
 
 import java.io.*;
 import java.math.BigDecimal;
@@ -139,22 +140,23 @@ final class FormatTest {
         final String kafkaZookeeperServers = "192.168.1.100,192.168.1.101,192.168.1.102";
         final String kafkaZookeeperPort = "2181";
         final String kafkaZookeeperPath = "/stormcal";
+        //TODO 配置统一在ConfigUtils管理
 
-        TopologiesByConf.initZookeeperConfig(kafkaZookeeperServers, kafkaZookeeperPort, kafkaZookeeperPath);
+        TopologiesByConf.initZookeeperConfig();
 
         Assertions.assertEquals(
             Arrays.asList(
                 "192.168.1.100",
                 "192.168.1.101",
                 "192.168.1.102"),
-            SysDefine.KAFKA_ZOOKEEPER_SERVERS);
+                ConfigUtils.getSysDefine().getKafkaZookeeperServers());
         Assertions.assertEquals(
             2181,
-            SysDefine.KAFKA_ZOOKEEPER_PORT);
+                ConfigUtils.getSysDefine().getKafkaZookeeperPort());
         Assertions.assertEquals(
             "/stormcal",
-            SysDefine.KAFKA_ZOOKEEPER_PATH);
-        Assertions.assertEquals("192.168.1.100:2181,192.168.1.101:2181,192.168.1.102:2181", SysDefine.KAFKA_ZOOKEEPER_HOSTS);
+                ConfigUtils.getSysDefine().getKafkaZookeeperPath());
+//        Assertions.assertEquals("192.168.1.100:2181,192.168.1.101:2181,192.168.1.102:2181", SysDefine.KAFKA_ZOOKEEPER_HOSTS);
     }
 
     @Disabled("不可变类")
