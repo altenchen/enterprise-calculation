@@ -105,9 +105,6 @@ public final class ConfigUtils {
                     continue;
                 }
                 String beanAttributeName = keyConvertAttributeName(paramKeyString);
-                if( BeanUtils.getProperty(sysDefine, beanAttributeName) == null ){
-                    return;
-                }
                 BeanUtils.setProperty(sysDefine, beanAttributeName, properties.get(paramKey));
                 LOG.info("应用配置 {}={}", paramKey, value);
             } catch (Exception e) {
@@ -133,9 +130,6 @@ public final class ConfigUtils {
                     continue;
                 }
                 String beanAttributeName = keyConvertAttributeName(paramKeyString);
-                if( BeanUtils.getProperty(sysDefine, beanAttributeName) == null ){
-                    return;
-                }
                 BeanUtils.setProperty(sysDefine, beanAttributeName, properties.get(paramKey));
                 LOG.info("应用配置 {}={}", paramKey, value);
             } catch (Exception e) {
@@ -160,9 +154,6 @@ public final class ConfigUtils {
                 Object value = properties.get(paramKey);
                 if (StringUtils.isEmpty(value.toString())) {
                     continue;
-                }
-                if( BeanUtils.getProperty(sysParam, beanAttributeName) == null ){
-                    return;
                 }
                 BeanUtils.setProperty(sysParam, beanAttributeName, properties.get(paramKey));
                 LOG.info("应用配置 {}={}", paramKey, value);

@@ -28,7 +28,6 @@ import storm.system.NoticeType;
 import storm.system.ProtocolItem;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
-import storm.util.GpsUtil;
 import storm.util.JsonUtils;
 
 import java.text.ParseException;
@@ -69,7 +68,6 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Double> igniteShutMaxSpeed = new HashMap<>();
     private Map<String, Double> lastSoc = new HashMap<>();
     private Map<String, Double> lastMile = new HashMap<>();
-
 
     private Map<String, Integer> vidSpeedGtZero = new HashMap<>();
     private Map<String, Integer> vidSpeedZero = new HashMap<>();

@@ -15,6 +15,7 @@ import storm.util.ConfigUtils;
 import storm.util.SqlUtils;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;

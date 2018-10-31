@@ -37,6 +37,8 @@ public final class MySqlSpout extends BaseRichSpout {
 
     private static final SqlUtils SQL_UTILS = SqlUtils.getInstance();
 
+    // region Component
+
     @NotNull
     private static final String COMPONENT_ID = MySqlSpout.class.getSimpleName();
 
@@ -46,6 +48,10 @@ public final class MySqlSpout extends BaseRichSpout {
     public static String getComponentId() {
         return COMPONENT_ID;
     }
+
+    // endregion Component
+
+    // region VehicleIdentityStream
 
     @NotNull
     private static final VehicleIdentityStream VEHICLE_IDENTITY_STREAM = VehicleIdentityStream.getInstance();
@@ -72,6 +78,10 @@ public final class MySqlSpout extends BaseRichSpout {
                 COMPONENT_ID,
                 VEHICLE_IDENTITY_STREAM_ID);
     }
+
+    // endregion VehicleIdentityStream
+
+    // region 数据库查询
 
     /**
      * 最近一次从数据库更新的时间

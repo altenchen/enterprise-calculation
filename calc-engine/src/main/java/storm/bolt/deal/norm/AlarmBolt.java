@@ -56,6 +56,8 @@ public class AlarmBolt extends BaseRichBolt {
 
     private static final Logger LOG = LoggerFactory.getLogger(AlarmBolt.class);
 
+    // region Component
+
     @NotNull
     private static final String COMPONENT_ID = AlarmBolt.class.getSimpleName();
 
@@ -64,6 +66,10 @@ public class AlarmBolt extends BaseRichBolt {
     public static String getComponentId() {
         return COMPONENT_ID;
     }
+
+    // endregion Component
+
+    // region KafkaStream
 
     @NotNull
     private static final KafkaStream KAFKA_STREAM = KafkaStream.getInstance();
@@ -77,7 +83,10 @@ public class AlarmBolt extends BaseRichBolt {
         return KAFKA_STREAM_ID;
     }
 
+    // endregion KafkaStream
+
     // region 静态常量
+
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
     private static final DataToRedis redis = new DataToRedis();
 
@@ -101,16 +110,14 @@ public class AlarmBolt extends BaseRichBolt {
      * <vid, <key, value>>
      */
     @NotNull
-    private transient Map<String, ImmutableMap<String, String>> vehicleCache
-            = Maps.newHashMap();
+    private transient Map<String, ImmutableMap<String, String>> vehicleCache = Maps.newHashMap();
 
     /**
      * 规则报警缓存
      * <ruleId, <vid, status>>
      */
     @NotNull
-    private transient Map<String, Map<String, AlarmStatus>> ruleVehicleStatus =
-            Maps.newHashMap();
+    private transient Map<String, Map<String, AlarmStatus>> ruleVehicleStatus = Maps.newHashMap();
 
     @NotNull
     private AlarmStatus ensureStatus(@NotNull final String ruleId, @NotNull final String vehicleId) {

@@ -16,7 +16,6 @@ import storm.constant.FormatConstant;
 import storm.extension.ObjectExtension;
 import storm.system.DataKey;
 import storm.system.NoticeType;
-import storm.system.SysDefine;
 import storm.tool.DelaySwitch;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
@@ -27,7 +26,6 @@ import storm.util.function.TeConsumer;
 import java.lang.reflect.Type;
 import java.text.ParseException;
 import java.util.Map;
-import java.util.Properties;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -50,168 +48,16 @@ class CarLowSocJudge {
     private static final Type TREE_MAP_STRING_STRING_TYPE = new TypeToken<TreeMap<String, String>>() {
     }.getType();
 
-    // region 6个可以配置的阈值
-
-    /**
-     * soc过低开始通知触发器, 小于等于阈值, 默认10
-     */
-    private static int socLowBeginThreshold;
-    /**
-     * soc过低开始通知触发器, 连续帧数, 默认3帧
-     */
-    private static int socLowBeginContinueCount;
-    /**
-     * soc过低开始通知触发器, 持续时长, 默认30秒
-     */
-    private static long socLowBeginContinueMillisecond;
-    /**
-     * soc过低结束通知触发器, 大于阈值, 默认10
-     */
-    private static int socLowEndThreshold;
-    /**
-     * soc过低结束通知触发器, 连续帧数, 默认1
-     */
-    private static int socLowEndContinueCount;
-    /**
-     * soc过低结束通知触发器, 持续时长, 默认0表示立即触发.
-     */
-    private static long socLowEndContinueMillisecond;
-
-    // region 可配置变量的 get 和 set 方法
-
-    /**
-     * soc过低开始通知触发器, 小于等于阈值, 默认10
-     */
-    @SuppressWarnings("unused")
-    @Contract(pure = true)
-    public static int getSocLowBeginThreshold() {
-        return socLowBeginThreshold;
-    }
-
-    @SuppressWarnings({"unused", "WeakerAccess"})
-    public static void setSocLowBeginThreshold(int socLowBeginThreshold) {
-        CarLowSocJudge.socLowBeginThreshold = socLowBeginThreshold;
-    }
-
-    /**
-     * soc过低开始通知触发器, 连续帧数, 默认3帧
-     */
-    @SuppressWarnings("unused")
-    @Contract(pure = true)
-    public static int getSocLowBeginContinueCount() {
-        return socLowBeginContinueCount;
-    }
-
-    @SuppressWarnings({"unused", "WeakerAccess"})
-    public static void setSocLowBeginContinueCount(int socLowBeginContinueCount) {
-        CarLowSocJudge.socLowBeginContinueCount = socLowBeginContinueCount;
-    }
-
-    /**
-     * soc过低开始通知触发器, 持续时长, 默认30秒
-     */
-    @SuppressWarnings("unused")
-    @Contract(pure = true)
-    public static long getSocLowBeginContinueMillisecond() {
-        return socLowBeginContinueMillisecond;
-    }
-
-    @SuppressWarnings({"unused", "WeakerAccess"})
-    public static void setSocLowBeginContinueMillisecond(long socLowBeginContinueMillisecond) {
-        CarLowSocJudge.socLowBeginContinueMillisecond = socLowBeginContinueMillisecond;
-    }
-
-    /**
-     * soc过低结束通知触发器, 大于阈值, 默认10
-     */
-    @SuppressWarnings("unused")
-    @Contract(pure = true)
-    public static int getSocLowEndThreshold() {
-        return socLowEndThreshold;
-    }
-
-    @SuppressWarnings({"unused", "WeakerAccess"})
-    public static void setSocLowEndThreshold(int socLowEndThreshold) {
-        CarLowSocJudge.socLowEndThreshold = socLowEndThreshold;
-    }
-
-    /**
-     * soc过低结束通知触发器, 连续帧数, 默认1
-     */
-    @SuppressWarnings("unused")
-    @Contract(pure = true)
-    public static int getSocLowEndContinueCount() {
-        return socLowEndContinueCount;
-    }
-
-    @SuppressWarnings({"unused", "WeakerAccess"})
-    public static void setSocLowEndContinueCount(int socLowEndContinueCount) {
-        CarLowSocJudge.socLowEndContinueCount = socLowEndContinueCount;
-    }
-
-    /**
-     * soc过低结束通知触发器, 持续时长, 默认0表示立即触发.
-     */
-    @SuppressWarnings("unused")
-    @Contract(pure = true)
-    public static long getSocLowEndContinueMillisecond() {
-        return socLowEndContinueMillisecond;
-    }
-
-    @SuppressWarnings({"unused", "WeakerAccess"})
-    public static void setSocLowEndContinueMillisecond(long socLowEndContinueMillisecond) {
-        CarLowSocJudge.socLowEndContinueMillisecond = socLowEndContinueMillisecond;
-    }
-
-    //endregion 可配置变量的 get 和 set 方法
-
     @NotNull
     @Contract(" -> new")
     private static DelaySwitch buildDelaySwitch() {
         return new DelaySwitch(
-            socLowBeginContinueCount,
-            socLowBeginContinueMillisecond,
-            socLowEndContinueCount,
-            socLowEndContinueMillisecond);
+            ConfigUtils.getSysDefine().getNoticeSocLowBeginTriggerContinueCount(),
+            ConfigUtils.getSysDefine().getNoticeSocLowBeginTriggerTimeoutMillisecond(),
+            ConfigUtils.getSysDefine().getNoticeSocLowEndTriggerContinueCount(),
+            ConfigUtils.getSysDefine().getNoticeSocLowEndTriggerTimeoutMillisecond());
     }
 
-    // endregion 6个可以配置的阈值
-
-    static {
-        final ConfigUtils configUtils = ConfigUtils.getInstance();
-        final Properties sysDefine = configUtils.sysDefine;
-
-        socLowBeginThreshold = NumberUtils.toInt(
-            sysDefine.getProperty(
-                SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_THRESHOLD),
-            10
-        );
-        socLowBeginContinueCount = NumberUtils.toInt(
-            sysDefine.getProperty(
-                SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_CONTINUE_COUNT),
-            3
-        );
-        socLowBeginContinueMillisecond = NumberUtils.toLong(
-            sysDefine.getProperty(
-                SysDefine.NOTICE_SOC_LOW_BEGIN_TRIGGER_TIMEOUT_MILLISECOND),
-            30000
-        );
-        socLowEndThreshold = NumberUtils.toInt(
-            sysDefine.getProperty(
-                SysDefine.NOTICE_SOC_LOW_END_TRIGGER_THRESHOLD),
-            10
-        );
-        socLowEndContinueCount = NumberUtils.toInt(
-            sysDefine.getProperty(
-                SysDefine.NOTICE_SOC_LOW_END_TRIGGER_CONTINUE_COUNT),
-            1
-        );
-        socLowEndContinueMillisecond = NumberUtils.toLong(
-            sysDefine.getProperty(
-                SysDefine.NOTICE_SOC_LOW_END_TRIGGER_TIMEOUT_MILLISECOND),
-            0
-        );
-    }
 
     // region 状态表
 
@@ -223,10 +69,10 @@ class CarLowSocJudge {
     @SuppressWarnings({"unused", "WeakerAccess"})
     public void syncDelaySwitchConfig() {
         vehicleStatus.forEach((vehicleId, delaySwitch)->{
-            delaySwitch.setPositiveThreshold(socLowBeginContinueCount);
-            delaySwitch.setPositiveTimeout(socLowBeginContinueMillisecond);
-            delaySwitch.setNegativeThreshold(socLowEndContinueCount);
-            delaySwitch.setNegativeTimeout(socLowEndContinueMillisecond);
+            delaySwitch.setPositiveThreshold(ConfigUtils.getSysDefine().getNoticeSocLowBeginTriggerContinueCount());
+            delaySwitch.setPositiveTimeout(ConfigUtils.getSysDefine().getNoticeSocLowBeginTriggerTimeoutMillisecond());
+            delaySwitch.setNegativeThreshold(ConfigUtils.getSysDefine().getNoticeSocLowEndTriggerContinueCount());
+            delaySwitch.setNegativeTimeout(ConfigUtils.getSysDefine().getNoticeSocLowEndTriggerTimeoutMillisecond());
         });
     }
 
@@ -244,21 +90,10 @@ class CarLowSocJudge {
                     if(NOTICE_STATUS_START.equals(status)) {
                         return buildDelaySwitch().setSwitchStatus(true);
                     } else if(NOTICE_STATUS_END.equals(status)) {
-                        LOG.warn(
-                            "redis[{}][{}][{}]中已结束的平台报警通知[{}]",
-                            REDIS_DATABASE_INDEX,
-                            SOC_LOW_REDIS_KEY,
-                            vehicleId,
-                            json);
+                        LOG.warn("VID:{} REDIS DB:{} KEY:{} 中已结束的平台报警通知 {}", vehicleId, REDIS_DATABASE_INDEX, SOC_LOW_REDIS_KEY, json);
                         jedis.hdel(SOC_LOW_REDIS_KEY, vehicleId);
                     } else {
-                        LOG.warn(
-                            "redis[{}][{}][{}]中状态为[{}]的异常平台报警通知[{}]",
-                            REDIS_DATABASE_INDEX,
-                            SOC_LOW_REDIS_KEY,
-                            vehicleId,
-                            status,
-                            json);
+                        LOG.warn("VID:{} REDIS DB:{} KEY:{} 中状态为 {} 的异常平台报警通知 {}", vehicleId, REDIS_DATABASE_INDEX, SOC_LOW_REDIS_KEY, status, json);
                         jedis.hdel(SOC_LOW_REDIS_KEY, vehicleId);
                     }
                 }
@@ -280,12 +115,7 @@ class CarLowSocJudge {
                         json,
                         TREE_MAP_STRING_STRING_TYPE,
                         e -> {
-                            LOG.warn(
-                                "redis[{}][{}][{}]中不是合法json的SOC过低通知[{}]",
-                                REDIS_DATABASE_INDEX,
-                                SOC_LOW_REDIS_KEY,
-                                vehicleId,
-                                json);
+                            LOG.warn("VID:{} REDIS DB:{} KEY:{} 中不是合法json的SOC过低通知 {}", vehicleId, REDIS_DATABASE_INDEX, SOC_LOW_REDIS_KEY, json);
                             return null;
                         }),
                     Maps::newTreeMap)
@@ -333,7 +163,7 @@ class CarLowSocJudge {
         final int soc = Integer.parseInt(socString);
 
         // 检验SOC是否小于等于过低开始阈值
-        if(soc <= socLowBeginThreshold) {
+        if(soc <= ConfigUtils.getSysDefine().getNoticeSocLowBeginTriggerThreshold()) {
             final String[] result = new String[1];
             final DelaySwitch delaySwitch = ensureVehicleStatus(vehicleId);
             delaySwitch.positiveIncrease(
@@ -347,7 +177,7 @@ class CarLowSocJudge {
             return result[0];
         }
         // 检验SOC是否大于过低结束阈值
-        else if(soc > socLowEndThreshold) {
+        else if(soc > ConfigUtils.getSysDefine().getNoticeSocLowEndTriggerThreshold()) {
             final String[] result = new String[1];
             final DelaySwitch delaySwitch = ensureVehicleStatus(vehicleId);
             delaySwitch.negativeIncrease(
@@ -387,14 +217,14 @@ class CarLowSocJudge {
                 .put("stime", platformReceiverTimeString)
                 .put("location", location)
                 .put("slocation", location)
-                .put("sthreshold", String.valueOf(socLowBeginThreshold))
+                .put("sthreshold", String.valueOf(ConfigUtils.getSysDefine().getNoticeSocLowBeginTriggerThreshold()))
                 .put("ssoc", String.valueOf(soc))
                 // 兼容性处理, 暂留
-                .put("lowSocThreshold", String.valueOf(socLowBeginThreshold))
+                .put("lowSocThreshold", String.valueOf(ConfigUtils.getSysDefine().getNoticeSocLowEndTriggerThreshold()))
                 .build()
         );
 
-        LOG.trace("VID[{}]SOC过低开始首帧缓存初始化", vehicleId);
+        LOG.trace("VID:{} SOC过低开始首帧缓存初始化", vehicleId);
     }
 
     private void socLowBeginOverflow(
@@ -422,7 +252,7 @@ class CarLowSocJudge {
 
         result[0] = json;
 
-        LOG.debug("VID[{}]SOC过低开始通知发送[{}]", vehicleId, socLowStartNotice.get("msgId"));
+        LOG.debug("VID:{} SOC过低开始通知发送 MSGID:{}", vehicleId, socLowStartNotice.get("msgId"));
     }
 
     private void processChargeCars(
@@ -472,12 +302,12 @@ class CarLowSocJudge {
             new ImmutableMap.Builder<String, String>()
                 .put("etime", platformReceiverTimeString)
                 .put("elocation", location)
-                .put("ethreshold", String.valueOf(socLowEndThreshold))
+                .put("ethreshold", String.valueOf(ConfigUtils.getSysDefine().getNoticeSocLowEndTriggerThreshold()))
                 .put("esoc", String.valueOf(soc))
                 .build()
         );
 
-        LOG.trace("VID[{}]SOC过低结束首帧初始化", vehicleId);
+        LOG.trace("VID:{} SOC过低结束首帧初始化", vehicleId);
     }
 
     private void socLowEndOverflow(
@@ -508,7 +338,7 @@ class CarLowSocJudge {
 
                 result[0] = json;
 
-                LOG.debug("VID[{}]SOC过低结束通知发送", vehicleId, socLowEndNotice.get("msgId"));
+                LOG.debug("VID:{} SOC过低结束通知发送 MSGID:{}", vehicleId, socLowEndNotice.get("msgId"));
             }
         });
     }

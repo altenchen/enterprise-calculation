@@ -300,27 +300,59 @@ public class SysDefineEntity {
     /**
      * 是否启用SOC过低通知
      */
-    private int sysSocRule = 1;
+    private boolean noticeSocLowEnable = true;
     /**
-     * soc过低阈值
+     * soc过低开始通知触发器, 小于等于阈值
      */
-    private int ltAlarmSoc = 10;
+    private int noticeSocLowBeginTriggerThreshold = 10;
     /**
-     * 触发SOC故障需要的持续帧数
+     * soc过低开始通知触发器, 连续帧数
      */
-    private int noticeSocFaultTriggerContinueCount = 3;
+    private int noticeSocLowBeginTriggerContinueCount = 3;
     /**
-     * 触发SOC故障需要的持续时长
+     * soc过低开始通知触发器, 持续时长
      */
-    private int noticeSocFaultTriggerTimeoutMillisecond = 30000;
+    private int noticeSocLowBeginTriggerTimeoutMillisecond = 30000;
     /**
-     * 触发SOC正常需要的连续帧数
+     * soc过低结束通知触发器, 大于阈值
      */
-    private int noticeSocNormalTriggerContinueCount = 1;
+    private int noticeSocLowEndTriggerThreshold = 10;
     /**
-     * 触发SOC正常需要的持续时长
+     * soc过低结束通知触发器, 连续帧数
      */
-    private int noticeSocNormalTriggerTimeoutMillisecond = 0;
+    private int noticeSocLowEndTriggerContinueCount = 1;
+    /**
+     * ssoc过低结束通知触发器, 持续时长
+     */
+    private int noticeSocLowEndTriggerTimeoutMillisecond = 0;
+    /**
+     * 是否启用SOC过高通知
+     */
+    private boolean noticeSocHighEnable = true;
+    /**
+     * soc过高开始通知触发器, 小于等于阈值
+     */
+    private int noticeSocHighBeginTriggerThreshold = 90;
+    /**
+     * soc过高开始通知触发器, 连续帧数
+     */
+    private int noticeSocHighBeginTriggerContinueCount = 3;
+    /**
+     * soc过高开始通知触发器, 持续时长
+     */
+    private int noticeSocHighBeginTriggerTimeoutMillisecond = 30000;
+    /**
+     * soc过高结束通知触发器, 大于阈值
+     */
+    private int noticeSocHighEndTriggerThreshold = 80;
+    /**
+     * soc过高结束通知触发器, 连续帧数
+     */
+    private int noticeSocHighEndTriggerContinueCount = 1;
+    /**
+     * ssoc过高结束通知触发器, 持续时长
+     */
+    private int noticeSocHighEndTriggerTimeoutMillisecond = 0;
     /**
      * 是否启用未定位通知
      */
@@ -879,52 +911,124 @@ public class SysDefineEntity {
         this.noticeTimeRangeAbsMillisecond = noticeTimeRangeAbsMillisecond;
     }
 
-    public int getSysSocRule() {
-        return sysSocRule;
+    public boolean isNoticeSocLowEnable() {
+        return noticeSocLowEnable;
     }
 
-    public void setSysSocRule(int sysSocRule) {
-        this.sysSocRule = sysSocRule;
+    public void setNoticeSocLowEnable(boolean noticeSocLowEnable) {
+        this.noticeSocLowEnable = noticeSocLowEnable;
     }
 
-    public int getLtAlarmSoc() {
-        return ltAlarmSoc;
+    public int getNoticeSocLowBeginTriggerThreshold() {
+        return noticeSocLowBeginTriggerThreshold;
     }
 
-    public void setLtAlarmSoc(int ltAlarmSoc) {
-        this.ltAlarmSoc = ltAlarmSoc;
+    public void setNoticeSocLowBeginTriggerThreshold(int noticeSocLowBeginTriggerThreshold) {
+        this.noticeSocLowBeginTriggerThreshold = noticeSocLowBeginTriggerThreshold;
     }
 
-    public int getNoticeSocFaultTriggerContinueCount() {
-        return noticeSocFaultTriggerContinueCount;
+    public int getNoticeSocLowBeginTriggerContinueCount() {
+        return noticeSocLowBeginTriggerContinueCount;
     }
 
-    public void setNoticeSocFaultTriggerContinueCount(int noticeSocFaultTriggerContinueCount) {
-        this.noticeSocFaultTriggerContinueCount = noticeSocFaultTriggerContinueCount;
+    public void setNoticeSocLowBeginTriggerContinueCount(int noticeSocLowBeginTriggerContinueCount) {
+        this.noticeSocLowBeginTriggerContinueCount = noticeSocLowBeginTriggerContinueCount;
     }
 
-    public int getNoticeSocFaultTriggerTimeoutMillisecond() {
-        return noticeSocFaultTriggerTimeoutMillisecond;
+    public int getNoticeSocLowBeginTriggerTimeoutMillisecond() {
+        return noticeSocLowBeginTriggerTimeoutMillisecond;
     }
 
-    public void setNoticeSocFaultTriggerTimeoutMillisecond(int noticeSocFaultTriggerTimeoutMillisecond) {
-        this.noticeSocFaultTriggerTimeoutMillisecond = noticeSocFaultTriggerTimeoutMillisecond;
+    public void setNoticeSocLowBeginTriggerTimeoutMillisecond(int noticeSocLowBeginTriggerTimeoutMillisecond) {
+        this.noticeSocLowBeginTriggerTimeoutMillisecond = noticeSocLowBeginTriggerTimeoutMillisecond;
     }
 
-    public int getNoticeSocNormalTriggerContinueCount() {
-        return noticeSocNormalTriggerContinueCount;
+    public int getNoticeSocLowEndTriggerThreshold() {
+        return noticeSocLowEndTriggerThreshold;
     }
 
-    public void setNoticeSocNormalTriggerContinueCount(int noticeSocNormalTriggerContinueCount) {
-        this.noticeSocNormalTriggerContinueCount = noticeSocNormalTriggerContinueCount;
+    public void setNoticeSocLowEndTriggerThreshold(int noticeSocLowEndTriggerThreshold) {
+        this.noticeSocLowEndTriggerThreshold = noticeSocLowEndTriggerThreshold;
     }
 
-    public int getNoticeSocNormalTriggerTimeoutMillisecond() {
-        return noticeSocNormalTriggerTimeoutMillisecond;
+    public int getNoticeSocLowEndTriggerContinueCount() {
+        return noticeSocLowEndTriggerContinueCount;
     }
 
-    public void setNoticeSocNormalTriggerTimeoutMillisecond(int noticeSocNormalTriggerTimeoutMillisecond) {
-        this.noticeSocNormalTriggerTimeoutMillisecond = noticeSocNormalTriggerTimeoutMillisecond;
+    public void setNoticeSocLowEndTriggerContinueCount(int noticeSocLowEndTriggerContinueCount) {
+        this.noticeSocLowEndTriggerContinueCount = noticeSocLowEndTriggerContinueCount;
+    }
+
+    public int getNoticeSocLowEndTriggerTimeoutMillisecond() {
+        return noticeSocLowEndTriggerTimeoutMillisecond;
+    }
+
+    public void setNoticeSocLowEndTriggerTimeoutMillisecond(int noticeSocLowEndTriggerTimeoutMillisecond) {
+        this.noticeSocLowEndTriggerTimeoutMillisecond = noticeSocLowEndTriggerTimeoutMillisecond;
+    }
+
+    public boolean isNoticeSocHighEnable() {
+        return noticeSocHighEnable;
+    }
+
+    public void setNoticeSocHighEnable(boolean noticeSocHighEnable) {
+        this.noticeSocHighEnable = noticeSocHighEnable;
+    }
+
+    public int getNoticeSocHighBeginTriggerThreshold() {
+        return noticeSocHighBeginTriggerThreshold;
+    }
+
+    public void setNoticeSocHighBeginTriggerThreshold(int noticeSocHighBeginTriggerThreshold) {
+        this.noticeSocHighBeginTriggerThreshold = noticeSocHighBeginTriggerThreshold;
+    }
+
+    public int getNoticeSocHighBeginTriggerContinueCount() {
+        return noticeSocHighBeginTriggerContinueCount;
+    }
+
+    public void setNoticeSocHighBeginTriggerContinueCount(int noticeSocHighBeginTriggerContinueCount) {
+        this.noticeSocHighBeginTriggerContinueCount = noticeSocHighBeginTriggerContinueCount;
+    }
+
+    public int getNoticeSocHighBeginTriggerTimeoutMillisecond() {
+        return noticeSocHighBeginTriggerTimeoutMillisecond;
+    }
+
+    public void setNoticeSocHighBeginTriggerTimeoutMillisecond(int noticeSocHighBeginTriggerTimeoutMillisecond) {
+        this.noticeSocHighBeginTriggerTimeoutMillisecond = noticeSocHighBeginTriggerTimeoutMillisecond;
+    }
+
+    public int getNoticeSocHighEndTriggerThreshold() {
+        return noticeSocHighEndTriggerThreshold;
+    }
+
+    public void setNoticeSocHighEndTriggerThreshold(int noticeSocHighEndTriggerThreshold) {
+        this.noticeSocHighEndTriggerThreshold = noticeSocHighEndTriggerThreshold;
+    }
+
+    public int getNoticeSocHighEndTriggerContinueCount() {
+        return noticeSocHighEndTriggerContinueCount;
+    }
+
+    public void setNoticeSocHighEndTriggerContinueCount(int noticeSocHighEndTriggerContinueCount) {
+        this.noticeSocHighEndTriggerContinueCount = noticeSocHighEndTriggerContinueCount;
+    }
+
+    public int getNoticeSocHighEndTriggerTimeoutMillisecond() {
+        return noticeSocHighEndTriggerTimeoutMillisecond;
+    }
+
+    public void setNoticeSocHighEndTriggerTimeoutMillisecond(int noticeSocHighEndTriggerTimeoutMillisecond) {
+        this.noticeSocHighEndTriggerTimeoutMillisecond = noticeSocHighEndTriggerTimeoutMillisecond;
+    }
+
+    public int getCanNovalueContinueNo() {
+        return canNovalueContinueNo;
+    }
+
+    public void setCanNovalueContinueNo(int canNovalueContinueNo) {
+        this.canNovalueContinueNo = canNovalueContinueNo;
     }
 
     public int getSysGpsRule() {
@@ -981,13 +1085,5 @@ public class SysDefineEntity {
 
     public void setMileHopNum(int mileHopNum) {
         this.mileHopNum = mileHopNum;
-    }
-
-    public int getCanNovalueContinueNo() {
-        return canNovalueContinueNo;
-    }
-
-    public void setCanNovalueContinueNo(int canNovalueContinueNo) {
-        this.canNovalueContinueNo = canNovalueContinueNo;
     }
 }

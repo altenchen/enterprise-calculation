@@ -4,7 +4,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -20,7 +19,6 @@ import storm.bolt.deal.norm.EleFenceBolt;
 import storm.bolt.deal.norm.FilterBolt;
 import storm.bolt.deal.norm.SynEsculBolt;
 import storm.constant.StreamFieldKey;
-import storm.dao.DataToRedis;
 import storm.kafka.bolt.KafkaSendBolt;
 import storm.kafka.spout.GeneralKafkaSpout;
 import storm.kafka.spout.RegisterKafkaSpout;
@@ -33,8 +31,10 @@ import storm.util.ConfigUtils;
 import storm.util.function.TeConsumerE;
 
 import java.io.File;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * @author xzp
@@ -367,7 +367,7 @@ public final class TopologiesByConf {
         LOG.info("ProducerConfig: {}=[{}]", ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigUtils.getSysDefine().getKafkaBootstrapServers());
     }
 
-    public static void initZookeeperConfig() {
+    public static void  initZookeeperConfig() {
 
         List<String> servers = Arrays.asList(
                 StringUtils.split(

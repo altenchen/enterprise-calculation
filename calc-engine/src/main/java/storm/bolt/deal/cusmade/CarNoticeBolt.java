@@ -43,6 +43,8 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
     private static final Logger LOG = LoggerFactory.getLogger(CarNoticeBolt.class);
 
+    // region Component
+
     @NotNull
     private static final String COMPONENT_ID = CarNoticeBolt.class.getSimpleName();
 
@@ -51,6 +53,10 @@ public final class CarNoticeBolt extends BaseRichBolt {
     public static String getComponentId() {
         return COMPONENT_ID;
     }
+
+    // endregion Component
+
+    // region KafkaStream
 
     @NotNull
     private static final KafkaStream KAFKA_STREAM = KafkaStream.getInstance();
@@ -63,6 +69,8 @@ public final class CarNoticeBolt extends BaseRichBolt {
     public static String getKafkaStreamId() {
         return KAFKA_STREAM_ID;
     }
+
+    // endregion KafkaStream
 
     private static final DataToRedis redis = new DataToRedis();
 

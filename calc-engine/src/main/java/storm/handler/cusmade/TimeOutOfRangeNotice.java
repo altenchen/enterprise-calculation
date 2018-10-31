@@ -68,7 +68,7 @@ public final class TimeOutOfRangeNotice implements Serializable {
 
         final String platformTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
         if(!NumberUtils.isDigits(platformTimeString)) {
-            LOG.warn("VID:{} 平台接收时间格式错误[{}]", vid, platformTimeString);
+            LOG.warn("VID:{} 平台接收时间格式错误 {}", vid, platformTimeString);
             return result;
         }
         try {

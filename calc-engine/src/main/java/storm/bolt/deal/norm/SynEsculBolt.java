@@ -30,6 +30,8 @@ public class SynEsculBolt extends BaseRichBolt {
 
     private static final long serialVersionUID = 1700001L;
 
+    // region Component
+
     @NotNull
     private static final String COMPONENT_ID = SynEsculBolt.class.getSimpleName();
 
@@ -38,6 +40,10 @@ public class SynEsculBolt extends BaseRichBolt {
     public static String getComponentId() {
         return COMPONENT_ID;
     }
+
+    // endregion Component
+
+    // region KafkaStream
 
     @NotNull
     private static final KafkaStream KAFKA_STREAM = KafkaStream.getInstance();
@@ -50,6 +56,8 @@ public class SynEsculBolt extends BaseRichBolt {
     public static String getKafkaStreamId() {
         return KAFKA_STREAM_ID;
     }
+
+    // endregion KafkaStream
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 

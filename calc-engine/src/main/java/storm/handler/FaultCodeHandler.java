@@ -52,6 +52,8 @@ public class FaultCodeHandler implements Serializable {
      */
     private final Conn conn = new Conn();
 
+    private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
+
     /**
      * 故障码规则, 按时间周期从数据库拉取下来.
      */

@@ -27,8 +27,6 @@ import java.util.concurrent.*;
 public class MailCalHandler {
     private static Logger logger = LoggerFactory.getLogger(MailCalHandler.class);
     public static final String unknow="UNKNOW";
-    public static final String unknowAndunknow="UNKNOW,UNKNOW";
-    public static final String unknowString="UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW,UNKNOW";
     public static final String [] unknowArray =new String[]{"UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW","UNKNOW"};
     private static DataToRedis redis;
     public static boolean redisclusterIsload;

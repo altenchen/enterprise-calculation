@@ -51,9 +51,13 @@ import java.util.regex.Pattern;
  */
 public class FilterBolt extends BaseRichBolt {
 
+    // region 类常量
+
     private static final long serialVersionUID = 1700001L;
 
     private static final Logger LOG = LoggerFactory.getLogger(FilterBolt.class);
+
+    // region Component
 
     @NotNull
     private static final String COMPONENT_ID = FilterBolt.class.getSimpleName();
@@ -63,6 +67,10 @@ public class FilterBolt extends BaseRichBolt {
     public static String getComponentId() {
         return COMPONENT_ID;
     }
+
+    // endregion Component
+
+    // region DataStream
 
     @NotNull
     private static final DataStream DATA_STREAM = DataStream.getInstance();
@@ -88,6 +96,10 @@ public class FilterBolt extends BaseRichBolt {
                 DATA_STREAM_ID);
     }
 
+    // endregion DataStream
+
+    // region KafkaStream
+
     @NotNull
     private static final KafkaStream KAFKA_STREAM = KafkaStream.getInstance();
 
@@ -99,6 +111,8 @@ public class FilterBolt extends BaseRichBolt {
     public static String getKafkaStreamId() {
         return KAFKA_STREAM_ID;
     }
+
+    // endregion KafkaStream
 
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
@@ -116,6 +130,10 @@ public class FilterBolt extends BaseRichBolt {
         }
         TimeOutOfRangeNotice.setTimeRangeMillisecond(ConfigUtils.getSysDefine().getNoticeTimeRangeAbsMillisecond());
     }
+
+    // endregion 类常量
+
+    // region 对象变量
 
     private transient TimeOutOfRangeNotice timeOutOfRangeNotice;
 
@@ -152,6 +170,10 @@ public class FilterBolt extends BaseRichBolt {
 
     private transient StreamReceiverFilter ctfoBoltDataStreamReceiver;
 
+    // endregion 对象变量
+
+    // region IComponent
+
     @Override
     public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
         declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
@@ -169,6 +191,10 @@ public class FilterBolt extends BaseRichBolt {
         config.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, 10);
         return config;
     }
+
+    // endregion IComponent
+
+    // region IBolt
 
     @Override
     public void prepare(
@@ -221,6 +247,8 @@ public class FilterBolt extends BaseRichBolt {
         ctfoBoltDataStreamReceiver = MySqlSpout.prepareVehicleIdentityStreamReceiver(this::executeFromMySqlSpoutVehicleIdentityStream);
     }
 
+    // endregion prepare
+
     @Override
     public void execute(
         @NotNull final Tuple input) {
@@ -240,6 +268,8 @@ public class FilterBolt extends BaseRichBolt {
 
         collector.fail(input);
     }
+
+    // region execute
 
     private void executeFromSystemTickStream(
         @NotNull final Tuple input) {
@@ -321,9 +351,9 @@ public class FilterBolt extends BaseRichBolt {
                 // 时间异常判断
                 final Map<String, String> notice = timeOutOfRangeNotice.process(data);
                 if(MapUtils.isNotEmpty(notice)) {
-
-                if(ConfigUtils.getSysDefine().isNoticeTimeEnable()) {
-                    sendNotice(vid, notice);
+                    if (ConfigUtils.getSysDefine().isNoticeTimeEnable()) {
+                        sendNotice(vid, notice);
+                    }
                 }
 
                 // 判断是否充电
@@ -406,7 +436,7 @@ public class FilterBolt extends BaseRichBolt {
                                 });
                     }
                 } catch (final ParseException e) {
-                    LOG.warn("时间解析异常", e);
+                    LOG.warn("累计里程缓存时间解析异常", e);
                     LOG.warn("VID:{} 无效的累计里程缓存时间: {}", vehicleId, totalMileageCacheTimeString);
                 }
             }
@@ -414,6 +444,10 @@ public class FilterBolt extends BaseRichBolt {
             LOG.warn("VID:" + vehicleId + " 从缓存获取有效累计里程异常", e);
         }
     }
+
+    // endregion execute
+
+    // endregion IBolt
 
     private void emit(
         @NotNull final Tuple anchors,
