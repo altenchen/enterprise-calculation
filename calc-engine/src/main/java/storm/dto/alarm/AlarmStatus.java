@@ -148,10 +148,7 @@ public final class AlarmStatus {
         final int level,
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final EarlyWarn rule) {
-        
-        @NotNull final String platformReceiveTimeString = data.get(
-            DataKey._9999_PLATFORM_RECEIVE_TIME);
-        final String alarmId = buildAlarmId(vehicleId, platformReceiveTimeString, ruleId);
+        final String alarmId = buildAlarmId(vehicleId, ruleId);
         final int alarmLevel = parseAlarmLevel(level, data);
         final String ruleName = ObjectExtension.defaultIfNull(rule.ruleName, "");
         final String left2DataKey = ObjectExtension.defaultIfNull(rule.left2DataKey, "");
@@ -222,10 +219,7 @@ public final class AlarmStatus {
         final int level,
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final EarlyWarn rule){
-
-        @NotNull final String platformReceiveTimeString = data.get(
-            DataKey._9999_PLATFORM_RECEIVE_TIME);
-        final String alarmId = buildAlarmId(vehicleId, platformReceiveTimeString, ruleId);
+        final String alarmId = buildAlarmId(vehicleId, ruleId);
         final int alarmLevel = parseAlarmLevel(level, data);
         final String ruleName = ObjectExtension.defaultIfNull(rule.ruleName, "");
         final String left2DataKey = ObjectExtension.defaultIfNull(rule.left2DataKey, "");
@@ -269,13 +263,10 @@ public final class AlarmStatus {
     @NotNull
     private String buildAlarmId(
         @NotNull final String vehicleId,
-        @NotNull final String platformReceiveTimeString,
         @NotNull final String ruleId) {
         //noinspection StringBufferReplaceableByString
         return new StringBuilder()
             .append(vehicleId)
-            .append("_")
-            .append(platformReceiveTimeString)
             .append("_")
             .append(ruleId)
             .toString();
