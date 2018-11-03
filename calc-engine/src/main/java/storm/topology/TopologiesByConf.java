@@ -208,7 +208,7 @@ public final class TopologiesByConf {
 
         // kafka 实时报文消息
         final KafkaSpout<String, String> generalKafkaSpout = new GeneralKafkaSpout(
-                ConfigUtils.getSysDefine().getKafkaBootstrapServers(),
+            ConfigUtils.getSysDefine().getKafkaBootstrapServers(),
             ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataTopic(),
             ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataGroup()
         );
@@ -350,40 +350,6 @@ public final class TopologiesByConf {
                 FilterBolt.getComponentId(),
                 FilterBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY));
-    }
-
-    /**
-     * 读取并填充Kafka相关配置
-     */
-    private static void fillKafkaConf() {
-        // TODO: 转为存储到单例类
-
-        // Kafka 依赖的 Zookeeper 集群, 为了兼容旧版 kafka
-        initZookeeperConfig();
-
-        // Kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开. 从 kafka 0.10.1开始支持新的消费方式
-        LOG.info("ConsumerConfig: {}=[{}]", ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigUtils.getSysDefine().getKafkaBootstrapServers());
-        LOG.info("KafkaStream.Fields({}, {}, {})", KafkaStream.TOPIC, KafkaStream.BOLT_KEY, KafkaStream.BOLT_MESSAGE);
-        LOG.info("ProducerConfig: {}=[{}]", ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigUtils.getSysDefine().getKafkaBootstrapServers());
-    }
-
-    public static void  initZookeeperConfig() {
-
-        List<String> servers = Arrays.asList(
-                StringUtils.split(
-                        ConfigUtils.getSysDefine().getKafkaZookeeperServers(),
-                        ','));
-
-        StringBuilder zkServersBuilder = new StringBuilder(64);
-        zkServersBuilder.append(servers.get(0));
-        zkServersBuilder.append(':');
-        zkServersBuilder.append(ConfigUtils.getSysDefine().getKafkaZookeeperPort());
-        for (int i = 1; i < servers.size(); ++i) {
-            zkServersBuilder.append(',');
-            zkServersBuilder.append(servers.get(i));
-            zkServersBuilder.append(':');
-            zkServersBuilder.append(ConfigUtils.getSysDefine().getKafkaZookeeperPort());
-        }
     }
 }
 
