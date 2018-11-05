@@ -163,7 +163,15 @@ public final class ConfigUtils {
         }
     }
 
-    //properties 文件里的key转类属性名
+    /**
+     * 所有properties中的key包含. _符号的都转换为首字母大写
+     * 示例
+     *     storm.worker.no 对应 stormWorkerNo
+     *     storm.kafka.spout.no 对应 stormKafkaSpoutNo
+     *     kafka.producer.vehicle_notice.topic 对应 kafkaProducerVehicleNoticeTopic
+     * @param key
+     * @return
+     */
     private static String keyConvertAttributeName(String key) {
         Pattern p = Pattern.compile("(\\.|\\_)[a-zA-Z]{1}");
         Matcher m = p.matcher(key);
@@ -175,7 +183,12 @@ public final class ConfigUtils {
         return key;
     }
 
-    //加载properties文件
+    /**
+     * 加载properties文件
+     * @param resourceName 配置文件名
+     * @param properties
+     * @throws IOException
+     */
     private static void loadFromResource(@NotNull String resourceName, @NotNull Properties properties)
             throws IOException {
 
@@ -196,7 +209,12 @@ public final class ConfigUtils {
         stream.close();
     }
 
-    //加载properties文件
+    /**
+     * 加载properties文件
+     * @param file 配置文件名
+     * @param properties
+     * @throws IOException
+     */
     public static void loadResourceFromLocal(File file, @NotNull Properties properties)
             throws IOException {
 
