@@ -10,6 +10,7 @@ import storm.util.DataUtils;
 import storm.util.JsonUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 /**
  * @author 徐志鹏
@@ -33,19 +34,19 @@ public final class CoefficientOffset {
     private final int precision;
 
     public CoefficientOffset(
-        @NotNull final String itemId,
-        @NotNull final String dataKey,
-        @NotNull BigDecimal offset,
-        @NotNull BigDecimal coefficient,
-        final int precision) {
+            @NotNull final String itemId,
+            @NotNull final String dataKey,
+            @NotNull BigDecimal offset,
+            @NotNull BigDecimal coefficient,
+            final int precision) {
 
-        if(StringUtils.isBlank(dataKey)) {
+        if (StringUtils.isBlank(dataKey)) {
             throw new IllegalArgumentException("数据键不能为空白");
         }
-        if(BigDecimal.ZERO.equals(coefficient)) {
+        if (BigDecimal.ZERO.equals(coefficient)) {
             throw new IllegalArgumentException("系数不能为0");
         }
-        if(precision < 0) {
+        if (precision < 0) {
             throw new IllegalArgumentException("小数精度不能为负数");
         }
 
@@ -58,10 +59,10 @@ public final class CoefficientOffset {
 
     @Nullable
     public BigDecimal compute(
-        @NotNull final ImmutableMap<String, String> data) {
+            @NotNull final ImmutableMap<String, String> data) {
 
         final String valueString = data.get(dataKey);
-        if(!NumberUtils.isNumber(valueString)) {
+        if (!NumberUtils.isNumber(valueString)) {
             return null;
         }
 
@@ -74,8 +75,8 @@ public final class CoefficientOffset {
 
     @NotNull
     public BigDecimal compute(@NotNull BigDecimal value) {
-        // 输出 = ( 输入 * 系数 ) + 偏移量
-        return value.multiply(coefficient).add(offset);
+        // 输出 = ( 输入 / 系数 ) - 偏移量
+        return value.divide(coefficient, RoundingMode.HALF_UP).subtract(offset);
     }
 
     /**
@@ -115,6 +116,7 @@ public final class CoefficientOffset {
 
     /**
      * 精度
+     *
      * @return
      */
     @Contract(pure = true)
