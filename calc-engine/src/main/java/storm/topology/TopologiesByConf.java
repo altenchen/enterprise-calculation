@@ -1,8 +1,6 @@
 package storm.topology;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
@@ -17,11 +15,9 @@ import storm.bolt.deal.cusmade.CarNoticeBolt;
 import storm.bolt.deal.norm.AlarmBolt;
 import storm.bolt.deal.norm.EleFenceBolt;
 import storm.bolt.deal.norm.FilterBolt;
-import storm.bolt.deal.norm.SynEsculBolt;
 import storm.constant.StreamFieldKey;
 import storm.kafka.bolt.KafkaSendBolt;
 import storm.kafka.spout.GeneralKafkaSpout;
-import storm.kafka.spout.RegisterKafkaSpout;
 import storm.spout.MySqlSpout;
 import storm.stream.KafkaStream;
 import storm.system.DataKey;
@@ -31,8 +27,6 @@ import storm.util.ConfigUtils;
 import storm.util.function.TeConsumerE;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -118,8 +112,6 @@ public final class TopologiesByConf {
 
         stormConf.put(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, ConfigUtils.getSysDefine().getDbCacheFlushTime());
 
-        stormConf.put(SysDefine.ES_SEND_TIME, ConfigUtils.getSysDefine().getEsSendTime());
-
         //region kafka
         stormConf.put(SysDefine.KAFKA_ZOOKEEPER_SERVERS_KEY, ConfigUtils.getSysDefine().getKafkaZookeeperServers());
         stormConf.put(SysDefine.KAFKA_ZOOKEEPER_PORT_KEY, ConfigUtils.getSysDefine().getKafkaZookeeperPort());
@@ -131,16 +123,11 @@ public final class TopologiesByConf {
         stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP, ConfigUtils.getSysDefine().getKafkaConsumerVehiclePacketDataGroup());
         stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_TOPIC, ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataTopic());
         stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP, ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataGroup());
-        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC, ConfigUtils.getSysDefine().getKafkaConsumerVehicleRegisterDataTopic());
-        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP, ConfigUtils.getSysDefine().getKafkaConsumerVehicleRegisterDataGroup());
 
         stormConf.put(SysDefine.VEHICLE_ALARM_TOPIC, ConfigUtils.getSysDefine().getKafkaProducerVehicleAlarmTopic());
         stormConf.put(SysDefine.VEHICLE_ALARM_STORE_TOPIC, ConfigUtils.getSysDefine().getKafkaProducerVehicleAlarmStoreTopic());
         stormConf.put(SysDefine.KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC, ConfigUtils.getSysDefine().getKafkaProducerVehicleFenceAlarmTopic());
         stormConf.put(SysDefine.KAFKA_TOPIC_NOTICE, ConfigUtils.getSysDefine().getKafkaProducerVehicleNoticeTopic());
-        stormConf.put(SysDefine.KAFKA_TOPIC_ES_STATUS, ConfigUtils.getSysDefine().getKafkaProducerElasticSearchStatusTopic());
-
-        stormConf.put("offline.check.time", ConfigUtils.getSysDefine().getOfflineCheckTime());
 
         stormConf.put("redis.cluster.data.syn", ConfigUtils.getSysDefine().getRedisClusterDataSyn());
         stormConf.put("redis.host", ConfigUtils.getSysDefine().getRedisHost());
@@ -218,17 +205,6 @@ public final class TopologiesByConf {
             realSpoutNo
         );
 
-        // kafka 平台注册报文消息
-        final KafkaSpout<String, String> registerKafkaSpout = new RegisterKafkaSpout(
-                ConfigUtils.getSysDefine().getKafkaBootstrapServers(),
-                ConfigUtils.getSysDefine().getKafkaConsumerVehicleRegisterDataTopic(),
-                ConfigUtils.getSysDefine().getKafkaConsumerVehicleRegisterDataGroup()
-        );
-        builder.setSpout(
-            RegisterKafkaSpout.getComponentId(),
-            registerKafkaSpout,
-            realSpoutNo
-        );
     }
 
     /**
@@ -294,21 +270,6 @@ public final class TopologiesByConf {
                 FilterBolt.getDataStreamId(),
                 new Fields(DataKey.VEHICLE_ID));
 
-        builder
-            // es数据同步处理
-            .setBolt(
-                SynEsculBolt.getComponentId(),
-                new SynEsculBolt(),
-                boltNo * 3)
-            .setNumTasks(boltNo * 9)
-            .fieldsGrouping(
-                FilterBolt.getComponentId(),
-                SysDefine.SYNES_GROUP,
-                new Fields(DataKey.VEHICLE_ID))
-            .noneGrouping(
-                RegisterKafkaSpout.getComponentId(),
-                RegisterKafkaSpout.getRegisterStreamId());
-
         buildKafkaBolt(builder, boltNo);
     }
 
@@ -334,11 +295,6 @@ public final class TopologiesByConf {
             .fieldsGrouping(
                 EleFenceBolt.getComponentId(),
                 EleFenceBolt.getKafkaStreamId(),
-                new Fields(KafkaStream.BOLT_KEY))
-            // es 同步推送
-            .fieldsGrouping(
-                SynEsculBolt.getComponentId(),
-                SynEsculBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY))
             // 车辆通知、故障处理
             .fieldsGrouping(

@@ -1,7 +1,5 @@
 package storm.system;
 
-import java.util.List;
-
 public final class SysDefine {
     public static final String DB_CACHE_FLUSH_TIME_SECOND = "db.cache.flushtime";
 
@@ -35,16 +33,6 @@ public final class SysDefine {
      * 车辆实时数据 kafka 消费组
      */
     public static final String KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP = "kafka.consumer.vehicle_realtime_data.group";
-
-    /**
-     * 车辆注册通知 kafka 消费主题
-     */
-    public static final String KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_TOPIC = "kafka.consumer.vehicle_register_data.topic";
-
-    /**
-     * 车辆注册通知 kafka 消费组
-     */
-    public static final String KAFKA_CONSUMER_VEHICLE_REGISTER_DATA_GROUP = "kafka.consumer.vehicle_register_data.group";
 
     //
     public static final String SPLIT_GROUP = "splitgroup";
@@ -164,7 +152,6 @@ public final class SysDefine {
     public static final String MILEAGE_TOTAL = "mileage_total";
 
     public static final String FENCE_GROUP = "fenceGroup";
-    public static final String SYNES_GROUP = "synesGroup";
     public static final String CODE = "code";
 
 
@@ -197,11 +184,6 @@ public final class SysDefine {
      * 每隔多少时间推送一次,默认一分钟，60000毫秒。如果负数或者0代表实时推送, 单位秒.
      */
     public static final String ES_SEND_TIME = "es.send.time";
-
-    /**
-     * kafka 发往 ElasticSearch 的 topic
-     */
-    public static final String KAFKA_TOPIC_ES_STATUS = "kafka.producer.elastic_search_status.topic";
 
     /**
      * 通知消息 kafka 输出 topic

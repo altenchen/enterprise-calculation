@@ -1,7 +1,5 @@
 package storm.conf;
 
-import java.util.UUID;
-
 /**
  * 系统运行参数<br/>
  * <p>所有properties中的key包含. _符号的都转换为首字母大写， 具体映射解析 ConfigUtils.keyConvertAttributeName私有方法</p>
@@ -61,8 +59,6 @@ public class SysDefineEntity {
     private String kafkaConsumerVehiclePacketDataGroup = null;
     private String kafkaConsumerVehicleRealtimeDataTopic = null;
     private String kafkaConsumerVehicleRealtimeDataGroup = null;
-    private String kafkaConsumerVehicleRegisterDataTopic = null;
-    private String kafkaConsumerVehicleRegisterDataGroup = null;
     /**
      * 车辆报警 topic, 下游AlarmService依赖, 请保持一致.
      */
@@ -79,10 +75,6 @@ public class SysDefineEntity {
      * 车辆通知 topic, 下游AlarmService依赖, 请保持一致.
      */
     private String kafkaProducerVehicleNoticeTopic = "notice_topic";
-    /**
-     * ElasticSearch topic, 下游AlarmService依赖, 请保持一致.
-     */
-    private String kafkaProducerElasticSearchStatusTopic = "REALTIME_STATUS_TOPIC";
 
     // ############################################################################################
     //                                        redis 配置
@@ -203,22 +195,10 @@ public class SysDefineEntity {
     private int ctxCacheNo = 18;
 
     // ############################################################################################
-    //                                      ElasticSearch 配置
-    // ############################################################################################
-    /**
-     * 每隔多少时间推送一次,默认一分钟，60000毫秒。如果负数或者0代表实时推送, 单位秒.
-     */
-    private int esSendTime = 30;
-
-    // ############################################################################################
     //                                         企业通知 配置
     // ############################################################################################
     /**
-     * SynEsculBolt, 车辆离线检查间隔, 单位秒.
-     */
-    private int offlineCheckTime = 60;
-    /**
-     * SynEsculBolt, CarNoticelBolt, 如果配置为2, 则进行一次全量数据扫描, 并将告警数据发送到kafka
+     * CarNoticelBolt, 如果配置为2, 则进行一次全量数据扫描, 并将告警数据发送到kafka
      */
     private int redisClusterDataSyn = 1;
     /**
@@ -487,22 +467,6 @@ public class SysDefineEntity {
         this.kafkaConsumerVehicleRealtimeDataGroup = kafkaConsumerVehicleRealtimeDataGroup;
     }
 
-    public String getKafkaConsumerVehicleRegisterDataTopic() {
-        return kafkaConsumerVehicleRegisterDataTopic;
-    }
-
-    public void setKafkaConsumerVehicleRegisterDataTopic(String kafkaConsumerVehicleRegisterDataTopic) {
-        this.kafkaConsumerVehicleRegisterDataTopic = kafkaConsumerVehicleRegisterDataTopic;
-    }
-
-    public String getKafkaConsumerVehicleRegisterDataGroup() {
-        return kafkaConsumerVehicleRegisterDataGroup;
-    }
-
-    public void setKafkaConsumerVehicleRegisterDataGroup(String kafkaConsumerVehicleRegisterDataGroup) {
-        this.kafkaConsumerVehicleRegisterDataGroup = kafkaConsumerVehicleRegisterDataGroup;
-    }
-
     public String getKafkaProducerVehicleAlarmTopic() {
         return kafkaProducerVehicleAlarmTopic;
     }
@@ -533,14 +497,6 @@ public class SysDefineEntity {
 
     public void setKafkaProducerVehicleNoticeTopic(String kafkaProducerVehicleNoticeTopic) {
         this.kafkaProducerVehicleNoticeTopic = kafkaProducerVehicleNoticeTopic;
-    }
-
-    public String getKafkaProducerElasticSearchStatusTopic() {
-        return kafkaProducerElasticSearchStatusTopic;
-    }
-
-    public void setKafkaProducerElasticSearchStatusTopic(String kafkaProducerElasticSearchStatusTopic) {
-        this.kafkaProducerElasticSearchStatusTopic = kafkaProducerElasticSearchStatusTopic;
     }
 
     public String getRedisHost() {
@@ -733,22 +689,6 @@ public class SysDefineEntity {
 
     public void setCtxCacheNo(int ctxCacheNo) {
         this.ctxCacheNo = ctxCacheNo;
-    }
-
-    public int getEsSendTime() {
-        return esSendTime;
-    }
-
-    public void setEsSendTime(int esSendTime) {
-        this.esSendTime = esSendTime;
-    }
-
-    public int getOfflineCheckTime() {
-        return offlineCheckTime;
-    }
-
-    public void setOfflineCheckTime(int offlineCheckTime) {
-        this.offlineCheckTime = offlineCheckTime;
     }
 
     public int getRedisClusterDataSyn() {

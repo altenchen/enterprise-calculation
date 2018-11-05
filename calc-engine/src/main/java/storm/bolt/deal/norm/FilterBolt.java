@@ -178,7 +178,6 @@ public class FilterBolt extends BaseRichBolt {
     public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
         declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
         declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
-        declarer.declareStream(SysDefine.SYNES_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
 
         DATA_STREAM.declareOutputFields(DATA_STREAM_ID, declarer);
 
@@ -454,14 +453,6 @@ public class FilterBolt extends BaseRichBolt {
         @NotNull final String vid,
         @NotNull final String cmd,
         @NotNull final ImmutableMap<String, String> data) {
-
-        if (CommandType.SUBMIT_LINKSTATUS.equals(cmd)
-            || CommandType.SUBMIT_LOGIN.equals(cmd)
-            || CommandType.SUBMIT_TERMSTATUS.equals(cmd)
-            || CommandType.SUBMIT_CARSTATUS.equals(cmd)) {
-            // consumer: ES数据同步处理
-            collector.emit(SysDefine.SYNES_GROUP, new Values(vid, data));
-        }
 
         if (CommandType.SUBMIT_REALTIME.equals(cmd)) {
             // consumer: 电子围栏告警处理
