@@ -411,7 +411,7 @@ public class FaultCodeHandler implements Serializable {
                 final Map<String, ExceptionSingleBit> exceptions = getVehicleExceptions(vehModel, faultTypeRule);
 
                 if( MapUtils.isEmpty(exceptions) ){
-                    LOG.info("VID:{} 故障类型 {} 按位解析, 故障码 {} 没有异常码规则.", vid, faultId, exceptions.size());
+                    LOG.info("VID:{} 故障类型 {} 按位解析, 故障码 {} 没有异常码规则.", vid, faultId, exceptions == null ? 0 : exceptions.size());
                     continue;
                 }
                 processByBit = true;
