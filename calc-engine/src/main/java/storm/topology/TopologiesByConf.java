@@ -119,8 +119,6 @@ public final class TopologiesByConf {
 
         stormConf.put(SysDefine.KAFKA_BOOTSTRAP_SERVERS_KEY, ConfigUtils.getSysDefine().getKafkaBootstrapServers());
 
-        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_TOPIC, ConfigUtils.getSysDefine().getKafkaConsumerVehiclePacketDataTopic());
-        stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP, ConfigUtils.getSysDefine().getKafkaConsumerVehiclePacketDataGroup());
         stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_TOPIC, ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataTopic());
         stormConf.put(SysDefine.KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP, ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataGroup());
 

@@ -13,16 +13,6 @@ public final class SysDefine {
      * Kafka 经纪人及监听的端口
      */
     public static final String KAFKA_BOOTSTRAP_SERVERS_KEY = "kafka.bootstrap.servers";
-    
-    /**
-     * 车辆原始报文 kafka 消费主题
-     */
-    public static final String KAFKA_CONSUMER_VEHICLE_PACKET_DATA_TOPIC = "kafka.consumer.vehicle_packet_data.topic";
-
-    /**
-     * 车辆原始报文 kafka 消费组
-     */
-    public static final String KAFKA_CONSUMER_VEHICLE_PACKET_DATA_GROUP = "kafka.consumer.vehicle_packet_data.group";
 
     /**
      * 车辆实时数据 kafka 消费主题
