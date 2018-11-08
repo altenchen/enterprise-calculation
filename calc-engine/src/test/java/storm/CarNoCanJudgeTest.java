@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
-import storm.handler.cusmade.CarNoCanDecideJili;
+import storm.handler.cusmade.CarNoCanDecide;
 import storm.handler.cusmade.CarNoCanJudge;
 import storm.system.NoticeType;
 import storm.system.DataKey;
@@ -85,7 +85,7 @@ final class CarNoCanJudgeTest {
     @Test
     void carNoCanDecideJiliFault() {
 
-        CarNoCanJudge.setCarNoCanDecide(new CarNoCanDecideJili());
+        CarNoCanJudge.setCarNoCanDecide(new CarNoCanDecide());
 
         final long currentTimeMillis = System.currentTimeMillis();
 
@@ -165,7 +165,7 @@ final class CarNoCanJudgeTest {
     @Test
     void carNoCanDecideJiliNormal() {
 
-        CarNoCanJudge.setCarNoCanDecide(new CarNoCanDecideJili());
+        CarNoCanJudge.setCarNoCanDecide(new CarNoCanDecide());
 
         final long currentTimeMillis = System.currentTimeMillis();
 

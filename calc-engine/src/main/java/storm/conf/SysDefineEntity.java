@@ -1,7 +1,7 @@
 package storm.conf;
 
 /**
- * 系统运行参数<br/>
+ * 系统运行参数, 通过反射从配置文件sysDefine.properties加载, 属性必须有set方法, 否则无法正确设置值.<br/>
  * <p>所有properties中的key包含. _符号的都转换为首字母大写， 具体映射解析 ConfigUtils.keyConvertAttributeName私有方法</p>
  * <p>示例</p>
  * <ul>
@@ -12,6 +12,7 @@ package storm.conf;
  * @author xuzhijie
  * @see storm.util.ConfigUtils;
  */
+@SuppressWarnings({"FieldCanBeLocal", "unused"})
 public class SysDefineEntity {
     // ############################################################################################
     //                                        storm 配置
@@ -56,13 +57,10 @@ public class SysDefineEntity {
      * kafka 经纪人及监听的端口, 多个经纪人之间用英文逗号隔开.
      */
     private String kafkaBootstrapServers = null;
-    /**
-     * 车辆原始报文 topic, 依赖上游前置机, 请保持一致.
-     */
-    private String kafkaConsumerVehiclePacketDataTopic = null;
-    private String kafkaConsumerVehiclePacketDataGroup = null;
+
     private String kafkaConsumerVehicleRealtimeDataTopic = null;
     private String kafkaConsumerVehicleRealtimeDataGroup = null;
+
     /**
      * 车辆报警 topic, 下游AlarmService依赖, 请保持一致.
      */
@@ -358,680 +356,645 @@ public class SysDefineEntity {
      */
     private String ruleOverride = "jili";
 
-
-    // ############################################################################################
-    // 以下配置在sysDefine.properties中没有找到，但是在CarRuleHandler中有使用到，并且是在redis同步过来的数据
-    // ############################################################################################
-    /**
-     * 秒
-     */
-    private int canJudgeTime = 600;
-    /**
-     * 连续多少帧没有can状态，算为无can状态车辆
-     */
-    private int canNovalueContinueNo = 5;
     /**
      * 里程跳变数，单位是km, 2表示2公里
      */
     private int mileHopNum = 2;
 
+    // region 自动生成的访问器
+
     public int getStormWorkerNo() {
         return stormWorkerNo;
     }
 
-    public void setStormWorkerNo(int stormWorkerNo) {
-        this.stormWorkerNo = stormWorkerNo;
+    public int getStormWorkerHeapMemoryMb() {
+        return stormWorkerHeapMemoryMb;
     }
 
     public int getStormKafkaSpoutNo() {
         return stormKafkaSpoutNo;
     }
 
-    public void setStormKafkaSpoutNo(int stormKafkaSpoutNo) {
-        this.stormKafkaSpoutNo = stormKafkaSpoutNo;
-    }
-
     public int getStormKafkaBoltNo() {
         return stormKafkaBoltNo;
-    }
-
-    public void setStormKafkaBoltNo(int stormKafkaBoltNo) {
-        this.stormKafkaBoltNo = stormKafkaBoltNo;
     }
 
     public String getTopologyName() {
         return topologyName;
     }
 
-    public void setTopologyName(String topologyName) {
-        this.topologyName = topologyName;
-    }
-
     public String getKafkaZookeeperServers() {
         return kafkaZookeeperServers;
-    }
-
-    public void setKafkaZookeeperServers(String kafkaZookeeperServers) {
-        this.kafkaZookeeperServers = kafkaZookeeperServers;
     }
 
     public int getKafkaZookeeperPort() {
         return kafkaZookeeperPort;
     }
 
-    public void setKafkaZookeeperPort(int kafkaZookeeperPort) {
-        this.kafkaZookeeperPort = kafkaZookeeperPort;
-    }
-
     public String getKafkaZookeeperPath() {
         return kafkaZookeeperPath;
-    }
-
-    public void setKafkaZookeeperPath(String kafkaZookeeperPath) {
-        this.kafkaZookeeperPath = kafkaZookeeperPath;
     }
 
     public String getKafkaBootstrapServers() {
         return kafkaBootstrapServers;
     }
 
-    public void setKafkaBootstrapServers(String kafkaBootstrapServers) {
-        this.kafkaBootstrapServers = kafkaBootstrapServers;
-    }
-
-    public String getKafkaConsumerVehiclePacketDataTopic() {
-        return kafkaConsumerVehiclePacketDataTopic;
-    }
-
-    public void setKafkaConsumerVehiclePacketDataTopic(String kafkaConsumerVehiclePacketDataTopic) {
-        this.kafkaConsumerVehiclePacketDataTopic = kafkaConsumerVehiclePacketDataTopic;
-    }
-
-    public String getKafkaConsumerVehiclePacketDataGroup() {
-        return kafkaConsumerVehiclePacketDataGroup;
-    }
-
-    public void setKafkaConsumerVehiclePacketDataGroup(String kafkaConsumerVehiclePacketDataGroup) {
-        this.kafkaConsumerVehiclePacketDataGroup = kafkaConsumerVehiclePacketDataGroup;
-    }
-
     public String getKafkaConsumerVehicleRealtimeDataTopic() {
         return kafkaConsumerVehicleRealtimeDataTopic;
-    }
-
-    public void setKafkaConsumerVehicleRealtimeDataTopic(String kafkaConsumerVehicleRealtimeDataTopic) {
-        this.kafkaConsumerVehicleRealtimeDataTopic = kafkaConsumerVehicleRealtimeDataTopic;
     }
 
     public String getKafkaConsumerVehicleRealtimeDataGroup() {
         return kafkaConsumerVehicleRealtimeDataGroup;
     }
 
-    public void setKafkaConsumerVehicleRealtimeDataGroup(String kafkaConsumerVehicleRealtimeDataGroup) {
-        this.kafkaConsumerVehicleRealtimeDataGroup = kafkaConsumerVehicleRealtimeDataGroup;
-    }
-
     public String getKafkaProducerVehicleAlarmTopic() {
         return kafkaProducerVehicleAlarmTopic;
-    }
-
-    public void setKafkaProducerVehicleAlarmTopic(String kafkaProducerVehicleAlarmTopic) {
-        this.kafkaProducerVehicleAlarmTopic = kafkaProducerVehicleAlarmTopic;
     }
 
     public String getKafkaProducerVehicleAlarmStoreTopic() {
         return kafkaProducerVehicleAlarmStoreTopic;
     }
 
-    public void setKafkaProducerVehicleAlarmStoreTopic(String kafkaProducerVehicleAlarmStoreTopic) {
-        this.kafkaProducerVehicleAlarmStoreTopic = kafkaProducerVehicleAlarmStoreTopic;
-    }
-
     public String getKafkaProducerVehicleFenceAlarmTopic() {
         return kafkaProducerVehicleFenceAlarmTopic;
-    }
-
-    public void setKafkaProducerVehicleFenceAlarmTopic(String kafkaProducerVehicleFenceAlarmTopic) {
-        this.kafkaProducerVehicleFenceAlarmTopic = kafkaProducerVehicleFenceAlarmTopic;
     }
 
     public String getKafkaProducerVehicleNoticeTopic() {
         return kafkaProducerVehicleNoticeTopic;
     }
 
-    public void setKafkaProducerVehicleNoticeTopic(String kafkaProducerVehicleNoticeTopic) {
-        this.kafkaProducerVehicleNoticeTopic = kafkaProducerVehicleNoticeTopic;
-    }
-
     public String getRedisHost() {
         return redisHost;
-    }
-
-    public void setRedisHost(String redisHost) {
-        this.redisHost = redisHost;
     }
 
     public int getRedisPort() {
         return redisPort;
     }
 
-    public void setRedisPort(int redisPort) {
-        this.redisPort = redisPort;
-    }
-
     public String getRedisPass() {
         return redisPass;
-    }
-
-    public void setRedisPass(String redisPass) {
-        this.redisPass = redisPass;
     }
 
     public int getRedisMaxActive() {
         return redisMaxActive;
     }
 
-    public void setRedisMaxActive(int redisMaxActive) {
-        this.redisMaxActive = redisMaxActive;
-    }
-
     public int getRedisMaxIdle() {
         return redisMaxIdle;
-    }
-
-    public void setRedisMaxIdle(int redisMaxIdle) {
-        this.redisMaxIdle = redisMaxIdle;
     }
 
     public int getRedisMaxWait() {
         return redisMaxWait;
     }
 
-    public void setRedisMaxWait(int redisMaxWait) {
-        this.redisMaxWait = redisMaxWait;
-    }
-
     public int getRedisTimeOut() {
         return redisTimeOut;
-    }
-
-    public void setRedisTimeOut(int redisTimeOut) {
-        this.redisTimeOut = redisTimeOut;
     }
 
     public int getRedisTimeInterval() {
         return redisTimeInterval;
     }
 
-    public void setRedisTimeInterval(int redisTimeInterval) {
-        this.redisTimeInterval = redisTimeInterval;
-    }
-
     public int getRedisListenInterval() {
         return redisListenInterval;
-    }
-
-    public void setRedisListenInterval(int redisListenInterval) {
-        this.redisListenInterval = redisListenInterval;
     }
 
     public int getRedisTotalInterval() {
         return redisTotalInterval;
     }
 
-    public void setRedisTotalInterval(int redisTotalInterval) {
-        this.redisTotalInterval = redisTotalInterval;
-    }
-
     public String getCtfoCacheHost() {
         return ctfoCacheHost;
-    }
-
-    public void setCtfoCacheHost(String ctfoCacheHost) {
-        this.ctfoCacheHost = ctfoCacheHost;
     }
 
     public int getCtfoCachePort() {
         return ctfoCachePort;
     }
 
-    public void setCtfoCachePort(int ctfoCachePort) {
-        this.ctfoCachePort = ctfoCachePort;
-    }
-
     public String getCtfoCacheDB() {
         return ctfoCacheDB;
-    }
-
-    public void setCtfoCacheDB(String ctfoCacheDB) {
-        this.ctfoCacheDB = ctfoCacheDB;
     }
 
     public String getCtfoCacheTable() {
         return ctfoCacheTable;
     }
 
-    public void setCtfoCacheTable(String ctfoCacheTable) {
-        this.ctfoCacheTable = ctfoCacheTable;
-    }
-
     public String getJdbcDriver() {
         return jdbcDriver;
-    }
-
-    public void setJdbcDriver(String jdbcDriver) {
-        this.jdbcDriver = jdbcDriver;
     }
 
     public String getJdbcUrl() {
         return jdbcUrl;
     }
 
-    public void setJdbcUrl(String jdbcUrl) {
-        this.jdbcUrl = jdbcUrl;
-    }
-
     public String getJdbcUsername() {
         return jdbcUsername;
-    }
-
-    public void setJdbcUsername(String jdbcUsername) {
-        this.jdbcUsername = jdbcUsername;
     }
 
     public String getJdbcPassword() {
         return jdbcPassword;
     }
 
-    public void setJdbcPassword(String jdbcPassword) {
+    public void setDbCacheFlushTime(final int dbCacheFlushTime) {
+        this.dbCacheFlushTime = dbCacheFlushTime;
+    }
+
+    public void setStormWorkerNo(final int stormWorkerNo) {
+        this.stormWorkerNo = stormWorkerNo;
+    }
+
+    public void setStormWorkerHeapMemoryMb(final int stormWorkerHeapMemoryMb) {
+        this.stormWorkerHeapMemoryMb = stormWorkerHeapMemoryMb;
+    }
+
+    public void setStormKafkaSpoutNo(final int stormKafkaSpoutNo) {
+        this.stormKafkaSpoutNo = stormKafkaSpoutNo;
+    }
+
+    public void setStormKafkaBoltNo(final int stormKafkaBoltNo) {
+        this.stormKafkaBoltNo = stormKafkaBoltNo;
+    }
+
+    public void setTopologyName(final String topologyName) {
+        this.topologyName = topologyName;
+    }
+
+    public void setKafkaZookeeperServers(final String kafkaZookeeperServers) {
+        this.kafkaZookeeperServers = kafkaZookeeperServers;
+    }
+
+    public void setKafkaZookeeperPort(final int kafkaZookeeperPort) {
+        this.kafkaZookeeperPort = kafkaZookeeperPort;
+    }
+
+    public void setKafkaZookeeperPath(final String kafkaZookeeperPath) {
+        this.kafkaZookeeperPath = kafkaZookeeperPath;
+    }
+
+    public void setKafkaBootstrapServers(final String kafkaBootstrapServers) {
+        this.kafkaBootstrapServers = kafkaBootstrapServers;
+    }
+
+    public void setKafkaConsumerVehicleRealtimeDataTopic(final String kafkaConsumerVehicleRealtimeDataTopic) {
+        this.kafkaConsumerVehicleRealtimeDataTopic = kafkaConsumerVehicleRealtimeDataTopic;
+    }
+
+    public void setKafkaConsumerVehicleRealtimeDataGroup(final String kafkaConsumerVehicleRealtimeDataGroup) {
+        this.kafkaConsumerVehicleRealtimeDataGroup = kafkaConsumerVehicleRealtimeDataGroup;
+    }
+
+    public void setKafkaProducerVehicleAlarmTopic(final String kafkaProducerVehicleAlarmTopic) {
+        this.kafkaProducerVehicleAlarmTopic = kafkaProducerVehicleAlarmTopic;
+    }
+
+    public void setKafkaProducerVehicleAlarmStoreTopic(final String kafkaProducerVehicleAlarmStoreTopic) {
+        this.kafkaProducerVehicleAlarmStoreTopic = kafkaProducerVehicleAlarmStoreTopic;
+    }
+
+    public void setKafkaProducerVehicleFenceAlarmTopic(final String kafkaProducerVehicleFenceAlarmTopic) {
+        this.kafkaProducerVehicleFenceAlarmTopic = kafkaProducerVehicleFenceAlarmTopic;
+    }
+
+    public void setKafkaProducerVehicleNoticeTopic(final String kafkaProducerVehicleNoticeTopic) {
+        this.kafkaProducerVehicleNoticeTopic = kafkaProducerVehicleNoticeTopic;
+    }
+
+    public void setRedisHost(final String redisHost) {
+        this.redisHost = redisHost;
+    }
+
+    public void setRedisPort(final int redisPort) {
+        this.redisPort = redisPort;
+    }
+
+    public void setRedisPass(final String redisPass) {
+        this.redisPass = redisPass;
+    }
+
+    public void setRedisMaxActive(final int redisMaxActive) {
+        this.redisMaxActive = redisMaxActive;
+    }
+
+    public void setRedisMaxIdle(final int redisMaxIdle) {
+        this.redisMaxIdle = redisMaxIdle;
+    }
+
+    public void setRedisMaxWait(final int redisMaxWait) {
+        this.redisMaxWait = redisMaxWait;
+    }
+
+    public void setRedisTimeOut(final int redisTimeOut) {
+        this.redisTimeOut = redisTimeOut;
+    }
+
+    public void setRedisTimeInterval(final int redisTimeInterval) {
+        this.redisTimeInterval = redisTimeInterval;
+    }
+
+    public void setRedisListenInterval(final int redisListenInterval) {
+        this.redisListenInterval = redisListenInterval;
+    }
+
+    public void setRedisTotalInterval(final int redisTotalInterval) {
+        this.redisTotalInterval = redisTotalInterval;
+    }
+
+    public void setCtfoCacheHost(final String ctfoCacheHost) {
+        this.ctfoCacheHost = ctfoCacheHost;
+    }
+
+    public void setCtfoCachePort(final int ctfoCachePort) {
+        this.ctfoCachePort = ctfoCachePort;
+    }
+
+    public void setCtfoCacheDB(final String ctfoCacheDB) {
+        this.ctfoCacheDB = ctfoCacheDB;
+    }
+
+    public void setCtfoCacheTable(final String ctfoCacheTable) {
+        this.ctfoCacheTable = ctfoCacheTable;
+    }
+
+    public void setJdbcDriver(final String jdbcDriver) {
+        this.jdbcDriver = jdbcDriver;
+    }
+
+    public void setJdbcUrl(final String jdbcUrl) {
+        this.jdbcUrl = jdbcUrl;
+    }
+
+    public void setJdbcUsername(final String jdbcUsername) {
+        this.jdbcUsername = jdbcUsername;
+    }
+
+    public void setJdbcPassword(final String jdbcPassword) {
         this.jdbcPassword = jdbcPassword;
+    }
+
+    public void setRedisOfflineTime(final int redisOfflineTime) {
+        this.redisOfflineTime = redisOfflineTime;
+    }
+
+    public void setRedisOfflineStopTime(final int redisOfflineStopTime) {
+        this.redisOfflineStopTime = redisOfflineStopTime;
+    }
+
+    public void setRedisMonitorTime(final int redisMonitorTime) {
+        this.redisMonitorTime = redisMonitorTime;
+    }
+
+    public void setStatThreadNo(final int statThreadNo) {
+        this.statThreadNo = statThreadNo;
+    }
+
+    public void setCtxCacheNo(final int ctxCacheNo) {
+        this.ctxCacheNo = ctxCacheNo;
+    }
+
+    public void setRedisClusterDataSyn(final int redisClusterDataSyn) {
+        this.redisClusterDataSyn = redisClusterDataSyn;
+    }
+
+    public void setRedisOfflineCheckTime(final int redisOfflineCheckTime) {
+        this.redisOfflineCheckTime = redisOfflineCheckTime;
+    }
+
+    public void setAlarmStartTriggerContinueCount(final int alarmStartTriggerContinueCount) {
+        this.alarmStartTriggerContinueCount = alarmStartTriggerContinueCount;
+    }
+
+    public void setAlarmStartTriggerTimeoutMillisecond(final int alarmStartTriggerTimeoutMillisecond) {
+        this.alarmStartTriggerTimeoutMillisecond = alarmStartTriggerTimeoutMillisecond;
+    }
+
+    public void setAlarmStopTriggerContinueCount(final int alarmStopTriggerContinueCount) {
+        this.alarmStopTriggerContinueCount = alarmStopTriggerContinueCount;
+    }
+
+    public void setAlarmStopTriggerTimeoutMillisecond(final int alarmStopTriggerTimeoutMillisecond) {
+        this.alarmStopTriggerTimeoutMillisecond = alarmStopTriggerTimeoutMillisecond;
+    }
+
+    public void setSysIgniteRule(final int sysIgniteRule) {
+        this.sysIgniteRule = sysIgniteRule;
+    }
+
+    public void setSysAbnormalRule(final int sysAbnormalRule) {
+        this.sysAbnormalRule = sysAbnormalRule;
+    }
+
+    public void setSysFlyRule(final int sysFlyRule) {
+        this.sysFlyRule = sysFlyRule;
+    }
+
+    public void setSysOnOffRule(final int sysOnOffRule) {
+        this.sysOnOffRule = sysOnOffRule;
+    }
+
+    public void setSysMilehopRule(final int sysMilehopRule) {
+        this.sysMilehopRule = sysMilehopRule;
+    }
+
+    public void setSysCarLockStatusRule(final int sysCarLockStatusRule) {
+        this.sysCarLockStatusRule = sysCarLockStatusRule;
+    }
+
+    public void setVehicleIdleTimeoutMillisecond(final int vehicleIdleTimeoutMillisecond) {
+        this.vehicleIdleTimeoutMillisecond = vehicleIdleTimeoutMillisecond;
+    }
+
+    public void setSysCanRule(final int sysCanRule) {
+        this.sysCanRule = sysCanRule;
+    }
+
+    public void setNoticeCanFaultTriggerContinueCount(final int noticeCanFaultTriggerContinueCount) {
+        this.noticeCanFaultTriggerContinueCount = noticeCanFaultTriggerContinueCount;
+    }
+
+    public void setNoticeCanFaultTriggerTimeoutMillisecond(final int noticeCanFaultTriggerTimeoutMillisecond) {
+        this.noticeCanFaultTriggerTimeoutMillisecond = noticeCanFaultTriggerTimeoutMillisecond;
+    }
+
+    public void setNoticeCanNormalTriggerContinueCount(final int noticeCanNormalTriggerContinueCount) {
+        this.noticeCanNormalTriggerContinueCount = noticeCanNormalTriggerContinueCount;
+    }
+
+    public void setNoticeCanNormalTriggerTimeoutMillisecond(final int noticeCanNormalTriggerTimeoutMillisecond) {
+        this.noticeCanNormalTriggerTimeoutMillisecond = noticeCanNormalTriggerTimeoutMillisecond;
+    }
+
+    public void setNoticeTimeEnable(final boolean noticeTimeEnable) {
+        this.noticeTimeEnable = noticeTimeEnable;
+    }
+
+    public void setNoticeTimeRangeAbsMillisecond(final int noticeTimeRangeAbsMillisecond) {
+        this.noticeTimeRangeAbsMillisecond = noticeTimeRangeAbsMillisecond;
+    }
+
+    public void setNoticeSocLowEnable(final boolean noticeSocLowEnable) {
+        this.noticeSocLowEnable = noticeSocLowEnable;
+    }
+
+    public void setNoticeSocHighEnable(final boolean noticeSocHighEnable) {
+        this.noticeSocHighEnable = noticeSocHighEnable;
+    }
+
+    public void setSysGpsRule(final int sysGpsRule) {
+        this.sysGpsRule = sysGpsRule;
+    }
+
+    public void setGpsNovalueContinueNo(final int gpsNovalueContinueNo) {
+        this.gpsNovalueContinueNo = gpsNovalueContinueNo;
+    }
+
+    public void setGpsHasvalueContinueNo(final int gpsHasvalueContinueNo) {
+        this.gpsHasvalueContinueNo = gpsHasvalueContinueNo;
+    }
+
+    public void setGpsJudgeTime(final int gpsJudgeTime) {
+        this.gpsJudgeTime = gpsJudgeTime;
+    }
+
+    public void setRuleOverride(final String ruleOverride) {
+        this.ruleOverride = ruleOverride;
+    }
+
+    public void setMileHopNum(final int mileHopNum) {
+        this.mileHopNum = mileHopNum;
     }
 
     public int getDbCacheFlushTime() {
         return dbCacheFlushTime;
     }
 
-    public void setDbCacheFlushTime(int dbCacheFlushTime) {
-        this.dbCacheFlushTime = dbCacheFlushTime;
-    }
-
     public int getRedisOfflineTime() {
         return redisOfflineTime;
-    }
-
-    public void setRedisOfflineTime(int redisOfflineTime) {
-        this.redisOfflineTime = redisOfflineTime;
     }
 
     public int getRedisOfflineStopTime() {
         return redisOfflineStopTime;
     }
 
-    public void setRedisOfflineStopTime(int redisOfflineStopTime) {
-        this.redisOfflineStopTime = redisOfflineStopTime;
-    }
-
     public int getRedisMonitorTime() {
         return redisMonitorTime;
-    }
-
-    public void setRedisMonitorTime(int redisMonitorTime) {
-        this.redisMonitorTime = redisMonitorTime;
     }
 
     public int getStatThreadNo() {
         return statThreadNo;
     }
 
-    public void setStatThreadNo(int statThreadNo) {
-        this.statThreadNo = statThreadNo;
-    }
-
     public int getCtxCacheNo() {
         return ctxCacheNo;
-    }
-
-    public void setCtxCacheNo(int ctxCacheNo) {
-        this.ctxCacheNo = ctxCacheNo;
     }
 
     public int getRedisClusterDataSyn() {
         return redisClusterDataSyn;
     }
 
-    public void setRedisClusterDataSyn(int redisClusterDataSyn) {
-        this.redisClusterDataSyn = redisClusterDataSyn;
-    }
-
     public int getRedisOfflineCheckTime() {
         return redisOfflineCheckTime;
-    }
-
-    public void setRedisOfflineCheckTime(int redisOfflineCheckTime) {
-        this.redisOfflineCheckTime = redisOfflineCheckTime;
     }
 
     public int getAlarmStartTriggerContinueCount() {
         return alarmStartTriggerContinueCount;
     }
 
-    public void setAlarmStartTriggerContinueCount(int alarmStartTriggerContinueCount) {
-        this.alarmStartTriggerContinueCount = alarmStartTriggerContinueCount;
-    }
-
     public int getAlarmStartTriggerTimeoutMillisecond() {
         return alarmStartTriggerTimeoutMillisecond;
-    }
-
-    public void setAlarmStartTriggerTimeoutMillisecond(int alarmStartTriggerTimeoutMillisecond) {
-        this.alarmStartTriggerTimeoutMillisecond = alarmStartTriggerTimeoutMillisecond;
     }
 
     public int getAlarmStopTriggerContinueCount() {
         return alarmStopTriggerContinueCount;
     }
 
-    public void setAlarmStopTriggerContinueCount(int alarmStopTriggerContinueCount) {
-        this.alarmStopTriggerContinueCount = alarmStopTriggerContinueCount;
-    }
-
     public int getAlarmStopTriggerTimeoutMillisecond() {
         return alarmStopTriggerTimeoutMillisecond;
-    }
-
-    public void setAlarmStopTriggerTimeoutMillisecond(int alarmStopTriggerTimeoutMillisecond) {
-        this.alarmStopTriggerTimeoutMillisecond = alarmStopTriggerTimeoutMillisecond;
     }
 
     public int getSysIgniteRule() {
         return sysIgniteRule;
     }
 
-    public void setSysIgniteRule(int sysIgniteRule) {
-        this.sysIgniteRule = sysIgniteRule;
-    }
-
     public int getSysAbnormalRule() {
         return sysAbnormalRule;
-    }
-
-    public void setSysAbnormalRule(int sysAbnormalRule) {
-        this.sysAbnormalRule = sysAbnormalRule;
     }
 
     public int getSysFlyRule() {
         return sysFlyRule;
     }
 
-    public void setSysFlyRule(int sysFlyRule) {
-        this.sysFlyRule = sysFlyRule;
-    }
-
     public int getSysOnOffRule() {
         return sysOnOffRule;
-    }
-
-    public void setSysOnOffRule(int sysOnOffRule) {
-        this.sysOnOffRule = sysOnOffRule;
     }
 
     public int getSysMilehopRule() {
         return sysMilehopRule;
     }
 
-    public void setSysMilehopRule(int sysMilehopRule) {
-        this.sysMilehopRule = sysMilehopRule;
-    }
-
     public int getSysCarLockStatusRule() {
         return sysCarLockStatusRule;
-    }
-
-    public void setSysCarLockStatusRule(int sysCarLockStatusRule) {
-        this.sysCarLockStatusRule = sysCarLockStatusRule;
     }
 
     public int getVehicleIdleTimeoutMillisecond() {
         return vehicleIdleTimeoutMillisecond;
     }
 
-    public void setVehicleIdleTimeoutMillisecond(int vehicleIdleTimeoutMillisecond) {
-        this.vehicleIdleTimeoutMillisecond = vehicleIdleTimeoutMillisecond;
-    }
-
     public int getSysCanRule() {
         return sysCanRule;
-    }
-
-    public void setSysCanRule(int sysCanRule) {
-        this.sysCanRule = sysCanRule;
     }
 
     public int getNoticeCanFaultTriggerContinueCount() {
         return noticeCanFaultTriggerContinueCount;
     }
 
-    public void setNoticeCanFaultTriggerContinueCount(int noticeCanFaultTriggerContinueCount) {
-        this.noticeCanFaultTriggerContinueCount = noticeCanFaultTriggerContinueCount;
-    }
-
     public int getNoticeCanFaultTriggerTimeoutMillisecond() {
         return noticeCanFaultTriggerTimeoutMillisecond;
-    }
-
-    public void setNoticeCanFaultTriggerTimeoutMillisecond(int noticeCanFaultTriggerTimeoutMillisecond) {
-        this.noticeCanFaultTriggerTimeoutMillisecond = noticeCanFaultTriggerTimeoutMillisecond;
     }
 
     public int getNoticeCanNormalTriggerContinueCount() {
         return noticeCanNormalTriggerContinueCount;
     }
 
-    public void setNoticeCanNormalTriggerContinueCount(int noticeCanNormalTriggerContinueCount) {
-        this.noticeCanNormalTriggerContinueCount = noticeCanNormalTriggerContinueCount;
-    }
-
     public int getNoticeCanNormalTriggerTimeoutMillisecond() {
         return noticeCanNormalTriggerTimeoutMillisecond;
-    }
-
-    public void setNoticeCanNormalTriggerTimeoutMillisecond(int noticeCanNormalTriggerTimeoutMillisecond) {
-        this.noticeCanNormalTriggerTimeoutMillisecond = noticeCanNormalTriggerTimeoutMillisecond;
     }
 
     public boolean isNoticeTimeEnable() {
         return noticeTimeEnable;
     }
 
-    public void setNoticeTimeEnable(boolean noticeTimeEnable) {
-        this.noticeTimeEnable = noticeTimeEnable;
-    }
-
     public int getNoticeTimeRangeAbsMillisecond() {
         return noticeTimeRangeAbsMillisecond;
-    }
-
-    public void setNoticeTimeRangeAbsMillisecond(int noticeTimeRangeAbsMillisecond) {
-        this.noticeTimeRangeAbsMillisecond = noticeTimeRangeAbsMillisecond;
     }
 
     public boolean isNoticeSocLowEnable() {
         return noticeSocLowEnable;
     }
 
-    public void setNoticeSocLowEnable(boolean noticeSocLowEnable) {
-        this.noticeSocLowEnable = noticeSocLowEnable;
+    public void setNoticeSocLowBeginTriggerThreshold(final int noticeSocLowBeginTriggerThreshold) {
+        this.noticeSocLowBeginTriggerThreshold = noticeSocLowBeginTriggerThreshold;
+    }
+
+    public void setNoticeSocLowBeginTriggerContinueCount(final int noticeSocLowBeginTriggerContinueCount) {
+        this.noticeSocLowBeginTriggerContinueCount = noticeSocLowBeginTriggerContinueCount;
+    }
+
+    public void setNoticeSocLowBeginTriggerTimeoutMillisecond(final int noticeSocLowBeginTriggerTimeoutMillisecond) {
+        this.noticeSocLowBeginTriggerTimeoutMillisecond = noticeSocLowBeginTriggerTimeoutMillisecond;
+    }
+
+    public void setNoticeSocLowEndTriggerThreshold(final int noticeSocLowEndTriggerThreshold) {
+        this.noticeSocLowEndTriggerThreshold = noticeSocLowEndTriggerThreshold;
+    }
+
+    public void setNoticeSocLowEndTriggerContinueCount(final int noticeSocLowEndTriggerContinueCount) {
+        this.noticeSocLowEndTriggerContinueCount = noticeSocLowEndTriggerContinueCount;
+    }
+
+    public void setNoticeSocLowEndTriggerTimeoutMillisecond(final int noticeSocLowEndTriggerTimeoutMillisecond) {
+        this.noticeSocLowEndTriggerTimeoutMillisecond = noticeSocLowEndTriggerTimeoutMillisecond;
+    }
+
+    public void setNoticeSocHighBeginTriggerThreshold(final int noticeSocHighBeginTriggerThreshold) {
+        this.noticeSocHighBeginTriggerThreshold = noticeSocHighBeginTriggerThreshold;
+    }
+
+    public void setNoticeSocHighBeginTriggerContinueCount(final int noticeSocHighBeginTriggerContinueCount) {
+        this.noticeSocHighBeginTriggerContinueCount = noticeSocHighBeginTriggerContinueCount;
+    }
+
+    public void setNoticeSocHighBeginTriggerTimeoutMillisecond(final int noticeSocHighBeginTriggerTimeoutMillisecond) {
+        this.noticeSocHighBeginTriggerTimeoutMillisecond = noticeSocHighBeginTriggerTimeoutMillisecond;
+    }
+
+    public void setNoticeSocHighEndTriggerThreshold(final int noticeSocHighEndTriggerThreshold) {
+        this.noticeSocHighEndTriggerThreshold = noticeSocHighEndTriggerThreshold;
+    }
+
+    public void setNoticeSocHighEndTriggerContinueCount(final int noticeSocHighEndTriggerContinueCount) {
+        this.noticeSocHighEndTriggerContinueCount = noticeSocHighEndTriggerContinueCount;
+    }
+
+    public void setNoticeSocHighEndTriggerTimeoutMillisecond(final int noticeSocHighEndTriggerTimeoutMillisecond) {
+        this.noticeSocHighEndTriggerTimeoutMillisecond = noticeSocHighEndTriggerTimeoutMillisecond;
     }
 
     public int getNoticeSocLowBeginTriggerThreshold() {
         return noticeSocLowBeginTriggerThreshold;
     }
 
-    public void setNoticeSocLowBeginTriggerThreshold(int noticeSocLowBeginTriggerThreshold) {
-        this.noticeSocLowBeginTriggerThreshold = noticeSocLowBeginTriggerThreshold;
-    }
-
     public int getNoticeSocLowBeginTriggerContinueCount() {
         return noticeSocLowBeginTriggerContinueCount;
-    }
-
-    public void setNoticeSocLowBeginTriggerContinueCount(int noticeSocLowBeginTriggerContinueCount) {
-        this.noticeSocLowBeginTriggerContinueCount = noticeSocLowBeginTriggerContinueCount;
     }
 
     public int getNoticeSocLowBeginTriggerTimeoutMillisecond() {
         return noticeSocLowBeginTriggerTimeoutMillisecond;
     }
 
-    public void setNoticeSocLowBeginTriggerTimeoutMillisecond(int noticeSocLowBeginTriggerTimeoutMillisecond) {
-        this.noticeSocLowBeginTriggerTimeoutMillisecond = noticeSocLowBeginTriggerTimeoutMillisecond;
-    }
-
     public int getNoticeSocLowEndTriggerThreshold() {
         return noticeSocLowEndTriggerThreshold;
-    }
-
-    public void setNoticeSocLowEndTriggerThreshold(int noticeSocLowEndTriggerThreshold) {
-        this.noticeSocLowEndTriggerThreshold = noticeSocLowEndTriggerThreshold;
     }
 
     public int getNoticeSocLowEndTriggerContinueCount() {
         return noticeSocLowEndTriggerContinueCount;
     }
 
-    public void setNoticeSocLowEndTriggerContinueCount(int noticeSocLowEndTriggerContinueCount) {
-        this.noticeSocLowEndTriggerContinueCount = noticeSocLowEndTriggerContinueCount;
-    }
-
     public int getNoticeSocLowEndTriggerTimeoutMillisecond() {
         return noticeSocLowEndTriggerTimeoutMillisecond;
-    }
-
-    public void setNoticeSocLowEndTriggerTimeoutMillisecond(int noticeSocLowEndTriggerTimeoutMillisecond) {
-        this.noticeSocLowEndTriggerTimeoutMillisecond = noticeSocLowEndTriggerTimeoutMillisecond;
     }
 
     public boolean isNoticeSocHighEnable() {
         return noticeSocHighEnable;
     }
 
-    public void setNoticeSocHighEnable(boolean noticeSocHighEnable) {
-        this.noticeSocHighEnable = noticeSocHighEnable;
-    }
-
     public int getNoticeSocHighBeginTriggerThreshold() {
         return noticeSocHighBeginTriggerThreshold;
-    }
-
-    public void setNoticeSocHighBeginTriggerThreshold(int noticeSocHighBeginTriggerThreshold) {
-        this.noticeSocHighBeginTriggerThreshold = noticeSocHighBeginTriggerThreshold;
     }
 
     public int getNoticeSocHighBeginTriggerContinueCount() {
         return noticeSocHighBeginTriggerContinueCount;
     }
 
-    public void setNoticeSocHighBeginTriggerContinueCount(int noticeSocHighBeginTriggerContinueCount) {
-        this.noticeSocHighBeginTriggerContinueCount = noticeSocHighBeginTriggerContinueCount;
-    }
-
     public int getNoticeSocHighBeginTriggerTimeoutMillisecond() {
         return noticeSocHighBeginTriggerTimeoutMillisecond;
-    }
-
-    public void setNoticeSocHighBeginTriggerTimeoutMillisecond(int noticeSocHighBeginTriggerTimeoutMillisecond) {
-        this.noticeSocHighBeginTriggerTimeoutMillisecond = noticeSocHighBeginTriggerTimeoutMillisecond;
     }
 
     public int getNoticeSocHighEndTriggerThreshold() {
         return noticeSocHighEndTriggerThreshold;
     }
 
-    public void setNoticeSocHighEndTriggerThreshold(int noticeSocHighEndTriggerThreshold) {
-        this.noticeSocHighEndTriggerThreshold = noticeSocHighEndTriggerThreshold;
-    }
-
     public int getNoticeSocHighEndTriggerContinueCount() {
         return noticeSocHighEndTriggerContinueCount;
-    }
-
-    public void setNoticeSocHighEndTriggerContinueCount(int noticeSocHighEndTriggerContinueCount) {
-        this.noticeSocHighEndTriggerContinueCount = noticeSocHighEndTriggerContinueCount;
     }
 
     public int getNoticeSocHighEndTriggerTimeoutMillisecond() {
         return noticeSocHighEndTriggerTimeoutMillisecond;
     }
 
-    public void setNoticeSocHighEndTriggerTimeoutMillisecond(int noticeSocHighEndTriggerTimeoutMillisecond) {
-        this.noticeSocHighEndTriggerTimeoutMillisecond = noticeSocHighEndTriggerTimeoutMillisecond;
-    }
-
-    public int getCanNovalueContinueNo() {
-        return canNovalueContinueNo;
-    }
-
-    public void setCanNovalueContinueNo(int canNovalueContinueNo) {
-        this.canNovalueContinueNo = canNovalueContinueNo;
-    }
-
     public int getSysGpsRule() {
         return sysGpsRule;
-    }
-
-    public void setSysGpsRule(int sysGpsRule) {
-        this.sysGpsRule = sysGpsRule;
     }
 
     public int getGpsNovalueContinueNo() {
         return gpsNovalueContinueNo;
     }
 
-    public void setGpsNovalueContinueNo(int gpsNovalueContinueNo) {
-        this.gpsNovalueContinueNo = gpsNovalueContinueNo;
-    }
-
     public int getGpsHasvalueContinueNo() {
         return gpsHasvalueContinueNo;
-    }
-
-    public void setGpsHasvalueContinueNo(int gpsHasvalueContinueNo) {
-        this.gpsHasvalueContinueNo = gpsHasvalueContinueNo;
     }
 
     public int getGpsJudgeTime() {
         return gpsJudgeTime;
     }
 
-    public void setGpsJudgeTime(int gpsJudgeTime) {
-        this.gpsJudgeTime = gpsJudgeTime;
-    }
-
     public String getRuleOverride() {
         return ruleOverride;
-    }
-
-    public void setRuleOverride(String ruleOverride) {
-        this.ruleOverride = ruleOverride;
-    }
-
-    public int getCanJudgeTime() {
-        return canJudgeTime;
-    }
-
-    public void setCanJudgeTime(int canJudgeTime) {
-        this.canJudgeTime = canJudgeTime;
     }
 
     public int getMileHopNum() {
         return mileHopNum;
     }
 
-    public void setMileHopNum(int mileHopNum) {
-        this.mileHopNum = mileHopNum;
-    }
+    // endregion 自动生成的访问器
 
-    public int getStormWorkerHeapMemoryMb() {
-        return stormWorkerHeapMemoryMb;
-    }
 }

@@ -10,7 +10,7 @@ import java.util.Map;
  * @date: 2018-06-15
  * @description:
  */
-public class CarNoCanDecideJili implements ICarNoCanDecide {
+public class CarNoCanDecide implements ICarNoCanDecide {
 
     /**
      * 吉利报表是否有CAN判定, {车速, 累计里程, 总电压, 总电流, SOC} 只要其中一个值有效, 则判定为有CAN, 否则判定为无CAN.

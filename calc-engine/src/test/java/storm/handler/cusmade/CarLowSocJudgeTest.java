@@ -6,6 +6,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import storm.conf.SysDefineEntity;
 import storm.constant.FormatConstant;
 import storm.system.DataKey;
 import storm.util.ConfigUtils;
@@ -23,12 +24,13 @@ class CarLowSocJudgeTest {
     void testProcessFrame() {
 
         CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
-        ConfigUtils.getSysDefine().setNoticeSocLowBeginTriggerThreshold(10);
-        ConfigUtils.getSysDefine().setNoticeSocLowBeginTriggerContinueCount(3);
-        ConfigUtils.getSysDefine().setNoticeSocLowBeginTriggerTimeoutMillisecond(30000);
-        ConfigUtils.getSysDefine().setNoticeSocLowEndTriggerThreshold(20);
-        ConfigUtils.getSysDefine().setNoticeSocLowEndTriggerContinueCount(1);
-        ConfigUtils.getSysDefine().setNoticeSocLowEndTriggerTimeoutMillisecond(0);
+        final SysDefineEntity sysDefine = ConfigUtils.getSysDefine();
+        sysDefine.setNoticeSocLowBeginTriggerThreshold(10);
+        sysDefine.setNoticeSocLowBeginTriggerContinueCount(3);
+        sysDefine.setNoticeSocLowBeginTriggerTimeoutMillisecond(30000);
+        sysDefine.setNoticeSocLowEndTriggerThreshold(20);
+        sysDefine.setNoticeSocLowEndTriggerContinueCount(1);
+        sysDefine.setNoticeSocLowEndTriggerTimeoutMillisecond(0);
 
         final Map<String, String> data = Maps.newTreeMap();
         data.put(DataKey.VEHICLE_ID, TEST_VID);

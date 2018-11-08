@@ -82,7 +82,7 @@ public final class CarNoCanJudge {
     /**
      * 判断车辆无CAN的方案
      */
-    private static ICarNoCanDecide carNoCanDecide = new CarNoCanDecideDefault();
+    private static ICarNoCanDecide carNoCanDecide = new CarNoCanDecide();
 
     private final DataToRedis redis = new DataToRedis();
     private final Recorder recorder = new RedisRecorder(redis);
