@@ -21,6 +21,10 @@ public class SysDefineEntity {
      */
     private int stormWorkerNo = 2;
     /**
+     * storm worker 每个最大占用内存
+     */
+    private int stormWorkerHeapMemoryMb = 5440;
+    /**
      * spout 并行度基准系数
      */
     private int stormKafkaSpoutNo = 1;
@@ -1025,5 +1029,9 @@ public class SysDefineEntity {
 
     public void setMileHopNum(int mileHopNum) {
         this.mileHopNum = mileHopNum;
+    }
+
+    public int getStormWorkerHeapMemoryMb() {
+        return stormWorkerHeapMemoryMb;
     }
 }

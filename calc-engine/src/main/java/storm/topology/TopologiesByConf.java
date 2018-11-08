@@ -1,6 +1,7 @@
 package storm.topology;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
@@ -15,6 +16,7 @@ import storm.bolt.deal.cusmade.CarNoticeBolt;
 import storm.bolt.deal.norm.AlarmBolt;
 import storm.bolt.deal.norm.EleFenceBolt;
 import storm.bolt.deal.norm.FilterBolt;
+import storm.conf.SysDefineEntity;
 import storm.constant.StreamFieldKey;
 import storm.kafka.bolt.KafkaSendBolt;
 import storm.kafka.spout.GeneralKafkaSpout;
@@ -75,11 +77,15 @@ public final class TopologiesByConf {
 
     private static Config buildStormConf() {
 
-        final int workerNo = ConfigUtils.getSysDefine().getStormWorkerNo();
+        final SysDefineEntity sysDefine = ConfigUtils.getSysDefine();
+
+        final int workerNo = sysDefine.getStormWorkerNo();
+        final int workerHeapMemory = sysDefine.getStormWorkerHeapMemoryMb();
 
         final Config stormConf = readStormConf();
         stormConf.setDebug(false);
         stormConf.put(Config.TOPOLOGY_MAX_SPOUT_PENDING, 1000);
+        stormConf.put(Config.WORKER_HEAP_MEMORY_MB, workerHeapMemory);
         stormConf.setMaxSpoutPending(1000);
         stormConf.setNumWorkers(workerNo);
         //设置不需要应答
