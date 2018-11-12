@@ -345,6 +345,7 @@ public class FaultCodeHandler implements Serializable {
 
 
         final long currentTimeMillis = System.currentTimeMillis();
+        lastTime.put(vid, currentTimeMillis);
 
         //获得最新的按单个位解析故障码告警规则
         final Map<String, Map<String, FaultTypeSingleBit>> bitRules = getBitRules();
@@ -434,7 +435,6 @@ public class FaultCodeHandler implements Serializable {
                         new ConcurrentHashMap<>());
                     vidNotice.put(faultId, faultNotice);
 
-                    lastTime.put(vid, currentTimeMillis);
                     if (code != 0) {
                         final Map<String, Object> exceptionNotice = updateNoticeMsg(
                             faultNotice.get(exceptionId),
@@ -574,7 +574,6 @@ public class FaultCodeHandler implements Serializable {
             if (!ArrayUtils.contains(msgFcodes, exceptionCode)) {
                 continue;
             }
-            lastTime.put(vid, currentTimeMillis);
             hasExceptionCode = true;
 
             final String exceptionId = exceptionRule.codeId;
@@ -614,7 +613,6 @@ public class FaultCodeHandler implements Serializable {
             if (!ArrayUtils.contains(msgFcodes, normalCode)) {
                 continue;
             }
-            lastTime.put(vid, currentTimeMillis);
 
             if (MapUtils.isEmpty(faultNotices)) {
                 //如果当前的内存里没有该异常通知， 则从redis查询
