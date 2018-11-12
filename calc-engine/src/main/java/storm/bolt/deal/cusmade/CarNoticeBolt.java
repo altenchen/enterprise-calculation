@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.ObjectUtils;
 import org.apache.storm.Config;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -184,6 +185,54 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
         ConfigUtils.readConfigFromRedis(redis);
 
+        final long currentTimeMillis = System.currentTimeMillis();
+
+        final long offlineCheckSpanMillisecond = ConfigUtils.getSysDefine().getRedisOfflineCheckTime() * 1000;
+        // region 离线判断: 如果时间差大于离线检查时间，则进行离线检查
+        if (currentTimeMillis - lastOfflineCheckTimeMillisecond >= offlineCheckSpanMillisecond) {
+
+            lastOfflineCheckTimeMillisecond = currentTimeMillis;
+
+            // 如果车辆离线，则发送此车辆的所有故障码结束通知
+            {
+                final List<Map<String, Object>> notices = faultCodeHandler.generateNotice(currentTimeMillis);
+                if (CollectionUtils.isNotEmpty(notices)) {
+                    for (final Map<String, Object> notice : notices) {
+                        if (MapUtils.isNotEmpty(notice)) {
+                            String json = JSON_UTILS.toJson(notice);
+                            final String vid = ObjectUtils.toString(notice.get("vid"), null);
+                            if (null != vid) {
+                                kafkaStreamVehicleNoticeSender.emit(vid, json);
+                            } else {
+                                LOG.warn("不含vid的故障码通知[{}]", json);
+                            }
+                        }
+                    }
+                }
+            }
+
+            //检查所有车辆是否离线，离线则发送离线通知。
+            {
+                final List<Map<String, Object>> notices = carRuleHandler.offlineMethod(currentTimeMillis);
+                if (CollectionUtils.isNotEmpty(notices)) {
+                    for (final Map<String, Object> notice : notices) {
+                        if (MapUtils.isNotEmpty(notice)) {
+                            String json = JSON_UTILS.toJson(notice);
+                            final String vid = ObjectUtils.toString(notice.get("vid"), null);
+                            if (null != vid) {
+                                kafkaStreamVehicleNoticeSender.emit(vid, json);
+                            } else {
+                                LOG.warn("不含vid的车辆离线通知[{}]", json);
+                            }
+                        }
+                    }
+                }
+            }
+
+            long offlineTimeMillisecond = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
+            carOnOffhandler.onOffCheck("TIMEOUT", 1, currentTimeMillis, offlineTimeMillisecond);
+        }
+        // endregion
     }
 
     @SuppressWarnings("AlibabaMethodTooLong")
@@ -193,40 +242,8 @@ public final class CarNoticeBolt extends BaseRichBolt {
         @NotNull final ImmutableMap<String, String> data) {
         collector.ack(input);
         try{
+
             final long currentTimeMillis = System.currentTimeMillis();
-
-            long offlineCheckSpanMillisecond = ConfigUtils.getSysDefine().getRedisOfflineCheckTime() * 1000;
-            // region 离线判断: 如果时间差大于离线检查时间，则进行离线检查, 如果车辆离线，则发送此车辆的所有故障码结束通知
-            if (currentTimeMillis - lastOfflineCheckTimeMillisecond >= offlineCheckSpanMillisecond) {
-
-                lastOfflineCheckTimeMillisecond = currentTimeMillis;
-                List<Map<String, Object>> msgs = faultCodeHandler.generateNotice(currentTimeMillis);
-                if (null != msgs && msgs.size() > 0) {
-                    for (Map<String, Object> map : msgs) {
-                        if (null != map && map.size() > 0) {
-                            Object vid2 = map.get("vid");
-                            String json = JSON_UTILS.toJson(map);
-                            kafkaStreamVehicleNoticeSender.emit((String) vid2, json);
-                        }
-                    }
-                }
-
-                //检查所有车辆是否离线，离线则发送离线通知。
-                msgs = carRuleHandler.offlineMethod(currentTimeMillis);
-                if (null != msgs && msgs.size() > 0) {
-                    for (Map<String, Object> map : msgs) {
-                        if (null != map && map.size() > 0) {
-                            Object vid2 = map.get("vid");
-                            String json = JSON_UTILS.toJson(map);
-                            kafkaStreamVehicleNoticeSender.emit((String) vid2, json);
-                        }
-                    }
-                }
-
-                long offlineTimeMillisecond = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
-                carOnOffhandler.onOffCheck("TIMEOUT", 1, currentTimeMillis, offlineTimeMillisecond);
-            }
-            // endregion
 
             if (MapUtils.isEmpty(data)) {
                 return;
@@ -279,8 +296,6 @@ public final class CarNoticeBolt extends BaseRichBolt {
             LOG.error("VID:" + vid + " 异常", e);
             e.printStackTrace();
         }
-
-
     }
 
     @Override
