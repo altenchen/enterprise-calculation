@@ -66,10 +66,6 @@ public class SysDefineEntity {
      */
     private String kafkaProducerVehicleAlarmTopic = "SYNC_REALTIME_ALARM";
     /**
-     * 车辆报警状态存储 topic, 下游AlarmService依赖, 请保持一致.
-     */
-    private String kafkaProducerVehicleAlarmStoreTopic = "SYNC_ALARM_STORE";
-    /**
      * 围栏告警, 下游AlarmService依赖, 请保持一致.
      */
     private String kafkaProducerVehicleFenceAlarmTopic = "FENCE_ALARM_TOPIC";
@@ -411,10 +407,6 @@ public class SysDefineEntity {
         return kafkaProducerVehicleAlarmTopic;
     }
 
-    public String getKafkaProducerVehicleAlarmStoreTopic() {
-        return kafkaProducerVehicleAlarmStoreTopic;
-    }
-
     public String getKafkaProducerVehicleFenceAlarmTopic() {
         return kafkaProducerVehicleFenceAlarmTopic;
     }
@@ -545,10 +537,6 @@ public class SysDefineEntity {
 
     public void setKafkaProducerVehicleAlarmTopic(final String kafkaProducerVehicleAlarmTopic) {
         this.kafkaProducerVehicleAlarmTopic = kafkaProducerVehicleAlarmTopic;
-    }
-
-    public void setKafkaProducerVehicleAlarmStoreTopic(final String kafkaProducerVehicleAlarmStoreTopic) {
-        this.kafkaProducerVehicleAlarmStoreTopic = kafkaProducerVehicleAlarmStoreTopic;
     }
 
     public void setKafkaProducerVehicleFenceAlarmTopic(final String kafkaProducerVehicleFenceAlarmTopic) {

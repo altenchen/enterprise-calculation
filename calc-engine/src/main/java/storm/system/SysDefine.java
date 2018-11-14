@@ -151,11 +151,6 @@ public final class SysDefine {
     public static final String VEHICLE_ALARM_TOPIC = "kafka.producer.vehicle_alarm.topic";
 
     /**
-     * HBase 车辆报警状态存储 kafka 输出 topic
-     */
-    public static final String VEHICLE_ALARM_STORE_TOPIC = "kafka.producer.vehicle_alarm_store.topic";
-
-    /**
      * 围栏告警
      */
     public static final String KAFKA_PRODUCER_VEHICLE_FENCE_ALARM_TOPIC = "kafka.producer.vehicle_fence_alarm.topic";
