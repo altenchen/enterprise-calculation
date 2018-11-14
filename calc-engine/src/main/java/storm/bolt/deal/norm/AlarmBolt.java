@@ -103,8 +103,6 @@ public class AlarmBolt extends BaseRichBolt {
 
     private transient KafkaStream.Sender kafkaStreamVehicleAlarmSender;
 
-    private transient KafkaStream.Sender kafkaStreamVehicleAlarmStoreSender;
-
     /**
      * 车辆数据缓存
      * <vid, <key, value>>
@@ -196,7 +194,6 @@ public class AlarmBolt extends BaseRichBolt {
         final KafkaStream.SenderBuilder kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
 
         kafkaStreamVehicleAlarmSender = kafkaStreamSenderBuilder.build(ConfigUtils.getSysDefine().getKafkaProducerVehicleAlarmTopic());
-        kafkaStreamVehicleAlarmStoreSender = kafkaStreamSenderBuilder.build(ConfigUtils.getSysDefine().getKafkaProducerVehicleAlarmStoreTopic());
     }
 
     @Override
@@ -468,8 +465,6 @@ public class AlarmBolt extends BaseRichBolt {
             LOG.info("VID:{} 输出平台报警通知 {} ", vehicleId, json);
 
             kafkaStreamVehicleAlarmSender.emit(input, vehicleId, json);
-            kafkaStreamVehicleAlarmStoreSender.emit(input, vehicleId, json);
-
 
             JEDIS_POOL_UTILS.useResource(jedis -> {
                 jedis.select(REDIS_DATABASE_INDEX);
