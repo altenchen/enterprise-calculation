@@ -51,7 +51,6 @@
         <HikariCP.version>3.2.0</HikariCP.version>
         <jedis.version>2.4.2</jedis.version>
         <jersey.version>1.19.4</jersey.version>
-        <dagger.version>2.16</dagger.version>
         <aviator.version>3.3.0</aviator.version>
         <!-- 工具组件版本结束 -->
 

@@ -21,10 +21,6 @@
     <!-- 打包方式 -->
     <packaging>jar</packaging>
 
-    <properties>
-        <dagger.version>2.16</dagger.version>
-    </properties>
-
     <!-- 项目依赖 -->
     <dependencies>
 
@@ -156,18 +152,6 @@
 
         <!-- 工具组件依赖结束 -->
 
-        <!-- 编译组件依赖开始 -->
-
-        <!-- https://mvnrepository.com/artifact/com.google.dagger/dagger -->
-        <dependency>
-            <groupId>com.google.dagger</groupId>
-            <artifactId>dagger</artifactId>
-            <version>${dagger.version}</version>
-        </dependency>
-
-        <!-- 编译组件依赖结束 -->
-
-
     </dependencies>
 
     <build>
@@ -176,16 +160,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <annotationProcessorPaths>
-                        <path>
-                            <!-- https://mvnrepository.com/artifact/com.google.dagger/dagger-compiler -->
-                            <groupId>com.google.dagger</groupId>
-                            <artifactId>dagger-compiler</artifactId>
-                            <version>${dagger.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
             </plugin>
             <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-dependency-plugin -->
             <plugin>
