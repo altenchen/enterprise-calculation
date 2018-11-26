@@ -53,6 +53,7 @@
         <jersey.version>1.19.4</jersey.version>
         <aviator.version>3.3.0</aviator.version>
         <jts.version>1.16.0</jts.version>
+        <cronutils.version>8.0.0</cronutils.version>
         <!-- 工具组件版本结束 -->
 
         <!-- 编译套件版本开始 -->
@@ -333,6 +334,13 @@
                 <groupId>org.locationtech.jts</groupId>
                 <artifactId>jts-core</artifactId>
                 <version>${jts.version}</version>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/com.cronutils/cron-utils -->
+            <dependency>
+                <groupId>com.cronutils</groupId>
+                <artifactId>cron-utils</artifactId>
+                <version>${cronutils.version}</version>
             </dependency>
 
             <!-- 工具组件依赖结束 -->

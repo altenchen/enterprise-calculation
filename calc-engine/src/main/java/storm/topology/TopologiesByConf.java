@@ -4,7 +4,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.IRichBolt;
 import org.apache.storm.topology.IRichSpout;
 import org.apache.storm.topology.TopologyBuilder;
@@ -14,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.bolt.deal.cusmade.CarNoticeBolt;
 import storm.bolt.deal.norm.AlarmBolt;
+import storm.bolt.deal.norm.ElectronicFenceBolt;
 import storm.bolt.deal.norm.FilterBolt;
 import storm.conf.SysDefineEntity;
 import storm.constant.StreamFieldKey;
@@ -104,8 +104,15 @@ public final class TopologiesByConf {
             ConfigUtils.loadResourceFromLocal(file, properties);
             ConfigUtils.fillSysDefineEntity(properties);
         }
-        Config stormConf = buildStormConf();
-        StormTopology stormTopology = createTopology(buildMessageEmitSpout, buildMessageSendBolt);
+
+        final SysDefineEntity sysDefine = ConfigUtils.getSysDefine();
+
+        final int workerAmount = sysDefine.getStormWorkerNo();
+        final int workerHeapMemory = sysDefine.getStormWorkerHeapMemoryMb();
+
+        Config stormConf = buildStormConf(workerAmount, workerHeapMemory);
+
+        StormTopology stormTopology = createTopology(workerAmount, buildMessageEmitSpout, buildMessageSendBolt);
         final String topologyName = ConfigUtils.getSysDefine().getTopologyName();
         if (StringUtils.isEmpty(topologyName)) {
             throw new Exception("topologyName is null");
@@ -113,22 +120,17 @@ public final class TopologiesByConf {
         stormSubmitter.accept(topologyName, stormConf, stormTopology);
     }
 
-    private static Config buildStormConf() {
-
-        final SysDefineEntity sysDefine = ConfigUtils.getSysDefine();
-
-        final int workerNo = sysDefine.getStormWorkerNo();
-        final int workerHeapMemory = sysDefine.getStormWorkerHeapMemoryMb();
+    private static Config buildStormConf(
+        final int workerAmount,
+        final int workerHeapMemory) {
 
         final Config stormConf = readStormConf();
         stormConf.setDebug(false);
-        stormConf.put(Config.TOPOLOGY_MAX_SPOUT_PENDING, 1000);
-        stormConf.put(Config.WORKER_HEAP_MEMORY_MB, workerHeapMemory);
         stormConf.setMaxSpoutPending(1000);
-        stormConf.setNumWorkers(workerNo);
+        stormConf.setNumWorkers(workerAmount);
+        stormConf.setTopologyWorkerMaxHeapSize(workerHeapMemory);
         //设置不需要应答
         stormConf.setNumAckers(0);
-        stormConf.put(KafkaBolt.TOPIC, KafkaStream.TOPIC);
 
         return stormConf;
     }
@@ -203,11 +205,12 @@ public final class TopologiesByConf {
      * @return Storm 拓扑
      */
     private static StormTopology createTopology(
+        final int workerAmount,
         @NotNull final Consumer<@NotNull TeConsumer<@NotNull String, @NotNull String, @NotNull IRichSpout>> buildHeadEmitSpout,
         @NotNull final Consumer<@NotNull BiConsumer<@NotNull String, @NotNull IRichBolt>> buildTailSendBolt) {
 
-        final int realSpoutNo = ConfigUtils.getSysDefine().getStormKafkaSpoutNo();
-        final int boltNo = ConfigUtils.getSysDefine().getStormKafkaBoltNo();
+        final int spoutParallelism = workerAmount * ConfigUtils.getSysDefine().getStormKafkaSpoutNo();
+        final int boltParallelism = workerAmount * ConfigUtils.getSysDefine().getStormKafkaBoltNo();
 
         TopologyBuilder builder = new TopologyBuilder();
 
@@ -219,19 +222,19 @@ public final class TopologiesByConf {
                 messageEmitSpoutComponentId,
                 messageEmitSpoutStreamId,
                 messageEmitSpout,
-                realSpoutNo,
-                boltNo
+                spoutParallelism,
+                boltParallelism
             );
         });
 
-        buildMiddleBlots(builder, boltNo);
+        buildMiddleBlots(builder, boltParallelism);
 
         buildTailSendBolt.accept((messageSendBoltComponentId, messageSendBolt) ->
             buildMessageSendBolt(
                 builder,
                 messageSendBoltComponentId,
                 messageSendBolt,
-                boltNo
+                boltParallelism
             )
         );
 
@@ -253,21 +256,21 @@ public final class TopologiesByConf {
         @NotNull final String messageEmitSpoutComponentId,
         @NotNull final String messageEmitSpoutStreamId,
         @NotNull final IRichSpout messageEmitSpout,
-        final int realSpoutNo,
-        final int boltNo) {
+        final int spoutParallelism,
+        final int boltParallelism) {
 
         builder.setSpout(
             messageEmitSpoutComponentId,
             messageEmitSpout,
-            realSpoutNo
+            spoutParallelism
         );
 
         builder
             .setBolt(
                 FilterBolt.getComponentId(),
                 new FilterBolt(),
-                boltNo)
-            .setNumTasks(boltNo * 3)
+                boltParallelism)
+            .setNumTasks(boltParallelism * 3)
             // 接收车辆实时数据
             .fieldsGrouping(
                 messageEmitSpoutComponentId,
@@ -282,21 +285,34 @@ public final class TopologiesByConf {
 
     /**
      * @param builder 拓扑构建器
-     * @param boltNo  Blot 基准并行度
+     * @param boltParallelism  Blot 基准并行度
      */
     @SuppressWarnings("AlibabaMethodTooLong")
     private static void buildMiddleBlots(
         @NotNull final TopologyBuilder builder,
-        final int boltNo) {
+        final int boltParallelism) {
 
         builder
             // 预警处理
             .setBolt(
                 AlarmBolt.getComponentId(),
                 new AlarmBolt(),
-                boltNo * 3)
-            .setNumTasks(boltNo * 9)
+                boltParallelism * 3)
+            .setNumTasks(boltParallelism * 9)
             // 预警的车辆实时数据
+            .fieldsGrouping(
+                FilterBolt.getComponentId(),
+                FilterBolt.getDataCacheStreamId(),
+                new Fields(DataKey.VEHICLE_ID));
+
+        builder
+            // 电子围栏告警处理
+            .setBolt(
+                ElectronicFenceBolt.getComponentId(),
+                new ElectronicFenceBolt(),
+                boltParallelism * 3)
+            .setNumTasks(boltParallelism * 9)
+            // 电子围栏告警实时数据
             .fieldsGrouping(
                 FilterBolt.getComponentId(),
                 FilterBolt.getDataCacheStreamId(),
@@ -307,8 +323,8 @@ public final class TopologiesByConf {
             .setBolt(
                 CarNoticeBolt.getComponentId(),
                 new CarNoticeBolt(),
-                boltNo * 3)
-            .setNumTasks(boltNo * 9)
+                boltParallelism * 3)
+            .setNumTasks(boltParallelism * 9)
             // soc 与超时处理实时数据
             .fieldsGrouping(
                 FilterBolt.getComponentId(),
@@ -320,19 +336,24 @@ public final class TopologiesByConf {
         @NotNull final TopologyBuilder builder,
         @NotNull final String messageSendBoltComponentId,
         @NotNull final IRichBolt messageSendBolt,
-        final int boltNo) {
+        final int boltParallelism) {
 
         builder
             // 发送 kafka 消息
             .setBolt(
                 messageSendBoltComponentId,
                 messageSendBolt,
-                boltNo * 2)
-            .setNumTasks(boltNo * 6)
+                boltParallelism * 2)
+            .setNumTasks(boltParallelism * 6)
             // 车辆平台报警状态、实时需要存储的数据
             .fieldsGrouping(
                 AlarmBolt.getComponentId(),
                 AlarmBolt.getKafkaStreamId(),
+                new Fields(KafkaStream.BOLT_KEY))
+            // 电子围栏
+            .fieldsGrouping(
+                ElectronicFenceBolt.getComponentId(),
+                ElectronicFenceBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY))
             // 车辆通知、故障处理
             .fieldsGrouping(
