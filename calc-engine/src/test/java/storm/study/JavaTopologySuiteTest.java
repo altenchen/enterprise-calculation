@@ -60,6 +60,8 @@ public final class JavaTopologySuiteTest {
             final boolean contains = polygon.contains(point);
 
             Assertions.assertTrue(contains);
+
+            Assertions.assertEquals(contains, polygon.buffer(20).contains(point));
         }
 
         {
@@ -74,6 +76,8 @@ public final class JavaTopologySuiteTest {
             final boolean contains = polygon.contains(point);
 
             Assertions.assertTrue(contains);
+
+            Assertions.assertEquals(contains, polygon.buffer(20).contains(point));
         }
 
         {
@@ -88,6 +92,8 @@ public final class JavaTopologySuiteTest {
             final boolean contains = polygon.contains(point);
 
             Assertions.assertTrue(contains);
+
+            Assertions.assertEquals(contains, polygon.buffer(20).contains(point));
         }
 
         {
@@ -102,6 +108,8 @@ public final class JavaTopologySuiteTest {
             final boolean contains = polygon.contains(point);
 
             Assertions.assertTrue(contains);
+
+            Assertions.assertEquals(contains, polygon.buffer(20).contains(point));
         }
 
         {
@@ -116,6 +124,8 @@ public final class JavaTopologySuiteTest {
             final boolean contains = polygon.contains(point);
 
             Assertions.assertFalse(contains);
+
+            Assertions.assertEquals(contains, polygon.buffer(20).contains(point));
         }
 
         {
@@ -130,6 +140,8 @@ public final class JavaTopologySuiteTest {
             final boolean contains = polygon.contains(point);
 
             Assertions.assertFalse(contains);
+
+            Assertions.assertEquals(contains, polygon.buffer(20).contains(point));
         }
 
         {
@@ -144,6 +156,8 @@ public final class JavaTopologySuiteTest {
             final boolean contains = polygon.contains(point);
 
             Assertions.assertFalse(contains);
+
+            Assertions.assertEquals(contains, polygon.buffer(20).contains(point));
         }
 
         {
@@ -158,6 +172,8 @@ public final class JavaTopologySuiteTest {
             final boolean contains = polygon.contains(point);
 
             Assertions.assertFalse(contains);
+
+            Assertions.assertEquals(contains, polygon.buffer(20).contains(point));
         }
 
         LOG.info("试验完成");
