@@ -1,13 +1,15 @@
-package storm.dto.fence;
+package storm.domain.fence.area;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import storm.domain.fence.cron.Cron;
 
 /**
  * 区域接口
  * @author: xzp
  * @date: 2018-11-28
  * @description:
+ * 1. 一个区域可以包含多个激活时间段
  */
 public interface Area extends Cron {
 

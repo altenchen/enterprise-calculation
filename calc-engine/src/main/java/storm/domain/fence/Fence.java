@@ -1,12 +1,15 @@
-package storm.dto.fence;
+package storm.domain.fence;
 
 import org.apache.commons.lang.BooleanUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.domain.fence.area.Area;
+import storm.domain.fence.area.Coordinate;
+import storm.domain.fence.cron.Cron;
+import storm.domain.fence.event.Event;
 
-import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -16,10 +19,10 @@ import java.util.stream.Stream;
  * @date: 2018-11-28
  * @description:
  * 1. 一个围栏包含多个有效区域
- * 2. 一个围栏包含多个有效时段
- * 3. 一个围栏包含多个有效规则
+ * 2. 一个围栏包含多个有效规则
+ * 3. 一个围栏包含多个激活时段
  */
-public final class Fence {
+public final class Fence implements Cron {
 
     @SuppressWarnings("unused")
     private static final Logger LOG;
@@ -34,12 +37,27 @@ public final class Fence {
     @NotNull
     private final Stream<Event> rules;
 
+    /**
+     * 激活计划
+     */
+    @NotNull
+    private final Cron cron;
+
+    public Fence(
+        @NotNull final Stream<Area> areas,
+        @NotNull final Stream<Event> rules,
+        @Nullable final Cron cron) {
+
+        this.areas = areas;
+        this.rules = rules;
+        this.cron = null != cron ? cron : Cron.DEFAULT;
+    }
+
     public Fence(
         @NotNull final Stream<Area> areas,
         @NotNull final Stream<Event> rules) {
 
-        this.areas = areas;
-        this.rules = rules;
+        this(areas, rules, Cron.DEFAULT);
     }
 
     public void process(
@@ -64,5 +82,10 @@ public final class Fence {
         } else {
             // nothing......
         }
+    }
+
+    @Override
+    public boolean active(final long time) {
+        return cron.active(time);
     }
 }

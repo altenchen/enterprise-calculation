@@ -1,4 +1,4 @@
-package storm.dto.fence;
+package storm.domain.fence.area;
 
 import com.google.common.collect.ImmutableList;
 import org.jetbrains.annotations.Contract;
@@ -8,6 +8,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.domain.fence.cron.Cron;
 
 import java.util.stream.Collectors;
 

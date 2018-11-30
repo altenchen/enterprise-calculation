@@ -1,4 +1,4 @@
-package storm.dto.fence;
+package storm.domain.fence.area;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.jupiter.api.*;
@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
  * @description:
  */
 @DisplayName("多边形区域测试")
-public final class PolygonTest {
+final class PolygonTest {
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(PolygonTest.class);
@@ -42,7 +42,7 @@ public final class PolygonTest {
                 .add(new Coordinate(10, -10))
                 .add(new Coordinate(-10, -10))
                 .add(new Coordinate(-10, 10))
-                .build(), cron);
+                .build());
         final double distance = 5;
 
         // region top
@@ -249,7 +249,7 @@ public final class PolygonTest {
                 .add(new Coordinate(10, -10))
                 .add(new Coordinate(-10, -10))
                 .add(new Coordinate(-10, 10))
-                .build(), cron);
+                .build());
         final double distance = 10;
 
         // region top

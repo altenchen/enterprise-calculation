@@ -1,10 +1,11 @@
-package storm.dto.fence;
+package storm.domain.fence.area;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.domain.fence.cron.Cron;
 
 /**
  * 圆形区域

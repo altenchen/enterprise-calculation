@@ -1,4 +1,4 @@
-package storm.dto.fence;
+package storm.domain.fence.area;
 
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
  * @description:
  */
 @DisplayName("圆形区域测试")
-public final class CircleTest {
+final class CircleTest {
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(CircleTest.class);
@@ -39,25 +39,25 @@ public final class CircleTest {
 
         {
             final double radius = 4 - 0.000001;
-            final Circle circle = new Circle(center, radius, cron);
+            final Circle circle = new Circle(center, radius);
             Assertions.assertEquals(Boolean.FALSE, circle.whichSide(location, distance));
         }
 
         {
             final double radius = 4;
-            final Circle circle = new Circle(center, radius, cron);
+            final Circle circle = new Circle(center, radius);
             Assertions.assertNull(circle.whichSide(location, distance));
         }
 
         {
             final double radius = 6;
-            final Circle circle = new Circle(center, radius, cron);
+            final Circle circle = new Circle(center, radius);
             Assertions.assertNull(circle.whichSide(location, distance));
         }
 
         {
             final double radius = 6 + 0.000001;
-            final Circle circle = new Circle(center, radius, cron);
+            final Circle circle = new Circle(center, radius);
             Assertions.assertEquals(Boolean.TRUE, circle.whichSide(location, distance));
         }
     }
@@ -67,7 +67,7 @@ public final class CircleTest {
     void testWhichSideSolid() {
         final Coordinate center = new Coordinate(0, 0);
         final double radius = 5;
-        final Circle circle = new Circle(center, radius, cron);
+        final Circle circle = new Circle(center, radius);
 
         final Coordinate location = center;
 

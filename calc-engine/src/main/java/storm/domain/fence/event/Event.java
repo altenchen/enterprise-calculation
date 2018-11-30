@@ -1,14 +1,16 @@
-package storm.dto.fence;
+package storm.domain.fence.event;
 
 import com.google.common.collect.ImmutableMap;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import storm.domain.fence.cron.Cron;
 
 /**
  * 事件
  * @author: xzp
  * @date: 2018-11-29
  * @description:
+ * 1. 一个事件可以包含多个激活时间段
  */
 public interface Event extends Cron {
 

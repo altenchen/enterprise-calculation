@@ -1,4 +1,4 @@
-package storm.dto.fence;
+package storm.domain.fence.cron;
 
 /**
  * 激活计划
