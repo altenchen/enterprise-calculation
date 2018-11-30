@@ -12,10 +12,10 @@ public interface Cron {
 
     /**
      * 判断给定的时间点是否处于激活的时间范围
-     * @param time 时间点
+     * @param dateTime 时间点
      * @return 给定的时间点是否处于激活的时间范围
      */
-    default boolean active(long time) {
+    default boolean active(long dateTime) {
         return true;
     }
 }

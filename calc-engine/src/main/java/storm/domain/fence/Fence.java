@@ -85,7 +85,7 @@ public final class Fence implements Cron {
     }
 
     @Override
-    public boolean active(final long time) {
-        return cron.active(time);
+    public boolean active(final long dateTime) {
+        return cron.active(dateTime);
     }
 }

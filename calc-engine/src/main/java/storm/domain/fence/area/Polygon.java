@@ -70,21 +70,21 @@ public final class Polygon implements Area, Cron {
     @Override
     public Boolean whichSide(final @NotNull Coordinate coordinate, final double distance) {
 
-        final Geometry point = factory.createPoint(
+        final Geometry location = factory.createPoint(
             new org.locationtech.jts.geom.Coordinate(
                 coordinate.longitude,
                 coordinate.latitude)
         );
 
-        if(boundary.distance(point) <= Math.abs(distance)) {
+        if(boundary.distance(location) <= Math.abs(distance)) {
             return null;
         }
 
-        return polygon.contains(point);
+        return polygon.contains(location);
     }
 
     @Override
-    public boolean active(final long time) {
-        return cron.active(time);
+    public boolean active(final long dateTime) {
+        return cron.active(dateTime);
     }
 }
