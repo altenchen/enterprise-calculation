@@ -4,8 +4,6 @@ import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
-
 /**
  * @author: xzp
  * @date: 2018-11-28
@@ -41,25 +39,25 @@ public final class CircleTest {
 
         {
             final double radius = 4 - 0.000001;
-            final Circle circle = new Circle(center, radius);
+            final Circle circle = new Circle(center, radius, cron);
             Assertions.assertEquals(Boolean.FALSE, circle.whichSide(location, distance));
         }
 
         {
             final double radius = 4;
-            final Circle circle = new Circle(center, radius);
+            final Circle circle = new Circle(center, radius, cron);
             Assertions.assertNull(circle.whichSide(location, distance));
         }
 
         {
             final double radius = 6;
-            final Circle circle = new Circle(center, radius);
+            final Circle circle = new Circle(center, radius, cron);
             Assertions.assertNull(circle.whichSide(location, distance));
         }
 
         {
             final double radius = 6 + 0.000001;
-            final Circle circle = new Circle(center, radius);
+            final Circle circle = new Circle(center, radius, cron);
             Assertions.assertEquals(Boolean.TRUE, circle.whichSide(location, distance));
         }
     }
@@ -69,7 +67,7 @@ public final class CircleTest {
     void testWhichSideSolid() {
         final Coordinate center = new Coordinate(0, 0);
         final double radius = 5;
-        final Circle circle = new Circle(center, radius);
+        final Circle circle = new Circle(center, radius, cron);
 
         final Coordinate location = center;
 

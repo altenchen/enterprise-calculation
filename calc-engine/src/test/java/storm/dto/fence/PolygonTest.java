@@ -42,7 +42,7 @@ public final class PolygonTest {
                 .add(new Coordinate(10, -10))
                 .add(new Coordinate(-10, -10))
                 .add(new Coordinate(-10, 10))
-                .build());
+                .build(), cron);
         final double distance = 5;
 
         // region top
@@ -249,7 +249,7 @@ public final class PolygonTest {
                 .add(new Coordinate(10, -10))
                 .add(new Coordinate(-10, -10))
                 .add(new Coordinate(-10, 10))
-                .build());
+                .build(), cron);
         final double distance = 10;
 
         // region top

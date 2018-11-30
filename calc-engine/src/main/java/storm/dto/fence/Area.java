@@ -3,15 +3,13 @@ package storm.dto.fence;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Optional;
-
 /**
- * 区域
+ * 区域接口
  * @author: xzp
  * @date: 2018-11-28
  * @description:
  */
-public interface Area {
+public interface Area extends Cron {
 
     /**
      * 判断坐标在区域的内部或者外部

@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
  * @date: 2018-11-28
  * @description:
  */
-public final class Circle implements Area {
+public final class Circle implements Area, Cron {
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(Circle.class);
@@ -24,18 +24,31 @@ public final class Circle implements Area {
     private final Coordinate center;
 
     /**
-     * 半径
+     * 半径, 应当为零或正数
      */
     private final double radius;
 
     /**
-     *
-     * @param center 圆心
-     * @param radius 半径, 输入应当为零或正数
+     * 激活计划
      */
-    public Circle(@NotNull final Coordinate center, final double radius) {
+    @NotNull
+    private final Cron cron;
+
+    public Circle(
+        @NotNull final Coordinate center,
+        final double radius,
+        @Nullable final Cron cron) {
+
         this.center = center;
         this.radius = Math.abs(radius);
+        this.cron = null != cron ? cron : Cron.DEFAULT;
+    }
+
+    public Circle(
+        @NotNull final Coordinate center,
+        final double radius) {
+
+        this(center, radius, null);
     }
 
     @Nullable
@@ -67,6 +80,11 @@ public final class Circle implements Area {
         }
 
         return null;
+    }
+
+    @Override
+    public boolean active(final long time) {
+        return cron.active(time);
     }
 }
                                                   

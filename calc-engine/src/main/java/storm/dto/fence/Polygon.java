@@ -9,7 +9,6 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -17,7 +16,7 @@ import java.util.stream.Collectors;
  * @date: 2018-11-28
  * @description:
  */
-public final class Polygon implements Area {
+public final class Polygon implements Area, Cron {
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(Polygon.class);
@@ -31,7 +30,16 @@ public final class Polygon implements Area {
     @NotNull
     private final Geometry boundary;
 
-    public Polygon(@NotNull final ImmutableList<Coordinate> shell) {
+    /**
+     * 激活计划
+     */
+    @NotNull
+    private final Cron cron;
+
+    public Polygon(
+        @NotNull final ImmutableList<Coordinate> shell,
+        @Nullable final Cron cron) {
+
         factory = new GeometryFactory();
         polygon = factory
             .createPolygon(
@@ -46,6 +54,14 @@ public final class Polygon implements Area {
                     .toArray(new org.locationtech.jts.geom.Coordinate[shell.size()])
             );
         boundary = polygon.getBoundary();
+
+        this.cron = null != cron ? cron : Cron.DEFAULT;
+    }
+
+    public Polygon(
+        @NotNull final ImmutableList<Coordinate> shell) {
+
+        this(shell, null);
     }
 
     @Nullable
@@ -64,5 +80,10 @@ public final class Polygon implements Area {
         }
 
         return polygon.contains(point);
+    }
+
+    @Override
+    public boolean active(final long time) {
+        return cron.active(time);
     }
 }
