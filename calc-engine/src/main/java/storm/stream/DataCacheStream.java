@@ -16,29 +16,27 @@ import java.io.Serializable;
 
 /**
  * @author: xzp
- * @date: 2018-09-05
- * @description: 车辆实时数据流
+ * @date: 2018-12-03
+ * @description:
  */
-public class DataStream implements IStreamFields, Serializable {
-
-    private static final long serialVersionUID = 8672249921073108932L;
+public final class DataCacheStream implements IStreamFields, Serializable {
 
     @SuppressWarnings("unused")
-    private static final Logger LOG = LoggerFactory.getLogger(DataStream.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DataCacheStream.class);
 
     @NotNull
-    private static final DataStream SINGLETON = new DataStream();
+    private static final DataCacheStream SINGLETON = new DataCacheStream();
 
     @Contract(pure = true)
-    public static DataStream getInstance() {
+    public static DataCacheStream getInstance() {
         return SINGLETON;
     }
 
-    private DataStream() {
+    private DataCacheStream() {
     }
 
     @NotNull
-    private static final Fields FIELDS = new Fields(StreamFieldKey.VEHICLE_ID, StreamFieldKey.DATA);
+    private static final Fields FIELDS = new Fields(StreamFieldKey.VEHICLE_ID, StreamFieldKey.DATA, StreamFieldKey.CACHE);
 
     @Override
     @NotNull
@@ -55,7 +53,7 @@ public class DataStream implements IStreamFields, Serializable {
         return new StringBuilder(64)
             .append(componentId)
             .append('-')
-            .append(DataStream.class.getSimpleName())
+            .append(DataCacheStream.class.getSimpleName())
             .toString();
     }
 
@@ -69,19 +67,19 @@ public class DataStream implements IStreamFields, Serializable {
 
     @Contract("_, _ -> new")
     @NotNull
-    public DataStream.BoltSender prepareSender(
+    public DataCacheStream.BoltSender prepareSender(
         @NotNull final String streamId,
         @NotNull final OutputCollector collector) {
 
-        return new BoltSender(streamId, collector);
+        return new DataCacheStream.BoltSender(streamId, collector);
     }
 
     @Contract("_ -> new")
     @NotNull
     public IStreamReceiver prepareReceiver(
-        @NotNull final IProcessor processor) {
+        @NotNull final DataCacheStream.IProcessor processor) {
 
-        return new DataStream.Receiver(processor);
+        return new DataCacheStream.Receiver(processor);
     }
 
     public static class BoltSender {
@@ -103,9 +101,10 @@ public class DataStream implements IStreamFields, Serializable {
         public void emit(
             @NotNull final Tuple anchors,
             @NotNull final String vehicleId,
-            @NotNull final ImmutableMap<String, String> data) {
+            @NotNull final ImmutableMap<String, String> data,
+            @NotNull final ImmutableMap<String, String> cache) {
 
-            collector.emit(streamId, anchors, new Values(vehicleId, data));
+            collector.emit(streamId, anchors, new Values(vehicleId, data, cache));
         }
     }
 
@@ -113,10 +112,10 @@ public class DataStream implements IStreamFields, Serializable {
 
         private static final long serialVersionUID = -1534115171552343866L;
 
-        private final IProcessor processor;
+        private final DataCacheStream.IProcessor processor;
 
         public Receiver(
-            @NotNull final IProcessor processor) {
+            @NotNull final DataCacheStream.IProcessor processor) {
 
             this.processor = processor;
         }
@@ -129,8 +128,10 @@ public class DataStream implements IStreamFields, Serializable {
             final String vehicleId = input.getStringByField(StreamFieldKey.VEHICLE_ID);
             final ImmutableMap<String, String> data =
                 ((ImmutableMap<String, String>) input.getValueByField(StreamFieldKey.DATA));
+            final ImmutableMap<String, String> cache =
+                ((ImmutableMap<String, String>) input.getValueByField(StreamFieldKey.CACHE));
 
-            processor.execute(input, vehicleId, data);
+            processor.execute(input, vehicleId, data, cache);
         }
     }
 
@@ -142,10 +143,12 @@ public class DataStream implements IStreamFields, Serializable {
          * @param input 输入元组
          * @param vehicleId 车辆标识
          * @param data 数据字典
+         * @param cache 缓存字典
          */
         void execute(
             @NotNull final Tuple input,
             @NotNull final String vehicleId,
-            @NotNull final ImmutableMap<String, String> data);
+            @NotNull final ImmutableMap<String, String> data,
+            @NotNull final ImmutableMap<String, String> cache);
     }
 }

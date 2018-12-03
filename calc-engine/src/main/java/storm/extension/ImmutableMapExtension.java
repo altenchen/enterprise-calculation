@@ -2,9 +2,13 @@ package storm.extension;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import org.apache.commons.collections.MapUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
@@ -22,7 +26,7 @@ public final class ImmutableMapExtension {
      * @param filterFunction 过滤函数
      * @param <K> 键类型
      * @param <V> 值类型
-     * @return 分组后的不可变字典
+     * @return 过滤后的不可变字典
      */
     @NotNull
     public static <K, V> ImmutableMap<K, V> filter(
@@ -67,5 +71,61 @@ public final class ImmutableMapExtension {
         });
 
         return builder.build();
+    }
+
+    /**
+     * 字典合并
+     * @param base 基础字典
+     * @param overlay 覆盖字典
+     * @param <K> 键类型
+     * @param <V> 值类型
+     * @return 合并后的不可变字典
+     */
+    @NotNull
+    public static <K, V> ImmutableMap<K, V> union(
+        @Nullable final Map<? extends K, ? extends V> base,
+        @Nullable final Map<? extends K, ? extends V> overlay) {
+
+        final Map<K, V> result = Maps.newHashMap();
+        Optional.ofNullable(overlay).ifPresent(map ->{
+            if (MapUtils.isNotEmpty(map)) {
+                map.forEach((k,v) -> {
+                    if(null == k || null == v){
+                        return;
+                    }
+                    result.put(k, v);
+                });
+            }
+        });
+        Optional.ofNullable(base).ifPresent(map ->{
+            if (MapUtils.isNotEmpty(map)) {
+                map.forEach((k,v) -> {
+                    if(null == k || null == v || result.containsKey(k)){
+                        return;
+                    }
+                    result.put(k, v);
+                });
+            }
+        });
+        return ImmutableMap.copyOf(result);
+    }
+
+    /**
+     * 字典合并
+     * @param base 基础字典
+     * @param overlay 覆盖字典
+     * @param <K> 键类型
+     * @param <V> 值类型
+     * @return 合并后的不可变字典
+     */
+    @NotNull
+    public static <K, V> ImmutableMap<K, V> union(
+        @Nullable final ImmutableMap<? extends K, ? extends V> base,
+        @Nullable final ImmutableMap<? extends K, ? extends V> overlay) {
+
+        final Map<K, V> result = Maps.newHashMap();
+        Optional.ofNullable(base).ifPresent(result::putAll);
+        Optional.ofNullable(overlay).ifPresent(result::putAll);
+        return ImmutableMap.copyOf(result);
     }
 }

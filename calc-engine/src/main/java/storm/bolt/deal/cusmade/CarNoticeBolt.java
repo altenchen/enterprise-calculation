@@ -79,18 +79,18 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
-    private OutputCollector collector;
+    private transient OutputCollector collector;
 
-    private StreamReceiverFilter dataStreamReceiver;
+    private transient StreamReceiverFilter dataStreamReceiver;
 
-    private KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
+    private transient KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
 
-    private KafkaStream.Sender kafkaStreamVehicleNoticeSender;
+    private transient KafkaStream.Sender kafkaStreamVehicleNoticeSender;
 
     /**
      * 最后进行离线检查的时间, 用于离线判断
      */
-    private long lastOfflineCheckTimeMillisecond;
+    private transient long lastOfflineCheckTimeMillisecond;
 
     /**
      * 车辆规则处理

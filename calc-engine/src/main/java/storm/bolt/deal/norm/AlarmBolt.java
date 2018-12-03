@@ -1,9 +1,6 @@
 package storm.bolt.deal.norm;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
+import com.google.common.collect.*;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.BooleanUtils;
@@ -29,8 +26,8 @@ import storm.dto.alarm.EarlyWarnsGetter;
 import storm.extension.ObjectExtension;
 import storm.protocol.CommandType;
 import storm.stream.KafkaStream;
+import storm.stream.StreamReceiverFilter;
 import storm.system.DataKey;
-import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 import storm.util.JedisPoolUtils;
@@ -101,21 +98,16 @@ public class AlarmBolt extends BaseRichBolt {
 
     private transient OutputCollector collector;
 
-    private transient KafkaStream.Sender kafkaStreamVehicleAlarmSender;
+    private transient StreamReceiverFilter dataCacheStreamReceiver;
 
-    /**
-     * 车辆数据缓存
-     * <vid, <key, value>>
-     */
-    @NotNull
-    private transient Map<String, ImmutableMap<String, String>> vehicleCache = Maps.newHashMap();
+    private transient KafkaStream.Sender kafkaStreamVehicleAlarmSender;
 
     /**
      * 规则报警缓存
      * <ruleId, <vid, status>>
      */
     @NotNull
-    private transient Map<String, Map<String, AlarmStatus>> ruleVehicleStatus = Maps.newHashMap();
+    private transient Map<String, Map<String, AlarmStatus>> ruleVehicleStatus;
 
     @NotNull
     private AlarmStatus ensureStatus(@NotNull final String ruleId, @NotNull final String vehicleId) {
@@ -180,12 +172,17 @@ public class AlarmBolt extends BaseRichBolt {
 
         this.collector = collector;
 
-        vehicleCache = Maps.newHashMap();
         ruleVehicleStatus = Maps.newHashMap();
 
+        prepareStreamReceiver();
         prepareStreamSender(collector);
 
         lastFinishUnableRuleTime = currentTimeMillis;
+    }
+
+    private void prepareStreamReceiver() {
+
+        dataCacheStreamReceiver = FilterBolt.prepareDataCacheStreamReceiver(this::executeFromDataCacheStream);
     }
 
     private void prepareStreamSender(
@@ -204,16 +201,7 @@ public class AlarmBolt extends BaseRichBolt {
             return;
         }
 
-        if (input.getSourceComponent().equals(FilterBolt.getComponentId())
-                && input.getSourceStreamId().equals(SysDefine.SPLIT_GROUP)) {
-
-            final String vehicleId = input.getString(0);
-
-            @SuppressWarnings("unchecked") final ImmutableMap<String, String> data = ImmutableMap.copyOf(
-                    (Map<String, String>) input.getValue(1));
-
-            executeFromDataCacheStream(input, vehicleId, data);
-
+        if (dataCacheStreamReceiver.execute(input)) {
             return;
         }
 
@@ -274,7 +262,7 @@ public class AlarmBolt extends BaseRichBolt {
                         final String vehicleId = parts.get(REDIS_FIELD_PARTS_VEHICLE_ID_INDEX);
                         final String ruleId = parts.get(REDIS_FIELD_PARTS_RULE_ID_INDEX);
 
-                        if(vehicleCache.containsKey(vehicleId) && !enableRuleIds.contains(ruleId)) {
+                        if(!enableRuleIds.contains(ruleId)) {
                             finishNoticeIfStarted(
                                 jedis,
                                 field,
@@ -293,7 +281,8 @@ public class AlarmBolt extends BaseRichBolt {
     private void executeFromDataCacheStream(
             @NotNull final Tuple input,
             @NotNull final String vehicleId,
-            @NotNull final ImmutableMap<String, String> data) {
+            @NotNull final ImmutableMap<String, String> data,
+            @NotNull final ImmutableMap<String, String> cache) {
 
         collector.ack(input);
 
@@ -307,9 +296,6 @@ public class AlarmBolt extends BaseRichBolt {
         }
 
         try {
-            final ImmutableMap<String, String> cache = ObjectExtension.defaultIfNull(
-                    vehicleCache.get(vehicleId),
-                    ImmutableMap::of);
 
             final long platformReceiveTime;
             try {
@@ -329,8 +315,6 @@ public class AlarmBolt extends BaseRichBolt {
             processAlarm(input, vehicleId, data, cache, platformReceiveTime);
         } catch (Exception e) {
             LOG.warn("VID:" + vehicleId + " 处理报警出错 " + data, e);
-        } finally {
-            updateVehicleCache(vehicleId, data, messageType);
         }
     }
 
@@ -369,39 +353,6 @@ public class AlarmBolt extends BaseRichBolt {
                 LOG.warn("VID:{} 处理平台报警规则 RULE_ID:{} ROLE_NAME:{} 时发生异常 DATA:{} CACHE:{}", vehicleId, rule.ruleId, rule.ruleName, data, cache, e);
             }
         });
-    }
-
-    private void updateVehicleCache(
-            @NotNull final String vehicleId,
-            @NotNull final ImmutableMap<String, String> data,
-            @NotNull final String messageType) {
-
-        if (
-            // 实时信息上报
-                CommandType.SUBMIT_REALTIME.equals(messageType)
-                        // 终端注册消息
-                        || CommandType.SUBMIT_LOGIN.equals(messageType)
-                        // 链接状态通知
-                        || CommandType.SUBMIT_LINKSTATUS.equals(messageType)
-                        // 状态信息上报
-                        || CommandType.SUBMIT_TERMSTATUS.equals(messageType)
-                        // 车辆运行状态
-                        || CommandType.SUBMIT_CARSTATUS.equals(messageType)) {
-
-            // 更新缓存
-            vehicleCache.compute(vehicleId, (key, oldValue) -> {
-                final HashMap<String, String> newValue = Maps.newHashMap(
-                        ObjectExtension.defaultIfNull(
-                                vehicleCache.get(vehicleId),
-                                ImmutableMap::of));
-                data.forEach((k, v) -> {
-                    if (StringUtils.isNotBlank(v)) {
-                        newValue.put(k, v);
-                    }
-                });
-                return ImmutableMap.copyOf(newValue);
-            });
-        }
     }
 
     private void finishNoticeIfStarted(

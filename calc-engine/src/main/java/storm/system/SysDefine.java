@@ -24,9 +24,6 @@ public final class SysDefine {
      */
     public static final String KAFKA_CONSUMER_VEHICLE_REALTIME_DATA_GROUP = "kafka.consumer.vehicle_realtime_data.group";
 
-    //
-    public static final String SPLIT_GROUP = "splitgroup";
-
     /*-------------------------------标点符号-------------------------------------*/
     /**
      * 空格
@@ -141,7 +138,6 @@ public final class SysDefine {
      */
     public static final String MILEAGE_TOTAL = "mileage_total";
 
-    public static final String FENCE_GROUP = "fenceGroup";
     public static final String CODE = "code";
 
 

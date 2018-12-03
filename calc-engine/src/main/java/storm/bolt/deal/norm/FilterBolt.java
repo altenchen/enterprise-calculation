@@ -10,9 +10,7 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 import org.apache.storm.utils.TupleUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -20,8 +18,8 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
-import storm.constant.StreamFieldKey;
 import storm.dao.DataToRedis;
+import storm.extension.ImmutableMapExtension;
 import storm.extension.MapExtension;
 import storm.handler.cusmade.TimeOutOfRangeNotice;
 import storm.handler.cusmade.VehicleIdleHandler;
@@ -30,16 +28,21 @@ import storm.kafka.spout.GeneralKafkaSpout;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.spout.MySqlSpout;
+import storm.stream.DataCacheStream;
 import storm.stream.DataStream;
 import storm.stream.KafkaStream;
 import storm.stream.StreamReceiverFilter;
 import storm.system.DataKey;
 import storm.system.ProtocolItem;
 import storm.system.SysDefine;
-import storm.util.*;
+import storm.util.ConfigUtils;
+import storm.util.DataUtils;
+import storm.util.JedisPoolUtils;
+import storm.util.JsonUtils;
 
 import java.text.ParseException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -97,6 +100,34 @@ public class FilterBolt extends BaseRichBolt {
     }
 
     // endregion DataStream
+
+    // region DataCacheStream
+
+    @NotNull
+    private static final DataCacheStream DATA_CACHE_STREAM = DataCacheStream.getInstance();
+
+    @NotNull
+    private static final String DATA_CACHE_STREAM_ID = DATA_CACHE_STREAM.getStreamId(COMPONENT_ID);
+
+    @NotNull
+    @Contract(pure = true)
+    public static String getDataCacheStreamId() {
+        return DATA_CACHE_STREAM_ID;
+    }
+
+    @NotNull
+    public static StreamReceiverFilter prepareDataCacheStreamReceiver(
+        @NotNull final DataCacheStream.IProcessor processor) {
+
+        return DATA_CACHE_STREAM
+            .prepareReceiver(
+                processor)
+            .filter(
+                COMPONENT_ID,
+                DATA_CACHE_STREAM_ID);
+    }
+
+    // endregion DataCacheStream
 
     // region KafkaStream
 
@@ -156,11 +187,13 @@ public class FilterBolt extends BaseRichBolt {
 
     private transient long lastComputIdleTime;
 
-    private transient Map<String, Map<String, String>> vehicleCache;
-
     private transient OutputCollector collector;
 
+    private transient Map<String, ImmutableMap<String, String>> vehicleCache;
+
     private transient DataStream.BoltSender dataStreamSender;
+
+    private transient DataCacheStream.BoltSender dataCacheStreamSender;
 
     private transient KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
 
@@ -176,10 +209,10 @@ public class FilterBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(@NotNull final OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SysDefine.SPLIT_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
-        declarer.declareStream(SysDefine.FENCE_GROUP, new Fields(DataKey.VEHICLE_ID, StreamFieldKey.DATA));
 
         DATA_STREAM.declareOutputFields(DATA_STREAM_ID, declarer);
+
+        DATA_CACHE_STREAM.declareOutputFields(DATA_CACHE_STREAM_ID, declarer);
 
         KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
     }
@@ -209,6 +242,8 @@ public class FilterBolt extends BaseRichBolt {
 
         this.collector = collector;
 
+        vehicleCache = Maps.newHashMap();
+
         timeOutOfRangeNotice = new TimeOutOfRangeNotice();
         onlineProcessor = new OnlineProcessor();
         timeProcessor = new TimeProcessor();
@@ -233,6 +268,8 @@ public class FilterBolt extends BaseRichBolt {
         @NotNull final OutputCollector collector) {
 
         dataStreamSender = DATA_STREAM.prepareSender(DATA_STREAM_ID, collector);
+
+        dataCacheStreamSender = DATA_CACHE_STREAM.prepareSender(DATA_CACHE_STREAM_ID, collector);
 
         kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
 
@@ -450,29 +487,43 @@ public class FilterBolt extends BaseRichBolt {
 
     private void emit(
         @NotNull final Tuple anchors,
-        @NotNull final String vid,
+        @NotNull final String vehicleId,
         @NotNull final String cmd,
         @NotNull final ImmutableMap<String, String> data) {
-
-        if (CommandType.SUBMIT_REALTIME.equals(cmd)) {
-            // consumer: 电子围栏告警处理
-            collector.emit(SysDefine.FENCE_GROUP, new Values(vid, data));
-        }
 
         if (CommandType.SUBMIT_REALTIME.equals(cmd)
             || CommandType.SUBMIT_LINKSTATUS.equals(cmd)
             || CommandType.SUBMIT_LOGIN.equals(cmd)
             || CommandType.SUBMIT_TERMSTATUS.equals(cmd)
             || CommandType.SUBMIT_CARSTATUS.equals(cmd)) {
-            // consumer: 车辆通知处理
-            dataStreamSender.emit(anchors, vid, data);
-        }
 
-        if (CommandType.SUBMIT_REALTIME.equals(cmd)
-            || CommandType.SUBMIT_LINKSTATUS.equals(cmd)
-            || CommandType.SUBMIT_LOGIN.equals(cmd)) {
-            // 预警处理
-            collector.emit(SysDefine.SPLIT_GROUP, new Values(vid, data));
+            dataStreamSender.emit(
+                anchors,
+                vehicleId,
+                data);
+
+            dataCacheStreamSender.emit(
+                anchors,
+                vehicleId,
+                data,
+                vehicleCache.getOrDefault(
+                    vehicleId,
+                    ImmutableMap.of()
+                )
+            );
+
+            vehicleCache.compute(
+                vehicleId,
+                (k, v) -> Optional
+                    .ofNullable(v)
+                    .map(old ->
+                        ImmutableMapExtension.union(
+                            old,
+                            data
+                        )
+                    )
+                    .orElse(data)
+            );
         }
     }
 

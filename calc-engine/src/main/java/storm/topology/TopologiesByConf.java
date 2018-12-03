@@ -242,7 +242,7 @@ public final class TopologiesByConf {
             // 预警的车辆实时数据
             .fieldsGrouping(
                 FilterBolt.getComponentId(),
-                SysDefine.SPLIT_GROUP,
+                FilterBolt.getDataCacheStreamId(),
                 new Fields(DataKey.VEHICLE_ID));
 
         builder
