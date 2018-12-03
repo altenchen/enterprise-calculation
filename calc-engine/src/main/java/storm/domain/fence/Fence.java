@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.lang.BooleanUtils;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -65,6 +66,23 @@ public final class Fence implements Cron {
             );
     }
 
+    /**
+     * 获取电子围栏标识
+     * @return 电子围栏标识
+     */
+    @Contract(pure = true)
+    public String getFenceId() {
+        return fenceId;
+    }
+
+    /**
+     * 处理电子围栏逻辑
+     * @param coordinate 数据定位
+     * @param distance 边界宽度
+     * @param time 数据时间
+     * @param insideCallback 围栏内部回调
+     * @param outsideCallback 围栏外部回调
+     */
     public void process(
         @NotNull final Coordinate coordinate,
         final double distance,
@@ -91,4 +109,5 @@ public final class Fence implements Cron {
     public boolean active(final long dateTime) {
         return cronSet.stream().anyMatch(cron -> cron.active(dateTime));
     }
+
 }

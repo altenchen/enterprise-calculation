@@ -24,9 +24,11 @@ public interface Event extends Cron {
     /**
      * 判断事件是否会触发
      * @param data 实时数据
+     * @param cache 缓存数据
      * @return true-事件被触发, false-事件未触发, null 数据无效.
      */
     @Nullable
     Boolean trigger(
-        @NotNull final ImmutableMap<String, String> data);
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final ImmutableMap<String, String> cache);
 }
