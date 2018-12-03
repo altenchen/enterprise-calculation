@@ -1,6 +1,8 @@
 package storm.domain.fence.area;
 
+import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -10,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.cron.Cron;
 
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -21,6 +24,9 @@ public final class Polygon implements Area, Cron {
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(Polygon.class);
+
+    @NotNull
+    private final String areaId;
 
     @NotNull
     private final GeometryFactory factory;
@@ -35,11 +41,14 @@ public final class Polygon implements Area, Cron {
      * 激活计划
      */
     @NotNull
-    private final Cron cron;
+    private final ImmutableCollection<Cron> cronSet;
 
     public Polygon(
+        @NotNull final String areaId,
         @NotNull final ImmutableList<Coordinate> shell,
-        @Nullable final Cron cron) {
+        @Nullable final ImmutableCollection<Cron> cronSet) {
+
+        this.areaId = areaId;
 
         factory = new GeometryFactory();
         polygon = factory
@@ -56,13 +65,18 @@ public final class Polygon implements Area, Cron {
             );
         boundary = polygon.getBoundary();
 
-        this.cron = null != cron ? cron : Cron.DEFAULT;
+        this.cronSet = Optional
+            .ofNullable(cronSet)
+            .orElseGet(
+                () -> ImmutableSet.of(Cron.DEFAULT)
+            );
     }
 
-    public Polygon(
-        @NotNull final ImmutableList<Coordinate> shell) {
-
-        this(shell, null);
+    @NotNull
+    @Contract(pure = true)
+    @Override
+    public String getAreaId() {
+        return areaId;
     }
 
     @Nullable
@@ -85,6 +99,6 @@ public final class Polygon implements Area, Cron {
 
     @Override
     public boolean active(final long dateTime) {
-        return cron.active(dateTime);
+        return cronSet.stream().anyMatch(cron -> cron.active(dateTime));
     }
 }

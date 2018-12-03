@@ -1,9 +1,19 @@
 package storm.domain.fence.area;
 
+import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.domain.fence.cron.Cron;
+import storm.domain.fence.cron.Daily;
+
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author: xzp
@@ -34,7 +44,7 @@ final class PolygonTest {
     @DisplayName("测试多边形区域边界")
     @Test
     void testWhichSideBoundary() {
-        final Polygon polygon = new Polygon(
+        final Polygon polygon = buildPolygon(
             ImmutableList
                 .<Coordinate>builder()
                 .add(new Coordinate(-10, 10))
@@ -241,7 +251,7 @@ final class PolygonTest {
     @DisplayName("测试多边形为实心")
     @Test
     void testWhichSideCorner() {
-        final Polygon polygon = new Polygon(
+        final Polygon polygon = buildPolygon(
             ImmutableList
                 .<Coordinate>builder()
                 .add(new Coordinate(-10, 10))
@@ -323,6 +333,55 @@ final class PolygonTest {
         }
 
         // endregion left_top
+    }
+
+    @Contract("_ -> new")
+    @NotNull
+    private Polygon buildPolygon(@NotNull final ImmutableList<Coordinate> shell) {
+        return new Polygon(
+            UUID.randomUUID().toString(),
+            shell,
+            null);
+    }
+
+    @DisplayName("测试时间范围")
+    @Test
+    void testActive() {
+        final Daily forenoon = new Daily(
+            TimeUnit.HOURS.toMillis(9),
+            TimeUnit.HOURS.toMillis(12));
+        final Daily afternoon = new Daily(
+            TimeUnit.HOURS.toMillis(13),
+            TimeUnit.HOURS.toMillis(18));
+        final Polygon polygon = buildPolygon(ImmutableSet.of(forenoon, afternoon));
+
+        Assertions.assertFalse(polygon.active(TimeUnit.HOURS.toMillis(9) - 1));
+        Assertions.assertTrue(polygon.active(TimeUnit.HOURS.toMillis(9)));
+        Assertions.assertTrue(polygon.active(TimeUnit.HOURS.toMillis(9) + 1));
+        Assertions.assertTrue(polygon.active(TimeUnit.HOURS.toMillis(12) - 1));
+        Assertions.assertFalse(polygon.active(TimeUnit.HOURS.toMillis(12)));
+        Assertions.assertFalse(polygon.active(TimeUnit.HOURS.toMillis(12) + 1));
+        Assertions.assertFalse(polygon.active(TimeUnit.HOURS.toMillis(13) - 1));
+        Assertions.assertTrue(polygon.active(TimeUnit.HOURS.toMillis(13)));
+        Assertions.assertTrue(polygon.active(TimeUnit.HOURS.toMillis(13) + 1));
+        Assertions.assertTrue(polygon.active(TimeUnit.HOURS.toMillis(18) - 1));
+        Assertions.assertFalse(polygon.active(TimeUnit.HOURS.toMillis(18)));
+        Assertions.assertFalse(polygon.active(TimeUnit.HOURS.toMillis(18) + 1));
+    }
+
+    @Contract("_ -> new")
+    @NotNull
+    private Polygon buildPolygon(@Nullable final ImmutableCollection<Cron> cronSet) {
+        return new Polygon(
+            UUID.randomUUID().toString(),
+            ImmutableList.of(
+                new Coordinate(-10, 10),
+                new Coordinate(10, 10),
+                new Coordinate(10, -10),
+                new Coordinate(-10, -10),
+                new Coordinate(-10, 10)
+            ),
+            cronSet);
     }
 
     @SuppressWarnings("unused")

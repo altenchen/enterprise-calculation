@@ -1,11 +1,15 @@
 package storm.domain.fence.area;
 
+import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ImmutableSet;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.cron.Cron;
+
+import java.util.Optional;
 
 /**
  * 圆形区域
@@ -17,6 +21,9 @@ public final class Circle implements Area, Cron {
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(Circle.class);
+
+    @NotNull
+    private final String areaId;
 
     /**
      * 圆心
@@ -33,23 +40,29 @@ public final class Circle implements Area, Cron {
      * 激活计划
      */
     @NotNull
-    private final Cron cron;
+    private final ImmutableCollection<Cron> cronSet;
 
     public Circle(
+        @NotNull final String areaId,
         @NotNull final Coordinate center,
         final double radius,
-        @Nullable final Cron cron) {
+        @Nullable final ImmutableCollection<Cron> cronSet) {
 
+        this.areaId = areaId;
         this.center = center;
         this.radius = Math.abs(radius);
-        this.cron = null != cron ? cron : Cron.DEFAULT;
+        this.cronSet = Optional
+            .ofNullable(cronSet)
+            .orElseGet(
+                () -> ImmutableSet.of(Cron.DEFAULT)
+            );
     }
 
-    public Circle(
-        @NotNull final Coordinate center,
-        final double radius) {
-
-        this(center, radius, null);
+    @NotNull
+    @Contract(pure = true)
+    @Override
+    public String getAreaId() {
+        return areaId;
     }
 
     @Nullable
@@ -69,14 +82,14 @@ public final class Circle implements Area, Cron {
         final double outside = radius + distance_abs;
         final double outside_square = outside * outside;
         if(radius_square > outside_square) {
-            return false;
+            return Boolean.FALSE;
         }
 
         final double inside = radius - distance_abs;
         if(inside > 0) {
             final double inside_square = inside * inside;
             if(radius_square < inside_square) {
-                return true;
+                return Boolean.TRUE;
             }
         }
 
@@ -85,7 +98,7 @@ public final class Circle implements Area, Cron {
 
     @Override
     public boolean active(final long dateTime) {
-        return cron.active(dateTime);
+        return cronSet.stream().anyMatch(cron -> cron.active(dateTime));
     }
 }
                                                   

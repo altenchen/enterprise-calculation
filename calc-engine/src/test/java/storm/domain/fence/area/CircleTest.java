@@ -1,8 +1,18 @@
 package storm.domain.fence.area;
 
+import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ImmutableSet;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.domain.fence.cron.Cron;
+import storm.domain.fence.cron.Daily;
+
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author: xzp
@@ -39,25 +49,25 @@ final class CircleTest {
 
         {
             final double radius = 4 - 0.000001;
-            final Circle circle = new Circle(center, radius);
+            final Circle circle = buildCircle(center, radius);
             Assertions.assertEquals(Boolean.FALSE, circle.whichSide(location, distance));
         }
 
         {
             final double radius = 4;
-            final Circle circle = new Circle(center, radius);
+            final Circle circle = buildCircle(center, radius);
             Assertions.assertNull(circle.whichSide(location, distance));
         }
 
         {
             final double radius = 6;
-            final Circle circle = new Circle(center, radius);
+            final Circle circle = buildCircle(center, radius);
             Assertions.assertNull(circle.whichSide(location, distance));
         }
 
         {
             final double radius = 6 + 0.000001;
-            final Circle circle = new Circle(center, radius);
+            final Circle circle = buildCircle(center, radius);
             Assertions.assertEquals(Boolean.TRUE, circle.whichSide(location, distance));
         }
     }
@@ -67,7 +77,7 @@ final class CircleTest {
     void testWhichSideSolid() {
         final Coordinate center = new Coordinate(0, 0);
         final double radius = 5;
-        final Circle circle = new Circle(center, radius);
+        final Circle circle = buildCircle(center, radius);
 
         final Coordinate location = center;
 
@@ -82,6 +92,51 @@ final class CircleTest {
         }
 
 
+    }
+
+    @DisplayName("测试时间范围")
+    @Test
+    void testActive() {
+        final Daily forenoon = new Daily(
+            TimeUnit.HOURS.toMillis(9),
+            TimeUnit.HOURS.toMillis(12));
+        final Daily afternoon = new Daily(
+            TimeUnit.HOURS.toMillis(13),
+            TimeUnit.HOURS.toMillis(18));
+        final Circle circle = buildCircle(ImmutableSet.of(forenoon, afternoon));
+
+        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(9) - 1));
+        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(9)));
+        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(9) + 1));
+        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(12) - 1));
+        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(12)));
+        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(12) + 1));
+        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(13) - 1));
+        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(13)));
+        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(13) + 1));
+        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(18) - 1));
+        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(18)));
+        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(18) + 1));
+    }
+
+    @Contract("_, _ -> new")
+    @NotNull
+    private Circle buildCircle(final Coordinate center, final double radius) {
+        return new Circle(
+            UUID.randomUUID().toString(),
+            center,
+            radius,
+            null);
+    }
+
+    @Contract("_ -> new")
+    @NotNull
+    private Circle buildCircle(@Nullable final ImmutableCollection<Cron> cronSet) {
+        return new Circle(
+            UUID.randomUUID().toString(),
+            new Coordinate(0, 0),
+            0,
+            cronSet);
     }
 
     @SuppressWarnings("unused")

@@ -1,5 +1,8 @@
 package storm.domain.fence;
 
+import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.apache.commons.lang.BooleanUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -10,6 +13,9 @@ import storm.domain.fence.area.Coordinate;
 import storm.domain.fence.cron.Cron;
 import storm.domain.fence.event.Event;
 
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -18,18 +24,18 @@ import java.util.stream.Stream;
  * @author: xzp
  * @date: 2018-11-28
  * @description:
- * 1. 一个围栏包含多个有效区域
- * 2. 一个围栏包含多个有效规则
- * 3. 一个围栏包含多个激活时段
+ * 1. 每个围栏关联多个有效区域
+ * 2. 每个围栏关联多个有效规则
+ * 3. 每个围栏关联多个激活时段
+ * 4. 每个围栏关联多个车辆
  */
 public final class Fence implements Cron {
 
     @SuppressWarnings("unused")
-    private static final Logger LOG;
+    private static final Logger LOG = LoggerFactory.getLogger(Fence.class);
 
-    static {
-        LOG = LoggerFactory.getLogger(Fence.class);
-    }
+    @NotNull
+    private final String fenceId;
 
     @NotNull
     private final Stream<Area> areas;
@@ -41,31 +47,30 @@ public final class Fence implements Cron {
      * 激活计划
      */
     @NotNull
-    private final Cron cron;
+    private final ImmutableCollection<Cron> cronSet;
 
     public Fence(
+        @NotNull final String fenceId,
         @NotNull final Stream<Area> areas,
         @NotNull final Stream<Event> rules,
-        @Nullable final Cron cron) {
+        @Nullable final ImmutableCollection<Cron> cronSet) {
 
+        this.fenceId = fenceId;
         this.areas = areas;
         this.rules = rules;
-        this.cron = null != cron ? cron : Cron.DEFAULT;
-    }
-
-    public Fence(
-        @NotNull final Stream<Area> areas,
-        @NotNull final Stream<Event> rules) {
-
-        this(areas, rules, Cron.DEFAULT);
+        this.cronSet = Optional
+            .ofNullable(cronSet)
+            .orElseGet(
+                () -> ImmutableSet.of(Cron.DEFAULT)
+            );
     }
 
     public void process(
         @NotNull final Coordinate coordinate,
         final double distance,
         final long time,
-        @NotNull final Consumer<Event> insideCallback,
-        @NotNull final Consumer<Event> outsideCallback) {
+        @NotNull final BiConsumer<Fence, Event> insideCallback,
+        @NotNull final BiConsumer<Fence, Event> outsideCallback) {
 
         final Stream<Boolean> whichSideStream = areas
             .filter(area -> area.active(time))
@@ -74,18 +79,16 @@ public final class Fence implements Cron {
         if (whichSideStream.anyMatch(BooleanUtils::isTrue)) {
             rules
                 .filter(event -> event.active(time))
-                .forEachOrdered(insideCallback);
-        } else if (whichSideStream.anyMatch(BooleanUtils::isFalse)) {
+                .forEachOrdered(event -> insideCallback.accept(this, event));
+        } else if (whichSideStream.allMatch(Objects::nonNull)) {
             rules
                 .filter(event -> event.active(time))
-                .forEachOrdered(outsideCallback);
-        } else {
-            // nothing......
+                .forEachOrdered(event -> outsideCallback.accept(this, event));
         }
     }
 
     @Override
     public boolean active(final long dateTime) {
-        return cron.active(dateTime);
+        return cronSet.stream().anyMatch(cron -> cron.active(dateTime));
     }
 }
