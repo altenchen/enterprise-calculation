@@ -68,7 +68,10 @@ public final class Circle implements Area, Cron {
     @Nullable
     @Contract(pure = true)
     @Override
-    public Boolean whichSide(@NotNull final Coordinate coordinate, final double distance) {
+    public Boolean whichSide(
+        @NotNull final Coordinate coordinate,
+        final double inSideDistance,
+        final double outsideDistance) {
 
         final double width = coordinate.longitude - center.longitude;
         final double height = coordinate.latitude - center.latitude;
@@ -77,15 +80,13 @@ public final class Circle implements Area, Cron {
         final double height_square = height * height;
         final double radius_square = width_square + height_square;
 
-        final double distance_abs = Math.abs(distance);
-
-        final double outside = radius + distance_abs;
+        final double outside = radius + Math.abs(outsideDistance);
         final double outside_square = outside * outside;
         if(radius_square > outside_square) {
             return Boolean.FALSE;
         }
 
-        final double inside = radius - distance_abs;
+        final double inside = radius - Math.abs(inSideDistance);
         if(inside > 0) {
             final double inside_square = inside * inside;
             if(radius_square < inside_square) {

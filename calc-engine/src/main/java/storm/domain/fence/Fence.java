@@ -70,6 +70,7 @@ public final class Fence implements Cron {
      * 获取电子围栏标识
      * @return 电子围栏标识
      */
+    @NotNull
     @Contract(pure = true)
     public String getFenceId() {
         return fenceId;
@@ -78,21 +79,23 @@ public final class Fence implements Cron {
     /**
      * 处理电子围栏逻辑
      * @param coordinate 数据定位
-     * @param distance 边界宽度
+     * @param inSideDistance 坐标与区域边界的缓冲距离, 输入应该为零或正数
+     * @param outsideDistance 坐标与区域边界的缓冲距离, 输入应该为零或正数
      * @param time 数据时间
      * @param insideCallback 围栏内部回调
      * @param outsideCallback 围栏外部回调
      */
     public void process(
         @NotNull final Coordinate coordinate,
-        final double distance,
+        final double inSideDistance,
+        final double outsideDistance,
         final long time,
         @NotNull final BiConsumer<Fence, Event> insideCallback,
         @NotNull final BiConsumer<Fence, Event> outsideCallback) {
 
         final Stream<Boolean> whichSideStream = areas
             .filter(area -> area.active(time))
-            .map(area -> area.whichSide(coordinate, distance));
+            .map(area -> area.whichSide(coordinate, inSideDistance, outsideDistance));
 
         if (whichSideStream.anyMatch(BooleanUtils::isTrue)) {
             rules

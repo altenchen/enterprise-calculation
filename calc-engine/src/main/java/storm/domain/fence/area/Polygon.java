@@ -82,7 +82,10 @@ public final class Polygon implements Area, Cron {
     @Nullable
     @Contract(pure = true)
     @Override
-    public Boolean whichSide(final @NotNull Coordinate coordinate, final double distance) {
+    public Boolean whichSide(
+        final @NotNull Coordinate coordinate,
+        final double inSideDistance,
+        final double outsideDistance) {
 
         final Geometry location = factory.createPoint(
             new org.locationtech.jts.geom.Coordinate(
@@ -90,11 +93,21 @@ public final class Polygon implements Area, Cron {
                 coordinate.latitude)
         );
 
-        if(boundary.distance(location) <= Math.abs(distance)) {
-            return null;
-        }
+        final double distance = boundary.distance(location);
 
-        return polygon.contains(location);
+        if(polygon.contains(location)) {
+            if(distance > Math.abs(inSideDistance)) {
+                return Boolean.TRUE;
+            } else {
+                return null;
+            }
+        } else {
+            if(distance > Math.abs(outsideDistance)) {
+                return Boolean.FALSE;
+            } else {
+                return null;
+            }
+        }
     }
 
     @Override

@@ -59,22 +59,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0, 15 + 0.000001);
-            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(0, 15);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(0, 5);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(0, 5 - 0.000001);
-            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance, 0));
         }
 
         // endregion top
@@ -83,22 +83,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(13 + 0.000001, 14 + 0.000001);
-            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(13, 14);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(5, 5);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(5 - 0.000001, 5 - 0.000001);
-            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance, 0));
         }
 
         // endregion top_right
@@ -107,22 +107,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(15 + 0.000001, 0);
-            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(15, 0);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(5, 0);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(5 - 0.000001, 0);
-            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance, 0));
         }
 
         // endregion right
@@ -131,22 +131,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(13 + 0.000001, -14 - 0.000001);
-            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(13, -14);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(5, -5);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(5 - 0.000001, -5 + 0.000001);
-            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance, 0));
         }
 
         // endregion right_bottom
@@ -155,22 +155,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0, -15 - 0.000001);
-            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(0, -15);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(0, -5);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(0, -5 + 0.000001);
-            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance, 0));
         }
 
         // endregion bottom
@@ -179,22 +179,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(-13 - 0.000001, -14 - 0.000001);
-            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-13, -14);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-5, -5);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(-5 + 0.000001, -5 + 0.000001);
-            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance, 0));
         }
 
         // endregion bottom_left
@@ -203,22 +203,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(-15 - 0.000001, 0);
-            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-15, 0);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-5, 0);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(-5 + 0.000001, 0);
-            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance, 0));
         }
 
         // endregion left
@@ -227,22 +227,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(-13 - 0.000001, 14 + 0.000001);
-            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.FALSE, polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-13, 14);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-5, 5);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(-5 + 0.000001, 5 - 0.000001);
-            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance));
+            Assertions.assertEquals(Boolean.TRUE, polygon.whichSide(location, distance, 0));
         }
 
         // endregion left_top
@@ -266,7 +266,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0, - 0.000001);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         // endregion top
@@ -275,7 +275,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(- 0.000001, - 0.000001);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         // endregion top_right
@@ -284,7 +284,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(- 0.000001, 0);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         // endregion right
@@ -293,7 +293,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(- 0.000001, 0.000001);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         // endregion right_bottom
@@ -302,7 +302,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0, 0.000001);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         // endregion bottom
@@ -311,7 +311,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0.000001, 0.000001);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         // endregion bottom_left
@@ -320,7 +320,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0.000001, 0);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         // endregion left
@@ -329,19 +329,10 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0.000001, - 0.000001);
-            Assertions.assertNull(polygon.whichSide(location, distance));
+            Assertions.assertNull(polygon.whichSide(location, distance, 0));
         }
 
         // endregion left_top
-    }
-
-    @Contract("_ -> new")
-    @NotNull
-    private Polygon buildPolygon(@NotNull final ImmutableList<Coordinate> shell) {
-        return new Polygon(
-            UUID.randomUUID().toString(),
-            shell,
-            null);
     }
 
     @DisplayName("测试时间范围")
@@ -367,6 +358,15 @@ final class PolygonTest {
         Assertions.assertTrue(polygon.active(TimeUnit.HOURS.toMillis(18) - 1));
         Assertions.assertFalse(polygon.active(TimeUnit.HOURS.toMillis(18)));
         Assertions.assertFalse(polygon.active(TimeUnit.HOURS.toMillis(18) + 1));
+    }
+
+    @Contract("_ -> new")
+    @NotNull
+    private Polygon buildPolygon(@NotNull final ImmutableList<Coordinate> shell) {
+        return new Polygon(
+            UUID.randomUUID().toString(),
+            shell,
+            null);
     }
 
     @Contract("_ -> new")

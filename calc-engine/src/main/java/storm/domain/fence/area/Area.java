@@ -23,9 +23,13 @@ public interface Area extends Cron {
     /**
      * 判断坐标在区域的内部或者外部
      * @param coordinate 坐标
-     * @param distance 坐标与边界的缓冲距离, 输入应该为零或正数..
+     * @param inSideDistance 坐标与边界的缓冲距离, 输入应该为零或正数
+     * @param outsideDistance 坐标与边界的缓冲距离, 输入应该为零或正数
      * @return true-在内部, false-在外部, null-在边界
      */
     @Nullable
-    Boolean whichSide(@NotNull final Coordinate coordinate, final double distance);
+    Boolean whichSide(
+        @NotNull final Coordinate coordinate,
+        final double inSideDistance,
+        final double outsideDistance);
 }

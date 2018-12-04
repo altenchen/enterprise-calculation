@@ -146,11 +146,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
             return;
         }
 
-
-
-        // TODO 徐志鹏: 加到配置文件中
         final double maxDistance = ConfigUtils.getSysDefine().getFenceCoordinateDistanceMaxMeter();
-        // TODO 徐志鹏: 加到配置文件中
         final double insideDistance = ConfigUtils.getSysDefine().getFenceShapeBufferInsideMeter();
         final double outsideDistance = ConfigUtils.getSysDefine().getFenceShapeBufferOutsideMeter();
 
@@ -163,6 +159,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
                                 .values()
                                 .forEach(fence -> fence.process(
                                     coordinate,
+                                    insideDistance,
                                     outsideDistance,
                                     platformReceiveTime,
                                     (f, e) -> insideCallback(f, e, data, cache),
