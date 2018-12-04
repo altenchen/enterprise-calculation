@@ -187,6 +187,20 @@ public class SysDefineEntity {
     // ############################################################################################
     //                                        电子围栏 配置
     // ############################################################################################
+
+    /**
+     * 电子围栏图形外部缓冲区
+     */
+    private double fenceShapeBufferOutsideMeter = 50d;
+    /**
+     * 电子围栏图形内部缓冲区
+     */
+    private double fenceShapeBufferInsideMeter = 50d;
+    /**
+     * 电子围栏定位最大距离差
+     */
+    private double fenceCoordinateDistanceMaxMeter = 1000d;
+
     /**
      * 缓存的地理坐标帧数
      */
@@ -633,6 +647,30 @@ public class SysDefineEntity {
 
     public void setStatThreadNo(final int statThreadNo) {
         this.statThreadNo = statThreadNo;
+    }
+
+    public double getFenceShapeBufferOutsideMeter() {
+        return fenceShapeBufferOutsideMeter;
+    }
+
+    public void setFenceShapeBufferOutsideMeter(final double fenceShapeBufferOutsideMeter) {
+        this.fenceShapeBufferOutsideMeter = fenceShapeBufferOutsideMeter;
+    }
+
+    public double getFenceShapeBufferInsideMeter() {
+        return fenceShapeBufferInsideMeter;
+    }
+
+    public void setFenceShapeBufferInsideMeter(final double fenceShapeBufferInsideMeter) {
+        this.fenceShapeBufferInsideMeter = fenceShapeBufferInsideMeter;
+    }
+
+    public double getFenceCoordinateDistanceMaxMeter() {
+        return fenceCoordinateDistanceMaxMeter;
+    }
+
+    public void setFenceCoordinateDistanceMaxMeter(final double fenceCoordinateDistanceMaxMeter) {
+        this.fenceCoordinateDistanceMaxMeter = fenceCoordinateDistanceMaxMeter;
     }
 
     public void setCtxCacheNo(final int ctxCacheNo) {

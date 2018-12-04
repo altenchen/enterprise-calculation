@@ -1,6 +1,7 @@
 package storm.bolt.deal.norm;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -14,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.Fence;
+import storm.domain.fence.VehicleStatus;
 import storm.domain.fence.area.Coordinate;
 import storm.domain.fence.event.Event;
 import storm.protocol.CommandType;
@@ -21,6 +23,7 @@ import storm.stream.KafkaStream;
 import storm.stream.StreamReceiverFilter;
 import storm.system.DataKey;
 import storm.system.SysDefine;
+import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 
 import java.text.ParseException;
@@ -77,6 +80,11 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
 
     private transient KafkaStream.Sender kafkaStreamFenceAlarmSender;
 
+    /**
+     * <vehicleId, status>
+     */
+    private transient Map<String, VehicleStatus> vehicleStatus;
+
     @Override
     public void prepare(
         @NotNull final Map stormConf,
@@ -88,6 +96,8 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
         prepareStreamSender(stormConf, collector);
 
         prepareStreamReceiver();
+
+        vehicleStatus = Maps.newHashMap();
     }
 
     private void prepareStreamSender(
@@ -136,88 +146,123 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
             return;
         }
 
+
+
+        // TODO 徐志鹏: 加到配置文件中
+        final double maxDistance = ConfigUtils.getSysDefine().getFenceCoordinateDistanceMaxMeter();
+        // TODO 徐志鹏: 加到配置文件中
+        final double insideDistance = ConfigUtils.getSysDefine().getFenceShapeBufferInsideMeter();
+        final double outsideDistance = ConfigUtils.getSysDefine().getFenceShapeBufferOutsideMeter();
+
         try {
-
-            final long platformReceiveTime;
-            try {
-                platformReceiveTime = DataUtils.parsePlatformReceiveTime(data);
-                if (MapUtils.isNotEmpty(cache)) {
-                    final long cacheTime = DataUtils.parsePlatformReceiveTime(cache);
-                    if (platformReceiveTime < cacheTime) {
-                        LOG.warn("VID:{} 平台接收时间乱序, {} < {}", vehicleId, platformReceiveTime, cacheTime);
-                        return;
-                    }
-                }
-            } catch (final ParseException e) {
-                LOG.warn("VID:" + vehicleId + " 解析服务器时间异常", e);
-                return;
-            }
-
-            // region 当前定位
-
-            final String currentOrientationString= data.get(DataKey._2501_ORIENTATION);
-            if(!NumberUtils.isDigits(currentOrientationString)) {
-                return;
-            }
-            final int currentOrientation = NumberUtils.toInt(currentOrientationString);
-            if(!DataUtils.isOrientationUseful(currentOrientation)) {
-                return;
-            }
-            final String currentLongitudeString = data.get(DataKey._2502_LONGITUDE);
-            if(!NumberUtils.isDigits(currentLongitudeString)) {
-                return;
-            }
-            final double currentLongitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
-            final String currentLatitudeString = data.get(DataKey._2503_LATITUDE);
-            if(!NumberUtils.isDigits(currentLatitudeString)) {
-                return;
-            }
-            final double currentLatitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
-
-            // endregion 当前定位
-
-            // region 缓存定位
-
-            final String cacheOrientationString= cache.get(DataKey._2501_ORIENTATION);
-            if(!NumberUtils.isDigits(cacheOrientationString)) {
-                return;
-            }
-            final int cacheOrientation = NumberUtils.toInt(currentOrientationString);
-            final String cacheLongitudeString = cache.get(DataKey._2502_LONGITUDE);
-            if(!NumberUtils.isDigits(cacheLongitudeString)) {
-                return;
-            }
-            if(!DataUtils.isOrientationUseful(cacheOrientation)) {
-                return;
-            }
-            final double cacheLongitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
-            final String cacheLatitudeString = cache.get(DataKey._2503_LATITUDE);
-            if(!NumberUtils.isDigits(cacheLatitudeString)) {
-                return;
-            }
-            final double cacheLatitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
-
-            // endregion 缓存定位
-
-            if (!isLocationEffective(currentLongitude, currentLatitude, cacheLongitude, cacheLatitude)) {
-                return;
-            }
-
-            final Coordinate coordinate = new Coordinate(currentLongitude, currentLatitude);
-            // TODO 徐志鹏: 加到配置文件中
-            final double distance = 50;
-            getVehicleFences(vehicleId)
-                .values()
-                .forEach(fence -> fence.process(
-                    coordinate,
-                    distance,
-                    platformReceiveTime,
-                    (f, e) -> insideCallback(f, e, data, cache),
-                    (f, e) -> outsideCallback(f, e, data, cache))
+            parsePlatformReceiveTime(vehicleId, data, cache)
+                .ifPresent(platformReceiveTime ->
+                    parseCoordinate(vehicleId, data, cache, maxDistance)
+                        .ifPresent(coordinate -> {
+                            getVehicleFences(vehicleId)
+                                .values()
+                                .forEach(fence -> fence.process(
+                                    coordinate,
+                                    outsideDistance,
+                                    platformReceiveTime,
+                                    (f, e) -> insideCallback(f, e, data, cache),
+                                    (f, e) -> outsideCallback(f, e, data, cache))
+                                );
+                        })
                 );
-
         } catch (@NotNull final Exception e) {
             LOG.warn("电子围栏计算异常, VID[{}]", vehicleId, e);
+        }
+    }
+
+    private Optional<Coordinate> parseCoordinate(
+        @NotNull final String vehicleId,
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final ImmutableMap<String, String> cache,
+        final double maxDistance) {
+
+        // region 当前定位
+
+        final String currentOrientationString= data.get(DataKey._2501_ORIENTATION);
+        if(!NumberUtils.isDigits(currentOrientationString)) {
+            return Optional.empty();
+        }
+        final int currentOrientation = NumberUtils.toInt(currentOrientationString);
+        if(!DataUtils.isOrientationUseful(currentOrientation)) {
+            return Optional.empty();
+        }
+        final String currentLongitudeString = data.get(DataKey._2502_LONGITUDE);
+        if(!NumberUtils.isDigits(currentLongitudeString)) {
+            return Optional.empty();
+        }
+        final double currentLongitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
+        final String currentLatitudeString = data.get(DataKey._2503_LATITUDE);
+        if(!NumberUtils.isDigits(currentLatitudeString)) {
+            return Optional.empty();
+        }
+        final double currentLatitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
+
+        // endregion 当前定位
+
+        // region 缓存定位
+
+        final String cacheOrientationString= cache.get(DataKey._2501_ORIENTATION);
+        if(!NumberUtils.isDigits(cacheOrientationString)) {
+            return Optional.empty();
+        }
+        final int cacheOrientation = NumberUtils.toInt(currentOrientationString);
+        final String cacheLongitudeString = cache.get(DataKey._2502_LONGITUDE);
+        if(!NumberUtils.isDigits(cacheLongitudeString)) {
+            return Optional.empty();
+        }
+        if(!DataUtils.isOrientationUseful(cacheOrientation)) {
+            return Optional.empty();
+        }
+        final double cacheLongitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
+        final String cacheLatitudeString = cache.get(DataKey._2503_LATITUDE);
+        if(!NumberUtils.isDigits(cacheLatitudeString)) {
+            return Optional.empty();
+        }
+        final double cacheLatitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
+
+        // endregion 缓存定位
+
+        final double longitude = currentLongitude - cacheLongitude;
+        final double latitude = currentLatitude - cacheLatitude;
+
+        if (longitude * longitude + latitude * latitude > maxDistance * maxDistance) {
+            LOG.warn(
+                "VID[{}]两帧数据间定位距离超过{}米, [{},{}]<->[{},{}]",
+                vehicleId,
+                maxDistance,
+                currentLongitude,
+                currentLatitude,
+                cacheLongitude,
+                cacheLatitude);
+            return Optional.empty();
+        }
+
+        return Optional.of(new Coordinate(currentLongitude, currentLatitude));
+    }
+
+    private Optional<Long> parsePlatformReceiveTime(
+        @NotNull final String vehicleId,
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final ImmutableMap<String, String> cache) {
+
+        try {
+            final long platformReceiveTime = DataUtils.parsePlatformReceiveTime(data);
+            if (MapUtils.isNotEmpty(cache)) {
+                final long cacheTime = DataUtils.parsePlatformReceiveTime(cache);
+                if (platformReceiveTime < cacheTime) {
+                    LOG.warn("VID:{} 平台接收时间乱序, {} < {}", vehicleId, platformReceiveTime, cacheTime);
+                    return Optional.empty();
+                }
+            }
+            return Optional.of(platformReceiveTime);
+        } catch (final ParseException e) {
+            LOG.warn("VID:" + vehicleId + " 解析服务器时间异常", e);
+            return Optional.empty();
         }
     }
 
@@ -311,22 +356,6 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
         final String eventId = event.getEventId();
 
         // TODO: 徐志鹏
-    }
-
-    @Contract(pure = true)
-    private boolean isLocationEffective(
-        final double currentLongitude,
-        final double currentLatitude,
-        final double cacheLongitude,
-        final double cacheLatitude) {
-
-        final double longitude = currentLongitude - cacheLongitude;
-        final double latitude = currentLatitude - cacheLatitude;
-
-        // TODO 徐志鹏: 加到配置文件中
-        final double maxEffectiveDistance = 1000;
-
-        return longitude * longitude + latitude * latitude <= maxEffectiveDistance * maxEffectiveDistance;
     }
 
     @NotNull
