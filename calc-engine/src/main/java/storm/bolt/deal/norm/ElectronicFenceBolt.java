@@ -5,20 +5,21 @@ import com.google.common.collect.Maps;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.storm.Config;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.utils.TupleUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.Fence;
 import storm.domain.fence.VehicleStatus;
-import storm.domain.fence.area.AreaSide;
 import storm.domain.fence.area.Coordinate;
-import storm.domain.fence.event.Event;
 import storm.protocol.CommandType;
 import storm.stream.KafkaStream;
 import storm.stream.StreamReceiverFilter;
@@ -31,6 +32,7 @@ import java.text.ParseException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author: xzp
@@ -82,9 +84,29 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
     private transient KafkaStream.Sender kafkaStreamFenceAlarmSender;
 
     /**
-     * <vehicleId, status>
+     * <fenceId, eventId, <vehicleId, status>>>
      */
-    private transient Map<String, VehicleStatus> vehicleStatus;
+    private transient Map<String, Map<String, Map<String, VehicleStatus>>> status;
+
+    @NotNull
+    private VehicleStatus ensureStatus(
+        @NotNull final String fenceId,
+        @NotNull final String eventId,
+        @NotNull final String vehicleId
+    ) {
+        return status
+            .computeIfAbsent(
+                fenceId,
+                fid -> Maps.newHashMap())
+            .computeIfAbsent(
+                eventId,
+                eid -> Maps.newHashMap())
+            .computeIfAbsent(
+                vehicleId,
+                vid -> new VehicleStatus());
+    }
+
+    private transient long lastCleanStatusTime;
 
     @Override
     public void prepare(
@@ -98,7 +120,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
 
         prepareStreamReceiver();
 
-        vehicleStatus = Maps.newHashMap();
+        status = Maps.newHashMap();
     }
 
     private void prepareStreamSender(
@@ -123,11 +145,70 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
     public void execute(
         @NotNull final Tuple input) {
 
+        if (TupleUtils.isTick(input)) {
+            executeFromSystemTickStream(input);
+            return;
+        }
+
         if (dataCacheStreamReceiver.execute(input)) {
             return;
         }
 
         collector.fail(input);
+    }
+
+    private void executeFromSystemTickStream(
+        @NotNull final Tuple input) {
+
+        collector.ack(input);
+
+        final long currentTimeMillis = System.currentTimeMillis();
+
+        // 每分钟清理一次不可用的电子围栏未结束事件通知
+        if (currentTimeMillis - lastCleanStatusTime > TimeUnit.MINUTES.toMillis(1)) {
+            lastCleanStatusTime = currentTimeMillis;
+            cleanStatus();
+        }
+    }
+
+    private void cleanStatus() {
+        status.entrySet().removeIf(fenceEntry -> {
+            final String fenceId = fenceEntry.getKey();
+            final Map<String, Map<String, VehicleStatus>> fenceEvents = fenceEntry.getValue();
+            if(existFence(fenceId)) {
+                fenceEvents.entrySet().removeIf(eventEntry -> {
+                    final String eventId = eventEntry.getKey();
+                    if (existFenceEvent(fenceId, eventId)) {
+                        // 使用中的事件
+                        return false;
+                    } else {
+                        eventEntry.getValue().forEach(
+                            (vehicleId, status) -> status.clean(
+                                fenceId,
+                                eventId,
+                                vehicleId
+                            )
+                        );
+                        // 清理没有关联的事件
+                        return true;
+                    }
+                });
+                // 使用中的围栏
+                return false;
+            } else {
+                fenceEvents.forEach(
+                    (eventId, event) -> event.forEach(
+                        (vehicleId, status) -> status.clean(
+                            fenceId,
+                            eventId,
+                            vehicleId
+                        )
+                    )
+                );
+                // 清理不存在的围栏
+                return true;
+            }
+        });
     }
 
     private void executeFromDataCacheStream(
@@ -152,20 +233,41 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
         final double outsideDistance = ConfigUtils.getSysDefine().getFenceShapeBufferOutsideMeter();
 
         try {
-            parsePlatformReceiveTime(vehicleId, data, cache)
+            Optional.ofNullable(parsePlatformReceiveTime(vehicleId, data, cache))
+                // 具备有效时间
                 .ifPresent(platformReceiveTime ->
-                    parseCoordinate(vehicleId, data, cache, maxDistance)
+                    Optional.ofNullable(parseCoordinate(vehicleId, data, cache, maxDistance))
+                        // 具备有效定位
                         .ifPresent(coordinate -> {
                             getVehicleFences(vehicleId)
                                 .values()
                                 .stream()
                                 .filter(fence -> fence.active(platformReceiveTime))
+                                // 逐个处理激活的电子围栏
                                 .forEach(fence -> fence.process(
                                     coordinate,
                                     insideDistance,
                                     outsideDistance,
                                     platformReceiveTime,
-                                    (areaSide, f, e) -> whichSideCallback(vehicleId, areaSide, f, e, data, cache))
+                                    (whichSide, event) ->
+                                        // 逐个处理激活的事件
+                                        ensureStatus(
+                                            fence.getFenceId(),
+                                            event.getEventId(),
+                                            vehicleId)
+                                            .whichSideArea(
+                                                platformReceiveTime,
+                                                coordinate,
+                                                fence,
+                                                whichSide,
+                                                event,
+                                                vehicleId,
+                                                data,
+                                                cache,
+                                                // 通知发送到 kafka
+                                                json -> emitToKafka(input, vehicleId, json)
+                                            )
+                                    )
                                 );
                         })
                 );
@@ -174,7 +276,8 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
         }
     }
 
-    private Optional<Coordinate> parseCoordinate(
+    @Nullable
+    private Coordinate parseCoordinate(
         @NotNull final String vehicleId,
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final ImmutableMap<String, String> cache,
@@ -184,20 +287,20 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
 
         final String currentOrientationString= data.get(DataKey._2501_ORIENTATION);
         if(!NumberUtils.isDigits(currentOrientationString)) {
-            return Optional.empty();
+            return null;
         }
         final int currentOrientation = NumberUtils.toInt(currentOrientationString);
         if(!DataUtils.isOrientationUseful(currentOrientation)) {
-            return Optional.empty();
+            return null;
         }
         final String currentLongitudeString = data.get(DataKey._2502_LONGITUDE);
         if(!NumberUtils.isDigits(currentLongitudeString)) {
-            return Optional.empty();
+            return null;
         }
         final double currentLongitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
         final String currentLatitudeString = data.get(DataKey._2503_LATITUDE);
         if(!NumberUtils.isDigits(currentLatitudeString)) {
-            return Optional.empty();
+            return null;
         }
         final double currentLatitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
 
@@ -207,20 +310,20 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
 
         final String cacheOrientationString= cache.get(DataKey._2501_ORIENTATION);
         if(!NumberUtils.isDigits(cacheOrientationString)) {
-            return Optional.empty();
+            return null;
         }
         final int cacheOrientation = NumberUtils.toInt(currentOrientationString);
         final String cacheLongitudeString = cache.get(DataKey._2502_LONGITUDE);
         if(!NumberUtils.isDigits(cacheLongitudeString)) {
-            return Optional.empty();
+            return null;
         }
         if(!DataUtils.isOrientationUseful(cacheOrientation)) {
-            return Optional.empty();
+            return null;
         }
         final double cacheLongitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
         final String cacheLatitudeString = cache.get(DataKey._2503_LATITUDE);
         if(!NumberUtils.isDigits(cacheLatitudeString)) {
-            return Optional.empty();
+            return null;
         }
         final double cacheLatitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
 
@@ -238,13 +341,14 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
                 currentLatitude,
                 cacheLongitude,
                 cacheLatitude);
-            return Optional.empty();
+            return null;
         }
 
-        return Optional.of(new Coordinate(currentLongitude, currentLatitude));
+        return new Coordinate(currentLongitude, currentLatitude);
     }
 
-    private Optional<Long> parsePlatformReceiveTime(
+    @Nullable
+    private Long parsePlatformReceiveTime(
         @NotNull final String vehicleId,
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final ImmutableMap<String, String> cache) {
@@ -255,147 +359,44 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
                 final long cacheTime = DataUtils.parsePlatformReceiveTime(cache);
                 if (platformReceiveTime < cacheTime) {
                     LOG.warn("VID:{} 平台接收时间乱序, {} < {}", vehicleId, platformReceiveTime, cacheTime);
-                    return Optional.empty();
+                    return null;
                 }
             }
-            return Optional.of(platformReceiveTime);
+            return platformReceiveTime;
         } catch (final ParseException e) {
             LOG.warn("VID:" + vehicleId + " 解析服务器时间异常", e);
-            return Optional.empty();
+            return null;
         }
-    }
-
-    private void whichSideCallback(
-        @NotNull final String vehicleId,
-        @NotNull final AreaSide whichSide,
-        @NotNull final Fence fence,
-        @NotNull final Event event,
-        @NotNull final ImmutableMap<String, String> data,
-        @NotNull final ImmutableMap<String, String> cache) {
-
-//        vehicleStatus.compute(
-//            vehicleId,
-//            (k,v) -> {
-//                final VehicleStatus status = Optional
-//                    .ofNullable(v)
-//                    .orElseGet(() -> new VehicleStatus(k));
-//                status.setAreaSide(whichSide);
-//                return status;
-//            }
-//        );
-
-        // do something
-        switch (whichSide) {
-            case INSIDE: {
-                insideCallback(vehicleId, fence, event, data, cache);
-            } break;
-            case OUTSIDE: {
-                outsideCallback(vehicleId, fence, event, data, cache);
-            } break;
-        }
-    }
-
-    private void insideCallback(
-        @NotNull final String vehicleId,
-        @NotNull final Fence fence,
-        @NotNull final Event event,
-        @NotNull final ImmutableMap<String, String> data,
-        @NotNull final ImmutableMap<String, String> cache) {
-        Optional
-            .ofNullable(
-                event.trigger(
-                    true,
-                    data,
-                    cache
-                )
-            )
-            .ifPresent(trigger -> {
-                if(trigger) {
-                    insideTriggerTrue(fence, event, data, cache);
-                } else {
-                    insideTriggerFalse(fence, event, data, cache);
-                }
-            });
-    }
-
-    private void insideTriggerTrue(
-        @NotNull final Fence fence,
-        @NotNull final Event event,
-        @NotNull final ImmutableMap<String, String> data,
-        @NotNull final ImmutableMap<String, String> cache) {
-
-        final String fenceId = fence.getFenceId();
-        final String eventId = event.getEventId();
-
-        // TODO: 徐志鹏
-    }
-
-    private void insideTriggerFalse(
-        @NotNull final Fence fence,
-        @NotNull final Event event,
-        @NotNull final ImmutableMap<String, String> data,
-        @NotNull final ImmutableMap<String, String> cache) {
-
-        final String fenceId = fence.getFenceId();
-        final String eventId = event.getEventId();
-
-        // TODO: 徐志鹏
-    }
-
-    private void outsideCallback(
-        @NotNull final String vehicleId,
-        @NotNull final Fence fence,
-        @NotNull final Event event,
-        @NotNull final ImmutableMap<String, String> data,
-        @NotNull final ImmutableMap<String, String> cache) {
-
-        Optional
-            .ofNullable(
-                event.trigger(
-                    false,
-                    data,
-                    cache
-                )
-            )
-            .ifPresent(trigger -> {
-                if(trigger) {
-                    outsideTriggerTrue(fence, event, data, cache);
-                } else {
-                    outsideTriggerFalse(fence, event, data, cache);
-                }
-            });
-    }
-
-    private void outsideTriggerTrue(
-        @NotNull final Fence fence,
-        @NotNull final Event event,
-        @NotNull final ImmutableMap<String, String> data,
-        @NotNull final ImmutableMap<String, String> cache) {
-
-        final String fenceId = fence.getFenceId();
-        final String eventId = event.getEventId();
-
-        // TODO: 徐志鹏
-    }
-
-    private void outsideTriggerFalse(
-        @NotNull final Fence fence,
-        @NotNull final Event event,
-        @NotNull final ImmutableMap<String, String> data,
-        @NotNull final ImmutableMap<String, String> cache) {
-
-        final String fenceId = fence.getFenceId();
-        final String eventId = event.getEventId();
-
-        // TODO: 徐志鹏
     }
 
     @NotNull
     private ImmutableMap<String, Fence> getVehicleFences(
-        @NotNull final String vehicleId
-    ) {
+        @NotNull final String vehicleId) {
+
         // TODO 许智杰: 替换为从数据库构建出来的缓存
         return ImmutableMap.of();
+    }
+
+    private boolean existFence(
+        @NotNull final String fenceId) {
+
+        // TODO 许智杰: 判断电子围栏是否存在
+        return false;
+    }
+
+    private boolean existFenceEvent(
+        @NotNull final String fenceId,
+        @NotNull final String eventId) {
+
+        // TODO 许智杰: 判断电子围栏是否包含规则
+        return false;
+    }
+
+    private void emitToKafka(
+        @NotNull final Tuple input,
+        @NotNull final String vehicleId,
+        @NotNull final String json) {
+        kafkaStreamFenceAlarmSender.emit(input, vehicleId, json);
     }
 
     @Override
@@ -403,5 +404,12 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
         @NotNull final OutputFieldsDeclarer declarer) {
 
         KAFKA_STREAM.declareOutputFields(KAFKA_STREAM_ID, declarer);
+    }
+
+    @Override
+    public Map<String, Object> getComponentConfiguration() {
+        final Config config = new Config();
+        config.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, 1);
+        return config;
     }
 }

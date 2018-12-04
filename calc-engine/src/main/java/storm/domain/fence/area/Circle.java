@@ -1,15 +1,10 @@
 package storm.domain.fence.area;
 
 import com.google.common.collect.ImmutableCollection;
-import com.google.common.collect.ImmutableSet;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import storm.domain.fence.cron.Cron;
-
-import java.util.Optional;
 
 /**
  * 圆形区域
@@ -17,13 +12,7 @@ import java.util.Optional;
  * @date: 2018-11-28
  * @description:
  */
-public final class Circle implements Area, Cron {
-
-    @SuppressWarnings("unused")
-    private static final Logger LOG = LoggerFactory.getLogger(Circle.class);
-
-    @NotNull
-    private final String areaId;
+public final class Circle extends BaseArea implements Area, Cron {
 
     /**
      * 圆心
@@ -36,39 +25,21 @@ public final class Circle implements Area, Cron {
      */
     private final double radius;
 
-    /**
-     * 激活计划
-     */
-    @NotNull
-    private final ImmutableCollection<Cron> cronSet;
-
     public Circle(
         @NotNull final String areaId,
         @NotNull final Coordinate center,
         final double radius,
         @Nullable final ImmutableCollection<Cron> cronSet) {
 
-        this.areaId = areaId;
+        super(areaId, cronSet);
         this.center = center;
         this.radius = Math.abs(radius);
-        this.cronSet = Optional
-            .ofNullable(cronSet)
-            .orElseGet(
-                () -> ImmutableSet.of(Cron.DEFAULT)
-            );
     }
 
     @NotNull
     @Contract(pure = true)
     @Override
-    public String getAreaId() {
-        return areaId;
-    }
-
-    @NotNull
-    @Contract(pure = true)
-    @Override
-    public AreaSide whichSide(
+    public AreaSide computAreaSide(
         @NotNull final Coordinate coordinate,
         final double inSideDistance,
         final double outsideDistance) {
@@ -95,11 +66,6 @@ public final class Circle implements Area, Cron {
         }
 
         return AreaSide.BOUNDARY;
-    }
-
-    @Override
-    public boolean active(final long dateTime) {
-        return cronSet.stream().anyMatch(cron -> cron.active(dateTime));
     }
 }
                                                   

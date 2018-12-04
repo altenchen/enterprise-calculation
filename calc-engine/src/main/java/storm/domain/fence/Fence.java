@@ -9,12 +9,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.area.Area;
 import storm.domain.fence.area.AreaSide;
+import storm.domain.fence.area.BaseArea;
 import storm.domain.fence.area.Coordinate;
+import storm.domain.fence.cron.BaseCron;
 import storm.domain.fence.cron.Cron;
+import storm.domain.fence.event.BaseEvent;
 import storm.domain.fence.event.Event;
-import storm.util.function.TeConsumer;
 
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 /**
@@ -27,7 +30,7 @@ import java.util.stream.Stream;
  * 3. 每个围栏关联多个激活时段
  * 4. 每个围栏关联多个车辆
  */
-public final class Fence implements Cron {
+public final class Fence extends BaseCron implements Cron {
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(Fence.class);
@@ -36,31 +39,21 @@ public final class Fence implements Cron {
     private final String fenceId;
 
     @NotNull
-    private final Stream<Area> areas;
+    private final Stream<BaseArea> areas;
 
     @NotNull
-    private final Stream<Event> rules;
-
-    /**
-     * 激活计划
-     */
-    @NotNull
-    private final ImmutableCollection<Cron> cronSet;
+    private final Stream<BaseEvent> rules;
 
     public Fence(
         @NotNull final String fenceId,
-        @NotNull final Stream<Area> areas,
-        @NotNull final Stream<Event> rules,
+        @NotNull final Stream<BaseArea> areas,
+        @NotNull final Stream<BaseEvent> rules,
         @Nullable final ImmutableCollection<Cron> cronSet) {
 
+        super(cronSet);
         this.fenceId = fenceId;
         this.areas = areas;
         this.rules = rules;
-        this.cronSet = Optional
-            .ofNullable(cronSet)
-            .orElseGet(
-                () -> ImmutableSet.of(Cron.DEFAULT)
-            );
     }
 
     /**
@@ -74,7 +67,7 @@ public final class Fence implements Cron {
     }
 
     /**
-     * 处理电子围栏逻辑
+     * 处理电子围栏区域, 将 定位与围栏的关系 和 触发的事件 作为参数回调.
      * @param coordinate 数据定位
      * @param inSideDistance 坐标与区域边界的缓冲距离, 输入应该为零或正数
      * @param outsideDistance 坐标与区域边界的缓冲距离, 输入应该为零或正数
@@ -86,30 +79,31 @@ public final class Fence implements Cron {
         final double inSideDistance,
         final double outsideDistance,
         final long time,
-        @NotNull final TeConsumer<AreaSide, Fence, Event> whichSideCallback) {
+        @NotNull final BiConsumer<AreaSide, Event> whichSideCallback) {
 
+        // 不在激活时间段, 跳过
+        if(!active(time)) {
+            return;
+        }
+
+        // 计算定位坐标与当前激活的区域的关系集合
         final Stream<AreaSide> whichSideStream = areas
             .filter(area -> area.active(time))
-            .map(area -> area.whichSide(coordinate, inSideDistance, outsideDistance));
+            .map(area -> area.computAreaSide(coordinate, inSideDistance, outsideDistance));
 
-        final Stream<Event> activeRuleStream = rules
+        // 当前激活的事件集合
+        final Stream<BaseEvent> activeRuleStream = rules
             .filter(event -> event.active(time));
 
         if (whichSideStream.anyMatch(whichSide -> AreaSide.INSIDE == whichSide)) {
-            activeRuleStream
-                .forEachOrdered(event -> whichSideCallback.accept(AreaSide.INSIDE,this, event));
+            activeRuleStream.forEachOrdered(
+                event -> whichSideCallback.accept(AreaSide.INSIDE, event));
         } else if (whichSideStream.allMatch(whichSide -> AreaSide.OUTSIDE == whichSide)) {
-            activeRuleStream
-                .forEachOrdered(event -> whichSideCallback.accept(AreaSide.OUTSIDE, this, event));
+            activeRuleStream.forEachOrdered(
+                event -> whichSideCallback.accept(AreaSide.OUTSIDE, event));
         } else {
-            activeRuleStream
-                .forEachOrdered(event -> whichSideCallback.accept(AreaSide.BOUNDARY, this, event));
+            activeRuleStream.forEachOrdered(
+                event -> whichSideCallback.accept(AreaSide.BOUNDARY, event));
         }
     }
-
-    @Override
-    public boolean active(final long dateTime) {
-        return cronSet.stream().anyMatch(cron -> cron.active(dateTime));
-    }
-
 }

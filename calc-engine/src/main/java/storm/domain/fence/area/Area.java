@@ -9,9 +9,8 @@ import storm.domain.fence.cron.Cron;
  * @author: xzp
  * @date: 2018-11-28
  * @description:
- * 1. 每个区域可以包含多个激活时间段
  */
-public interface Area extends Cron {
+public interface Area {
 
     /**
      * 获取区域标识
@@ -28,7 +27,7 @@ public interface Area extends Cron {
      * @return true-在内部, false-在外部, null-在边界
      */
     @NotNull
-    AreaSide whichSide(
+    AreaSide computAreaSide(
         @NotNull final Coordinate coordinate,
         final double inSideDistance,
         final double outsideDistance);

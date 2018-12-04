@@ -59,22 +59,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0, 15 + 0.000001);
-            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(0, 15);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(0, 5);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(0, 5 - 0.000001);
-            Assertions.assertEquals(AreaSide.INSIDE, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion top
@@ -83,22 +83,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(13 + 0.000001, 14 + 0.000001);
-            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(13, 14);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(5, 5);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(5 - 0.000001, 5 - 0.000001);
-            Assertions.assertEquals(AreaSide.INSIDE, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion top_right
@@ -107,22 +107,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(15 + 0.000001, 0);
-            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(15, 0);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(5, 0);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(5 - 0.000001, 0);
-            Assertions.assertEquals(AreaSide.INSIDE, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion right
@@ -131,22 +131,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(13 + 0.000001, -14 - 0.000001);
-            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(13, -14);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(5, -5);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(5 - 0.000001, -5 + 0.000001);
-            Assertions.assertEquals(AreaSide.INSIDE, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion right_bottom
@@ -155,22 +155,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0, -15 - 0.000001);
-            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(0, -15);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(0, -5);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(0, -5 + 0.000001);
-            Assertions.assertEquals(AreaSide.INSIDE, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion bottom
@@ -179,22 +179,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(-13 - 0.000001, -14 - 0.000001);
-            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-13, -14);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-5, -5);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(-5 + 0.000001, -5 + 0.000001);
-            Assertions.assertEquals(AreaSide.INSIDE, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion bottom_left
@@ -203,22 +203,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(-15 - 0.000001, 0);
-            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-15, 0);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-5, 0);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(-5 + 0.000001, 0);
-            Assertions.assertEquals(AreaSide.INSIDE, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion left
@@ -227,22 +227,22 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(-13 - 0.000001, 14 + 0.000001);
-            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.OUTSIDE, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-13, 14);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, 0, distance));
         }
 
         {
             final Coordinate location = new Coordinate(-5, 5);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         {
             final Coordinate location = new Coordinate(-5 + 0.000001, 5 - 0.000001);
-            Assertions.assertEquals(AreaSide.INSIDE, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion left_top
@@ -266,7 +266,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0, - 0.000001);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion top
@@ -275,7 +275,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(- 0.000001, - 0.000001);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion top_right
@@ -284,7 +284,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(- 0.000001, 0);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion right
@@ -293,7 +293,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(- 0.000001, 0.000001);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion right_bottom
@@ -302,7 +302,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0, 0.000001);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion bottom
@@ -311,7 +311,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0.000001, 0.000001);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion bottom_left
@@ -320,7 +320,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0.000001, 0);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion left
@@ -329,7 +329,7 @@ final class PolygonTest {
 
         {
             final Coordinate location = new Coordinate(0.000001, - 0.000001);
-            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, polygon.computAreaSide(location, distance, 0));
         }
 
         // endregion left_top
