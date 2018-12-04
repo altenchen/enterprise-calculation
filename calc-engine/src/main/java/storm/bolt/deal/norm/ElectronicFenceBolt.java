@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.Fence;
 import storm.domain.fence.VehicleStatus;
+import storm.domain.fence.area.AreaSide;
 import storm.domain.fence.area.Coordinate;
 import storm.domain.fence.event.Event;
 import storm.protocol.CommandType;
@@ -157,13 +158,14 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
                         .ifPresent(coordinate -> {
                             getVehicleFences(vehicleId)
                                 .values()
+                                .stream()
+                                .filter(fence -> fence.active(platformReceiveTime))
                                 .forEach(fence -> fence.process(
                                     coordinate,
                                     insideDistance,
                                     outsideDistance,
                                     platformReceiveTime,
-                                    (f, e) -> insideCallback(f, e, data, cache),
-                                    (f, e) -> outsideCallback(f, e, data, cache))
+                                    (areaSide, f, e) -> whichSideCallback(vehicleId, areaSide, f, e, data, cache))
                                 );
                         })
                 );
@@ -263,15 +265,46 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
         }
     }
 
-    private void insideCallback(
+    private void whichSideCallback(
+        @NotNull final String vehicleId,
+        @NotNull final AreaSide whichSide,
         @NotNull final Fence fence,
         @NotNull final Event event,
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final ImmutableMap<String, String> cache) {
 
+//        vehicleStatus.compute(
+//            vehicleId,
+//            (k,v) -> {
+//                final VehicleStatus status = Optional
+//                    .ofNullable(v)
+//                    .orElseGet(() -> new VehicleStatus(k));
+//                status.setAreaSide(whichSide);
+//                return status;
+//            }
+//        );
+
+        // do something
+        switch (whichSide) {
+            case INSIDE: {
+                insideCallback(vehicleId, fence, event, data, cache);
+            } break;
+            case OUTSIDE: {
+                outsideCallback(vehicleId, fence, event, data, cache);
+            } break;
+        }
+    }
+
+    private void insideCallback(
+        @NotNull final String vehicleId,
+        @NotNull final Fence fence,
+        @NotNull final Event event,
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final ImmutableMap<String, String> cache) {
         Optional
             .ofNullable(
                 event.trigger(
+                    true,
                     data,
                     cache
                 )
@@ -310,6 +343,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
     }
 
     private void outsideCallback(
+        @NotNull final String vehicleId,
         @NotNull final Fence fence,
         @NotNull final Event event,
         @NotNull final ImmutableMap<String, String> data,
@@ -318,6 +352,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
         Optional
             .ofNullable(
                 event.trigger(
+                    false,
                     data,
                     cache
                 )

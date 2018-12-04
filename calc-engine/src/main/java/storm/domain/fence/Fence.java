@@ -1,23 +1,20 @@
 package storm.domain.fence;
 
 import com.google.common.collect.ImmutableCollection;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import org.apache.commons.lang.BooleanUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.area.Area;
+import storm.domain.fence.area.AreaSide;
 import storm.domain.fence.area.Coordinate;
 import storm.domain.fence.cron.Cron;
 import storm.domain.fence.event.Event;
+import storm.util.function.TeConsumer;
 
-import java.util.Objects;
 import java.util.Optional;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
@@ -82,29 +79,31 @@ public final class Fence implements Cron {
      * @param inSideDistance 坐标与区域边界的缓冲距离, 输入应该为零或正数
      * @param outsideDistance 坐标与区域边界的缓冲距离, 输入应该为零或正数
      * @param time 数据时间
-     * @param insideCallback 围栏内部回调
-     * @param outsideCallback 围栏外部回调
+     * @param whichSideCallback 围栏区域回调
      */
     public void process(
         @NotNull final Coordinate coordinate,
         final double inSideDistance,
         final double outsideDistance,
         final long time,
-        @NotNull final BiConsumer<Fence, Event> insideCallback,
-        @NotNull final BiConsumer<Fence, Event> outsideCallback) {
+        @NotNull final TeConsumer<AreaSide, Fence, Event> whichSideCallback) {
 
-        final Stream<Boolean> whichSideStream = areas
+        final Stream<AreaSide> whichSideStream = areas
             .filter(area -> area.active(time))
             .map(area -> area.whichSide(coordinate, inSideDistance, outsideDistance));
 
-        if (whichSideStream.anyMatch(BooleanUtils::isTrue)) {
-            rules
-                .filter(event -> event.active(time))
-                .forEachOrdered(event -> insideCallback.accept(this, event));
-        } else if (whichSideStream.allMatch(Objects::nonNull)) {
-            rules
-                .filter(event -> event.active(time))
-                .forEachOrdered(event -> outsideCallback.accept(this, event));
+        final Stream<Event> activeRuleStream = rules
+            .filter(event -> event.active(time));
+
+        if (whichSideStream.anyMatch(whichSide -> AreaSide.INSIDE == whichSide)) {
+            activeRuleStream
+                .forEachOrdered(event -> whichSideCallback.accept(AreaSide.INSIDE,this, event));
+        } else if (whichSideStream.allMatch(whichSide -> AreaSide.OUTSIDE == whichSide)) {
+            activeRuleStream
+                .forEachOrdered(event -> whichSideCallback.accept(AreaSide.OUTSIDE, this, event));
+        } else {
+            activeRuleStream
+                .forEachOrdered(event -> whichSideCallback.accept(AreaSide.BOUNDARY, this, event));
         }
     }
 

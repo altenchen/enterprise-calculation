@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
+ * 多边形区域
  * @author: xzp
  * @date: 2018-11-28
  * @description:
@@ -79,10 +80,10 @@ public final class Polygon implements Area, Cron {
         return areaId;
     }
 
-    @Nullable
+    @NotNull
     @Contract(pure = true)
     @Override
-    public Boolean whichSide(
+    public AreaSide whichSide(
         final @NotNull Coordinate coordinate,
         final double inSideDistance,
         final double outsideDistance) {
@@ -97,15 +98,15 @@ public final class Polygon implements Area, Cron {
 
         if(polygon.contains(location)) {
             if(distance > Math.abs(inSideDistance)) {
-                return Boolean.TRUE;
+                return AreaSide.INSIDE;
             } else {
-                return null;
+                return AreaSide.BOUNDARY;
             }
         } else {
             if(distance > Math.abs(outsideDistance)) {
-                return Boolean.FALSE;
+                return AreaSide.OUTSIDE;
             } else {
-                return null;
+                return AreaSide.BOUNDARY;
             }
         }
     }

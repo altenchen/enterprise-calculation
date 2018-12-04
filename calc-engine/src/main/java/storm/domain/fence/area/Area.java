@@ -27,8 +27,8 @@ public interface Area extends Cron {
      * @param outsideDistance 坐标与边界的缓冲距离, 输入应该为零或正数
      * @return true-在内部, false-在外部, null-在边界
      */
-    @Nullable
-    Boolean whichSide(
+    @NotNull
+    AreaSide whichSide(
         @NotNull final Coordinate coordinate,
         final double inSideDistance,
         final double outsideDistance);

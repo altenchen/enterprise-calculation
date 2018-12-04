@@ -50,25 +50,25 @@ final class CircleTest {
         {
             final double radius = 4 - 0.000001;
             final Circle circle = buildCircle(center, radius);
-            Assertions.assertEquals(Boolean.FALSE, circle.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.OUTSIDE, circle.whichSide(location, 0, distance));
         }
 
         {
             final double radius = 4;
             final Circle circle = buildCircle(center, radius);
-            Assertions.assertNull(circle.whichSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.BOUNDARY, circle.whichSide(location, 0, distance));
         }
 
         {
             final double radius = 6;
             final Circle circle = buildCircle(center, radius);
-            Assertions.assertNull(circle.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, circle.whichSide(location, distance, 0));
         }
 
         {
             final double radius = 6 + 0.000001;
             final Circle circle = buildCircle(center, radius);
-            Assertions.assertEquals(Boolean.TRUE, circle.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, circle.whichSide(location, distance, 0));
         }
     }
 
@@ -83,12 +83,12 @@ final class CircleTest {
 
         {
             final double distance = radius;
-            Assertions.assertNull(circle.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, circle.whichSide(location, distance, 0));
         }
 
         {
             final double distance = radius - 0.000001;
-            Assertions.assertEquals(Boolean.TRUE, circle.whichSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, circle.whichSide(location, distance, 0));
         }
 
 

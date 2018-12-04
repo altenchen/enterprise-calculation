@@ -65,10 +65,10 @@ public final class Circle implements Area, Cron {
         return areaId;
     }
 
-    @Nullable
+    @NotNull
     @Contract(pure = true)
     @Override
-    public Boolean whichSide(
+    public AreaSide whichSide(
         @NotNull final Coordinate coordinate,
         final double inSideDistance,
         final double outsideDistance) {
@@ -83,18 +83,18 @@ public final class Circle implements Area, Cron {
         final double outside = radius + Math.abs(outsideDistance);
         final double outside_square = outside * outside;
         if(radius_square > outside_square) {
-            return Boolean.FALSE;
+            return AreaSide.OUTSIDE;
         }
 
         final double inside = radius - Math.abs(inSideDistance);
         if(inside > 0) {
             final double inside_square = inside * inside;
             if(radius_square < inside_square) {
-                return Boolean.TRUE;
+                return AreaSide.INSIDE;
             }
         }
 
-        return null;
+        return AreaSide.BOUNDARY;
     }
 
     @Override
