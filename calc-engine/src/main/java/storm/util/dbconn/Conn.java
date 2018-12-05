@@ -635,14 +635,6 @@ public final class Conn {
         return null;
     }
 
-    private int toInt(String str) {
-        return (int) NumberUtils.toDouble(str, -1);
-    }
-
-    private double toDouble(String str) {
-        return NumberUtils.toDouble(str, -1);
-    }
-
     @Nullable
     public List<Map<String, Object>> get(String sql, String[] filedName) {
         List<Map<String, Object>> list = null;

@@ -19,6 +19,17 @@ public class SysParamEntity {
      */
     private String vehModelSql = "SELECT veh.uuid vid,model.id mid FROM sys_vehicle veh LEFT JOIN sys_veh_model model ON veh.veh_model_id=model.id WHERE model.id IS NOT NULL";
     /**
+     * 电子围栏
+     */
+    private String fenceSql = new StringBuilder()
+            .append(" SELECT VEH.VEH_ID AS VID, SEF.ID AS FENCE_ID, SEF.RULE_TYPE, SEF.PERIOD_TYPE, SEF.START_DATE, SEF.END_DATE, SEF.WEEK, SEF.START_TIME, SEF.END_TIME, SEF.CHART_TYPE, SEF.LONLAT_RANGE ")
+            .append(" FROM SYS_ELECTRONIC_FENCE SEF, SYS_FENCE_VEH_LK VEH ")
+            .append(" WHERE SEF.ID = VEH.ELECTRONIC_FENCE_ID ")
+            .append(" AND SEF.STATUS_FLAG = 1 ")
+            .append(" AND SEF.RULE_STATUS = 1 ")
+            .append(" ORDER BY VEH.VEH_ID ")
+            .toString();
+    /**
      * 预警规则(旧)
      */
     private String earlyWarningSql = "SELECT ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL FROM SYS_DATA_CONST WHERE TYPE = 1 AND IS_VALID = 1 AND ID is not null AND R1_VAL is not null";
@@ -67,6 +78,14 @@ public class SysParamEntity {
 
     public void setVehModelSql(String vehModelSql) {
         this.vehModelSql = vehModelSql;
+    }
+
+    public String getFenceSql() {
+        return fenceSql;
+    }
+
+    public void setFenceSql(String fenceSql) {
+        this.fenceSql = fenceSql;
     }
 
     public String getEarlyWarningSql() {
