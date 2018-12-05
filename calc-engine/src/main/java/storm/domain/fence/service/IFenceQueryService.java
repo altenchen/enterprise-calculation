@@ -2,6 +2,7 @@ package storm.domain.fence.service;
 
 import storm.domain.fence.Fence;
 
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -17,6 +18,6 @@ public interface IFenceQueryService {
      * @param vid 车辆ID
      * @return 电子围栏列表
      */
-    Stream<Fence> query(String vid);
+    List<Fence> query(String vid);
 
 }

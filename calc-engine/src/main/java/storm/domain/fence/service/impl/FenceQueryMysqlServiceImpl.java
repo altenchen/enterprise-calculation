@@ -1,12 +1,13 @@
 package storm.domain.fence.service.impl;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.Fence;
-import storm.domain.fence.area.BaseArea;
+import storm.domain.fence.area.AreaCron;
 import storm.domain.fence.area.Circle;
 import storm.domain.fence.area.Coordinate;
 import storm.domain.fence.area.Polygon;
@@ -14,9 +15,9 @@ import storm.domain.fence.cron.Cron;
 import storm.domain.fence.cron.DailyCycle;
 import storm.domain.fence.cron.DailyOnce;
 import storm.domain.fence.cron.WeeklyCycle;
-import storm.domain.fence.event.BaseEvent;
 import storm.domain.fence.event.DriveInside;
 import storm.domain.fence.event.DriveOutside;
+import storm.domain.fence.event.EventCron;
 import storm.domain.fence.service.IFenceQueryService;
 import storm.util.ConfigUtils;
 import storm.util.SqlUtils;
@@ -24,7 +25,6 @@ import storm.util.SqlUtils;
 import java.sql.Date;
 import java.sql.Time;
 import java.util.*;
-import java.util.stream.Stream;
 
 /**
  * 电子围栏查询接口实现-MYSQL
@@ -44,7 +44,7 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
      * 车辆与围栏规则
      * <vid, 围栏规则>
      */
-    private Map<String, Stream<Fence>> vehicleFenceRuleMap = new HashMap<>(0);
+    private Map<String, List<Fence>> vehicleFenceRuleMap = new HashMap<>(0);
 
     /**
      * 刷新电子围栏缓存
@@ -72,9 +72,9 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
      */
     private void queryFenceRules() {
         String sql = ConfigUtils.getSysParam().getFenceSql();
-        Map<String, Stream<Fence>> fences = SQL_UTILS.query(sql, resultSet -> {
+        Map<String, List<Fence>> fences = SQL_UTILS.query(sql, resultSet -> {
             //TODO 查询围栏规则
-            Map<String, Stream<Fence>> result = new HashMap<>(10);
+            Map<String, List<Fence>> result = new HashMap<>(10);
             String key = null;
             List<Fence> fenceList = new ArrayList<>(10);
             while (resultSet.next()) {
@@ -106,16 +106,16 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
                 } else if (!key.equals(vid)) {
                     LOGGER.info("VID:{} 围栏规则有 SIZE:{}", key, fenceList.size());
                     String mapKey = StringUtils.isEmpty(key) ? "ALL" : key;
-                    result.put(mapKey, fenceList.stream());
+                    result.put(mapKey, fenceList);
                     fenceList = new ArrayList<>(10);
                     key = vid;
                 }
 
                 //初始化电子围栏区域
-                ImmutableList<BaseArea> areas = initFenceArea(chartType, lonlatRange);
+                ImmutableMap<String, AreaCron> areas = initFenceArea(chartType, lonlatRange);
 
                 //初始化规则列表
-                ImmutableList<BaseEvent> events = initFenceEvent(ruleType);
+                ImmutableMap<String, EventCron> events = initFenceEvent(ruleType);
 
                 //初始化执行计划
                 ImmutableList<Cron> cron = initFenceCron(periodType, week, startDate, endDate, startTime, endTime);
@@ -127,7 +127,7 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
             if (!fenceList.isEmpty()) {
                 LOGGER.info("VID:{} 围栏规则有 SIZE:{}", key, fenceList.size());
                 String mapKey = StringUtils.isEmpty(key) ? "ALL" : key;
-                result.put(mapKey, fenceList.stream());
+                result.put(mapKey, fenceList);
             }
 
             return result;
@@ -136,7 +136,6 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
             LOGGER.info("查询不到围栏规则 SQL:{}", sql);
         }
         this.vehicleFenceRuleMap = fences;
-
         //更新最后一次同步时间
         this.prevSyncTime = System.currentTimeMillis();
     }
@@ -147,22 +146,22 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
      * @param ruleType 1、驶离；2、驶入；3、驶入驶离
      * @return 电子围栏事件
      */
-    private ImmutableList<BaseEvent> initFenceEvent(int ruleType) {
-        ImmutableList.Builder<BaseEvent> events = new ImmutableList.Builder<>();
+    private ImmutableMap<String, EventCron> initFenceEvent(int ruleType) {
+        ImmutableMap.Builder<String, EventCron> events = new ImmutableMap.Builder<>();
         String eventId = ruleType + "";
         switch (ruleType) {
             case 1:
                 //驶离
-                events.add(new DriveInside(eventId, null));
+                events.put(eventId, new DriveInside(eventId, null));
                 break;
             case 2:
                 //驶入
-                events.add(new DriveOutside(eventId, null));
+                events.put(eventId, new DriveOutside(eventId, null));
                 break;
             case 3:
                 //驶入驶离
-                events.add(new DriveInside(eventId, null));
-                events.add(new DriveOutside(eventId, null));
+                events.put(eventId, new DriveInside(eventId, null));
+                events.put(eventId, new DriveOutside(eventId, null));
                 break;
             default:
                 break;
@@ -229,8 +228,8 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
      * @param lonlatRange 经纬度【1圆形(半径;坐标) 8352;116.59574,39.916867】【2多边形(坐标;坐标;...) 116.524329,39.828861;116.60398,39.828861;116.60398,39.776637;116.524329,39.776637】
      * @return 返回围栏区域
      */
-    private ImmutableList<BaseArea> initFenceArea(int chartType, String lonlatRange) {
-        ImmutableList.Builder<BaseArea> areas = new ImmutableList.Builder<>();
+    private ImmutableMap<String, AreaCron> initFenceArea(int chartType, String lonlatRange) {
+        ImmutableMap.Builder<String, AreaCron> areas = new ImmutableMap.Builder<>();
         String areaId = chartType + "";
         //坐标值按逗号拆分后,length为2
         int coordinateSize = 2;
@@ -245,7 +244,7 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
                 if (coordinateArray.length < coordinateSize) {
                     break;
                 }
-                areas.add(new Circle(areaId, new Coordinate(Double.valueOf(coordinateArray[0]), Double.valueOf(coordinateArray[1])), Double.valueOf(splitArray[0]), null));
+                areas.put(areaId, new Circle(areaId, new Coordinate(Double.valueOf(coordinateArray[0]), Double.valueOf(coordinateArray[1])), Double.valueOf(splitArray[0]), null));
                 break;
             case 2:
                 //多边形区域
@@ -257,7 +256,7 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
                     }
                     coordinates.add(new Coordinate(Double.valueOf(coordinateArrays[0]), Double.valueOf(coordinateArrays[1])));
                 });
-                areas.add(new Polygon(areaId, coordinates.build(), null));
+                areas.put(areaId, new Polygon(areaId, coordinates.build(), null));
                 break;
             default:
                 break;
@@ -272,7 +271,7 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
      * @return 车辆对应的围栏列表
      */
     @Override
-    public Stream<Fence> query(String vid) {
+    public List<Fence> query(String vid) {
         refresh();
         return vehicleFenceRuleMap.get(vid);
     }
