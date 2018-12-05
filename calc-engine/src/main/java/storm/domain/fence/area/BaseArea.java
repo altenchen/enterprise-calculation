@@ -14,7 +14,7 @@ import storm.domain.fence.cron.Cron;
  * @description:
  * 每个区域可以包含多个激活时间段
  */
-public abstract class BaseArea extends BaseCron implements Area, Cron {
+public abstract class BaseArea extends BaseCron implements AreaCron, Area, Cron {
 
     @NotNull
     private final String areaId;

@@ -14,14 +14,14 @@ public enum AreaSide {
     UNKNOWN,
 
     /**
-     * 在边界
-     */
-    BOUNDARY,
-
-    /**
      * 在内部
      */
     INSIDE,
+
+    /**
+     * 在边界
+     */
+    BOUNDARY,
 
     /**
      * 在外部

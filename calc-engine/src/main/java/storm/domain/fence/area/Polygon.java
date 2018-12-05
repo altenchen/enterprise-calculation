@@ -59,7 +59,7 @@ public final class Polygon extends BaseArea implements Area, Cron {
     @NotNull
     @Contract(pure = true)
     @Override
-    public AreaSide computAreaSide(
+    public AreaSide computeAreaSide(
         final @NotNull Coordinate coordinate,
         final double inSideDistance,
         final double outsideDistance) {

@@ -14,7 +14,7 @@ import storm.domain.fence.cron.Cron;
  * @description:
  * 每个事件可以包含多个激活时间段
  */
-public abstract class BaseEvent extends BaseCron implements Event, Cron {
+public abstract class BaseEvent extends BaseCron implements EventCron, Event, Cron {
 
     @NotNull
     private final String eventId;

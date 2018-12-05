@@ -1,23 +1,23 @@
 package storm.domain.fence;
 
 import com.google.common.collect.ImmutableCollection;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableMap;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.domain.fence.area.Area;
+import storm.domain.fence.area.AreaCron;
 import storm.domain.fence.area.AreaSide;
-import storm.domain.fence.area.BaseArea;
 import storm.domain.fence.area.Coordinate;
 import storm.domain.fence.cron.BaseCron;
 import storm.domain.fence.cron.Cron;
-import storm.domain.fence.event.BaseEvent;
 import storm.domain.fence.event.Event;
+import storm.domain.fence.event.EventCron;
 
-import java.util.Optional;
+import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -39,21 +39,22 @@ public final class Fence extends BaseCron implements Cron {
     private final String fenceId;
 
     @NotNull
-    private final Stream<BaseArea> areas;
+    private final ImmutableMap<String, AreaCron> areaMap;
 
     @NotNull
-    private final Stream<BaseEvent> rules;
+    private final ImmutableMap<String, EventCron> eventMap;
 
     public Fence(
         @NotNull final String fenceId,
-        @NotNull final Stream<BaseArea> areas,
-        @NotNull final Stream<BaseEvent> rules,
+        @NotNull final ImmutableMap<String, AreaCron> areaMap,
+        @NotNull final ImmutableMap<String, EventCron> eventMap,
         @Nullable final ImmutableCollection<Cron> cronSet) {
 
         super(cronSet);
+
         this.fenceId = fenceId;
-        this.areas = areas;
-        this.rules = rules;
+        this.areaMap = areaMap;
+        this.eventMap = eventMap;
     }
 
     /**
@@ -62,7 +63,7 @@ public final class Fence extends BaseCron implements Cron {
      */
     @NotNull
     @Contract(pure = true)
-    public String getFenceId() {
+    public final String getFenceId() {
         return fenceId;
     }
 
@@ -79,7 +80,7 @@ public final class Fence extends BaseCron implements Cron {
         final double inSideDistance,
         final double outsideDistance,
         final long time,
-        @NotNull final BiConsumer<AreaSide, Event> whichSideCallback) {
+        @NotNull final BiConsumer<AreaSide, ImmutableMap<String, Event>> whichSideCallback) {
 
         // 不在激活时间段, 跳过
         if(!active(time)) {
@@ -87,23 +88,32 @@ public final class Fence extends BaseCron implements Cron {
         }
 
         // 计算定位坐标与当前激活的区域的关系集合
-        final Stream<AreaSide> whichSideStream = areas
+        final Stream<AreaSide> whichSideStream = areaMap
+            .values()
+            .parallelStream()
             .filter(area -> area.active(time))
-            .map(area -> area.computAreaSide(coordinate, inSideDistance, outsideDistance));
+            .map(area -> area.computeAreaSide(coordinate, inSideDistance, outsideDistance))
+            .distinct();
 
         // 当前激活的事件集合
-        final Stream<BaseEvent> activeRuleStream = rules
-            .filter(event -> event.active(time));
+        final ImmutableMap<String, Event> activeEventMap = ImmutableMap.copyOf(
+            eventMap.entrySet()
+                .parallelStream()
+                .filter(eventEntry -> eventEntry.getValue().active(time))
+                .collect(
+                    Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue
+                    )
+                )
+        );
 
         if (whichSideStream.anyMatch(whichSide -> AreaSide.INSIDE == whichSide)) {
-            activeRuleStream.forEachOrdered(
-                event -> whichSideCallback.accept(AreaSide.INSIDE, event));
+            whichSideCallback.accept(AreaSide.INSIDE, activeEventMap);
         } else if (whichSideStream.allMatch(whichSide -> AreaSide.OUTSIDE == whichSide)) {
-            activeRuleStream.forEachOrdered(
-                event -> whichSideCallback.accept(AreaSide.OUTSIDE, event));
+            whichSideCallback.accept(AreaSide.OUTSIDE, activeEventMap);
         } else {
-            activeRuleStream.forEachOrdered(
-                event -> whichSideCallback.accept(AreaSide.BOUNDARY, event));
+            whichSideCallback.accept(AreaSide.BOUNDARY, activeEventMap);
         }
     }
 }

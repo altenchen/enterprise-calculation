@@ -39,7 +39,7 @@ public final class Circle extends BaseArea implements Area, Cron {
     @NotNull
     @Contract(pure = true)
     @Override
-    public AreaSide computAreaSide(
+    public AreaSide computeAreaSide(
         @NotNull final Coordinate coordinate,
         final double inSideDistance,
         final double outsideDistance) {

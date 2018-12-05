@@ -50,25 +50,25 @@ final class CircleTest {
         {
             final double radius = 4 - 0.000001;
             final Circle circle = buildCircle(center, radius);
-            Assertions.assertEquals(AreaSide.OUTSIDE, circle.computAreaSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.OUTSIDE, circle.computeAreaSide(location, 0, distance));
         }
 
         {
             final double radius = 4;
             final Circle circle = buildCircle(center, radius);
-            Assertions.assertEquals(AreaSide.BOUNDARY, circle.computAreaSide(location, 0, distance));
+            Assertions.assertEquals(AreaSide.BOUNDARY, circle.computeAreaSide(location, 0, distance));
         }
 
         {
             final double radius = 6;
             final Circle circle = buildCircle(center, radius);
-            Assertions.assertEquals(AreaSide.BOUNDARY, circle.computAreaSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, circle.computeAreaSide(location, distance, 0));
         }
 
         {
             final double radius = 6 + 0.000001;
             final Circle circle = buildCircle(center, radius);
-            Assertions.assertEquals(AreaSide.INSIDE, circle.computAreaSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, circle.computeAreaSide(location, distance, 0));
         }
     }
 
@@ -82,41 +82,19 @@ final class CircleTest {
         final Coordinate location = center;
 
         {
+            final double distance = radius + 0.000001;
+            Assertions.assertEquals(AreaSide.BOUNDARY, circle.computeAreaSide(location, distance, 0));
+        }
+
+        {
             final double distance = radius;
-            Assertions.assertEquals(AreaSide.BOUNDARY, circle.computAreaSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.BOUNDARY, circle.computeAreaSide(location, distance, 0));
         }
 
         {
             final double distance = radius - 0.000001;
-            Assertions.assertEquals(AreaSide.INSIDE, circle.computAreaSide(location, distance, 0));
+            Assertions.assertEquals(AreaSide.INSIDE, circle.computeAreaSide(location, distance, 0));
         }
-
-
-    }
-
-    @DisplayName("测试时间范围")
-    @Test
-    void testActive() {
-        final Daily forenoon = new Daily(
-            TimeUnit.HOURS.toMillis(9),
-            TimeUnit.HOURS.toMillis(12));
-        final Daily afternoon = new Daily(
-            TimeUnit.HOURS.toMillis(13),
-            TimeUnit.HOURS.toMillis(18));
-        final Circle circle = buildCircle(ImmutableSet.of(forenoon, afternoon));
-
-        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(9) - 1));
-        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(9)));
-        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(9) + 1));
-        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(12) - 1));
-        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(12)));
-        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(12) + 1));
-        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(13) - 1));
-        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(13)));
-        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(13) + 1));
-        Assertions.assertTrue(circle.active(TimeUnit.HOURS.toMillis(18) - 1));
-        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(18)));
-        Assertions.assertFalse(circle.active(TimeUnit.HOURS.toMillis(18) + 1));
     }
 
     @Contract("_, _ -> new")
