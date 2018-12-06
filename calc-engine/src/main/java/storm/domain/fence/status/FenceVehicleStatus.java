@@ -36,7 +36,8 @@ public final class FenceVehicleStatus {
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
-    private static final String REDIS_PREFIX = "fence.vehicle.status.cache.";
+    private static final String FENCE_VEHICLE_STATUS_CACHE = "fence.vehicle.status.cache";
+    private static final String FENCE_EVENT_NOTICE_CACHE = "fence.event.notice.cache";
 
     @NotNull
     private final String fenceId;
@@ -48,7 +49,7 @@ public final class FenceVehicleStatus {
     private final DataToRedis redis;
 
     @NotNull
-    private final String redisKey;
+    private final String fenceVehicleRedisKey;
 
     public FenceVehicleStatus(
         @NotNull final String fenceId,
@@ -57,7 +58,7 @@ public final class FenceVehicleStatus {
 
         this.fenceId = fenceId;
         this.vehicleId = vehicleId;
-        this.redisKey = REDIS_PREFIX + fenceId + "." + vehicleId;
+        this.fenceVehicleRedisKey = fenceId + "." + vehicleId;
         this.redis = redis;
     }
 
@@ -86,31 +87,45 @@ public final class FenceVehicleStatus {
             );
     }
 
+    /**
+     * 从 redis 加载事件 noticeJson, 如果 redis 也没有, 则返回 null.
+     *
+     * @param eventId
+     * @param noticeType
+     * @return
+     */
     @Contract(pure = true)
     @Nullable
     private BaseNotice loadEventNotice(
         @NotNull final String eventId,
         @NotNull final Type noticeType) {
 
-        // TODO 许智杰: 从 redis 加载事件 noticeJson, 如果 redis 也没有, 则返回 null.
-        final String json = "{}";
-
+        String fenceEventNoticeKey = fenceId + "." + eventId;
+        String notice = redis.mapGet(DataToRedis.REDIS_DB_6, FENCE_EVENT_NOTICE_CACHE, fenceEventNoticeKey);
+        if (StringUtils.isEmpty(notice)) {
+            return null;
+        }
         return JSON_UTILS.fromJson(
-            json,
-            noticeType,
-            e -> {
-                LOG.warn("JSON反序列化[{}]到类型[{}]异常", json, noticeType, e);
-                return null;
-            });
+                notice,
+                noticeType,
+                e -> {
+                    LOG.warn("JSON反序列化[{}]到类型[{}]异常", notice, noticeType, e);
+                    return null;
+                });
     }
 
+    /**
+     * 将 noticeJson 持久化到 redis
+     *
+     * @param notice
+     */
     @Contract(pure = true)
     @NotNull
     private void saveEventNotice(@NotNull BaseNotice notice) {
-
         final String eventId = notice.eventId;
         final String json = JSON_UTILS.toJson(notice);
-        // TODO 许智杰: 将 noticeJson 持久化到 redis
+        String fenceEventNoticeKey = fenceId + "." + eventId;
+        redis.mapSet(DataToRedis.REDIS_DB_6, FENCE_EVENT_NOTICE_CACHE, fenceEventNoticeKey, json);
     }
 
     public void cleanStatus(
@@ -142,7 +157,7 @@ public final class FenceVehicleStatus {
     private AreaSide loadAreaSide() {
         if (null == cacheSide) {
             // cacheSide 如果为 null, 则从 redis 加载, 如果 redis 也没有, 则置为 AreaSide.UNKNOWN
-            String redisValue = redis.getString(DataToRedis.REDIS_DB_6, redisKey);
+            String redisValue = redis.mapGet(DataToRedis.REDIS_DB_6, FENCE_VEHICLE_STATUS_CACHE, fenceVehicleRedisKey);
             if (StringUtils.isEmpty(redisValue)) {
                 cacheSide = AreaSide.UNKNOWN;
             } else {
@@ -170,7 +185,7 @@ public final class FenceVehicleStatus {
         cacheSide = newSide;
 
         // 将 cacheSide 持久化到 redis
-        redis.setString(DataToRedis.REDIS_DB_6, redisKey, oldSide.name());
+        redis.mapSet(DataToRedis.REDIS_DB_6, FENCE_VEHICLE_STATUS_CACHE, fenceVehicleRedisKey, oldSide.name());
     }
 
     // endregion AreaSide
@@ -197,8 +212,7 @@ public final class FenceVehicleStatus {
         @NotNull final ImmutableMap<String, String> cache,
         @NotNull final Consumer<BaseNotice> noticeCallback) {
 
-        final Consumer<BaseNotice> noticeCallbackMiddleware =
-            noticeCallback.andThen(this::saveEventNotice);
+        final Consumer<BaseNotice> noticeCallbackMiddleware = noticeCallback.andThen(this::saveEventNotice);
 
         switch (whichSide) {
             case INSIDE: {

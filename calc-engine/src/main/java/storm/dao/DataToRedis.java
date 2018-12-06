@@ -18,7 +18,7 @@ import java.util.Set;
 /**
  * Redis 数据访问对象
  * 历史版本中有遗留的Redis存储格式
- *
+ * <p>
  * TODO: 通用抽象合并到 JedisPoolUtils
  *
  * @author xzp
@@ -173,7 +173,7 @@ public final class DataToRedis implements Serializable {
                 if (m.size() == 1) {
                     for (Map.Entry<String, String> entry : m.entrySet()) {
                         if (StringUtils.isEmpty(entry.getKey())
-                            || StringUtils.isEmpty(entry.getValue())) {
+                                || StringUtils.isEmpty(entry.getValue())) {
                             m = null;
                         }
                         break;
@@ -365,11 +365,12 @@ public final class DataToRedis implements Serializable {
 
     /**
      * 模糊查询key列表
+     *
      * @param db
      * @param keyPrefix
      * @return
      */
-    public Set<String> getKeys(int db, String keyPrefix){
+    public Set<String> getKeys(int db, String keyPrefix) {
         Jedis jedis = null;
         JedisPool jedisPool = JedisPoolUtils.getInstance().getJedisPool();
         try {
@@ -386,6 +387,55 @@ public final class DataToRedis implements Serializable {
 
         }
         return null;
+    }
+
+
+    public String mapGet(int db, String key, String field) {
+
+        return mapGet(db, key, field, JedisPoolUtils.getInstance().getJedisPool());
+    }
+
+    public String mapGet(int db, String key, String field, JedisPool jedisPool) {
+        Jedis jedis = null;
+        String result = null;
+        try {
+            jedis = jedisPool.getResource();
+            jedis.select(db);
+            result = jedis.hget(key, field);
+        } catch (JedisException e) {
+            LOG.error("hget异常:" + e.getMessage(), e);
+        } catch (Exception ex) {
+            LOG.error("hget异常:" + ex.getMessage(), ex);
+        } finally {
+            if (jedis != null) {
+                jedisPool.returnResourceObject(jedis);
+            }
+
+        }
+        return result;
+    }
+
+    public void mapSet(int db, String key, String field, String value) {
+
+        mapSet(db, key, field, value, JedisPoolUtils.getInstance().getJedisPool());
+    }
+
+    public void mapSet(int db, String key, String field, String value, JedisPool jedisPool) {
+        Jedis jedis = null;
+        try {
+            jedis = jedisPool.getResource();
+            jedis.select(db);
+            jedis.hset(key, field, value);
+        } catch (JedisException e) {
+            LOG.error("hset异常:" + e.getMessage(), e);
+        } catch (Exception ex) {
+            LOG.error("hset异常:" + ex.getMessage(), ex);
+        } finally {
+            if (jedis != null) {
+                jedisPool.returnResourceObject(jedis);
+            }
+
+        }
     }
 
 }

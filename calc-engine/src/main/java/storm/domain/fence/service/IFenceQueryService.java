@@ -35,4 +35,13 @@ public interface IFenceQueryService {
      */
     boolean existFenceEvent(String fenceId, String eventId);
 
+    /**
+     * 判断是否存在有效的电子围栏与车辆关联
+     *
+     * @param fenceId
+     * @param vehicleId
+     * @return
+     */
+    boolean existFenceVehicle(String fenceId, String vehicleId);
+
 }

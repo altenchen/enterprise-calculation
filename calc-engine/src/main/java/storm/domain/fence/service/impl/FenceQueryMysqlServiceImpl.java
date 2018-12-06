@@ -47,10 +47,15 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
      */
     private Map<String, ImmutableMap<String, Fence>> vehicleFenceRuleMap = new HashMap<>(0);
     /**
-     * 电子围栏与与规则(事件)映射关系
+     * 电子围栏与规则(事件)映射关系
      * <fenceId, [eventId, eventId, ...]>
      */
     private Map<String, Set<String>> fenceEventMap = new HashMap<>(0);
+    /**
+     * 电子围栏与车辆映射关系
+     * <fenceId, [vid, vid, ...]>
+     */
+    private Map<String, Set<String>> fenceVehicleMap = new HashMap<>(0);
 
     /**
      * 刷新电子围栏缓存
@@ -79,8 +84,12 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
     private void queryFenceRules() {
         String sql = ConfigUtils.getSysParam().getFenceSql();
         Map<String, ImmutableMap<String, Fence>> fences = SQL_UTILS.query(sql, resultSet -> {
-            //TODO 查询围栏规则
-            Map<String, ImmutableMap<String, Fence>> result = new HashMap<>(10);
+            //车辆与围栏映射关系 <vid, <fenceId, 围栏规则>>
+            Map<String, ImmutableMap<String, Fence>> vehicleFenceRuleMap = new HashMap<>(10);
+            //围栏与事件映射关系 <fenceId, [eventId, eventId, ...]>
+            Map<String, Set<String>> fenceEventMap = new HashMap<>(10);
+            //围栏与车辆映射关系 <fenceId, [vid, vid, ...]>
+            Map<String, Set<String>> fenceVehicleMap = new HashMap<>(0);
             String key = null;
 //            ImmutableMap<String, Fence> fenceList = new ArrayList<>(10);
             ImmutableMap.Builder<String, Fence> fenceList = new ImmutableMap.Builder<>();
@@ -115,7 +124,7 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
                     ImmutableMap<String, Fence> res = fenceList.build();
                     LOGGER.info("VID:{} 围栏规则有 SIZE:{}", key, res.size());
                     String mapKey = StringUtils.isEmpty(key) ? "ALL" : key;
-                    result.put(mapKey, res);
+                    vehicleFenceRuleMap.put(mapKey, res);
                     fenceList = new ImmutableMap.Builder<>();
                     key = vid;
                 }
@@ -132,17 +141,22 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
                 Fence fence = new Fence(fenceId, areas, events, cron);
                 fenceList.put(fenceId, fence);
 
+                //添加围栏与事件映射关系
                 fenceEventMap.getOrDefault(fenceId, new HashSet<>()).addAll(events.keySet());
+                //添加围栏与车辆映射关系
+                fenceVehicleMap.getOrDefault(fenceId, new HashSet<>()).add(vid);
             }
 
             ImmutableMap<String, Fence> res = fenceList.build();
             if (!res.isEmpty()) {
                 LOGGER.info("VID:{} 围栏规则有 SIZE:{}", key, res.size());
                 String mapKey = StringUtils.isEmpty(key) ? "ALL" : key;
-                result.put(mapKey, res);
+                vehicleFenceRuleMap.put(mapKey, res);
             }
 
-            return result;
+            this.fenceEventMap = fenceEventMap;
+            this.fenceVehicleMap = fenceVehicleMap;
+            return vehicleFenceRuleMap;
         });
         if (MapUtils.isEmpty(fences)) {
             LOGGER.info("查询不到围栏规则 SQL:{}", sql);
@@ -295,5 +309,10 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
     @Override
     public boolean existFenceEvent(String fenceId, String eventId) {
         return fenceEventMap.containsKey(fenceId) && fenceEventMap.get(fenceId).contains(eventId);
+    }
+
+    @Override
+    public boolean existFenceVehicle(String fenceId, String vehicleId) {
+        return fenceVehicleMap.containsKey(fenceId) && fenceVehicleMap.get(fenceId).contains(vehicleId);
     }
 }

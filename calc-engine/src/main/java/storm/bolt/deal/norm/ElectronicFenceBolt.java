@@ -405,9 +405,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
     private boolean existFenceVehicle(
         @NotNull final String fenceId,
         @NotNull final String vehicleId) {
-
-        // TODO 许智杰: 判断是否存在有效的电子围栏与车辆关联
-        return true;
+        return fenceQueryService.existFenceVehicle(fenceId, vehicleId);
     }
 
     /**
