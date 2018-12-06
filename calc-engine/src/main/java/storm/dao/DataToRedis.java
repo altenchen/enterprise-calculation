@@ -25,6 +25,57 @@ import java.util.Set;
  */
 public final class DataToRedis implements Serializable {
 
+
+    //region 数据库说明
+    /**
+     * 车辆鉴权信息缓存
+     */
+    public static final int REDIS_DB_0 = 0;
+    /**
+     * 实时状态信息缓存
+     */
+    public static final int REDIS_DB_1 = 1;
+    /**
+     * 租赁数据缓存
+     */
+    public static final int REDIS_DB_2 = 2;
+    /**
+     * 充电设施缓存
+     */
+    public static final int REDIS_DB_3 = 3;
+    /**
+     * 规约配置信息缓存、转发配置信息缓存
+     */
+    public static final int REDIS_DB_4 = 4;
+    /**
+     * 企业大屏计算统计结果-汇总结果
+     */
+    public static final int REDIS_DB_5 = 5;
+    /**
+     * 车辆缓存数据、告警通知数据
+     */
+    public static final int REDIS_DB_6 = 6;
+    public static final int REDIS_DB_7 = 7;
+    public static final int REDIS_DB_8 = 8;
+
+    /**
+     * 企业大屏计算统计结果-分类结果
+     */
+    public static final int REDIS_DB_9 = 9;
+    /**
+     * 省市区域信息、车辆信息变更状态、用户信息、用户车辆信息
+     */
+    public static final int REDIS_DB_10 = 10;
+    public static final int REDIS_DB_11 = 11;
+    public static final int REDIS_DB_12 = 12;
+    public static final int REDIS_DB_13 = 13;
+    public static final int REDIS_DB_14 = 14;
+    /**
+     * 企业大屏计算统计结果-缓存
+     */
+    public static final int REDIS_DB_15 = 15;
+    //endregion 数据库说明
+
     private static final long serialVersionUID = -3264877595057681946L;
 
     private static Logger LOG = LoggerFactory.getLogger(DataToRedis.class);

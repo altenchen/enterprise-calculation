@@ -17,9 +17,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.dao.DataToRedis;
 import storm.domain.fence.Fence;
 import storm.domain.fence.area.Coordinate;
 import storm.domain.fence.notice.BaseNotice;
+import storm.domain.fence.service.IFenceQueryService;
+import storm.domain.fence.service.impl.FenceQueryMysqlServiceImpl;
 import storm.domain.fence.status.FenceVehicleStatus;
 import storm.protocol.CommandType;
 import storm.stream.KafkaStream;
@@ -48,12 +51,19 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(ElectronicFenceBolt.class);
 
+    @NotNull
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
     /**
      * 经纬度坐标系中距离为1的两个坐标间近似距离93164米, 这里简化为1000000
      */
     private static final long COORDINATE_COEFFICIENT = 1000000;
+
+    @NotNull
+    private static final IFenceQueryService fenceQueryService = new FenceQueryMysqlServiceImpl();
+
+    @NotNull
+    private static final DataToRedis DATA_TO_REDIS = new DataToRedis();
 
     // region Component
 
@@ -108,7 +118,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
                 fid -> Maps.newHashMap())
             .computeIfAbsent(
                 vehicleId,
-                vid -> new FenceVehicleStatus(fenceId, vehicleId));
+                vid -> new FenceVehicleStatus(fenceId, vehicleId, DATA_TO_REDIS));
     }
 
     private transient long lastCleanStatusTime;
@@ -361,39 +371,57 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
         }
     }
 
+    /**
+     * 根据车辆ID查询电子围栏列表
+     *
+     * @param vehicleId 车辆ID
+     * @return
+     */
     @Contract(pure = true)
     @NotNull
-    private ImmutableMap<String, Fence> getVehicleFences(
-        @NotNull final String vehicleId) {
-
-        // TODO 许智杰: 替换为从数据库构建出来的缓存
-        return ImmutableMap.of();
+    private ImmutableMap<String, Fence> getVehicleFences(@NotNull final String vehicleId) {
+        return fenceQueryService.query(vehicleId);
     }
 
+    /**
+     * 判断是否存在有效的电子围栏
+     *
+     * @param fenceId 电子围栏ID
+     * @return
+     */
     @Contract(pure = true)
-    private boolean existFence(
-        @NotNull final String fenceId) {
-
-        // TODO 许智杰: 判断是否存在有效的电子围栏
-        return false;
+    private boolean existFence(@NotNull final String fenceId) {
+        return fenceQueryService.existFence(fenceId);
     }
 
+    /**
+     * 判断是否存在有效的电子围栏与车辆关联
+     *
+     * @param fenceId   电子围栏ID
+     * @param vehicleId 车辆ID
+     * @return
+     */
     @Contract(pure = true)
     private boolean existFenceVehicle(
         @NotNull final String fenceId,
         @NotNull final String vehicleId) {
 
         // TODO 许智杰: 判断是否存在有效的电子围栏与车辆关联
-        return false;
+        return true;
     }
 
+    /**
+     * 判断是否存在有效的电子围栏与规则关联
+     *
+     * @param fenceId 电子围栏ID
+     * @param eventId 事件(规则)ID
+     * @return
+     */
     @Contract(pure = true)
     private boolean existFenceEvent(
         @NotNull final String fenceId,
         @NotNull final String eventId) {
-
-        // TODO 许智杰: 判断是否存在有效的电子围栏与规则关联
-        return false;
+        return fenceQueryService.existFenceEvent(fenceId, eventId);
     }
 
     private void emitToKafka(

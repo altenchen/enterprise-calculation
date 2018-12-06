@@ -2,11 +2,13 @@ package storm.domain.fence.status;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.dao.DataToRedis;
 import storm.domain.fence.Fence;
 import storm.domain.fence.area.AreaSide;
 import storm.domain.fence.area.Coordinate;
@@ -34,18 +36,29 @@ public final class FenceVehicleStatus {
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
+    private static final String REDIS_PREFIX = "fence.vehicle.status.cache.";
+
     @NotNull
     private final String fenceId;
 
     @NotNull
     private final String vehicleId;
 
+    @NotNull
+    private final DataToRedis redis;
+
+    @NotNull
+    private final String redisKey;
+
     public FenceVehicleStatus(
         @NotNull final String fenceId,
-        @NotNull final String vehicleId) {
+        @NotNull final String vehicleId,
+        @NotNull DataToRedis redis) {
 
         this.fenceId = fenceId;
         this.vehicleId = vehicleId;
+        this.redisKey = REDIS_PREFIX + fenceId + "." + vehicleId;
+        this.redis = redis;
     }
 
     // region EventStatus
@@ -128,8 +141,17 @@ public final class FenceVehicleStatus {
     @NotNull
     private AreaSide loadAreaSide() {
         if (null == cacheSide) {
-            // TODO 许智杰: cacheSide 如果为 null, 则从 redis 加载, 如果 redis 也没有, 则置为 AreaSide.UNKNOWN
-            cacheSide = AreaSide.UNKNOWN;
+            // cacheSide 如果为 null, 则从 redis 加载, 如果 redis 也没有, 则置为 AreaSide.UNKNOWN
+            String redisValue = redis.getString(DataToRedis.REDIS_DB_6, redisKey);
+            if (StringUtils.isEmpty(redisValue)) {
+                cacheSide = AreaSide.UNKNOWN;
+            } else {
+                try {
+                    cacheSide = AreaSide.valueOf(redisValue);
+                } catch (IllegalArgumentException e) {
+                    cacheSide = AreaSide.UNKNOWN;
+                }
+            }
         }
         return cacheSide;
     }
@@ -147,7 +169,8 @@ public final class FenceVehicleStatus {
 
         cacheSide = newSide;
 
-        // TODO 许智杰: 将 cacheSide 持久化到 redis
+        // 将 cacheSide 持久化到 redis
+        redis.setString(DataToRedis.REDIS_DB_6, redisKey, oldSide.name());
     }
 
     // endregion AreaSide

@@ -19,6 +19,7 @@ import storm.domain.fence.event.DriveInside;
 import storm.domain.fence.event.DriveOutside;
 import storm.domain.fence.event.EventCron;
 import storm.domain.fence.service.IFenceQueryService;
+import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.SqlUtils;
 
@@ -42,9 +43,14 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
 
     /**
      * 车辆与围栏规则
-     * <vid, 围栏规则>
+     * <vid, <fenceId, 围栏规则>>
      */
-    private Map<String, List<Fence>> vehicleFenceRuleMap = new HashMap<>(0);
+    private Map<String, ImmutableMap<String, Fence>> vehicleFenceRuleMap = new HashMap<>(0);
+    /**
+     * 电子围栏与与规则(事件)映射关系
+     * <fenceId, [eventId, eventId, ...]>
+     */
+    private Map<String, Set<String>> fenceEventMap = new HashMap<>(0);
 
     /**
      * 刷新电子围栏缓存
@@ -72,11 +78,12 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
      */
     private void queryFenceRules() {
         String sql = ConfigUtils.getSysParam().getFenceSql();
-        Map<String, List<Fence>> fences = SQL_UTILS.query(sql, resultSet -> {
+        Map<String, ImmutableMap<String, Fence>> fences = SQL_UTILS.query(sql, resultSet -> {
             //TODO 查询围栏规则
-            Map<String, List<Fence>> result = new HashMap<>(10);
+            Map<String, ImmutableMap<String, Fence>> result = new HashMap<>(10);
             String key = null;
-            List<Fence> fenceList = new ArrayList<>(10);
+//            ImmutableMap<String, Fence> fenceList = new ArrayList<>(10);
+            ImmutableMap.Builder<String, Fence> fenceList = new ImmutableMap.Builder<>();
             while (resultSet.next()) {
                 //车辆VID
                 String vid = resultSet.getString("VID");
@@ -101,13 +108,15 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
                 //经纬度范围【1圆形时=半径;圆点， 2多边形时=每一个;的值为经纬度点】
                 String lonlatRange = resultSet.getString("LONLAT_RANGE");
 
+                //因为根据VID来排序的， 如果VID变了就把结果保存起来
                 if (key == null) {
                     key = vid;
                 } else if (!key.equals(vid)) {
-                    LOGGER.info("VID:{} 围栏规则有 SIZE:{}", key, fenceList.size());
+                    ImmutableMap<String, Fence> res = fenceList.build();
+                    LOGGER.info("VID:{} 围栏规则有 SIZE:{}", key, res.size());
                     String mapKey = StringUtils.isEmpty(key) ? "ALL" : key;
-                    result.put(mapKey, fenceList);
-                    fenceList = new ArrayList<>(10);
+                    result.put(mapKey, res);
+                    fenceList = new ImmutableMap.Builder<>();
                     key = vid;
                 }
 
@@ -121,13 +130,16 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
                 ImmutableList<Cron> cron = initFenceCron(periodType, week, startDate, endDate, startTime, endTime);
 
                 Fence fence = new Fence(fenceId, areas, events, cron);
-                fenceList.add(fence);
+                fenceList.put(fenceId, fence);
+
+                fenceEventMap.getOrDefault(fenceId, new HashSet<>()).addAll(events.keySet());
             }
 
-            if (!fenceList.isEmpty()) {
-                LOGGER.info("VID:{} 围栏规则有 SIZE:{}", key, fenceList.size());
+            ImmutableMap<String, Fence> res = fenceList.build();
+            if (!res.isEmpty()) {
+                LOGGER.info("VID:{} 围栏规则有 SIZE:{}", key, res.size());
                 String mapKey = StringUtils.isEmpty(key) ? "ALL" : key;
-                result.put(mapKey, fenceList);
+                result.put(mapKey, res);
             }
 
             return result;
@@ -148,20 +160,19 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
      */
     private ImmutableMap<String, EventCron> initFenceEvent(int ruleType) {
         ImmutableMap.Builder<String, EventCron> events = new ImmutableMap.Builder<>();
-        String eventId = ruleType + "";
         switch (ruleType) {
             case 1:
                 //驶离
-                events.put(eventId, new DriveInside(eventId, null));
+                events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
                 break;
             case 2:
                 //驶入
-                events.put(eventId, new DriveOutside(eventId, null));
+                events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 break;
             case 3:
                 //驶入驶离
-                events.put(eventId, new DriveInside(eventId, null));
-                events.put(eventId, new DriveOutside(eventId, null));
+                events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
+                events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
                 break;
             default:
                 break;
@@ -230,7 +241,7 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
      */
     private ImmutableMap<String, AreaCron> initFenceArea(int chartType, String lonlatRange) {
         ImmutableMap.Builder<String, AreaCron> areas = new ImmutableMap.Builder<>();
-        String areaId = chartType + "";
+        String areaId = SysDefine.FENCE_AREA_ID;
         //坐标值按逗号拆分后,length为2
         int coordinateSize = 2;
         switch (chartType) {
@@ -271,8 +282,18 @@ public class FenceQueryMysqlServiceImpl implements IFenceQueryService {
      * @return 车辆对应的围栏列表
      */
     @Override
-    public List<Fence> query(String vid) {
+    public ImmutableMap<String, Fence> query(String vid) {
         refresh();
         return vehicleFenceRuleMap.get(vid);
+    }
+
+    @Override
+    public boolean existFence(String fenceId) {
+        return fenceEventMap.containsKey(fenceId);
+    }
+
+    @Override
+    public boolean existFenceEvent(String fenceId, String eventId) {
+        return fenceEventMap.containsKey(fenceId) && fenceEventMap.get(fenceId).contains(eventId);
     }
 }

@@ -213,4 +213,11 @@ public final class SysDefine {
         public static final String JEDIS_POOL_MAX_WAIT_MILLISECOND = "redis.maxWait";
 
     }
+
+    /**
+     * 电子围栏规则ID-先定死，后面可能会改表结构，到时候这个ID需要从数据库读取
+     */
+    public static final String FENCE_INSIDE_EVENT_ID = "642acb18-70ae-4c8f-8970-222e61b1c6cd";
+    public static final String FENCE_OUTSIDE_EVENT_ID = "8aaf5a62-b541-478e-88e7-405a7727867e";
+    public static final String FENCE_AREA_ID = "f0837fa4-d94b-4954-aaf5-d5c9c6317f1b";
 }
