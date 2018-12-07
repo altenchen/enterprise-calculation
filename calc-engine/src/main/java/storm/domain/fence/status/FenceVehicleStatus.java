@@ -36,8 +36,8 @@ public final class FenceVehicleStatus {
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
-    private static final String FENCE_VEHICLE_STATUS_CACHE = "fence.vehicle.status.cache";
-    private static final String FENCE_EVENT_NOTICE_CACHE = "fence.event.notice.cache";
+    public static final String FENCE_VEHICLE_STATUS_CACHE = "fence.vehicle.status.cache";
+    public static final String FENCE_EVENT_NOTICE_CACHE = "fence.event.notice.cache";
 
     @NotNull
     private final String fenceId;

@@ -389,7 +389,6 @@ public final class DataToRedis implements Serializable {
         return null;
     }
 
-
     public String mapGet(int db, String key, String field) {
 
         return mapGet(db, key, field, JedisPoolUtils.getInstance().getJedisPool());
@@ -437,5 +436,29 @@ public final class DataToRedis implements Serializable {
 
         }
     }
+
+    public Set<String> hkeys(int db, String key) {
+        return hkeys(db, key, JedisPoolUtils.getInstance().getJedisPool());
+    }
+
+    public Set<String> hkeys(int db, String key, JedisPool jedisPool) {
+        Jedis jedis = null;
+        try {
+            jedis = jedisPool.getResource();
+            jedis.select(db);
+            return jedis.hkeys(key);
+        } catch (JedisException e) {
+            LOG.error("hget异常:" + e.getMessage(), e);
+        } catch (Exception ex) {
+            LOG.error("hget异常:" + ex.getMessage(), ex);
+        } finally {
+            if (jedis != null) {
+                jedisPool.returnResourceObject(jedis);
+            }
+
+        }
+        return null;
+    }
+
 
 }

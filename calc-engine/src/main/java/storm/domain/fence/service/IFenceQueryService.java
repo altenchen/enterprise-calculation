@@ -1,7 +1,11 @@
 package storm.domain.fence.service;
 
 import com.google.common.collect.ImmutableMap;
+import storm.dao.DataToRedis;
 import storm.domain.fence.Fence;
+
+import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * 查询电子围栏接口
@@ -43,5 +47,11 @@ public interface IFenceQueryService {
      * @return
      */
     boolean existFenceVehicle(String fenceId, String vehicleId);
+
+    /**
+     * 数据检查,删除redis上的脏数据
+     * @param redis
+     */
+    void dataCheck(DataToRedis redis);
 
 }

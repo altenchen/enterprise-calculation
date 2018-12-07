@@ -183,12 +183,14 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
         if (currentTimeMillis - lastCleanStatusTime > TimeUnit.MINUTES.toMillis(1)) {
             lastCleanStatusTime = currentTimeMillis;
             cleanStatus(input);
+            fenceQueryService.dataCheck(DATA_TO_REDIS);
         }
     }
 
     private void cleanStatus(
         @NotNull final Tuple input) {
 
+        //清理内存中的状态
         fenceVehicleStatus.entrySet().removeIf(fenceEntry -> {
 
             String fenceId = fenceEntry.getKey();
@@ -211,6 +213,9 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
             // 清理无效的围栏
             return !existFence(fenceId);
         });
+
+        //清理redis中的状态
+        fenceQueryService.dataCheck(DATA_TO_REDIS);
     }
 
     private void executeFromDataCacheStream(
