@@ -43,6 +43,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
     void dataQuery(DataInitCallback dataInitCallback) {
         //车辆与围栏映射关系 <vid, <fenceId, 围栏规则>>
         Map<String, ImmutableMap<String, Fence>> vehicleFenceRule = new HashMap<>(10);
+        Map<String, Map<String, Fence>> vehicleFenceRuleTemp = new HashMap<>(10);
         //围栏与事件映射关系 <fenceId, [eventId, eventId, ...]>
         Map<String, Set<String>> fenceEvent = new HashMap<>(10);
         //围栏与车辆映射关系 <fenceId, [vid, vid, ...]>
@@ -50,9 +51,6 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
 
         String sql = ConfigUtils.getSysParam().getFenceSql();
         SQL_UTILS.query(sql, resultSet -> {
-            String key = null;
-//            ImmutableMap<String, Fence> fenceList = new ArrayList<>(10);
-            ImmutableMap.Builder<String, Fence> fenceList = new ImmutableMap.Builder<>();
             while (resultSet.next()) {
                 //车辆VID
                 String vid = resultSet.getString("VID");
@@ -77,18 +75,6 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 //经纬度范围【1圆形时=半径;圆点， 2多边形时=每一个;的值为经纬度点】
                 String lonlatRange = resultSet.getString("LONLAT_RANGE");
 
-                //因为根据VID来排序的， 如果VID变了就把结果保存起来
-                if (key == null) {
-                    key = vid;
-                } else if (!key.equals(vid)) {
-                    ImmutableMap<String, Fence> res = fenceList.build();
-                    LOGGER.info("VID:{} 围栏规则有 SIZE:{}", key, res.size());
-                    String mapKey = StringUtils.isEmpty(key) ? "ALL" : key;
-                    vehicleFenceRule.put(mapKey, res);
-                    fenceList = new ImmutableMap.Builder<>();
-                    key = vid;
-                }
-
                 //初始化电子围栏区域
                 ImmutableMap<String, AreaCron> areas = initFenceArea(chartType, lonlatRange);
 
@@ -99,7 +85,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 ImmutableList<Cron> cron = initFenceCron(periodType, week, startDate, endDate, startTime, endTime);
 
                 Fence fence = new Fence(fenceId, areas, events, cron);
-                fenceList.put(fenceId, fence);
+                vehicleFenceRuleTemp.getOrDefault(vid, new HashMap<>()).put(fenceId, fence);
 
                 //添加围栏与事件映射关系
                 fenceEvent.getOrDefault(fenceId, new HashSet<>()).addAll(events.keySet());
@@ -107,12 +93,11 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 fenceVehicle.getOrDefault(fenceId, new HashSet<>()).add(vid);
             }
 
-            ImmutableMap<String, Fence> res = fenceList.build();
-            if (!res.isEmpty()) {
-                LOGGER.info("VID:{} 围栏规则有 SIZE:{}", key, res.size());
-                String mapKey = StringUtils.isEmpty(key) ? "ALL" : key;
-                vehicleFenceRuleMap.put(mapKey, res);
-            }
+            vehicleFenceRuleTemp.entrySet().forEach(entry -> {
+                ImmutableMap<String, Fence> value = ImmutableMap.copyOf(entry.getValue());
+                vehicleFenceRule.put(entry.getKey(), value);
+            });
+
             return null;
         });
         if (MapUtils.isEmpty(vehicleFenceRule)) {

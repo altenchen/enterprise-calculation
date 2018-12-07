@@ -42,14 +42,15 @@ public interface IFenceQueryService {
     /**
      * 判断是否存在有效的电子围栏与车辆关联
      *
-     * @param fenceId
-     * @param vehicleId
+     * @param fenceId   围栏ID
+     * @param vehicleId 车辆ID
      * @return
      */
     boolean existFenceVehicle(String fenceId, String vehicleId);
 
     /**
      * 数据检查,删除redis上的脏数据
+     *
      * @param redis
      */
     void dataCheck(DataToRedis redis);
