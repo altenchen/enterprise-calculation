@@ -16,6 +16,7 @@ import storm.domain.fence.event.Event;
 import storm.domain.fence.event.EventCron;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -88,12 +89,13 @@ public final class Fence extends BaseCron implements Cron {
         }
 
         // 计算定位坐标与当前激活的区域的关系集合
-        final Stream<AreaSide> whichSideStream = areaMap
+        final Set<AreaSide> whichSideStream = areaMap
             .values()
             .parallelStream()
             .filter(area -> area.active(time))
             .map(area -> area.computeAreaSide(coordinate, inSideDistance, outsideDistance))
-            .distinct();
+            .distinct()
+            .collect(Collectors.toSet());
 
         // 当前激活的事件集合
         final ImmutableMap<String, Event> activeEventMap = ImmutableMap.copyOf(
@@ -108,12 +110,14 @@ public final class Fence extends BaseCron implements Cron {
                 )
         );
 
-        if (whichSideStream.anyMatch(whichSide -> AreaSide.INSIDE == whichSide)) {
+        if (whichSideStream.contains(AreaSide.INSIDE)) {
             whichSideCallback.accept(AreaSide.INSIDE, activeEventMap);
-        } else if (whichSideStream.allMatch(whichSide -> AreaSide.OUTSIDE == whichSide)) {
+        } else if (whichSideStream.contains(AreaSide.BOUNDARY)) {
+            whichSideCallback.accept(AreaSide.BOUNDARY, activeEventMap);
+        } else if (whichSideStream.contains(AreaSide.OUTSIDE)) {
             whichSideCallback.accept(AreaSide.OUTSIDE, activeEventMap);
         } else {
-            whichSideCallback.accept(AreaSide.BOUNDARY, activeEventMap);
+            LOG.warn("[{}]超出预期的结果, 坐标[{}]", fenceId, coordinate);
         }
     }
 }

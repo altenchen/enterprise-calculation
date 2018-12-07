@@ -1,5 +1,7 @@
 package storm.domain.fence.cron;
 
+import org.jetbrains.annotations.Contract;
+
 /**
  * 激活计划
  * @author: xzp
@@ -7,8 +9,6 @@ package storm.domain.fence.cron;
  * @description:
  */
 public interface Cron {
-
-    Cron DEFAULT = new Cron() {};
 
     /**
      * 判断给定的时间点是否处于激活的时间范围

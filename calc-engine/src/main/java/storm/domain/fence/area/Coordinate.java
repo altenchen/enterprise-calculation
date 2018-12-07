@@ -1,5 +1,8 @@
 package storm.domain.fence.area;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 /**
  * 坐标
  * @author: xzp
@@ -21,6 +24,13 @@ public final class Coordinate {
     public Coordinate(double longitude, double latitude) {
         this.longitude = longitude;
         this.latitude = latitude;
+    }
+
+    @NotNull
+    @Contract(pure = true)
+    @Override
+    public String toString() {
+        return "(" + longitude + "," + latitude + ")";
     }
 }
                                                   

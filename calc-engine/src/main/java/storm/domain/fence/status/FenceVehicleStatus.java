@@ -232,7 +232,7 @@ public final class FenceVehicleStatus {
                 activeEventMap
                     .values()
                     .forEach(event ->
-                        ensureStatus(event).gotoOutsideEvent(
+                        ensureStatus(event).gotoInsideEvent(
                             platformReceiveTime,
                             coordinate,
                             fence,
@@ -282,7 +282,7 @@ public final class FenceVehicleStatus {
                 activeEventMap
                     .values()
                     .forEach(event ->
-                        ensureStatus(event).gotoInsideEvent(
+                        ensureStatus(event).gotoOutsideEvent(
                             platformReceiveTime,
                             coordinate,
                             fence,

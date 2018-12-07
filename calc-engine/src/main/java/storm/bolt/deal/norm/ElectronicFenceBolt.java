@@ -18,9 +18,9 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.Fence;
+import storm.domain.fence.area.Coordinate;
 import storm.domain.fence.notice.BaseNotice;
 import storm.domain.fence.status.FenceVehicleStatus;
-import storm.domain.fence.area.Coordinate;
 import storm.protocol.CommandType;
 import storm.stream.KafkaStream;
 import storm.stream.StreamReceiverFilter;
@@ -282,35 +282,37 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
         if (!NumberUtils.isDigits(currentLongitudeString)) {
             return null;
         }
-        final double currentLongitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
+        final double currentLongitude = NumberUtils.toInt(currentLongitudeString) / DataKey.ORIENTATION_PRECISION;
         final String currentLatitudeString = data.get(DataKey._2503_LATITUDE);
         if (!NumberUtils.isDigits(currentLatitudeString)) {
             return null;
         }
-        final double currentLatitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
+        final double currentLatitude = NumberUtils.toInt(currentLatitudeString) / DataKey.ORIENTATION_PRECISION;
 
         // endregion 当前定位
+
+        final Coordinate coordinate = new Coordinate(currentLongitude, currentLatitude);
 
         // region 缓存定位
 
         final String cacheOrientationString = cache.get(DataKey._2501_ORIENTATION);
         if (!NumberUtils.isDigits(cacheOrientationString)) {
-            return null;
+            return coordinate;
         }
-        final int cacheOrientation = NumberUtils.toInt(currentOrientationString);
+        final int cacheOrientation = NumberUtils.toInt(cacheOrientationString);
+        if (!DataUtils.isOrientationUseful(cacheOrientation)) {
+            return coordinate;
+        }
         final String cacheLongitudeString = cache.get(DataKey._2502_LONGITUDE);
         if (!NumberUtils.isDigits(cacheLongitudeString)) {
-            return null;
+            return coordinate;
         }
-        if (!DataUtils.isOrientationUseful(cacheOrientation)) {
-            return null;
-        }
-        final double cacheLongitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
+        final double cacheLongitude = NumberUtils.toInt(cacheLongitudeString) / DataKey.ORIENTATION_PRECISION;
         final String cacheLatitudeString = cache.get(DataKey._2503_LATITUDE);
         if (!NumberUtils.isDigits(cacheLatitudeString)) {
-            return null;
+            return coordinate;
         }
-        final double cacheLatitude = NumberUtils.toInt(currentOrientationString) / DataKey.ORIENTATION_PRECISION;
+        final double cacheLatitude = NumberUtils.toInt(cacheLatitudeString) / DataKey.ORIENTATION_PRECISION;
 
         // endregion 缓存定位
 
@@ -327,9 +329,9 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
                 cacheLongitude,
                 cacheLatitude);
             return null;
+        } else {
+            return coordinate;
         }
-
-        return new Coordinate(currentLongitude, currentLatitude);
     }
 
     @Nullable

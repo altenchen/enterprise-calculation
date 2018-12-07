@@ -59,6 +59,13 @@ final class BaseCronTest {
         Assertions.assertFalse(cron.active(TimeUnit.HOURS.toMillis(18) + 1));
     }
 
+    @DisplayName("测试空时间")
+    @Test
+    void testEmpty() {
+        Assertions.assertTrue(new BaseCron(null){}.active(TimeUnit.HOURS.toMillis(6)));
+        Assertions.assertTrue(new BaseCron(ImmutableSet.of()){}.active(TimeUnit.HOURS.toMillis(6)));
+    }
+
     @SuppressWarnings("unused")
     @AfterEach
     private void afterEach() {
