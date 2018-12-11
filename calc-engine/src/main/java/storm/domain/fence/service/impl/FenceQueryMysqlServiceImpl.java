@@ -2,7 +2,6 @@ package storm.domain.fence.service.impl;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,19 +40,76 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      */
     @Override
     void dataQuery(DataInitCallback dataInitCallback) {
+        long start = System.currentTimeMillis();
+        LOGGER.info("初始化车辆围栏缓存");
         //车辆与围栏映射关系 <vid, <fenceId, 围栏规则>>
         Map<String, ImmutableMap<String, Fence>> vehicleFenceRule = new HashMap<>(10);
-        Map<String, Map<String, Fence>> vehicleFenceRuleTemp = new HashMap<>(10);
+        Map<String, ImmutableMap.Builder<String, Fence>> vehicleFenceRuleTemp = new HashMap<>(10);
         //围栏与事件映射关系 <fenceId, [eventId, eventId, ...]>
         Map<String, Set<String>> fenceEvent = new HashMap<>(10);
         //围栏与车辆映射关系 <fenceId, [vid, vid, ...]>
         Map<String, Set<String>> fenceVehicle = new HashMap<>(0);
 
-        String sql = ConfigUtils.getSysParam().getFenceSql();
-        SQL_UTILS.query(sql, resultSet -> {
+        //获取所有电子围栏数据
+        List<Fence> fences = queryFences(fenceEvent);
+
+        //查询电子围栏与车辆关联
+        List<FenceVehicle> relations = queryFenceVehicleRelations();
+
+        //生成围栏与车辆关系
+        fences.forEach(fence -> {
+            relations.forEach(relation -> {
+                if (!fence.getFenceId().equals(relation.getFenceId())) {
+                    return;
+                }
+                vehicleFenceRuleTemp.getOrDefault(relation.getVid(), new ImmutableMap.Builder<>()).put(fence.getFenceId(), fence);
+                fenceVehicle.getOrDefault(fence.getFenceId(), new HashSet<>()).add(relation.getVid());
+            });
+        });
+        //转成ImmutableMap
+        vehicleFenceRuleTemp.forEach((key, value) -> {
+            vehicleFenceRule.put(key, value.build());
+        });
+
+        //完成初始化
+        dataInitCallback.finishInit(vehicleFenceRule, fenceEvent, fenceVehicle);
+        LOGGER.info("初始化车辆围栏缓存 耗时: {} ms. 关联围栏的车辆数: {}. 围栏数: {}", System.currentTimeMillis() - start, vehicleFenceRule.size(), fences.size());
+    }
+
+    /**
+     * 查询电子围栏与车辆关联
+     *
+     * @return
+     */
+    private List<FenceVehicle> queryFenceVehicleRelations() {
+        long start = System.currentTimeMillis();
+        LOGGER.info("查询电子围栏与车辆关联");
+        String sql = ConfigUtils.getSysParam().getFenceVehicleSql();
+        List<FenceVehicle> result = SQL_UTILS.query(sql, resultSet -> {
+            List<FenceVehicle> relations = new ArrayList<>();
             while (resultSet.next()) {
-                //车辆VID
-                String vid = resultSet.getString("VID");
+                relations.add(new FenceVehicle(resultSet.getString("VID"), resultSet.getString("FENCE_ID")));
+            }
+            return relations;
+        });
+
+        LOGGER.info("查询电子围栏与车辆关联 耗时: {} ms", System.currentTimeMillis() - start);
+        return result;
+    }
+
+    /**
+     * 查询电子围栏规则
+     *
+     * @param fenceEvent
+     * @return
+     */
+    private List<Fence> queryFences(final Map<String, Set<String>> fenceEvent) {
+        long start = System.currentTimeMillis();
+        LOGGER.info("查询电子围栏规则");
+        String sql = ConfigUtils.getSysParam().getFenceSql();
+        List<Fence> result = SQL_UTILS.query(sql, resultSet -> {
+            List<Fence> fences = new ArrayList<>();
+            while (resultSet.next()) {
                 //围栏ID
                 String fenceId = resultSet.getString("FENCE_ID");
                 //规则类型1、驶离；2、驶入
@@ -79,56 +135,50 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 ImmutableMap<String, AreaCron> areas = initFenceArea(chartType, lonlatRange);
 
                 //初始化规则列表
-                ImmutableMap<String, EventCron> events = initFenceEvent(ruleType);
+                ImmutableMap<String, EventCron> events = initFenceEvent(fenceId, fenceEvent, ruleType);
 
                 //初始化执行计划
                 ImmutableList<Cron> cron = initFenceCron(periodType, week, startDate, endDate, startTime, endTime);
 
                 Fence fence = new Fence(fenceId, areas, events, cron);
-                vehicleFenceRuleTemp.getOrDefault(vid, new HashMap<>()).put(fenceId, fence);
-
-                //添加围栏与事件映射关系
-                fenceEvent.getOrDefault(fenceId, new HashSet<>()).addAll(events.keySet());
-                //添加围栏与车辆映射关系
-                fenceVehicle.getOrDefault(fenceId, new HashSet<>()).add(vid);
+                fences.add(fence);
             }
-
-            vehicleFenceRuleTemp.entrySet().forEach(entry -> {
-                ImmutableMap<String, Fence> value = ImmutableMap.copyOf(entry.getValue());
-                vehicleFenceRule.put(entry.getKey(), value);
-            });
-
-            return null;
+            return fences;
         });
-        if (MapUtils.isEmpty(vehicleFenceRule)) {
-            LOGGER.info("查询不到围栏规则 SQL:{}", sql);
-        }
-
-        //完成初始化
-        dataInitCallback.finishInit(vehicleFenceRule, fenceEvent, fenceVehicle);
+        LOGGER.info("查询电子围栏规则 耗时: {} ms", System.currentTimeMillis() - start);
+        return result;
     }
 
     /**
      * 初始化电子围栏事件
      *
-     * @param ruleType 1、驶离；2、驶入；3、驶入驶离
+     * @param fenceId
+     * @param fenceEvent
+     * @param ruleType   1、驶离；2、驶入；3、驶入驶离
      * @return 电子围栏事件
      */
-    private ImmutableMap<String, EventCron> initFenceEvent(int ruleType) {
+    private ImmutableMap<String, EventCron> initFenceEvent(final String fenceId, final Map<String, Set<String>> fenceEvent, int ruleType) {
         ImmutableMap.Builder<String, EventCron> events = new ImmutableMap.Builder<>();
         switch (ruleType) {
             case 1:
                 //驶离
                 events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
+                //生成围栏与事件关系
+                fenceEvent.getOrDefault(fenceId, new HashSet<>()).add(SysDefine.FENCE_OUTSIDE_EVENT_ID);
                 break;
             case 2:
                 //驶入
                 events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
+                //生成围栏与事件关系
+                fenceEvent.getOrDefault(fenceId, new HashSet<>()).add(SysDefine.FENCE_INSIDE_EVENT_ID);
                 break;
             case 3:
                 //驶入驶离
                 events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
+                //生成围栏与事件关系
+                fenceEvent.getOrDefault(fenceId, new HashSet<>()).add(SysDefine.FENCE_OUTSIDE_EVENT_ID);
+                fenceEvent.getOrDefault(fenceId, new HashSet<>()).add(SysDefine.FENCE_INSIDE_EVENT_ID);
                 break;
             default:
                 break;
@@ -229,6 +279,27 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 break;
         }
         return areas.build();
+    }
+
+    /**
+     * 电子围栏与车辆关联表
+     */
+    private static class FenceVehicle {
+        private String vid;
+        private String fenceId;
+
+        public FenceVehicle(final String vid, final String fenceId) {
+            this.vid = vid;
+            this.fenceId = fenceId;
+        }
+
+        public String getVid() {
+            return vid;
+        }
+
+        public String getFenceId() {
+            return fenceId;
+        }
     }
 
 }

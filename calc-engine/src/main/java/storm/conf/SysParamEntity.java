@@ -22,13 +22,15 @@ public class SysParamEntity {
      * 电子围栏
      */
     private String fenceSql = new StringBuilder()
-            .append(" SELECT VEH.VEH_ID AS VID, SEF.ID AS FENCE_ID, SEF.RULE_TYPE, SEF.PERIOD_TYPE, SEF.START_DATE, SEF.END_DATE, SEF.WEEK, SEF.START_TIME, SEF.END_TIME, SEF.CHART_TYPE, SEF.LONLAT_RANGE ")
-            .append(" FROM SYS_ELECTRONIC_FENCE SEF, SYS_FENCE_VEH_LK VEH ")
-            .append(" WHERE SEF.ID = VEH.ELECTRONIC_FENCE_ID ")
-            .append(" AND SEF.STATUS_FLAG = 1 ")
-            .append(" AND SEF.RULE_STATUS = 1 ")
-            .append(" ORDER BY VEH.VEH_ID ")
-            .toString();
+        .append(" SELECT SEF.ID AS FENCE_ID, SEF.RULE_TYPE, SEF.PERIOD_TYPE, SEF.START_DATE, SEF.END_DATE, SEF.WEEK, SEF.START_TIME, SEF.END_TIME, SEF.CHART_TYPE, SEF.LONLAT_RANGE ")
+        .append(" FROM SYS_ELECTRONIC_FENCE SEF ")
+        .append(" WHERE SEF.STATUS_FLAG = 1 ")
+        .append(" AND SEF.RULE_STATUS = 1 ")
+        .toString();
+    /**
+     * 电子围栏与车辆关联
+     */
+    private String fenceVehicleSql = "SELECT LK.ELECTRONIC_FENCE_ID AS FENCE_ID, LK.VEH_ID AS VID FROM SYS_FENCE_VEH_LK LK";
     /**
      * 预警规则(旧)
      */
@@ -52,7 +54,7 @@ public class SysParamEntity {
         return chargeCarTypeId;
     }
 
-    public void setChargeCarTypeId(String chargeCarTypeId) {
+    public void setChargeCarTypeId(final String chargeCarTypeId) {
         this.chargeCarTypeId = chargeCarTypeId;
     }
 
@@ -60,7 +62,7 @@ public class SysParamEntity {
         return alarmCodeSql;
     }
 
-    public void setAlarmCodeSql(String alarmCodeSql) {
+    public void setAlarmCodeSql(final String alarmCodeSql) {
         this.alarmCodeSql = alarmCodeSql;
     }
 
@@ -68,7 +70,7 @@ public class SysParamEntity {
         return alarmCodeBitSql;
     }
 
-    public void setAlarmCodeBitSql(String alarmCodeBitSql) {
+    public void setAlarmCodeBitSql(final String alarmCodeBitSql) {
         this.alarmCodeBitSql = alarmCodeBitSql;
     }
 
@@ -76,7 +78,7 @@ public class SysParamEntity {
         return vehModelSql;
     }
 
-    public void setVehModelSql(String vehModelSql) {
+    public void setVehModelSql(final String vehModelSql) {
         this.vehModelSql = vehModelSql;
     }
 
@@ -84,15 +86,23 @@ public class SysParamEntity {
         return fenceSql;
     }
 
-    public void setFenceSql(String fenceSql) {
+    public void setFenceSql(final String fenceSql) {
         this.fenceSql = fenceSql;
+    }
+
+    public String getFenceVehicleSql() {
+        return fenceVehicleSql;
+    }
+
+    public void setFenceVehicleSql(final String fenceVehicleSql) {
+        this.fenceVehicleSql = fenceVehicleSql;
     }
 
     public String getEarlyWarningSql() {
         return earlyWarningSql;
     }
 
-    public void setEarlyWarningSql(String earlyWarningSql) {
+    public void setEarlyWarningSql(final String earlyWarningSql) {
         this.earlyWarningSql = earlyWarningSql;
     }
 
@@ -100,7 +110,7 @@ public class SysParamEntity {
         return itemCoefOffsetSql;
     }
 
-    public void setItemCoefOffsetSql(String itemCoefOffsetSql) {
+    public void setItemCoefOffsetSql(final String itemCoefOffsetSql) {
         this.itemCoefOffsetSql = itemCoefOffsetSql;
     }
 
@@ -108,7 +118,7 @@ public class SysParamEntity {
         return alarmRuleSql;
     }
 
-    public void setAlarmRuleSql(String alarmRuleSql) {
+    public void setAlarmRuleSql(final String alarmRuleSql) {
         this.alarmRuleSql = alarmRuleSql;
     }
 
@@ -116,7 +126,7 @@ public class SysParamEntity {
         return dataOffsetCoefficientSql;
     }
 
-    public void setDataOffsetCoefficientSql(String dataOffsetCoefficientSql) {
+    public void setDataOffsetCoefficientSql(final String dataOffsetCoefficientSql) {
         this.dataOffsetCoefficientSql = dataOffsetCoefficientSql;
     }
 
@@ -124,7 +134,7 @@ public class SysParamEntity {
         return vehicleIdSql;
     }
 
-    public void setVehicleIdSql(String vehicleIdSql) {
+    public void setVehicleIdSql(final String vehicleIdSql) {
         this.vehicleIdSql = vehicleIdSql;
     }
 }
