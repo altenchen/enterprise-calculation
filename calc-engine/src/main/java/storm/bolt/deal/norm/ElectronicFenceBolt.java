@@ -50,6 +50,11 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
+    /**
+     * 经纬度坐标系中距离为1的两个坐标间近似距离93164米, 这里简化为1000000
+     */
+    private static final long COORDINATE_COEFFICIENT = 1000000;
+
     // region Component
 
     @NotNull
@@ -215,9 +220,9 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
             return;
         }
 
-        final double maxDistance = ConfigUtils.getSysDefine().getFenceCoordinateDistanceMaxMeter();
-        final double insideDistance = ConfigUtils.getSysDefine().getFenceShapeBufferInsideMeter();
-        final double outsideDistance = ConfigUtils.getSysDefine().getFenceShapeBufferOutsideMeter();
+        final double maxDistance = ConfigUtils.getSysDefine().getFenceCoordinateDistanceMaxMeter() / COORDINATE_COEFFICIENT;
+        final double insideDistance = ConfigUtils.getSysDefine().getFenceShapeBufferInsideMeter() / COORDINATE_COEFFICIENT;
+        final double outsideDistance = ConfigUtils.getSysDefine().getFenceShapeBufferOutsideMeter() / COORDINATE_COEFFICIENT;
 
         try {
             Optional.ofNullable(parsePlatformReceiveTime(vehicleId, data, cache))
@@ -323,7 +328,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
             LOG.warn(
                 "VID[{}]两帧数据间定位距离超过{}米, [{},{}]<->[{},{}]",
                 vehicleId,
-                maxDistance,
+                maxDistance * COORDINATE_COEFFICIENT,
                 currentLongitude,
                 currentLatitude,
                 cacheLongitude,
