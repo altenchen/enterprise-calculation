@@ -1,4 +1,4 @@
-package storm.domain.fence.data;
+package storm.domain.fence.service.impl;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -18,7 +18,6 @@ import storm.domain.fence.event.DriveInside;
 import storm.domain.fence.event.DriveOutside;
 import storm.domain.fence.event.EventCron;
 import storm.domain.fence.service.IFenceQueryService;
-import storm.domain.fence.service.impl.AbstractFenceQuery;
 import storm.system.SysDefine;
 
 import java.text.ParseException;
@@ -47,16 +46,12 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
     private List<String> fenceIds = new ArrayList<String>(6) {{
         add("0bc51681-5de5-42d6-af2e-62c56424d395");
         add("8c451488-a6a2-496f-8f92-584db1bb681f");
-        add("a7d1ac74-a6ca-4664-b6d9-fcab6d0c5c63");
-        add("13aa3ca0-d517-471c-94bc-272fe20c655b");
-        add("5bdbd028-6927-4fc5-af6e-1c48150090ba");
     }};
     /**
      * 车辆VID - 写死, 测试的时候修改成自己的车辆VID即可
      */
     private List<String> vids = new ArrayList<String>(6) {{
-        add("9ebb93af-faf9-46c3-a637-9c46b0e61256");
-        add("68145d1c091f44eebff42263bd16ac02");
+        add("852a6923-ad9d-475d-b76d-9be46d901131");
     }};
 
     public FenceQueryFromLocalServiceImpl() {
@@ -124,26 +119,22 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
         fenceIds.forEach(fenceId -> {
             ImmutableMap<String, EventCron> events;
             ImmutableList<Cron> crons = null;
-            if (index[0] % 3 == 0) {
-                events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
+            if (index[0] == 0) {
+                events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
                 //单次执行
                 crons = ImmutableList.of(new DailyOnce(prevDate.getTime(), nextDate.getTime(), startTime.getTime(), endTime.getTime()));
-            } else if (index[0] % 2 == 0) {
-                events = ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
+            } else {
+                events = ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 //周一， 周三， 周五执行
                 byte weekFlag = 1 << (1 % 7) | 1 << (3 % 7) | 1 << (5 % 7);
                 crons = ImmutableList.of(new WeeklyCycle(weekFlag, startTime.getTime(), endTime.getTime()));
-            } else {
-                events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null), SysDefine.FENCE_INSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
-                //每天执行
-                crons = ImmutableList.of(new DailyCycle(startTime.getTime(), endTime.getTime()));
             }
 
             Fence fence = null;
             //港湾大道 - 珠海市社会保险基金管理中心高新办事处
-            if (index[0] % 2 == 0) {
+            if (index[0] == 0) {
                 //圆形围栏
-                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(1, "313;113.596446,22.365538")), events, crons);
+                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(1, "1320;113.59724,22.36536")), events, crons);
             } else {
                 //多边形围栏
                 fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(2, "113.596285,22.368336;113.600019,22.368098;113.602079,22.364884;113.600512,22.363534;113.597551,22.362244;113.592809,22.362264;113.59356,22.368555")), events, crons);
