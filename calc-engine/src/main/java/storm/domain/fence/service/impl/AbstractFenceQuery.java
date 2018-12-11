@@ -154,7 +154,7 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
      *
      * @param callback 将结果通过回调初始化
      */
-    abstract void dataQuery(DataInitCallback callback);
+    protected abstract void dataQuery(DataInitCallback callback);
 
     protected interface DataInitCallback {
         /**
