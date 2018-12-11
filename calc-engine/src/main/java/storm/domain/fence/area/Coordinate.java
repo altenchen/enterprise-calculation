@@ -32,5 +32,22 @@ public final class Coordinate {
     public String toString() {
         return "(" + longitude + "," + latitude + ")";
     }
+
+    /**
+     * 比较两个坐标点是否相等
+     * @param obj
+     * @return
+     */
+    @Override
+    public boolean equals(final Object obj) {
+        if( this == obj ){
+            return true;
+        }
+        Coordinate target = (Coordinate) obj;
+        if( Double.valueOf(this.longitude).equals(Double.valueOf(target.longitude)) && Double.valueOf(this.latitude).equals(Double.valueOf(target.latitude)) ){
+            return true;
+        }
+        return false;
+    }
 }
                                                   

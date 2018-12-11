@@ -2,6 +2,7 @@ package storm.domain.fence.data;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.Fence;
@@ -139,10 +140,13 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
             }
 
             Fence fence = null;
+            //港湾大道 - 珠海市社会保险基金管理中心高新办事处
             if (index[0] % 2 == 0) {
-                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(1, "3636;116.321307,39.919237")), events, crons);
+                //圆形围栏
+                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(1, "313;113.596446,22.365538")), events, crons);
             } else {
-                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(2, "116.351519,39.901856;116.389971,39.928189;116.459323,39.909757;116.456576,39.864973;116.33916,39.818578;116.311694,39.866027;116.351519,39.901856")), events, crons);
+                //多边形围栏
+                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(2, "113.596285,22.368336;113.600019,22.368098;113.602079,22.364884;113.600512,22.363534;113.597551,22.362244;113.592809,22.362264;113.59356,22.368555")), events, crons);
             }
             result.add(fence);
             index[0]++;
@@ -152,6 +156,9 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
     }
 
     public AreaCron initArea(int chartType, String lonlatRange) {
+        if(StringUtils.isEmpty(lonlatRange)){
+            return null;
+        }
         AreaCron area = null;
         switch (chartType) {
             case 1:
@@ -167,14 +174,25 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
                 area = new Circle(SysDefine.FENCE_AREA_ID, new Coordinate(Double.valueOf(coordinateArray[0]), Double.valueOf(coordinateArray[1])), Double.valueOf(splitArray[0]), null);
                 break;
             case 2:
+                final Coordinate[] first = {null};
+                final Coordinate[] last = {null};
                 ImmutableList.Builder<Coordinate> coordinates = new ImmutableList.Builder();
                 Arrays.stream(lonlatRange.split(";")).forEach(item -> {
                     String[] coordinateArrays = item.split(",");
                     if (coordinateArrays.length < 2) {
                         return;
                     }
-                    coordinates.add(new Coordinate(Double.valueOf(coordinateArrays[0]), Double.valueOf(coordinateArrays[1])));
+                    Coordinate point = new Coordinate(Double.valueOf(coordinateArrays[0]), Double.valueOf(coordinateArrays[1]));
+                    if( first[0] == null ){
+                        first[0] = point;
+                    }
+                    last[0] = point;
+                    coordinates.add(point);
                 });
+                if( !first[0].equals(last[0]) ){
+                    //多边形没有闭环,添加坐标点使多边形闭合
+                    coordinates.add(first[0]);
+                }
                 area = new Polygon(SysDefine.FENCE_AREA_ID, coordinates.build(), null);
                 break;
             default:

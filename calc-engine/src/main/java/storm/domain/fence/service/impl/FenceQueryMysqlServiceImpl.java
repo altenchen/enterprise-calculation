@@ -261,6 +261,9 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      * @return 返回围栏区域
      */
     private ImmutableMap<String, AreaCron> initFenceArea(int chartType, String lonlatRange) {
+        if(StringUtils.isEmpty(lonlatRange)){
+            return null;
+        }
         ImmutableMap.Builder<String, AreaCron> areas = new ImmutableMap.Builder<>();
         String areaId = SysDefine.FENCE_AREA_ID;
         //坐标值按逗号拆分后,length为2
@@ -280,14 +283,25 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 break;
             case 2:
                 //多边形区域
+                final Coordinate[] first = {null};
+                final Coordinate[] last = {null};
                 ImmutableList.Builder<Coordinate> coordinates = new ImmutableList.Builder();
                 Arrays.stream(lonlatRange.split(";")).forEach(item -> {
                     String[] coordinateArrays = item.split(",");
                     if (coordinateArrays.length < coordinateSize) {
                         return;
                     }
-                    coordinates.add(new Coordinate(Double.valueOf(coordinateArrays[0]), Double.valueOf(coordinateArrays[1])));
+                    Coordinate point = new Coordinate(Double.valueOf(coordinateArrays[0]), Double.valueOf(coordinateArrays[1]));
+                    if( first[0] == null ){
+                        first[0] = point;
+                    }
+                    last[0] = point;
+                    coordinates.add(point);
                 });
+                if( !first[0].equals(last[0]) ){
+                    //多边形没有闭环,添加坐标点使多边形闭合
+                    coordinates.add(first[0]);
+                }
                 areas.put(areaId, new Polygon(areaId, coordinates.build(), null));
                 break;
             default:
