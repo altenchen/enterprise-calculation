@@ -113,13 +113,13 @@ public class FaultCodeHandler implements Serializable {
 
     /**
      * 按字节解析规则检查
-     * @param _rules
+     * @param rules
      */
-    private void byteRoleInspect(Collection<FaultCodeByteRule> _rules){
+    private void byteRoleInspect(Collection<FaultCodeByteRule> rules){
         List<FaultCodeByteRule> needRemove = new ArrayList<>();
         for( FaultCodeByteRule rule : rules ){
             boolean has = false;
-            for( FaultCodeByteRule newRule : _rules ){
+            for( FaultCodeByteRule newRule : rules ){
                 if( newRule.faultId.equals(rule.faultId) ){
                     has = true;
                     break;
@@ -131,7 +131,7 @@ public class FaultCodeHandler implements Serializable {
             }
         }
         if( needRemove.isEmpty() ){
-            rules = _rules;
+            this.rules = rules;
             return;
         }
         for( FaultCodeByteRule rule : needRemove ){
@@ -167,22 +167,22 @@ public class FaultCodeHandler implements Serializable {
                 }
             }
         }
-        rules = _rules;
+        this.rules = rules;
     }
 
     /**
      * 按字节解析规则检查
-     * @param _bitRules
+     * @param bitRules
      */
-    private void bitRuleInspect(Map<String, Map<String, FaultTypeSingleBit>> _bitRules){
+    private void bitRuleInspect(Map<String, Map<String, FaultTypeSingleBit>> bitRules){
         List<String> needRemove = new ArrayList<>();
         for (String type : bitRules.keySet()) {
             //如果没有这种faultType则跳过
-            if (!_bitRules.containsKey(type)) {
+            if (!bitRules.containsKey(type)) {
                 continue;
             }
             Map<String, FaultTypeSingleBit> memory = bitRules.get(type);
-            Map<String, FaultTypeSingleBit> newData = _bitRules.get(type);
+            Map<String, FaultTypeSingleBit> newData = bitRules.get(type);
             for (String faultId : memory.keySet()) {
                 if (!newData.containsKey(faultId)) {
                     //如果同步的数据中没有这条规则的话，则结束该规则的所有通知
@@ -192,7 +192,7 @@ public class FaultCodeHandler implements Serializable {
             }
         }
         if( needRemove.isEmpty() ){
-            bitRules = _bitRules;
+            this.bitRules = bitRules;
             return;
         }
         for( String faultId : needRemove ){
@@ -229,7 +229,7 @@ public class FaultCodeHandler implements Serializable {
             }
         }
 
-        bitRules = _bitRules;
+        this.bitRules = bitRules;
     }
 
     private Collection<FaultCodeByteRule> getByteRules(){

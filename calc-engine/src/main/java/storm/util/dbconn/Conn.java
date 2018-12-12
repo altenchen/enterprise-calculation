@@ -186,8 +186,8 @@ public final class Conn {
 
         final Map<String, String> vmd = new TreeMap<>();
 
-        String veh_model_sql = ConfigUtils.getSysParam().getVehModelSql();
-        if (StringUtils.isBlank(veh_model_sql)) {
+        String vehModelSql = ConfigUtils.getSysParam().getVehModelSql();
+        if (StringUtils.isBlank(vehModelSql)) {
             return vmd;
         }
 
@@ -203,7 +203,7 @@ public final class Conn {
             }
 
             statement = connection.createStatement();
-            resultSet = statement.executeQuery(veh_model_sql);
+            resultSet = statement.executeQuery(vehModelSql);
 
             while (resultSet.next()) {
 
@@ -242,8 +242,8 @@ public final class Conn {
         // <fault_type, <faultId, fault>>
         final Map<String, Map<String, FaultTypeSingleBit>> faultTypes = new HashMap<>();
 
-        String alarm_code_bit_sql = ConfigUtils.getSysParam().getAlarmCodeBitSql();
-        if (StringUtils.isBlank(alarm_code_bit_sql)) {
+        String alarmCodeBitSql = ConfigUtils.getSysParam().getAlarmCodeBitSql();
+        if (StringUtils.isBlank(alarmCodeBitSql)) {
             LOG.info("按位解析故障码查询语句为空.");
             return faultTypes;
         }
@@ -265,7 +265,7 @@ public final class Conn {
             }
 
             statement = connection.createStatement();
-            analyzeBitResult = statement.executeQuery(alarm_code_bit_sql);
+            analyzeBitResult = statement.executeQuery(alarmCodeBitSql);
             //analyzeValueResult = statement.executeQuery(alarm_code_sql);
 
             // exception_id, exception
@@ -484,9 +484,9 @@ public final class Conn {
         Statement statement = null;
         ResultSet resultSet = null;
 
-        String alarm_code_sql = ConfigUtils.getSysParam().getAlarmCodeSql();
+        String alarmCodeSql = ConfigUtils.getSysParam().getAlarmCodeSql();
         try {
-            if (StringUtils.isEmpty(alarm_code_sql)) {
+            if (StringUtils.isEmpty(alarmCodeSql)) {
                 LOG.info("按值解析故障码查询语句为空.");
                 return rules;
             }
@@ -499,7 +499,7 @@ public final class Conn {
             }
 
             statement = connection.createStatement();
-            resultSet = statement.executeQuery(alarm_code_sql);
+            resultSet = statement.executeQuery(alarmCodeSql);
             while (resultSet.next()) {
                 String[] rule = new String[]{
                         // fault_id
@@ -541,9 +541,9 @@ public final class Conn {
         Connection conn = null;
         Statement s = null;
         ResultSet rs = null;
-        String early_warning_sql = ConfigUtils.getSysParam().getEarlyWarningSql();
+        String earlyWarningSql = ConfigUtils.getSysParam().getEarlyWarningSql();
         try {
-            if (StringUtils.isEmpty(early_warning_sql)) {
+            if (StringUtils.isEmpty(earlyWarningSql)) {
                 return null;
             }
             if (null == conn || conn.isClosed()) {
@@ -554,7 +554,7 @@ public final class Conn {
             }
             rules = new LinkedList<Object[]>();
             s = conn.createStatement();
-            rs = s.executeQuery(early_warning_sql);
+            rs = s.executeQuery(earlyWarningSql);
             //ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL
             while (rs.next()) {
                 Object[] objects = new Object[]{rs.getString(1), rs.getString(2),
@@ -588,9 +588,9 @@ public final class Conn {
         Statement s = null;
         ResultSet rs = null;
 
-        String item_coef_offset_sql = ConfigUtils.getSysParam().getItemCoefOffsetSql();
+        String itemCoefOffsetSql = ConfigUtils.getSysParam().getItemCoefOffsetSql();
         try {
-            if (StringUtils.isEmpty(item_coef_offset_sql)) {
+            if (StringUtils.isEmpty(itemCoefOffsetSql)) {
                 return null;
             }
             conn = getConn();
@@ -598,7 +598,7 @@ public final class Conn {
                 return null;
             }
             s = conn.createStatement();
-            rs = s.executeQuery(item_coef_offset_sql);
+            rs = s.executeQuery(itemCoefOffsetSql);
 
             final List<CoefficientOffset> rules = new LinkedList<>();
             while (rs.next()) {
