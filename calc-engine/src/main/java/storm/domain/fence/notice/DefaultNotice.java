@@ -22,8 +22,7 @@ public final class DefaultNotice extends BaseNotice {
         final double latitude,
         @NotNull final AreaSide fromArea,
         @NotNull final AreaSide gotoArea,
-        @NotNull final EventStage eventStage,
-        @NotNull final String noticeTime) {
+        @NotNull final EventStage eventStage) {
 
         super(
             messageId,
@@ -35,8 +34,7 @@ public final class DefaultNotice extends BaseNotice {
             latitude,
             fromArea,
             gotoArea,
-            eventStage,
-            noticeTime
+            eventStage
         );
     }
 }

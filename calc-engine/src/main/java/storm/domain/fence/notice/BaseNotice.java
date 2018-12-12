@@ -74,7 +74,7 @@ public abstract class BaseNotice {
      * 通知时间
      */
     @NotNull
-    public final String noticeTime;
+    public String noticeTime;
 
     protected BaseNotice(
         @NotNull final String messageId,
@@ -86,8 +86,7 @@ public abstract class BaseNotice {
         final double latitude,
         @NotNull final AreaSide fromArea,
         @NotNull final AreaSide gotoArea,
-        @NotNull final EventStage eventStage,
-        @NotNull final String noticeTime) {
+        @NotNull final EventStage eventStage) {
 
         this.messageId = messageId;
         this.fenceId = fenceId;
@@ -99,6 +98,5 @@ public abstract class BaseNotice {
         this.fromArea = fromArea;
         this.gotoArea = gotoArea;
         this.eventStage = eventStage;
-        this.noticeTime = noticeTime;
     }
 }

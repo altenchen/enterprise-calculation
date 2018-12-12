@@ -5,14 +5,14 @@ import storm.domain.fence.area.AreaSide;
 import storm.domain.fence.event.EventStage;
 
 /**
- * 驶入通知
+ * 默认延迟通知
  * @author: xzp
- * @date: 2018-12-05
+ * @date: 2018-12-12
  * @description:
  */
-public final class DriveInsideNotice extends BaseDelayNotice {
+public final class DefaultDelayNotice extends BaseDelayNotice {
 
-    public DriveInsideNotice(
+    public DefaultDelayNotice(
         @NotNull final String messageId,
         @NotNull final String fenceId,
         @NotNull final String eventId,

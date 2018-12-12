@@ -5,11 +5,12 @@ import storm.domain.fence.area.AreaSide;
 import storm.domain.fence.event.EventStage;
 
 /**
+ * 驶离通知
  * @author: xzp
  * @date: 2018-12-05
  * @description:
  */
-public final class DriveOutsideNotice extends BaseNotice {
+public final class DriveOutsideNotice extends BaseDelayNotice {
 
     public DriveOutsideNotice(
         @NotNull final String messageId,
@@ -21,8 +22,7 @@ public final class DriveOutsideNotice extends BaseNotice {
         final double latitude,
         @NotNull final AreaSide fromArea,
         @NotNull final AreaSide gotoArea,
-        @NotNull final EventStage eventStage,
-        @NotNull final String noticeTime) {
+        @NotNull final EventStage eventStage) {
 
         super(
             messageId,
@@ -34,8 +34,7 @@ public final class DriveOutsideNotice extends BaseNotice {
             latitude,
             fromArea,
             gotoArea,
-            eventStage,
-            noticeTime
+            eventStage
         );
     }
 }

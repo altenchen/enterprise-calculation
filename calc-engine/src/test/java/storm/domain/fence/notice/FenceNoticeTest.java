@@ -1,19 +1,14 @@
 package storm.domain.fence.notice;
 
-import com.google.common.collect.ImmutableMap;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.domain.fence.Fence;
 import storm.domain.fence.area.AreaSide;
-import storm.domain.fence.area.Coordinate;
-import storm.domain.fence.event.Event;
 import storm.domain.fence.event.EventStage;
 import storm.util.DataUtils;
 import storm.util.JsonUtils;
 
-import java.text.ParseException;
 import java.util.UUID;
 
 /**
@@ -83,8 +78,7 @@ final class FenceNoticeTest {
             latitude,
             fromArea,
             gotoArea,
-            eventStage,
-            noticeTime
+            eventStage
         );
 
         final String json = JSON_UTILS.toJson(notice);
@@ -110,8 +104,7 @@ final class FenceNoticeTest {
             latitude,
             fromArea,
             gotoArea,
-            eventStage,
-            noticeTime
+            eventStage
         );
 
         final String json = JSON_UTILS.toJson(notice);
@@ -137,9 +130,7 @@ final class FenceNoticeTest {
             latitude,
             fromArea,
             gotoArea,
-            eventStage,
-            noticeTime
-        );
+            eventStage);
 
         final String json = JSON_UTILS.toJson(notice);
 
@@ -164,9 +155,7 @@ final class FenceNoticeTest {
             latitude,
             fromArea,
             gotoArea,
-            eventStage,
-            noticeTime
-        );
+            eventStage);
 
         final String json = JSON_UTILS.toJson(notice);
 
