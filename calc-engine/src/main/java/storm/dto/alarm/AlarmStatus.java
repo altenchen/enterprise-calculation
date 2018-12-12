@@ -292,6 +292,6 @@ public final class AlarmStatus {
     @Nullable
     @Contract(pure = true)
     public Boolean getStatus() {
-        return delaySwitch.getStatus();
+        return delaySwitch.getSwitchStatus();
     }
 }

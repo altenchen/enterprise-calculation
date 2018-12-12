@@ -11,7 +11,7 @@ import java.util.function.BiConsumer;
 /**
  * @author: xzp
  * @date: 2018-09-30
- * @description: 延迟开关
+ * @description: 双路延迟开关
  */
 public final class DelaySwitch {
 
@@ -82,7 +82,7 @@ public final class DelaySwitch {
      */
     @Nullable
     @Contract(pure = true)
-    public Boolean getStatus() {
+    public Boolean getSwitchStatus() {
         final int switchStatus = this.switchStatus;
         if(switchStatus > 0) {
             return true;
@@ -109,14 +109,14 @@ public final class DelaySwitch {
     }
 
     /**
-     * 连续计数器
+     * 连续计数
      */
     private int continueCount = 0;
 
     /**
      * 重置时间
      */
-    private long initTimeMillisecond = 0;
+    private long resetTimeMillisecond = 0;
 
     /**
      * 开关状态, -1-反向, 0-未知, 1-正向
@@ -136,13 +136,13 @@ public final class DelaySwitch {
         if (switchStatus <= 0) {
             if (continueCount < 1) {
                 continueCount = 1;
-                initTimeMillisecond = timeMillisecond;
+                resetTimeMillisecond = timeMillisecond;
                 positiveReset.run();
             }
 
             if (continueCount < positiveThreshold) {
                 continueCount += 1;
-            } else if (timeMillisecond - initTimeMillisecond >= positiveTimeout) {
+            } else if (timeMillisecond - resetTimeMillisecond >= positiveTimeout) {
                 positiveOverflow.accept(positiveThreshold, positiveTimeout);
                 switchStatus = 1;
             }
@@ -164,14 +164,14 @@ public final class DelaySwitch {
         if (switchStatus >= 0) {
             if (continueCount > -1) {
                 continueCount = -1;
-                initTimeMillisecond = timeMillisecond;
+                resetTimeMillisecond = timeMillisecond;
                 negativeReset.run();
             }
 
             if (continueCount > negativeThreshold) {
                 continueCount -= 1;
-            } else if (timeMillisecond - initTimeMillisecond >= negativeTimeout) {
-                negativeOverflow.accept(negativeThreshold, negativeTimeout);
+            } else if (timeMillisecond - resetTimeMillisecond >= negativeTimeout) {
+                negativeOverflow.accept(-negativeThreshold, negativeTimeout);
                 switchStatus = -1;
             }
         } else {

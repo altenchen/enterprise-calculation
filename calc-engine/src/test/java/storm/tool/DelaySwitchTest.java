@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
  * @date: 2018-10-08
  * @description:
  */
-@DisplayName("延迟开关单元测试")
+@DisplayName("双路延迟开关单元测试")
 public final class DelaySwitchTest {
 
     @SuppressWarnings("unused")
@@ -36,65 +36,76 @@ public final class DelaySwitchTest {
     @Test
     void testPositiveIncreaseZero() {
         {
-            final DelaySwitch delaySwitch = new DelaySwitch(
-                1,
-                0,
-                1,
-                0);
-            final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(null);
+            final DelaySwitch delaySwitch =
+                new DelaySwitch(
+                    1,
+                    0,
+                    1,
+                    0)
+                    .setSwitchStatus(null);
+
+            final byte[] resetCallback = new byte[1];
+            final byte[] overflowCallback = new byte[1];
             delaySwitch.positiveIncrease(
                 System.currentTimeMillis(),
                 () -> {
-                    flag[0] += 1;
+                    resetCallback[0] += 1;
                 },
-                (positiveThreshold, positiveTimeout) -> {
-                    flag[1] += 1;
+                (threshold, timeout) -> {
+                    overflowCallback[0] += 1;
+                    Assertions.assertEquals(Integer.valueOf(1), threshold);
+                    Assertions.assertEquals(Long.valueOf(0), timeout);
                 }
             );
-            Assertions.assertEquals(1, flag[0]);
-            Assertions.assertEquals(1, flag[1]);
+            Assertions.assertEquals(1, resetCallback[0]);
+            Assertions.assertEquals(1, overflowCallback[0]);
+            Assertions.assertEquals(Boolean.TRUE, delaySwitch.getSwitchStatus());
         }
         {
-            final DelaySwitch delaySwitch = new DelaySwitch(
-                1,
-                0,
-                1,
-                0);
-            final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(false);
+            final DelaySwitch delaySwitch =
+                new DelaySwitch(
+                    1,
+                    0,
+                    1,
+                    0)
+                    .setSwitchStatus(false);
+
+            final byte[] resetCallback = new byte[1];
+            final byte[] overflowCallback = new byte[1];
             delaySwitch.positiveIncrease(
                 System.currentTimeMillis(),
                 () -> {
-                    flag[0] += 1;
+                    resetCallback[0] += 1;
                 },
-                (positiveThreshold, positiveTimeout) -> {
-                    flag[1] += 1;
+                (threshold, timeout) -> {
+                    overflowCallback[0] += 1;
+                    Assertions.assertEquals(Integer.valueOf(1), threshold);
+                    Assertions.assertEquals(Long.valueOf(0), timeout);
                 }
             );
-            Assertions.assertEquals(1, flag[0]);
-            Assertions.assertEquals(1, flag[1]);
+            Assertions.assertEquals(1, resetCallback[0]);
+            Assertions.assertEquals(1, overflowCallback[0]);
+            Assertions.assertEquals(Boolean.TRUE, delaySwitch.getSwitchStatus());
         }
 
         {
-            final DelaySwitch delaySwitch = new DelaySwitch(
-                1,
-                0,
-                1,
-                0);
-            final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(true);
+            final DelaySwitch delaySwitch =
+                new DelaySwitch(
+                    1,
+                    0,
+                    1,
+                    0)
+                    .setSwitchStatus(true);
+
             delaySwitch.positiveIncrease(
                 System.currentTimeMillis(),
                 () -> {
-                    flag[0] += 1;
+                    Assertions.fail();
                 },
-                (positiveThreshold, positiveTimeout) -> {
-                    flag[1] += 1;
+                (threshold, timeout) -> {
+                    Assertions.fail();
                 }
             );
-            Assertions.assertEquals(0, flag[0]);
-            Assertions.assertEquals(0, flag[1]);
         }
     }
 
@@ -102,421 +113,494 @@ public final class DelaySwitchTest {
     @Test
     void testNegativeIncreaseZero() {
         {
-            final DelaySwitch delaySwitch = new DelaySwitch(
-                1,
-                0,
-                1,
-                0);
-            final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(null);
+            final DelaySwitch delaySwitch =
+                new DelaySwitch(
+                    1,
+                    0,
+                    1,
+                    0)
+                    .setSwitchStatus(null);
+
+            final byte[] resetCallback = new byte[1];
+            final byte[] overflowCallback = new byte[1];
             delaySwitch.negativeIncrease(
                 System.currentTimeMillis(),
                 () -> {
-                    flag[0] += 1;
+                    resetCallback[0] += 1;
                 },
-                (positiveThreshold, positiveTimeout) -> {
-                    flag[1] += 1;
+                (threshold, timeout) -> {
+                    overflowCallback[0] += 1;
+                    Assertions.assertEquals(Integer.valueOf(1), threshold);
+                    Assertions.assertEquals(Long.valueOf(0), timeout);
                 }
             );
-            Assertions.assertEquals(1, flag[0]);
-            Assertions.assertEquals(1, flag[1]);
+            Assertions.assertEquals(1, resetCallback[0]);
+            Assertions.assertEquals(1, overflowCallback[0]);
+            Assertions.assertEquals(Boolean.FALSE, delaySwitch.getSwitchStatus());
         }
 
         {
-            final DelaySwitch delaySwitch = new DelaySwitch(
-                1,
-                0,
-                1,
-                0);
-            final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(false);
+            final DelaySwitch delaySwitch =
+                new DelaySwitch(
+                    1,
+                    0,
+                    1,
+                    0)
+                    .setSwitchStatus(false);
+
             delaySwitch.negativeIncrease(
                 System.currentTimeMillis(),
                 () -> {
-                    flag[0] += 1;
+                    Assertions.fail();
                 },
-                (positiveThreshold, positiveTimeout) -> {
-                    flag[1] += 1;
+                (threshold, timeout) -> {
+                    Assertions.fail();
                 }
             );
-            Assertions.assertEquals(0, flag[0]);
-            Assertions.assertEquals(0, flag[1]);
         }
 
         {
-            final DelaySwitch delaySwitch = new DelaySwitch(
-                1,
-                0,
-                1,
-                0);
-            final byte[] flag = new byte[2];
-            delaySwitch.setSwitchStatus(true);
+            final DelaySwitch delaySwitch =
+                new DelaySwitch(
+                    1,
+                    0,
+                    1,
+                    0)
+                    .setSwitchStatus(true);
+
+            final byte[] resetCallback = new byte[1];
+            final byte[] overflowCallback = new byte[1];
             delaySwitch.negativeIncrease(
                 System.currentTimeMillis(),
                 () -> {
-                    flag[0] += 1;
+                    resetCallback[0] += 1;
                 },
-                (positiveThreshold, positiveTimeout) -> {
-                    flag[1] += 1;
+                (threshold, timeout) -> {
+                    overflowCallback[0] += 1;
+                    Assertions.assertEquals(Integer.valueOf(1), threshold);
+                    Assertions.assertEquals(Long.valueOf(0), timeout);
                 }
             );
-            Assertions.assertEquals(1, flag[0]);
-            Assertions.assertEquals(1, flag[1]);
+            Assertions.assertEquals(1, resetCallback[0]);
+            Assertions.assertEquals(1, overflowCallback[0]);
+            Assertions.assertEquals(Boolean.FALSE, delaySwitch.getSwitchStatus());
         }
     }
 
     @DisplayName("测试正向帧数")
     @Test
     void testPositiveIncreaseThreshold() {
-        final DelaySwitch delaySwitch = new DelaySwitch(
-            3,
-            0,
-            1,
-            0);
-        final byte[] flag = new byte[2];
+        final DelaySwitch delaySwitch =
+            new DelaySwitch(
+                3,
+                0,
+                1,
+                0)
+                .setSwitchStatus(null);
+        final byte[] resetCallback = new byte[1];
+        final byte[] overflowCallback = new byte[1];
 
         delaySwitch.positiveIncrease(
             System.currentTimeMillis(),
             () -> {
-                flag[0] += 1;
+                resetCallback[0] += 1;
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
+        Assertions.assertEquals(1, resetCallback[0]);
+        Assertions.assertNull(delaySwitch.getSwitchStatus());
 
         delaySwitch.positiveIncrease(
             System.currentTimeMillis(),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
 
         delaySwitch.positiveIncrease(
             System.currentTimeMillis(),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                overflowCallback[0] += 1;
+                Assertions.assertEquals(Integer.valueOf(3), threshold);
+                Assertions.assertEquals(Long.valueOf(0), timeout);
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(1, flag[1]);
+        Assertions.assertEquals(1, overflowCallback[0]);
+        Assertions.assertEquals(Boolean.TRUE, delaySwitch.getSwitchStatus());
     }
 
     @DisplayName("测试反向帧数")
     @Test
     void testNegativeIncreaseThreshold() {
-        final DelaySwitch delaySwitch = new DelaySwitch(
-            1,
-            0,
-            3,
-            0);
-        final byte[] flag = new byte[2];
+        final DelaySwitch delaySwitch =
+            new DelaySwitch(
+                1,
+                0,
+                3,
+                0)
+                .setSwitchStatus(null);
+        final byte[] resetCallback = new byte[1];
+        final byte[] overflowCallback = new byte[1];
 
         delaySwitch.negativeIncrease(
             System.currentTimeMillis(),
             () -> {
-                flag[0] += 1;
+                resetCallback[0] += 1;
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
+        Assertions.assertEquals(1, resetCallback[0]);
+        Assertions.assertNull(delaySwitch.getSwitchStatus());
 
         delaySwitch.negativeIncrease(
             System.currentTimeMillis(),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
 
         delaySwitch.negativeIncrease(
             System.currentTimeMillis(),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                overflowCallback[0] += 1;
+                Assertions.assertEquals(Integer.valueOf(3), threshold);
+                Assertions.assertEquals(Long.valueOf(0), timeout);
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(1, flag[1]);
+        Assertions.assertEquals(1, overflowCallback[0]);
+        Assertions.assertEquals(Boolean.FALSE, delaySwitch.getSwitchStatus());
     }
 
     @DisplayName("测试正向超时")
     @Test
     void testPositiveIncreaseTimeout() {
-        final DelaySwitch delaySwitch = new DelaySwitch(
-            1,
-            TimeUnit.SECONDS.toMillis(30),
-            1,
-            0);
-        final byte[] flag = new byte[2];
+        final DelaySwitch delaySwitch =
+            new DelaySwitch(
+                1,
+                TimeUnit.SECONDS.toMillis(30),
+                1,
+                0)
+                .setSwitchStatus(null);
+        final byte[] resetCallback = new byte[1];
+        final byte[] overflowCallback = new byte[1];
 
         delaySwitch.positiveIncrease(
             TimeUnit.SECONDS.toMillis(0),
             () -> {
-                flag[0] += 1;
+                resetCallback[0] += 1;
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
+        Assertions.assertEquals(1, resetCallback[0]);
+        Assertions.assertNull(delaySwitch.getSwitchStatus());
 
         delaySwitch.positiveIncrease(
             TimeUnit.SECONDS.toMillis(15),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
 
         delaySwitch.positiveIncrease(
             TimeUnit.SECONDS.toMillis(30),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                overflowCallback[0] += 1;
+                Assertions.assertEquals(Integer.valueOf(1), threshold);
+                Assertions.assertEquals(
+                    Long.valueOf(TimeUnit.SECONDS.toMillis(30)),
+                    timeout);
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(1, flag[1]);
+        Assertions.assertEquals(1, overflowCallback[0]);
+        Assertions.assertEquals(Boolean.TRUE, delaySwitch.getSwitchStatus());
+
+        delaySwitch.positiveIncrease(
+            TimeUnit.SECONDS.toMillis(45),
+            () -> {
+                Assertions.fail();
+            },
+            (threshold, timeout) -> {
+                Assertions.fail();
+            }
+        );
     }
 
     @DisplayName("测试反向超时")
     @Test
     void testNegativeIncreaseTimeout() {
-        final DelaySwitch delaySwitch = new DelaySwitch(
-            1,
-            0,
-            1,
-            TimeUnit.SECONDS.toMillis(30));
-        final byte[] flag = new byte[2];
+        final DelaySwitch delaySwitch =
+            new DelaySwitch(
+                1,
+                0,
+                1,
+                TimeUnit.SECONDS.toMillis(30))
+                .setSwitchStatus(null);
+        final byte[] resetCallback = new byte[1];
+        final byte[] overflowCallback = new byte[1];
 
         delaySwitch.negativeIncrease(
             TimeUnit.SECONDS.toMillis(0),
             () -> {
-                flag[0] += 1;
+                resetCallback[0] += 1;
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
+        Assertions.assertEquals(1, resetCallback[0]);
+        Assertions.assertNull(delaySwitch.getSwitchStatus());
 
         delaySwitch.negativeIncrease(
             TimeUnit.SECONDS.toMillis(15),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
 
         delaySwitch.negativeIncrease(
             TimeUnit.SECONDS.toMillis(30),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                overflowCallback[0] += 1;
+                Assertions.assertEquals(Integer.valueOf(1), threshold);
+                Assertions.assertEquals(
+                    Long.valueOf(TimeUnit.SECONDS.toMillis(30)),
+                    timeout);
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(1, flag[1]);
+        Assertions.assertEquals(1, overflowCallback[0]);
+        Assertions.assertEquals(Boolean.FALSE, delaySwitch.getSwitchStatus());
+
+        delaySwitch.negativeIncrease(
+            TimeUnit.SECONDS.toMillis(45),
+            () -> {
+                Assertions.fail();
+            },
+            (threshold, timeout) -> {
+                Assertions.fail();
+            }
+        );
     }
 
     @DisplayName("测试正向跳变")
     @Test
     void testPositiveIncreaseBreak() {
-        final DelaySwitch delaySwitch = new DelaySwitch(
-            3,
-            TimeUnit.SECONDS.toMillis(30),
-            3,
-            TimeUnit.SECONDS.toMillis(30));
-        final byte[] flag = new byte[4];
+        final DelaySwitch delaySwitch =
+            new DelaySwitch(
+                3,
+                TimeUnit.SECONDS.toMillis(30),
+                3,
+                TimeUnit.SECONDS.toMillis(30))
+                .setSwitchStatus(null);
+        final byte[] resetCallback = new byte[1];
+        final byte[] overflowCallback = new byte[1];
 
         delaySwitch.positiveIncrease(
             TimeUnit.SECONDS.toMillis(0),
             () -> {
-                flag[0] += 1;
+                resetCallback[0] += 1;
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
+        Assertions.assertEquals(1, resetCallback[0]);
+        Assertions.assertNull(delaySwitch.getSwitchStatus());
 
         delaySwitch.negativeIncrease(
             TimeUnit.SECONDS.toMillis(10),
             () -> {
-                flag[2] += 1;
+                resetCallback[0] = 0;
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[3] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[2]);
-        Assertions.assertEquals(0, flag[3]);
+        Assertions.assertEquals(0, resetCallback[0]);
+        Assertions.assertNull(delaySwitch.getSwitchStatus());
 
         delaySwitch.positiveIncrease(
             TimeUnit.SECONDS.toMillis(20),
             () -> {
-                flag[0] += 1;
+                resetCallback[0] += 1;
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(2, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
+        Assertions.assertEquals(1, resetCallback[0]);
+        Assertions.assertNull(delaySwitch.getSwitchStatus());
 
         delaySwitch.positiveIncrease(
             TimeUnit.SECONDS.toMillis(30),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(2, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
 
         delaySwitch.positiveIncrease(
             TimeUnit.SECONDS.toMillis(40),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(2, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
 
         delaySwitch.positiveIncrease(
             TimeUnit.SECONDS.toMillis(50),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                overflowCallback[0] += 1;
+                Assertions.assertEquals(Integer.valueOf(3), threshold);
+                Assertions.assertEquals(
+                    Long.valueOf(TimeUnit.SECONDS.toMillis(30)),
+                    timeout);
             }
         );
-        Assertions.assertEquals(2, flag[0]);
-        Assertions.assertEquals(1, flag[1]);
+        Assertions.assertEquals(1, overflowCallback[0]);
+        Assertions.assertEquals(Boolean.TRUE, delaySwitch.getSwitchStatus());
+
+        delaySwitch.positiveIncrease(
+            TimeUnit.SECONDS.toMillis(60),
+            () -> {
+                Assertions.fail();
+            },
+            (threshold, timeout) -> {
+                Assertions.fail();
+            }
+        );
     }
 
     @DisplayName("测试反向跳变")
     @Test
     void testNegativeIncreaseBreak() {
-        final DelaySwitch delaySwitch = new DelaySwitch(
-            3,
-            TimeUnit.SECONDS.toMillis(30),
-            3,
-            TimeUnit.SECONDS.toMillis(30));
-        final byte[] flag = new byte[4];
+        final DelaySwitch delaySwitch =
+            new DelaySwitch(
+                3,
+                TimeUnit.SECONDS.toMillis(30),
+                3,
+                TimeUnit.SECONDS.toMillis(30))
+                .setSwitchStatus(null);
+        final byte[] resetCallback = new byte[1];
+        final byte[] overflowCallback = new byte[1];
 
         delaySwitch.negativeIncrease(
             TimeUnit.SECONDS.toMillis(0),
             () -> {
-                flag[0] += 1;
+                resetCallback[0] += 1;
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
+        Assertions.assertEquals(1, resetCallback[0]);
+        Assertions.assertNull(delaySwitch.getSwitchStatus());
 
         delaySwitch.positiveIncrease(
             TimeUnit.SECONDS.toMillis(10),
             () -> {
-                flag[2] += 1;
+                resetCallback[0] = 0;
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[3] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(1, flag[2]);
-        Assertions.assertEquals(0, flag[3]);
+        Assertions.assertEquals(0, resetCallback[0]);
+        Assertions.assertNull(delaySwitch.getSwitchStatus());
 
         delaySwitch.negativeIncrease(
             TimeUnit.SECONDS.toMillis(20),
             () -> {
-                flag[0] += 1;
+                resetCallback[0] += 1;
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(2, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
+        Assertions.assertEquals(1, resetCallback[0]);
+        Assertions.assertNull(delaySwitch.getSwitchStatus());
 
         delaySwitch.negativeIncrease(
             TimeUnit.SECONDS.toMillis(30),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(2, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
 
         delaySwitch.negativeIncrease(
             TimeUnit.SECONDS.toMillis(40),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.fail();
             }
         );
-        Assertions.assertEquals(2, flag[0]);
-        Assertions.assertEquals(0, flag[1]);
 
         delaySwitch.negativeIncrease(
             TimeUnit.SECONDS.toMillis(50),
             () -> {
-                flag[0] += 1;
+                Assertions.fail();
             },
-            (positiveThreshold, positiveTimeout) -> {
-                flag[1] += 1;
+            (threshold, timeout) -> {
+                Assertions.assertEquals(Integer.valueOf(3), threshold);
+                Assertions.assertEquals(
+                    Long.valueOf(TimeUnit.SECONDS.toMillis(30)),
+                    timeout);
+                overflowCallback[0] += 1;
             }
         );
-        Assertions.assertEquals(2, flag[0]);
-        Assertions.assertEquals(1, flag[1]);
+        Assertions.assertEquals(1, overflowCallback[0]);
+        Assertions.assertEquals(Boolean.FALSE, delaySwitch.getSwitchStatus());
+
+        delaySwitch.negativeIncrease(
+            TimeUnit.SECONDS.toMillis(60),
+            () -> {
+                Assertions.fail();
+            },
+            (threshold, timeout) -> {
+                Assertions.fail();
+            }
+        );
     }
 
     @SuppressWarnings("unused")
