@@ -344,14 +344,6 @@
 
             <!-- 测试组件依赖开始 -->
 
-            <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-simple -->
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-simple</artifactId>
-                <version>${slf4j.version}</version>
-                <scope>test</scope>
-            </dependency>
-
             <!-- https://mvnrepository.com/artifact/org.junit.platform/junit-platform-surefire-provider -->
             <dependency>
                 <groupId>org.junit.platform</groupId>
@@ -398,14 +390,6 @@
 
 
         <!-- 测试组件依赖开始 -->
-
-        <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-simple -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${slf4j.version}</version>
-            <scope>test</scope>
-        </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.junit.platform/junit-platform-surefire-provider -->
         <dependency>
