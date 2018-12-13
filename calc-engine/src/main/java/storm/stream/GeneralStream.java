@@ -1,8 +1,11 @@
 package storm.stream;
 
 import org.apache.storm.kafka.spout.KafkaTuple;
+import org.apache.storm.spout.SpoutOutputCollector;
+import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -56,12 +59,28 @@ public final class GeneralStream implements IStreamFields, Serializable {
             .toString();
     }
 
+    public void declareOutputFields(
+        @NotNull final String streamId,
+        @NotNull final OutputFieldsDeclarer declarer) {
+
+        declarer.declareStream(streamId, FIELDS);
+    }
+
     @Contract("_ -> new")
     @NotNull
-    public GeneralStream.Sender declareOutputFields(
+    public GeneralStream.KafkaSender declareOutputFields(
         @NotNull final String streamId) {
 
-        return new Sender(FIELDS, streamId);
+        return new KafkaSender(FIELDS, streamId);
+    }
+
+    @Contract("_, _ -> new")
+    @NotNull
+    public GeneralStream.SpoutSender prepareSpoutSender(
+        @NotNull final String streamId,
+        @NotNull final SpoutOutputCollector collector) {
+
+        return new SpoutSender(streamId, collector);
     }
 
     @Contract("_ -> new")
@@ -72,7 +91,7 @@ public final class GeneralStream implements IStreamFields, Serializable {
         return new Receiver(processor);
     }
 
-    public static class Sender implements Serializable {
+    public static class KafkaSender implements Serializable {
 
         private static final long serialVersionUID = 5430182532897405011L;
 
@@ -82,7 +101,7 @@ public final class GeneralStream implements IStreamFields, Serializable {
         @NotNull
         private final String streamId;
 
-        public Sender(
+        public KafkaSender(
             @NotNull final Fields fields,
             @NotNull final String streamId) {
 
@@ -105,6 +124,38 @@ public final class GeneralStream implements IStreamFields, Serializable {
             @NotNull final String message) {
 
             return new KafkaTuple(vid, message).routedTo(streamId);
+        }
+    }
+
+    public static class SpoutSender {
+
+        @NotNull
+        private final String streamId;
+
+        @NotNull
+        private final SpoutOutputCollector collector;
+
+        public SpoutSender(
+            @NotNull final String streamId,
+            @NotNull final SpoutOutputCollector collector) {
+
+            this.streamId = streamId;
+            this.collector = collector;
+        }
+
+        public void emit(
+            @NotNull final String vid,
+            @NotNull final String message) {
+
+            collector.emit(streamId, new Values(vid, message));
+        }
+
+        public <T> void emit(
+            @NotNull final MessageId<T> messageId,
+            @NotNull final String vid,
+            @NotNull final String message) {
+
+            collector.emit(streamId, new Values(vid, message), messageId);
         }
     }
 

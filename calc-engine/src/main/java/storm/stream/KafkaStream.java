@@ -81,6 +81,14 @@ public final class KafkaStream implements IStreamFields, Serializable {
         return new SenderBuilder(streamId, collector);
     }
 
+    @Contract("_ -> new")
+    @NotNull
+    public static IStreamReceiver prepareReceiver(
+        @NotNull final IProcessor processor) {
+
+        return new Receiver(processor);
+    }
+
     public static class SenderBuilder implements Serializable {
 
         private static final long serialVersionUID = -8014503001829782489L;
@@ -176,26 +184,42 @@ public final class KafkaStream implements IStreamFields, Serializable {
         }
     }
 
+    private static class Receiver implements IStreamReceiver {
 
-    public static void declareOutputFields(
-        @NotNull final OutputFieldsDeclarer declarer,
-        @NotNull final String streamId) {
+        private final IProcessor processor;
 
-        declarer.declareStream(
-            streamId,
-            new Fields(
-                KafkaStream.TOPIC,
-                KafkaStream.BOLT_KEY,
-                KafkaStream.BOLT_MESSAGE));
+        public Receiver(
+            @NotNull final IProcessor processor) {
+
+            this.processor = processor;
+        }
+
+        @Override
+        public void execute(
+            final @NotNull Tuple input) {
+
+            final String topic = input.getStringByField(TOPIC);
+            final String key = input.getStringByField(BOLT_KEY);
+            final String message = input.getStringByField(BOLT_MESSAGE);
+
+            processor.execute(input, topic, key, message);
+        }
     }
 
-    public static void emit(
-        @NotNull final OutputCollector collector,
-        @NotNull final String streamId,
-        @NotNull final String topic,
-        @NotNull final String key,
-        @NotNull final String message) {
+    @FunctionalInterface
+    public interface IProcessor {
 
-        collector.emit(streamId, new KafkaTuple(topic, key, message).routedTo(streamId));
+        /**
+         * 处理元组
+         * @param input 输入元组
+         * @param topic 消息主题
+         * @param key 消息标识
+         * @param message 消息内容
+         */
+        void execute(
+            @NotNull final Tuple input,
+            @NotNull final String topic,
+            @NotNull final String key,
+            @NotNull final String message);
     }
 }

@@ -27,7 +27,7 @@ public class GeneralRecordTranslator implements RecordTranslator<String, String>
     // region GeneralStream
 
     @NotNull
-    private final GeneralStream.Sender generalStreamSender;
+    private final GeneralStream.KafkaSender generalStreamSender;
 
     // endregion GeneralStream
 
@@ -39,7 +39,7 @@ public class GeneralRecordTranslator implements RecordTranslator<String, String>
     private static final Pattern PICK_VID = Pattern.compile("^[^{]+\\{VID:([^,]+)");
 
     public GeneralRecordTranslator(
-        @NotNull final GeneralStream.Sender generalStreamSender) {
+        @NotNull final GeneralStream.KafkaSender generalStreamSender) {
 
         this.generalStreamSender = generalStreamSender;
     }

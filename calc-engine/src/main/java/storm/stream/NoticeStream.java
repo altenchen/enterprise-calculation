@@ -8,7 +8,6 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.StreamFieldKey;
@@ -55,7 +54,6 @@ public final class NoticeStream implements IStreamFields {
             .toString();
     }
 
-    @NotNull
     public void declareOutputFields(
         @NotNull final String streamId,
         @NotNull final OutputFieldsDeclarer declarer) {
@@ -63,8 +61,9 @@ public final class NoticeStream implements IStreamFields {
         declarer.declareStream(streamId, FIELDS);
     }
 
+    @Contract("_, _ -> new")
     @NotNull
-    public NoticeStream.SpoutSender openSender(
+    public NoticeStream.SpoutSender prepareSpoutSender(
         @NotNull final String streamId,
         @NotNull final SpoutOutputCollector collector) {
 

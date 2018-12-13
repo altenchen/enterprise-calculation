@@ -5,7 +5,8 @@ import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.kafka.spout.KafkaSpout;
+import org.apache.storm.topology.IRichBolt;
+import org.apache.storm.topology.IRichSpout;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 import org.jetbrains.annotations.NotNull;
@@ -24,11 +25,14 @@ import storm.system.DataKey;
 import storm.system.StormConfigKey;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
+import storm.util.function.TeConsumer;
 import storm.util.function.TeConsumerE;
 
 import java.io.File;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * @author xzp
@@ -39,23 +43,59 @@ public final class TopologiesByConf {
 
     /**
      * http://storm.apache.org/releases/current/index.html
+     *
      * @param args 拓扑启动参数, 忽略.
      * @throws Exception 拓扑启动异常
      */
-    public static void main(String[] args) throws Exception {
-        submitTopology(args, StormSubmitter::submitTopology);
+    public static void main(@NotNull final String[] args) throws Exception {
+        submitTopology(
+            args,
+            StormSubmitter::submitTopology,
+            TopologiesByConf::buildKafkaEmitSpout,
+            TopologiesByConf::buildKafkaSendBolt
+        );
     }
 
-    public static void submitTopology(String[] args, @NotNull final TeConsumerE<String, Map, StormTopology, Exception> stormSubmitter)
+    private static void buildKafkaEmitSpout(
+        @NotNull final TeConsumer<@NotNull String, @NotNull String, @NotNull IRichSpout> buildMessageEmitSpout) {
+
+        buildMessageEmitSpout.accept(
+            GeneralKafkaSpout.getComponentId(),
+            GeneralKafkaSpout.getGeneralStreamId(),
+            new GeneralKafkaSpout(
+                ConfigUtils.getSysDefine().getKafkaBootstrapServers(),
+                ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataTopic(),
+                ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataGroup()
+            )
+        );
+    }
+
+    private static void buildKafkaSendBolt(
+        @NotNull final BiConsumer<@NotNull String, @NotNull IRichBolt> buildMessageSendBolt) {
+
+        buildMessageSendBolt.accept(
+            KafkaSendBolt.getComponentId(),
+            new KafkaSendBolt(
+                ConfigUtils.getSysDefine().getKafkaBootstrapServers()
+            )
+        );
+    }
+
+    public static void submitTopology(
+        @NotNull final String[] args,
+        @NotNull final TeConsumerE<String, Map, StormTopology, Exception> stormSubmitter,
+        @NotNull final Consumer<@NotNull TeConsumer<@NotNull String, @NotNull String, @NotNull IRichSpout>> buildMessageEmitSpout,
+        @NotNull final Consumer<@NotNull BiConsumer<@NotNull String, @NotNull IRichBolt>> buildMessageSendBolt)
         throws Exception {
-        if( args.length > 0 ){
+
+        if (args.length > 0) {
             //args[0] 自定义配置文件名
             File file = new File(args[0]);
-            if( !file.exists() ){
+            if (!file.exists()) {
                 LOG.error("配置文件 {} 不存在", args[0]);
                 return;
             }
-            if( !file.getName().endsWith(".properties") ){
+            if (!file.getName().endsWith(".properties")) {
                 LOG.error("配置文件 {} 格式不正确", args[0]);
                 return;
             }
@@ -65,9 +105,9 @@ public final class TopologiesByConf {
             ConfigUtils.fillSysDefineEntity(properties);
         }
         Config stormConf = buildStormConf();
-        StormTopology stormTopology = createTopology();
+        StormTopology stormTopology = createTopology(buildMessageEmitSpout, buildMessageSendBolt);
         final String topologyName = ConfigUtils.getSysDefine().getTopologyName();
-        if( StringUtils.isEmpty(topologyName) ){
+        if (StringUtils.isEmpty(topologyName)) {
             throw new Exception("topologyName is null");
         }
         stormSubmitter.accept(topologyName, stormConf, stormTopology);
@@ -162,7 +202,9 @@ public final class TopologiesByConf {
      *
      * @return Storm 拓扑
      */
-    private static StormTopology createTopology() {
+    private static StormTopology createTopology(
+        @NotNull final Consumer<@NotNull TeConsumer<@NotNull String, @NotNull String, @NotNull IRichSpout>> buildHeadEmitSpout,
+        @NotNull final Consumer<@NotNull BiConsumer<@NotNull String, @NotNull IRichBolt>> buildTailSendBolt) {
 
         final int realSpoutNo = ConfigUtils.getSysDefine().getStormKafkaSpoutNo();
         final int boltNo = ConfigUtils.getSysDefine().getStormKafkaBoltNo();
@@ -171,9 +213,27 @@ public final class TopologiesByConf {
 
         buildSingleSpout(builder);
 
-        buildKafkaSpout(builder, realSpoutNo);
+        buildHeadEmitSpout.accept((messageEmitSpoutComponentId, messageEmitSpoutStreamId, messageEmitSpout) ->{
+            buildMessageEmitSpout(
+                builder,
+                messageEmitSpoutComponentId,
+                messageEmitSpoutStreamId,
+                messageEmitSpout,
+                realSpoutNo,
+                boltNo
+            );
+        });
 
-        buildBlots(builder, boltNo);
+        buildMiddleBlots(builder, boltNo);
+
+        buildTailSendBolt.accept((messageSendBoltComponentId, messageSendBolt) ->
+            buildMessageSendBolt(
+                builder,
+                messageSendBoltComponentId,
+                messageSendBolt,
+                boltNo
+            )
+        );
 
         return builder.createTopology();
     }
@@ -188,32 +248,19 @@ public final class TopologiesByConf {
             );
     }
 
-    /**
-     * @param builder     拓扑构建器
-     * @param realSpoutNo Spout 基准并行度
-     */
-    private static void buildKafkaSpout(@NotNull final TopologyBuilder builder, final int realSpoutNo) {
+    private static void buildMessageEmitSpout(
+        @NotNull final TopologyBuilder builder,
+        @NotNull final String messageEmitSpoutComponentId,
+        @NotNull final String messageEmitSpoutStreamId,
+        @NotNull final IRichSpout messageEmitSpout,
+        final int realSpoutNo,
+        final int boltNo) {
 
-        // kafka 实时报文消息
-        final KafkaSpout<String, String> generalKafkaSpout = new GeneralKafkaSpout(
-            ConfigUtils.getSysDefine().getKafkaBootstrapServers(),
-            ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataTopic(),
-            ConfigUtils.getSysDefine().getKafkaConsumerVehicleRealtimeDataGroup()
-        );
         builder.setSpout(
-            GeneralKafkaSpout.getComponentId(),
-            generalKafkaSpout,
+            messageEmitSpoutComponentId,
+            messageEmitSpout,
             realSpoutNo
         );
-
-    }
-
-    /**
-     * @param builder 拓扑构建器
-     * @param boltNo  Blot 基准并行度
-     */
-    @SuppressWarnings("AlibabaMethodTooLong")
-    private static void buildBlots(@NotNull final TopologyBuilder builder, final int boltNo) {
 
         builder
             .setBolt(
@@ -223,14 +270,24 @@ public final class TopologiesByConf {
             .setNumTasks(boltNo * 3)
             // 接收车辆实时数据
             .fieldsGrouping(
-                GeneralKafkaSpout.getComponentId(),
-                GeneralKafkaSpout.getGeneralStreamId(),
+                messageEmitSpoutComponentId,
+                messageEmitSpoutStreamId,
                 new Fields(StreamFieldKey.VEHICLE_ID))
             .fieldsGrouping(
                 MySqlSpout.getComponentId(),
                 MySqlSpout.getVehicleIdentityStreamId(),
                 new Fields(StreamFieldKey.VEHICLE_ID)
             );
+    }
+
+    /**
+     * @param builder 拓扑构建器
+     * @param boltNo  Blot 基准并行度
+     */
+    @SuppressWarnings("AlibabaMethodTooLong")
+    private static void buildMiddleBlots(
+        @NotNull final TopologyBuilder builder,
+        final int boltNo) {
 
         builder
             // 预警处理
@@ -257,21 +314,19 @@ public final class TopologiesByConf {
                 FilterBolt.getComponentId(),
                 FilterBolt.getDataStreamId(),
                 new Fields(DataKey.VEHICLE_ID));
-
-        buildKafkaBolt(builder, boltNo);
     }
 
-    private static void buildKafkaBolt(
+    private static void buildMessageSendBolt(
         @NotNull final TopologyBuilder builder,
+        @NotNull final String messageSendBoltComponentId,
+        @NotNull final IRichBolt messageSendBolt,
         final int boltNo) {
-
-        final KafkaBolt<String, String> kafkaBolt = new KafkaSendBolt(ConfigUtils.getSysDefine().getKafkaBootstrapServers());
 
         builder
             // 发送 kafka 消息
             .setBolt(
-                KafkaSendBolt.getComponentId(),
-                kafkaBolt,
+                messageSendBoltComponentId,
+                messageSendBolt,
                 boltNo * 2)
             .setNumTasks(boltNo * 6)
             // 车辆平台报警状态、实时需要存储的数据

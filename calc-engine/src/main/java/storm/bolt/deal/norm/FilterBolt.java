@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
 import storm.dao.DataToRedis;
+import storm.debug.DebugEmitSpout;
 import storm.extension.ImmutableMapExtension;
 import storm.extension.MapExtension;
 import storm.handler.cusmade.TimeOutOfRangeNotice;
@@ -195,11 +196,11 @@ public class FilterBolt extends BaseRichBolt {
 
     private transient DataCacheStream.BoltSender dataCacheStreamSender;
 
-    private transient KafkaStream.SenderBuilder kafkaStreamSenderBuilder;
-
     private transient KafkaStream.Sender kafkaStreamVehicleNoticeSender;
 
-    private transient StreamReceiverFilter generalStreamReceiver;
+    private transient StreamReceiverFilter kafkaGeneralStreamReceiver;
+
+    private transient StreamReceiverFilter debugGeneralStreamReceiver;
 
     private transient StreamReceiverFilter ctfoBoltDataStreamReceiver;
 
@@ -271,14 +272,16 @@ public class FilterBolt extends BaseRichBolt {
 
         dataCacheStreamSender = DATA_CACHE_STREAM.prepareSender(DATA_CACHE_STREAM_ID, collector);
 
-        kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
+        final KafkaStream.SenderBuilder kafkaStreamSenderBuilder = KAFKA_STREAM.prepareSender(KAFKA_STREAM_ID, collector);
 
         kafkaStreamVehicleNoticeSender = kafkaStreamSenderBuilder.build(KafkaBoltTopic.NOTICE_TOPIC);
     }
 
     private void prepareStreamReceiver() {
 
-        generalStreamReceiver = GeneralKafkaSpout.prepareGeneralStreamReceiver(this::executeFromKafkaGeneralStream);
+        kafkaGeneralStreamReceiver = GeneralKafkaSpout.prepareGeneralStreamReceiver(this::executeFromGeneralStream);
+
+        debugGeneralStreamReceiver = DebugEmitSpout.prepareGeneralStreamReceiver(this::executeFromGeneralStream);
 
         ctfoBoltDataStreamReceiver = MySqlSpout.prepareVehicleIdentityStreamReceiver(this::executeFromMySqlSpoutVehicleIdentityStream);
     }
@@ -294,11 +297,15 @@ public class FilterBolt extends BaseRichBolt {
             return;
         }
 
-        if (generalStreamReceiver.execute(input)) {
+        if (kafkaGeneralStreamReceiver.execute(input)) {
             return;
         }
 
         if (ctfoBoltDataStreamReceiver.execute(input)) {
+            return;
+        }
+
+        if (debugGeneralStreamReceiver.execute(input)) {
             return;
         }
 
@@ -332,7 +339,7 @@ public class FilterBolt extends BaseRichBolt {
     }
 
     @SuppressWarnings("AlibabaMethodTooLong")
-    private void executeFromKafkaGeneralStream(
+    private void executeFromGeneralStream(
         @NotNull final Tuple input,
         @NotNull final String vehicleId,
         @NotNull final String frame) {

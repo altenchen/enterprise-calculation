@@ -233,6 +233,11 @@ public final class DataKey {
     public static final String _2306_DRIVING_ELE_MAC_ELE = "2306";
 
     /**
+     * 驱动电机个数
+     */
+    public static final String _2307_DRIVING_ELE_MAC_COUNT = "2307";
+
+    /**
      * 驱动电机列表
      */
     public static final String _2308_DRIVING_ELE_MAC_LIST = "2308";
@@ -605,10 +610,14 @@ public final class DataKey {
      */
     public static final String _2920_ALARM_STATUS = "2920";
 
+    public static final String _2921 = "2921";
+
     /**
      * 可充电储能装置故障代码列表
      */
     public static final String _2922 = "2922";
+
+    public static final String _2923 = "2923";
 
     /**
      * 发动机故障代码列表
@@ -635,10 +644,18 @@ public final class DataKey {
      */
     public static final String _3801_ALARM_MARK = "3801";
 
+    public static final String _7001 = "7001";
+
+    public static final String _7002 = "7002";
+
     /**
      * 单体电压原始报文
      */
     public static final String _7003_SINGLE_VOLT_ORIG = "7003";
+
+    public static final String _7101 = "7101";
+
+    public static final String _7102 = "7102";
 
     /**
      * 单体温度原始报文

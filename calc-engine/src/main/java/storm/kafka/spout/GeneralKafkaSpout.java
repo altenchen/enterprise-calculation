@@ -8,7 +8,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.stream.GeneralStream;
-import storm.stream.IStreamReceiver;
 import storm.stream.StreamReceiverFilter;
 
 /**
@@ -61,7 +60,7 @@ public final class GeneralKafkaSpout extends KafkaSpout<String, String> {
     }
 
     @NotNull
-    private static final GeneralStream.Sender GENERAL_STREAM_SENDER =
+    private static final GeneralStream.KafkaSender GENERAL_STREAM_SENDER =
         GENERAL_STREAM.declareOutputFields(GENERAL_STREAM_ID);
 
     // endregion GeneralStream
