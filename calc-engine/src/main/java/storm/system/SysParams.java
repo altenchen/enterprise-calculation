@@ -21,8 +21,6 @@ public final class SysParams {
 
     public static final String VEH_MODEL_SQL = "veh.model.sql";
 
-    public static final String FENCE_SQL = "fence.sql";
-
     public static final String EARLY_WARNING_SQL = "early.warning.sql";
 
     public static final String ITEM_COEF_OFFSET_SQL = "item.coef.offset.sql";

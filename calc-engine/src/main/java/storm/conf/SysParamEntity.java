@@ -19,12 +19,6 @@ public class SysParamEntity {
      */
     private String vehModelSql = "SELECT veh.uuid vid,model.id mid FROM sys_vehicle veh LEFT JOIN sys_veh_model model ON veh.veh_model_id=model.id WHERE model.id IS NOT NULL";
     /**
-     * 电子围栏
-     */
-    private String fenceSql = "SELECT fe.ID,fe.FENCE_NAME,fe.FENCE_TYPE,fe.VALID_BEGIN_TIME,fe.VALID_END_TIME,fe.FENCE_LOCATION,fe.VALID_DATE FROM SYS_FENCE_ELECTRONIC fe WHERE fe.FENCE_STATE = 1";
-    private String fenceRuleOnlySql = "SELECT tl.FENCE_ID,tl.ALARM_TYPE_CODE,tl.HEIGHEST_SPEED,tl.MINIMUM_SPEED,tl.STOP_CAR_TIME FROM SYS_FENCE_ALARM_TYPE_LK tl WHERE tl.STATE=1";
-    private String fenceVidSql = "SELECT FENCE_ID,VEH_ID FROM SYS_FENCE_VEH_LK WHERE STATE=1";
-    /**
      * 预警规则(旧)
      */
     private String earlyWarningSql = "SELECT ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL FROM SYS_DATA_CONST WHERE TYPE = 1 AND IS_VALID = 1 AND ID is not null AND R1_VAL is not null";
@@ -73,30 +67,6 @@ public class SysParamEntity {
 
     public void setVehModelSql(String vehModelSql) {
         this.vehModelSql = vehModelSql;
-    }
-
-    public String getFenceSql() {
-        return fenceSql;
-    }
-
-    public void setFenceSql(String fenceSql) {
-        this.fenceSql = fenceSql;
-    }
-
-    public String getFenceRuleOnlySql() {
-        return fenceRuleOnlySql;
-    }
-
-    public void setFenceRuleOnlySql(String fenceRuleOnlySql) {
-        this.fenceRuleOnlySql = fenceRuleOnlySql;
-    }
-
-    public String getFenceVidSql() {
-        return fenceVidSql;
-    }
-
-    public void setFenceVidSql(String fenceVidSql) {
-        this.fenceVidSql = fenceVidSql;
     }
 
     public String getEarlyWarningSql() {

@@ -15,8 +15,6 @@ import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
 import storm.constant.RedisConstant;
-import storm.dao.DataToRedis;
-import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.system.DataKey;
 import storm.system.NoticeType;
@@ -84,8 +82,7 @@ public final class CarNoCanJudge {
      */
     private static ICarNoCanDecide carNoCanDecide = new CarNoCanDecide();
 
-    private final DataToRedis redis = new DataToRedis();
-    private final Recorder recorder = new RedisRecorder(redis);
+    private final RedisRecorder recorder = new RedisRecorder();
 
     /**
      * 无CAN车辆字典
