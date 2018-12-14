@@ -1,7 +1,6 @@
 package storm.topology;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
@@ -14,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.bolt.deal.cusmade.CarNoticeBolt;
 import storm.bolt.deal.norm.AlarmBolt;
-import storm.bolt.deal.norm.EleFenceBolt;
 import storm.bolt.deal.norm.FilterBolt;
 import storm.conf.SysDefineEntity;
 import storm.constant.StreamFieldKey;
@@ -248,19 +246,6 @@ public final class TopologiesByConf {
                 new Fields(DataKey.VEHICLE_ID));
 
         builder
-            // 电子围栏告警处理
-            .setBolt(
-                EleFenceBolt.getComponentId(),
-                new EleFenceBolt(),
-                boltNo * 3)
-            .setNumTasks(boltNo * 9)
-            // 电子围栏告警实时数据
-            .fieldsGrouping(
-                FilterBolt.getComponentId(),
-                SysDefine.FENCE_GROUP,
-                new Fields(DataKey.VEHICLE_ID));
-
-        builder
             // 通知处理、故障码处理
             .setBolt(
                 CarNoticeBolt.getComponentId(),
@@ -293,11 +278,6 @@ public final class TopologiesByConf {
             .fieldsGrouping(
                 AlarmBolt.getComponentId(),
                 AlarmBolt.getKafkaStreamId(),
-                new Fields(KafkaStream.BOLT_KEY))
-            // 电子围栏
-            .fieldsGrouping(
-                EleFenceBolt.getComponentId(),
-                EleFenceBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY))
             // 车辆通知、故障处理
             .fieldsGrouping(

@@ -5,6 +5,7 @@ import org.apache.commons.collections.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.dao.DataToRedis;
+import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
 
 import java.io.Serializable;
@@ -12,9 +13,9 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Redis记录器实现
+ * Redis记录器
  */
-public final class RedisRecorder implements Recorder, Serializable {
+public final class RedisRecorder implements Serializable {
 
     private static final long serialVersionUID = -2486640129712946392L;
 
@@ -22,46 +23,32 @@ public final class RedisRecorder implements Recorder, Serializable {
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
-    private DataToRedis redis;
+    private final DataToRedis redis = new DataToRedis();
 
-    private void init(DataToRedis redis) {
-        if (null != redis) {
-            this.redis = redis;
-        } else {
-
-            this.redis = new DataToRedis();
-        }
-    }
-
-    public RedisRecorder(DataToRedis redis) {
-        super();
-        init(redis);
-    }
-
-    public RedisRecorder() {
-        super();
-        init(null);
-    }
-
-    @Override
+    /**
+     * 更新哈希表
+     * @param dbIndex 数据库索引
+     * @param type 表名
+     * @param id 项ID
+     * @param ctx 上下文
+     */
     public void save(int dbIndex, String type, String id, Map<String, Object> ctx) {
         try {
             String json = JSON_UTILS.toJson(ctx);
-            if (null == this.redis) {
-                this.redis = new DataToRedis();
-            }
             redis.hset(dbIndex, type, id, json);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    @Override
+    /**
+     * 更新哈希表
+     * @param dbIndex 数据库索引
+     * @param type 表名
+     * @param ctxs field-value pairs
+     */
     public void save(int dbIndex, String type, Map<String, Map<String, Object>> ctxs) {
         try {
-            if (null == this.redis) {
-                this.redis = new DataToRedis();
-            }
             for (Map.Entry<String, Map<String, Object>> entry : ctxs.entrySet()) {
                 String id = entry.getKey();
                 Map<String, Object> ctx = entry.getValue();
@@ -74,13 +61,25 @@ public final class RedisRecorder implements Recorder, Serializable {
         }
     }
 
-    @Override
+    /**
+     * 更新哈希表
+     * @param map
+     * @param db
+     * @param table
+     */
+    public void saveMap(Map<String, String> map, int db, String table) {
+        this.redis.saveMap(map, db, table, JedisPoolUtils.getInstance().getJedisPool());
+    }
+
+    /**
+     * 从Redis拉取数据初始化initMap
+     * @param dbIndex 数据库索引
+     * @param type key
+     * @param initMap
+     */
     public void rebootInit(int dbIndex, String type, Map<String, Map<String, Object>> initMap) {
         if (null == initMap) {
             throw new RuntimeException("InitMapContainerNullException");
-        }
-        if (null == this.redis) {
-            this.redis = new DataToRedis();
         }
         Map<String, String> redisCache = redis.hashGetAllMapByKeyAndDb(type, dbIndex);
         if (MapUtils.isNotEmpty(redisCache)) {
@@ -112,7 +111,12 @@ public final class RedisRecorder implements Recorder, Serializable {
         }
     }
 
-    @Override
+    /**
+     * 删除哈希项
+     * @param dbIndex 数据库索引
+     * @param type key
+     * @param ids fields
+     */
     public void del(int dbIndex, String type, String... ids) {
         redis.hdel(dbIndex, type, ids);
     }

@@ -18,7 +18,6 @@ import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
 import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
-import storm.handler.ctx.Recorder;
 import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
 import storm.protocol.SUBMIT_LINKSTATUS;
@@ -86,7 +85,7 @@ public class CarRuleHandler implements InfoNotice {
 
 
     DataToRedis redis;
-    private Recorder recorder;
+    private RedisRecorder recorder;
     static String onOffRedisKeys = "vehCache.qy.onoff.notice";
 
     static int topn = 20;
@@ -103,7 +102,7 @@ public class CarRuleHandler implements InfoNotice {
 
     {
         redis = new DataToRedis();
-        recorder = new RedisRecorder(redis);
+        recorder = new RedisRecorder();
         restartInit(true);
     }
 
