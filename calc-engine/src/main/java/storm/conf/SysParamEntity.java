@@ -30,7 +30,7 @@ public class SysParamEntity {
     /**
      * 电子围栏与车辆关联
      */
-    private String fenceVehicleSql = "SELECT LK.ELECTRONIC_FENCE_ID AS FENCE_ID, LK.VEH_ID AS VID FROM SYS_FENCE_VEH_LK LK";
+    private String fenceVehicleSql = "SELECT LK.FENCE_ID , LK.VEH_ID AS VID FROM SYS_FENCE_VEH_LK LK WHERE LK.STATE = 1";
     /**
      * 预警规则(旧)
      */

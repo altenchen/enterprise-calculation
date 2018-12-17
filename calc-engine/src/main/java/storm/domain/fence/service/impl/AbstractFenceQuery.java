@@ -1,6 +1,7 @@
 package storm.domain.fence.service.impl;
 
 import com.google.common.collect.ImmutableMap;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.dao.DataToRedis;
@@ -74,9 +75,11 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
      * @return 车辆对应的围栏列表
      */
     @Override
+    @NotNull
     public ImmutableMap<String, Fence> query(String vid) {
         refresh();
-        return vehicleFenceRuleMap.get(vid);
+        ImmutableMap<String, Fence> result = vehicleFenceRuleMap.get(vid);
+        return result == null ? ImmutableMap.of() : result;
     }
 
     @Override

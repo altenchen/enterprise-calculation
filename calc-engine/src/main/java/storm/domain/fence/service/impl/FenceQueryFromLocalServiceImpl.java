@@ -123,11 +123,19 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
                 events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
                 //单次执行
                 crons = ImmutableList.of(new DailyOnce(prevDate.getTime(), nextDate.getTime(), startTime.getTime(), endTime.getTime()));
+
+                Set<String> event = fenceEvent.getOrDefault(fenceId, new HashSet<>());
+                event.add(SysDefine.FENCE_OUTSIDE_EVENT_ID);
+                fenceEvent.put(fenceId, event);
             } else {
                 events = ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 //周一， 周三， 周五执行
                 byte weekFlag = 1 << (1 % 7) | 1 << (3 % 7) | 1 << (5 % 7);
                 crons = ImmutableList.of(new WeeklyCycle(weekFlag, startTime.getTime(), endTime.getTime()));
+
+                Set<String> event = fenceEvent.getOrDefault(fenceId, new HashSet<>());
+                event.add(SysDefine.FENCE_INSIDE_EVENT_ID);
+                fenceEvent.put(fenceId, event);
             }
 
             Fence fence = null;

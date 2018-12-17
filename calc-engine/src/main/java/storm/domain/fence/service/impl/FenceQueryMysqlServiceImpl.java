@@ -87,6 +87,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      *
      * @return
      */
+    @NotNull
     private List<FenceVehicle> queryFenceVehicleRelations() {
         long start = System.currentTimeMillis();
         LOGGER.info("查询电子围栏与车辆关联");
@@ -98,8 +99,10 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
             }
             return relations;
         });
-
         LOGGER.info("查询电子围栏与车辆关联 耗时: {} ms", System.currentTimeMillis() - start);
+        if( result == null ){
+            return new ArrayList<>();
+        }
         return result;
     }
 
@@ -163,6 +166,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      * @param ruleType   1、驶离；2、驶入；3、驶入驶离
      * @return 电子围栏事件
      */
+    @NotNull
     private ImmutableMap<String, EventCron> initFenceEvent(final String fenceId, final Map<String, Set<String>> fenceEvent, int ruleType) {
         ImmutableMap.Builder<String, EventCron> events = new ImmutableMap.Builder<>();
         switch (ruleType) {
