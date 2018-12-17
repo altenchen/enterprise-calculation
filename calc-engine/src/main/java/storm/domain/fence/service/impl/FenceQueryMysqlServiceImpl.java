@@ -3,6 +3,7 @@ package storm.domain.fence.service.impl;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.domain.fence.Fence;
@@ -260,9 +261,10 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      * @param lonlatRange 经纬度【1圆形(半径;坐标) 8352;116.59574,39.916867】【2多边形(坐标;坐标;...) 116.524329,39.828861;116.60398,39.828861;116.60398,39.776637;116.524329,39.776637】
      * @return 返回围栏区域
      */
+    @NotNull
     private ImmutableMap<String, AreaCron> initFenceArea(int chartType, String lonlatRange) {
         if(StringUtils.isEmpty(lonlatRange)){
-            return null;
+            return ImmutableMap.of();
         }
         ImmutableMap.Builder<String, AreaCron> areas = new ImmutableMap.Builder<>();
         String areaId = SysDefine.FENCE_AREA_ID;
@@ -271,7 +273,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
         switch (chartType) {
             case 1:
                 //圆形区域
-                String[] splitArray = lonlatRange.split(";");
+                String[] splitArray = lonlatRange.split("[;:]");
                 if (splitArray.length < coordinateSize) {
                     break;
                 }
@@ -286,7 +288,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 final Coordinate[] first = {null};
                 final Coordinate[] last = {null};
                 ImmutableList.Builder<Coordinate> coordinates = new ImmutableList.Builder();
-                Arrays.stream(lonlatRange.split(";")).forEach(item -> {
+                Arrays.stream(lonlatRange.split("[;:]")).forEach(item -> {
                     String[] coordinateArrays = item.split(",");
                     if (coordinateArrays.length < coordinateSize) {
                         return;
