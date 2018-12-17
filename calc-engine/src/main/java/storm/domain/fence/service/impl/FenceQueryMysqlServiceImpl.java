@@ -58,20 +58,19 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
         List<FenceVehicle> relations = queryFenceVehicleRelations();
 
         //生成围栏与车辆关系
-        fences.forEach(fence -> {
-            relations.forEach(relation -> {
-                if (!fence.getFenceId().equals(relation.getFenceId())) {
-                    return;
-                }
-                ImmutableMap.Builder<String, Fence> builder = vehicleFenceRuleTemp.getOrDefault(relation.getVid(), new ImmutableMap.Builder<>()).put(fence.getFenceId(), fence);
-                vehicleFenceRuleTemp.put(relation.getVid(), builder);
+        fences.forEach(fence -> relations.forEach(relation -> {
+            if (!fence.getFenceId().equals(relation.getFenceId())) {
+                return;
+            }
+            ImmutableMap.Builder<String, Fence> builder = vehicleFenceRuleTemp.getOrDefault(relation.getVid(), new ImmutableMap.Builder<>()).put(fence.getFenceId(), fence);
+            vehicleFenceRuleTemp.put(relation.getVid(), builder);
 
-                Set<String> vids = fenceVehicle.getOrDefault(fence.getFenceId(), new HashSet<>());
-                vids.add(relation.getVid());
-                fenceVehicle.put(fence.getFenceId(), vids);
+            Set<String> vids = fenceVehicle.getOrDefault(fence.getFenceId(), new HashSet<>());
+            vids.add(relation.getVid());
+            fenceVehicle.put(fence.getFenceId(), vids);
 
-            });
-        });
+        }));
+
         //转成ImmutableMap
         vehicleFenceRuleTemp.forEach((key, value) -> {
             vehicleFenceRule.put(key, value.build());
