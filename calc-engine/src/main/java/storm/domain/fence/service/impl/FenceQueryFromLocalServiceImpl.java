@@ -5,19 +5,18 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.dao.DataToRedis;
 import storm.domain.fence.Fence;
 import storm.domain.fence.area.AreaCron;
 import storm.domain.fence.area.Circle;
 import storm.domain.fence.area.Coordinate;
 import storm.domain.fence.area.Polygon;
 import storm.domain.fence.cron.Cron;
-import storm.domain.fence.cron.DailyCycle;
 import storm.domain.fence.cron.DailyOnce;
 import storm.domain.fence.cron.WeeklyCycle;
 import storm.domain.fence.event.DriveInside;
 import storm.domain.fence.event.DriveOutside;
 import storm.domain.fence.event.EventCron;
-import storm.domain.fence.service.IFenceQueryService;
 import storm.system.SysDefine;
 
 import java.text.ParseException;
@@ -55,6 +54,7 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
     }};
 
     public FenceQueryFromLocalServiceImpl() {
+        super(new DataToRedis());
         try {
             Calendar calendar = Calendar.getInstance();
             //昨天
@@ -85,6 +85,7 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
         Map<String, Set<String>> fenceEvent = new HashMap<>(10);
         //围栏与车辆映射关系 <fenceId, [vid, vid, ...]>
         Map<String, Set<String>> fenceVehicle = new HashMap<>(0);
+        Map<String, Fence> fenceMap = new HashMap<>(10);
 
         //获取所有电子围栏数据
         List<Fence> fences = queryFences(fenceEvent);
@@ -99,14 +100,14 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
                 vids.add(vid);
                 fenceVehicle.put(fence.getFenceId(), vids);
             });
+            fenceMap.put(fence.getFenceId(), fence);
+
         });
         //转成ImmutableMap
-        vehicleFenceRuleTemp.forEach((key, value) -> {
-            vehicleFenceRule.put(key, value.build());
-        });
+        vehicleFenceRuleTemp.forEach((key, value) -> vehicleFenceRule.put(key, value.build()));
 
         //完成初始化
-        dataInitCallback.finishInit(vehicleFenceRule, fenceEvent, fenceVehicle);
+        dataInitCallback.finishInit(vehicleFenceRule, fenceEvent, fenceVehicle, fenceMap);
         LOGGER.info("初始化车辆围栏缓存 耗时: {} ms. 关联围栏的车辆数: {}. 围栏数: {}", System.currentTimeMillis() - start, vehicleFenceRule.size(), fences.size());
 
     }
@@ -118,7 +119,7 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
         final int[] index = {0};
         fenceIds.forEach(fenceId -> {
             ImmutableMap<String, EventCron> events;
-            ImmutableList<Cron> crons = null;
+            ImmutableList<Cron> crons;
             if (index[0] == 0) {
                 events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
                 //单次执行
@@ -138,14 +139,14 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
                 fenceEvent.put(fenceId, event);
             }
 
-            Fence fence = null;
+            Fence fence;
             //港湾大道 - 珠海市社会保险基金管理中心高新办事处
             if (index[0] == 0) {
                 //圆形围栏
                 fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(1, "1320;113.59724,22.36536")), events, crons);
             } else {
                 //多边形围栏
-                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(2, "113.596285,22.368336;113.600019,22.368098;113.602079,22.364884;113.600512,22.363534;113.597551,22.362244;113.592809,22.362264;113.59356,22.368555")), events, crons);
+                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(2, "113.581,22.375365;113.600999,22.377269;113.611384,22.364808;113.590957,22.35441;113.574992,22.36203")), events, crons);
             }
             result.add(fence);
             index[0]++;
@@ -155,7 +156,7 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
     }
 
     public AreaCron initArea(int chartType, String lonlatRange) {
-        if(StringUtils.isEmpty(lonlatRange)){
+        if (StringUtils.isEmpty(lonlatRange)) {
             return null;
         }
         AreaCron area = null;
@@ -182,13 +183,13 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
                         return;
                     }
                     Coordinate point = new Coordinate(Double.valueOf(coordinateArrays[0]), Double.valueOf(coordinateArrays[1]));
-                    if( first[0] == null ){
+                    if (first[0] == null) {
                         first[0] = point;
                     }
                     last[0] = point;
                     coordinates.add(point);
                 });
-                if( !first[0].equals(last[0]) ){
+                if (!first[0].equals(last[0])) {
                     //多边形没有闭环,添加坐标点使多边形闭合
                     coordinates.add(first[0]);
                 }
@@ -200,12 +201,4 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
         return area;
     }
 
-
-    public static void main(String[] args) {
-
-        IFenceQueryService service = new FenceQueryFromLocalServiceImpl();
-        ImmutableMap<String, Fence> data = service.query("68145d1c091f44eebff42263bd16ac02");
-        System.out.println("==");
-
-    }
 }

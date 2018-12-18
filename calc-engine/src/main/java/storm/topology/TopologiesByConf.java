@@ -156,7 +156,7 @@ public final class TopologiesByConf {
         stormConf.put("ctfo.cacheTable", ConfigUtils.getSysDefine().getCtfoCacheTable());
         //endregion
 
-        stormConf.put(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, ConfigUtils.getSysDefine().getDbCacheFlushTime());
+        stormConf.put(SysDefine.DB_CACHE_FLUSH_TIME_SECOND, ConfigUtils.getSysDefine().getDbCacheFlushtime());
 
         //region kafka
         stormConf.put(SysDefine.KAFKA_ZOOKEEPER_SERVERS_KEY, ConfigUtils.getSysDefine().getKafkaZookeeperServers());
@@ -261,8 +261,8 @@ public final class TopologiesByConf {
 
         builder.setSpout(
             messageEmitSpoutComponentId,
-            messageEmitSpout,
-            spoutParallelism
+            messageEmitSpout
+//            ,spoutParallelism
         );
 
         builder
@@ -309,9 +309,11 @@ public final class TopologiesByConf {
             // 电子围栏告警处理
             .setBolt(
                 ElectronicFenceBolt.getComponentId(),
-                new ElectronicFenceBolt(),
-                boltParallelism * 3)
-            .setNumTasks(boltParallelism * 9)
+                new ElectronicFenceBolt()
+//                ,
+//                boltParallelism * 3
+            )
+//            .setNumTasks(boltParallelism * 9)
             // 电子围栏告警实时数据
             .fieldsGrouping(
                 FilterBolt.getComponentId(),
@@ -342,9 +344,8 @@ public final class TopologiesByConf {
             // 发送 kafka 消息
             .setBolt(
                 messageSendBoltComponentId,
-                messageSendBolt,
-                boltParallelism * 2)
-            .setNumTasks(boltParallelism * 6)
+                messageSendBolt)
+//            .setNumTasks(boltParallelism * 6)
             // 车辆平台报警状态、实时需要存储的数据
             .fieldsGrouping(
                 AlarmBolt.getComponentId(),

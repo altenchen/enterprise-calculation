@@ -6,6 +6,7 @@ import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.dao.DataToRedis;
 import storm.domain.fence.Fence;
 import storm.domain.fence.area.AreaCron;
 import storm.domain.fence.area.Circle;
@@ -36,6 +37,10 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
 
     private static final SqlUtils SQL_UTILS = SqlUtils.getInstance();
 
+    public FenceQueryMysqlServiceImpl() {
+        super(new DataToRedis());
+    }
+
     /**
      * 查询围栏规则规则
      */
@@ -50,6 +55,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
         Map<String, Set<String>> fenceEvent = new HashMap<>(10);
         //围栏与车辆映射关系 <fenceId, [vid, vid, ...]>
         Map<String, Set<String>> fenceVehicle = new HashMap<>(0);
+        Map<String, Fence> fenceMap = new HashMap<>(10);
 
         //获取所有电子围栏数据
         List<Fence> fences = queryFences(fenceEvent);
@@ -69,6 +75,8 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
             vids.add(relation.getVid());
             fenceVehicle.put(fence.getFenceId(), vids);
 
+            fenceMap.put(fence.getFenceId(), fence);
+
         }));
 
         //转成ImmutableMap
@@ -77,7 +85,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
         });
 
         //完成初始化
-        dataInitCallback.finishInit(vehicleFenceRule, fenceEvent, fenceVehicle);
+        dataInitCallback.finishInit(vehicleFenceRule, fenceEvent, fenceVehicle, fenceMap);
         LOGGER.info("初始化车辆围栏缓存 耗时: {} ms. 关联围栏的车辆数: {}. 围栏数: {}", System.currentTimeMillis() - start, vehicleFenceRule.size(), fences.size());
     }
 
@@ -99,7 +107,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
             return relations;
         });
         LOGGER.info("查询电子围栏与车辆关联 耗时: {} ms", System.currentTimeMillis() - start);
-        if( result == null ){
+        if (result == null) {
             return new ArrayList<>();
         }
         return result;
@@ -146,7 +154,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 ImmutableMap<String, EventCron> events = initFenceEvent(fenceId, fenceEvent, ruleType);
 
                 //初始化执行计划
-                ImmutableList<Cron> cron = initFenceCron(periodType, week, startDate, endDate, startTime, endTime);
+                ImmutableList<Cron> cron = initFenceCron(fenceId, periodType, week, startDate, endDate, startTime, endTime);
 
                 Fence fence = new Fence(fenceId, areas, events, cron);
                 fences.add(fence);
@@ -160,8 +168,8 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
     /**
      * 初始化电子围栏事件
      *
-     * @param fenceId
-     * @param fenceEvent
+     * @param fenceId    围栏ID
+     * @param fenceEvent 围栏事件
      * @param ruleType   1、驶离；2、驶入；3、驶入驶离
      * @return 电子围栏事件
      */
@@ -220,14 +228,27 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      * @param endTime    例：23:22:22
      * @return 返回执行计划列表
      */
-    private ImmutableList<Cron> initFenceCron(int periodType, String week, Date startDate, Date endDate, Time startTime, Time endTime) {
+    private ImmutableList<Cron> initFenceCron(String fenceId, int periodType, String week, Date startDate, Date endDate, Time startTime, Time endTime) {
         ImmutableList.Builder<Cron> cronBuilder = new ImmutableList.Builder<>();
         switch (periodType) {
             case 1:
                 //单次执行
-                cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), startTime.getTime(), endTime.getTime()));
+                if (startDate == null || endDate == null) {
+                    LOGGER.warn("FENCE_ID:{} 执行计划[ 单次执行 ], 开始日期(startDate)或结束日期(endDate)为空，已启用默认执行计划[ 每天24小时都生效 ]", fenceId);
+                    break;
+                }
+                if (startTime == null || endTime == null) {
+                    LOGGER.warn("FENCE_ID:{} 执行计划[ 单次执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId);
+                    cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), 0, 0));
+                } else {
+                    cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), startTime.getTime(), endTime.getTime()));
+                }
                 break;
             case 2:
+                if (startTime == null || endTime == null) {
+                    LOGGER.warn("FENCE_ID:{} 执行计划[ 每周循环 ] 周[ " + week + " ]执行, 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId);
+                    break;
+                }
                 //每周循环
                 String[] weekStringArray = week.split(",");
                 if (weekStringArray.length == 0) {
@@ -249,6 +270,10 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 break;
             case 3:
                 //每天执行
+                if (startTime == null || endTime == null) {
+                    LOGGER.warn("FENCE_ID:{} 执行计划[ 每天执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId, startTime == null, endTime == null);
+                    break;
+                }
                 cronBuilder.add(new DailyCycle(startTime.getTime(), endTime.getTime()));
                 break;
             default:
@@ -266,7 +291,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      */
     @NotNull
     private ImmutableMap<String, AreaCron> initFenceArea(int chartType, String lonlatRange) {
-        if(StringUtils.isEmpty(lonlatRange)){
+        if (StringUtils.isEmpty(lonlatRange)) {
             return ImmutableMap.of();
         }
         ImmutableMap.Builder<String, AreaCron> areas = new ImmutableMap.Builder<>();
@@ -297,13 +322,13 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                         return;
                     }
                     Coordinate point = new Coordinate(Double.valueOf(coordinateArrays[0]), Double.valueOf(coordinateArrays[1]));
-                    if( first[0] == null ){
+                    if (first[0] == null) {
                         first[0] = point;
                     }
                     last[0] = point;
                     coordinates.add(point);
                 });
-                if( !first[0].equals(last[0]) ){
+                if (!first[0].equals(last[0])) {
                     //多边形没有闭环,添加坐标点使多边形闭合
                     coordinates.add(first[0]);
                 }

@@ -1,11 +1,9 @@
 package storm.domain.fence.service;
 
 import com.google.common.collect.ImmutableMap;
-import storm.dao.DataToRedis;
 import storm.domain.fence.Fence;
 
-import java.util.List;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * 查询电子围栏接口
@@ -26,9 +24,10 @@ public interface IFenceQueryService {
      * 判断是否存在电子围栏
      *
      * @param fenceId 围栏ID
+     * @param time    当前时间
      * @return
      */
-    boolean existFence(String fenceId);
+    boolean existFence(String fenceId, long time);
 
     /**
      * 判断电子围栏与规则是否关联
@@ -49,10 +48,17 @@ public interface IFenceQueryService {
     boolean existFenceVehicle(String fenceId, String vehicleId);
 
     /**
-     * 数据检查,删除redis上的脏数据
+     * 删除围栏与车辆驶入驶出状态缓存
      *
-     * @param redis
+     * @param fenceId
+     * @param vid
      */
-    void dataCheck(DataToRedis redis);
+    void deleteFenceVehicleStatusCache(String fenceId, String vid);
+
+    /**
+     * 将之前触发驶入驶出通知的车辆因为修改了围栏导致没有结束掉的缓存清理掉
+     * @param consumer
+     */
+    void dirtyDataClear(BiConsumer<String, String> consumer);
 
 }

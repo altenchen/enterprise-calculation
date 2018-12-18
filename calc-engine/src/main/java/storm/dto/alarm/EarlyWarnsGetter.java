@@ -39,7 +39,7 @@ public class EarlyWarnsGetter {
 
     static {
         LOG.info("平台报警规则数据库查询语句为 {} ", ConfigUtils.getSysParam().getAlarmRuleSql());
-        LOG.info("平台报警规则数据库更新最小间隔为 {} 毫秒", TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime()));
+        LOG.info("平台报警规则数据库更新最小间隔为 {} 毫秒", TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushtime()));
     }
 
     /**
@@ -50,7 +50,7 @@ public class EarlyWarnsGetter {
 
     private static synchronized void rebuild(final long currentTimeMillis) {
 
-        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
+        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushtime());
         if(currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
 
             try {
@@ -155,7 +155,7 @@ public class EarlyWarnsGetter {
     public static ImmutableMap<String, ImmutableMap<String, EarlyWarn>> getAllRules() {
 
         final long currentTimeMillis = System.currentTimeMillis();
-        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
+        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushtime());
         if(currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
             rebuild(currentTimeMillis);
         }
@@ -167,7 +167,7 @@ public class EarlyWarnsGetter {
     public static ImmutableMap<String, EarlyWarn> getRulesByVehicleModel(@Nullable final String vehicleModel) {
 
         final long currentTimeMillis = System.currentTimeMillis();
-        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
+        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushtime());
         if(currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
             rebuild(currentTimeMillis);
         }

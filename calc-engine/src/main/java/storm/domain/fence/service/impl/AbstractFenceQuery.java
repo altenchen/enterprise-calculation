@@ -10,9 +10,10 @@ import storm.domain.fence.service.IFenceQueryService;
 import storm.domain.fence.status.FenceVehicleStatus;
 import storm.util.ConfigUtils;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 
 /**
  * 该类实现了以下基础的功能,子类只需要继承该类， 实现数据查询【dataQuery】这个接口即可, 比如从mysql, redis中获取数据等
@@ -35,35 +36,63 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
      * 车辆与围栏规则
      * <vid, <fenceId, 围栏规则>>
      */
-    protected Map<String, ImmutableMap<String, Fence>> vehicleFenceRuleMap = new HashMap<>(0);
+    private Map<String, ImmutableMap<String, Fence>> vehicleFenceRuleMap = new HashMap<>(0);
     /**
      * 电子围栏与规则(事件)映射关系
      * <fenceId, [eventId, eventId, ...]>
      */
-    protected Map<String, Set<String>> fenceEventMap = new HashMap<>(0);
+    private Map<String, Set<String>> fenceEventMap = new HashMap<>(0);
+    /**
+     * 电子围栏缓存
+     * <fenceId, Fence>
+     */
+    private Map<String, Fence> fenceMap = new HashMap<>(0);
     /**
      * 电子围栏与车辆映射关系
      * <fenceId, [vid, vid, ...]>
      */
-    protected Map<String, Set<String>> fenceVehicleMap = new HashMap<>(0);
+    private Map<String, Set<String>> fenceVehicleMap = new HashMap<>(0);
+
+    /**
+     * 围栏与车辆状态删除标志
+     */
+    private Map<String, Set<String>> deleteFenceVehicleStatusFlag = new HashMap<>();
+
+    private DataToRedis redis;
+
+    private static final Lock LOCK = new ReentrantLock();
+    /**
+     * 是否清理中
+     */
+    private static boolean cleaning = false;
+
+    AbstractFenceQuery(final DataToRedis redis) {
+        this.redis = redis;
+    }
 
     /**
      * 刷新电子围栏缓存
      */
     private synchronized void refresh() {
-        long flushTime = ConfigUtils.getSysDefine().getDbCacheFlushTime() * 1000;
-        long currentTime = System.currentTimeMillis();
-        if (vehicleFenceRuleMap == null || currentTime - this.prevSyncTime >= flushTime) {
-            LOGGER.info("同步电子围栏规则");
-            //到了刷新时间，重新同步规则
-            dataQuery((vehicleFenceRuleMap, fenceEventMap, fenceVehicleMap) -> {
-                this.vehicleFenceRuleMap = vehicleFenceRuleMap;
-                this.fenceEventMap = fenceEventMap;
-                this.fenceVehicleMap = fenceVehicleMap;
-            });
-            //更新最后一次同步时间
-            this.prevSyncTime = System.currentTimeMillis();
-            LOGGER.info("同步电子围栏规则结束");
+        try {
+            long flushTime = ConfigUtils.getSysDefine().getDbCacheFlushtime() * 1000;
+            long currentTime = System.currentTimeMillis();
+            if (vehicleFenceRuleMap == null || currentTime - this.prevSyncTime >= flushTime) {
+                LOGGER.info("同步电子围栏规则");
+                //到了刷新时间，重新同步规则
+                dataQuery((vehicleFenceRuleMap, fenceEventMap, fenceVehicleMap, fenceMap) -> {
+                    this.vehicleFenceRuleMap = vehicleFenceRuleMap;
+                    this.fenceEventMap = fenceEventMap;
+                    this.fenceVehicleMap = fenceVehicleMap;
+                    this.deleteFenceVehicleStatusFlag.clear();
+                });
+                LOGGER.info("同步电子围栏规则结束");
+                dataCheck();
+                //更新最后一次同步时间
+                this.prevSyncTime = System.currentTimeMillis();
+            }
+        } catch (Exception e) {
+            LOGGER.error("电子围栏同步数据异常", e);
         }
     }
 
@@ -83,8 +112,11 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
     }
 
     @Override
-    public boolean existFence(String fenceId) {
-        return fenceEventMap.containsKey(fenceId);
+    public boolean existFence(String fenceId, long time) {
+        return Optional
+            .ofNullable(fenceMap.get(fenceId))
+            .map(fence -> fence.active(time))
+            .orElse(false);
     }
 
     @Override
@@ -97,11 +129,12 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
         return fenceVehicleMap.containsKey(fenceId) && fenceVehicleMap.get(fenceId).contains(vehicleId);
     }
 
-    @Override
-    public void dataCheck(final DataToRedis redis) {
-        //数据检查之前先刷新一次缓存，得到最新的数据
-        refresh();
-
+    /**
+     * 数据检查
+     * 1、检查围栏与车辆关系是否解除
+     * 2、检查围栏与事件关系是否解除
+     */
+    private void dataCheck() {
         //判断围栏与车辆关系是否被解除
         Set<String> fenceVehicleStatusKeys = redis.hkeys(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE);
         if (fenceVehicleStatusKeys != null) {
@@ -121,7 +154,6 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
                 if (!exists) {
                     //车辆与围栏关系解除了，直接删除
                     redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, key);
-                    return;
                 }
 
             });
@@ -145,7 +177,6 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
                 if (!exists) {
                     //车辆与围栏关系解除了，直接删除
                     redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE, key);
-                    return;
                 }
             });
         }
@@ -166,8 +197,70 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
          * @param vehicleFenceRuleMap 车辆与围栏映射关系 <vid, <fenceId, 围栏规则>>
          * @param fenceEventMap       围栏与事件映射关系 <fenceId, [eventId, eventId, ...]>
          * @param fenceVehicleMap     围栏与车辆映射关系 <fenceId, [vid, vid, ...]>
+         * @param fenceMap            围栏缓存 <fenceId, Fence>
          */
-        void finishInit(Map<String, ImmutableMap<String, Fence>> vehicleFenceRuleMap, Map<String, Set<String>> fenceEventMap, Map<String, Set<String>> fenceVehicleMap);
+        void finishInit(Map<String, ImmutableMap<String, Fence>> vehicleFenceRuleMap, Map<String, Set<String>> fenceEventMap, Map<String, Set<String>> fenceVehicleMap, Map<String, Fence> fenceMap);
     }
 
+    @Override
+    public void deleteFenceVehicleStatusCache(final String fenceId, final String vid) {
+        if (deleteFenceVehicleStatusFlag.containsKey(fenceId) && deleteFenceVehicleStatusFlag.get(fenceId).contains(vid)) {
+            //该缓存已从redis删除
+            return;
+        }
+        String needDeleteKey = fenceId + "." + vid;
+        redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE, needDeleteKey);
+        Set<String> vids = deleteFenceVehicleStatusFlag.getOrDefault(fenceId, new HashSet<>());
+        vids.add(vid);
+        deleteFenceVehicleStatusFlag.put(fenceId, vids);
+    }
+
+    /**
+     * 数据检查
+     * 1、检查围栏由【激活 --> 未激活】遗留的脏数据
+     * @param noticeCallback
+     */
+    @Override
+    public void dirtyDataClear(final BiConsumer<String, String> noticeCallback) {
+        LOCK.lock();
+        if (cleaning) {
+            LOCK.unlock();
+            return;
+        }
+        cleaning = true;
+        LOCK.unlock();
+
+        long time = System.currentTimeMillis();
+        //清理车辆无效的驶入驶出缓存
+        Set<String> fenceVehicleStatusKeys = redis.hkeys(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE);
+        if (fenceVehicleStatusKeys != null) {
+            fenceVehicleStatusKeys.forEach(redisMapKey -> {
+                /**
+                 * arr[0] 围栏ID
+                 * arr[1] 车辆VID
+                 */
+                String[] arr = redisMapKey.split("\\.");
+                if (arr.length < 2) {
+                    return;
+                }
+                if (!fenceMap.containsKey(arr[0])) {
+                    //没有这个电子围栏，有可能被删掉了
+                    noticeCallback.accept(arr[0], arr[1]);
+                    redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, redisMapKey);
+                    return;
+                }
+                Fence fence = fenceMap.get(arr[0]);
+                if (fence.active(time)) {
+                    //围栏处理激活状态，忽略
+                    return;
+                }
+                //围栏未激活，清理脏数据
+                noticeCallback.accept(arr[0], arr[1]);
+                redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, redisMapKey);
+            });
+        }
+
+
+        cleaning = true;
+    }
 }

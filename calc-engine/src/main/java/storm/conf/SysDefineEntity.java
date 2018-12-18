@@ -158,7 +158,7 @@ public class SysDefineEntity {
     /**
      * 查询数据库间隔(秒)
      */
-    private int dbCacheFlushTime = 360;
+    private int dbCacheFlushtime = 360;
 
     // ############################################################################################
     //                                        通信超时 配置
@@ -684,12 +684,12 @@ public class SysDefineEntity {
         this.fenceCoordinateDistanceMaxMeter = fenceCoordinateDistanceMaxMeter;
     }
 
-    public int getDbCacheFlushTime() {
-        return dbCacheFlushTime;
+    public int getDbCacheFlushtime() {
+        return dbCacheFlushtime;
     }
 
-    public void setDbCacheFlushTime(final int dbCacheFlushTime) {
-        this.dbCacheFlushTime = dbCacheFlushTime;
+    public void setDbCacheFlushtime(final int dbCacheFlushtime) {
+        this.dbCacheFlushtime = dbCacheFlushtime;
     }
 
     public int getRedisOfflineTime() {

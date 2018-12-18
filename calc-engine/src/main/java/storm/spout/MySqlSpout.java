@@ -95,7 +95,7 @@ public final class MySqlSpout extends BaseRichSpout {
 
     private static ImmutableSet<String> getVehicleIdSet() {
         final long currentTimeMillis = System.currentTimeMillis();
-		long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
+		long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushtime());
         if(currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
             rebuild(currentTimeMillis);
         }
@@ -104,7 +104,7 @@ public final class MySqlSpout extends BaseRichSpout {
     }
 
     private static synchronized void rebuild(final long currentTimeMillis) {
-		long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
+		long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushtime());
         if(currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
 
             try {
@@ -146,7 +146,7 @@ public final class MySqlSpout extends BaseRichSpout {
 
     static {
         LOG.info("车辆标识数据库查询语句为 {} ", ConfigUtils.getSysParam().getVehicleIdSql());
-        LOG.info("车辆标识数据库更新最小间隔为 {} 毫秒", TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime()));
+        LOG.info("车辆标识数据库更新最小间隔为 {} 毫秒", TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushtime()));
     }
 
     @SuppressWarnings({"unused", "FieldCanBeLocal"})

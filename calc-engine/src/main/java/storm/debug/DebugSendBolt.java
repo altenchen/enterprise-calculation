@@ -79,6 +79,7 @@ public final class DebugSendBolt extends BaseRichBolt {
                 jedis.select(0);
                 jedis.lpush(redisKey, message);
             });
+            LOG.info("发送通知[ {} ] {}", topic, message);
             collector.ack(input);
         } catch (@NotNull final Exception e) {
             collector.fail(input);
