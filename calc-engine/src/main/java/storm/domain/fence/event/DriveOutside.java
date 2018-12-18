@@ -18,6 +18,7 @@ import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 
 import java.lang.reflect.Type;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -245,6 +246,42 @@ public final class DriveOutside extends BaseEvent implements Event {
             notice = buffer;
             buffer = null;
 
+        }
+
+        @Override
+        public void cleanStatus(@NotNull final Consumer<BaseNotice> noticeCallback) {
+
+            final DriveOutsideNotice startNotice = notice;
+
+            if(null == startNotice || EventStage.BEGIN != startNotice.eventStage) {
+                return;
+            }
+
+            final DriveOutsideNotice endNotice =
+                Optional
+                    .ofNullable(buffer)
+                    .orElseGet(() -> new DriveOutsideNotice(
+                        startNotice.messageId,
+                        startNotice.fenceId,
+                        startNotice.eventId,
+                        startNotice.vehicleId,
+                        startNotice.dataTime,
+                        startNotice.longitude,
+                        startNotice.latitude,
+                        AreaSide.OUTSIDE,
+                        AreaSide.INSIDE,
+                        EventStage.END));
+
+            endNotice.beginThresholdTimes = startNotice.beginThresholdTimes;
+            endNotice.beginTimeoutMillisecond = startNotice.beginTimeoutMillisecond;
+            endNotice.endThresholdTimes = Optional.ofNullable(delaySwitch.getThresholdTimes(EventStage.END)).orElse(1);
+            endNotice.endTimeoutMillisecond = Optional.ofNullable(delaySwitch.getTimeoutMillisecond(EventStage.END)).orElse(0L);
+            endNotice.noticeTime = DataUtils.buildFormatTime(System.currentTimeMillis());
+
+            noticeCallback.accept(endNotice);
+
+            buffer = null;
+            notice = null;
         }
     }
 }
