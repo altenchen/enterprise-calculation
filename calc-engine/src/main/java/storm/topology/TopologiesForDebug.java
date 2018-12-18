@@ -43,7 +43,6 @@ public final class TopologiesForDebug {
         add(initCoordinates(new BigDecimal("113.568248"), new BigDecimal("22.372785")));
         add(initCoordinates(new BigDecimal("113.572883"), new BigDecimal("22.373261")));
         add(initCoordinates(new BigDecimal("113.576573"), new BigDecimal("22.373817")));
-        add(initCoordinates(new BigDecimal("113.579492"), new BigDecimal("22.373341")));
         add(initCoordinates(new BigDecimal("113.583097"), new BigDecimal("22.372071")));
         add(initCoordinates(new BigDecimal("113.586358"), new BigDecimal("22.370801")));
         add(initCoordinates(new BigDecimal("113.588933"), new BigDecimal("22.369372")));
@@ -51,12 +50,32 @@ public final class TopologiesForDebug {
         add(initCoordinates(new BigDecimal("113.59537"), new BigDecimal("22.36707")));
         add(initCoordinates(new BigDecimal("113.601893"), new BigDecimal("22.364689")));
         add(initCoordinates(new BigDecimal("113.601121"), new BigDecimal("22.361673")));
-        add(initCoordinates(new BigDecimal("113.599233"), new BigDecimal("22.358657")));
         add(initCoordinates(new BigDecimal("113.598031"), new BigDecimal("22.354926")));
         add(initCoordinates(new BigDecimal("113.595885"), new BigDecimal("22.352227")));
         add(initCoordinates(new BigDecimal("113.593825"), new BigDecimal("22.349607")));
         add(initCoordinates(new BigDecimal("113.59228"), new BigDecimal("22.345717")));
         add(initCoordinates(new BigDecimal("113.592967"), new BigDecimal("22.341113")));
+
+        //往回走
+        add(initCoordinates(new BigDecimal("113.592967"), new BigDecimal("22.341113")));
+        add(initCoordinates(new BigDecimal("113.59228"), new BigDecimal("22.345717")));
+        add(initCoordinates(new BigDecimal("113.593825"), new BigDecimal("22.349607")));
+        add(initCoordinates(new BigDecimal("113.595885"), new BigDecimal("22.352227")));
+        add(initCoordinates(new BigDecimal("113.598031"), new BigDecimal("22.354926")));
+        add(initCoordinates(new BigDecimal("113.601121"), new BigDecimal("22.361673")));
+        add(initCoordinates(new BigDecimal("113.601893"), new BigDecimal("22.364689")));
+        add(initCoordinates(new BigDecimal("113.59537"), new BigDecimal("22.36707")));
+        add(initCoordinates(new BigDecimal("113.592195"), new BigDecimal("22.36842")));
+        add(initCoordinates(new BigDecimal("113.588933"), new BigDecimal("22.369372")));
+        add(initCoordinates(new BigDecimal("113.586358"), new BigDecimal("22.370801")));
+        add(initCoordinates(new BigDecimal("113.583097"), new BigDecimal("22.372071")));
+        add(initCoordinates(new BigDecimal("113.576573"), new BigDecimal("22.373817")));
+        add(initCoordinates(new BigDecimal("113.572883"), new BigDecimal("22.373261")));
+        add(initCoordinates(new BigDecimal("113.568248"), new BigDecimal("22.372785")));
+        add(initCoordinates(new BigDecimal("113.56387"), new BigDecimal("22.372547")));
+        add(initCoordinates(new BigDecimal("113.56018"), new BigDecimal("22.373499")));
+        add(initCoordinates(new BigDecimal("113.556832"), new BigDecimal("22.374849")));
+
     }};
 
     private static String[] initCoordinates(BigDecimal x, BigDecimal y) {
@@ -94,7 +113,7 @@ public final class TopologiesForDebug {
         buildMessageEmitSpout.accept(
             DebugEmitSpout.getComponentId(),
             DebugEmitSpout.getGeneralStreamId(),
-            new DebugEmitSpout("4240f821-89aa-46af-9f7b-22c0d93351ca", "CS123456789012345", coordinates)
+            new DebugEmitSpout("618d4b48-cfdc-42d5-a5be-bcfbb210e0e6", "jing2018032909894", coordinates)
         );
     }
 

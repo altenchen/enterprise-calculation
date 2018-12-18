@@ -19,6 +19,7 @@ import storm.domain.fence.event.DriveOutside;
 import storm.domain.fence.event.EventCron;
 import storm.system.SysDefine;
 
+import java.sql.Time;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -34,8 +35,8 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
 
     private Date prevDate;
     private Date nextDate;
-    private Date startTime;
-    private Date endTime;
+    private Time startTime;
+    private Time endTime;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     private SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 
@@ -44,13 +45,12 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
      */
     private List<String> fenceIds = new ArrayList<String>(6) {{
         add("0bc51681-5de5-42d6-af2e-62c56424d395");
-        add("8c451488-a6a2-496f-8f92-584db1bb681f");
     }};
     /**
      * 车辆VID - 写死, 测试的时候修改成自己的车辆VID即可
      */
     private List<String> vids = new ArrayList<String>(6) {{
-        add("852a6923-ad9d-475d-b76d-9be46d901131");
+        add("618d4b48-cfdc-42d5-a5be-bcfbb210e0e6");
     }};
 
     public FenceQueryFromLocalServiceImpl() {
@@ -58,20 +58,32 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
         try {
             Calendar calendar = Calendar.getInstance();
             //昨天
-            calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) - 1);
+            calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) - 2);
             String prevDateString = dateFormat.format(calendar.getTime());
             prevDate = dateFormat.parse(prevDateString);
 
             //明天
-            calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) + 2);
+            calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) + 4);
             String nextDateString = dateFormat.format(calendar.getTime());
             nextDate = dateFormat.parse(nextDateString);
 
-            startTime = timeFormat.parse("00:00:00");
-            endTime = timeFormat.parse("23:59:59");
+            //09:33:00
+//            startTime = new Time(34380000);
+//            startTime = new Time(count(9,33,00));
+            startTime = new Time(9,33,00);
+            //22:59:59
+//            endTime = new Time(count(22,59,59));
+            endTime = new Time(22,59,59);
         } catch (ParseException e) {
             LOGGER.info("日期初始化异常", e);
         }
+    }
+
+    private static final long hourTime = 3600000;
+    private static final long minTime = 60000;
+    private static final long secTime = 1000;
+    private long count(int hour, int min, int sec){
+        return hour * hourTime + minTime * min + sec * secTime;
     }
 
     @Override
@@ -121,12 +133,19 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
             ImmutableMap<String, EventCron> events;
             ImmutableList<Cron> crons;
             if (index[0] == 0) {
-                events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
+                //驶入驶离
+//                events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null), SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
+                //驶入
+                events = ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
+                //驶离
+//                events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
+
                 //单次执行
                 crons = ImmutableList.of(new DailyOnce(prevDate.getTime(), nextDate.getTime(), startTime.getTime(), endTime.getTime()));
 
                 Set<String> event = fenceEvent.getOrDefault(fenceId, new HashSet<>());
                 event.add(SysDefine.FENCE_OUTSIDE_EVENT_ID);
+                event.add(SysDefine.FENCE_INSIDE_EVENT_ID);
                 fenceEvent.put(fenceId, event);
             } else {
                 events = ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
@@ -142,11 +161,11 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
             Fence fence;
             //港湾大道 - 珠海市社会保险基金管理中心高新办事处
             if (index[0] == 0) {
-                //圆形围栏
-                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(1, "1320;113.59724,22.36536")), events, crons);
-            } else {
                 //多边形围栏
-                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, initArea(2, "113.581,22.375365;113.600999,22.377269;113.611384,22.364808;113.590957,22.35441;113.574992,22.36203")), events, crons);
+                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_AREA_ID, initArea(2, "113.581,22.375365;113.600999,22.377269;113.611384,22.364808;113.590957,22.35441;113.574992,22.36203")), events, crons);
+            } else {
+                //圆形围栏
+                fence = new Fence(fenceId, ImmutableMap.of(SysDefine.FENCE_AREA_ID, initArea(1, "1320;113.59724,22.36536")), events, crons);
             }
             result.add(fence);
             index[0]++;

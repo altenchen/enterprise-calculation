@@ -261,6 +261,6 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
         }
 
 
-        cleaning = true;
+        cleaning = false;
     }
 }

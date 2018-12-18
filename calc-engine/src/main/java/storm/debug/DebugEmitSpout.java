@@ -248,7 +248,7 @@ public final class DebugEmitSpout extends BaseRichSpout {
                         data.put(DataKey._2502_LONGITUDE, coords[0]);
                         data.put(DataKey._2503_LATITUDE, coords[1]);
                         emit(data);
-                        Utils.sleep(10000);
+                        Utils.sleep(5000);
                     });
                     LOG.info("路线已经行驶结束");
                 }

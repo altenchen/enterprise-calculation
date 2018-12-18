@@ -23,10 +23,10 @@ import java.util.stream.Stream;
 
 /**
  * 电子围栏
+ *
  * @author: xzp
  * @date: 2018-11-28
- * @description:
- * 1. 每个围栏关联多个有效区域
+ * @description: 1. 每个围栏关联多个有效区域
  * 2. 每个围栏关联多个有效规则
  * 3. 每个围栏关联多个激活时段
  * 4. 每个围栏关联多个车辆
@@ -60,6 +60,7 @@ public final class Fence extends BaseCron implements Cron {
 
     /**
      * 获取电子围栏标识
+     *
      * @return 电子围栏标识
      */
     @NotNull
@@ -70,10 +71,11 @@ public final class Fence extends BaseCron implements Cron {
 
     /**
      * 处理电子围栏区域, 将 定位与围栏的关系 和 触发的事件 作为参数回调.
-     * @param coordinate 数据定位
-     * @param inSideDistance 坐标与区域边界的缓冲距离, 输入应该为零或正数
-     * @param outsideDistance 坐标与区域边界的缓冲距离, 输入应该为零或正数
-     * @param time 数据时间
+     *
+     * @param coordinate        数据定位
+     * @param inSideDistance    坐标与区域边界的缓冲距离, 输入应该为零或正数
+     * @param outsideDistance   坐标与区域边界的缓冲距离, 输入应该为零或正数
+     * @param time              数据时间
      * @param whichSideCallback 围栏区域回调
      */
     public void process(
@@ -84,7 +86,7 @@ public final class Fence extends BaseCron implements Cron {
         @NotNull final BiConsumer<AreaSide, ImmutableMap<String, Event>> whichSideCallback) {
 
         // 不在激活时间段, 跳过
-        if(!active(time)) {
+        if (!active(time)) {
             return;
         }
 

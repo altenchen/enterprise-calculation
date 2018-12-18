@@ -185,7 +185,7 @@ public final class FenceVehicleStatus {
         cacheSide = newSide;
 
         // 将 cacheSide 持久化到 redis
-        redis.mapSet(DataToRedis.REDIS_DB_6, FENCE_VEHICLE_STATUS_CACHE, fenceVehicleRedisKey, oldSide.name());
+        redis.mapSet(DataToRedis.REDIS_DB_6, FENCE_VEHICLE_STATUS_CACHE, fenceVehicleRedisKey, cacheSide.name());
     }
 
     // endregion AreaSide
@@ -303,6 +303,7 @@ public final class FenceVehicleStatus {
                 break;
         }
         saveAreaSide(AreaSide.INSIDE);
+        LOG.info("======> insideEvent : " + loadAreaSide());
     }
 
     private void outsideArea(
@@ -353,5 +354,6 @@ public final class FenceVehicleStatus {
                 break;
         }
         saveAreaSide(AreaSide.OUTSIDE);
+        LOG.info("======> outsideArea : " + loadAreaSide());
     }
 }
