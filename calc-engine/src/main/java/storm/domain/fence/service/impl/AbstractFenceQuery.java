@@ -1,5 +1,6 @@
 package storm.domain.fence.service.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.ImmutableMap;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -9,6 +10,7 @@ import storm.domain.fence.Fence;
 import storm.domain.fence.service.IFenceQueryService;
 import storm.domain.fence.status.FenceVehicleStatus;
 import storm.util.ConfigUtils;
+import storm.util.DataUtils;
 
 import java.util.*;
 import java.util.concurrent.locks.Lock;
@@ -61,10 +63,12 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
     private DataToRedis redis;
 
     private static final Lock LOCK = new ReentrantLock();
+
     /**
-     * 是否清理中
+     * 是否检查中
+     * true 在执行数据检查
      */
-    private static boolean cleaning = false;
+    private static boolean check = false;
 
     AbstractFenceQuery(final DataToRedis redis) {
         this.redis = redis;
@@ -84,10 +88,10 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
                     this.vehicleFenceRuleMap = vehicleFenceRuleMap;
                     this.fenceEventMap = fenceEventMap;
                     this.fenceVehicleMap = fenceVehicleMap;
+                    this.fenceMap = fenceMap;
                     this.deleteFenceVehicleStatusFlag.clear();
                 });
                 LOGGER.info("同步电子围栏规则结束");
-                dataCheck();
                 //更新最后一次同步时间
                 this.prevSyncTime = System.currentTimeMillis();
             }
@@ -133,54 +137,114 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
      * 数据检查
      * 1、检查围栏与车辆关系是否解除
      * 2、检查围栏与事件关系是否解除
+     * 注意：开多个executor会重复发送结束通知
      */
-    private void dataCheck() {
-        //判断围栏与车辆关系是否被解除
-        Set<String> fenceVehicleStatusKeys = redis.hkeys(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE);
-        if (fenceVehicleStatusKeys != null) {
-            //检查围栏车辆状态
-            fenceVehicleStatusKeys.forEach(key -> {
-                /**
-                 * arr[0] 围栏ID
-                 * arr[1] 车辆VID
-                 */
-                String[] arr = key.split("\\.");
-                if (arr.length < 2) {
-                    //key不正确，直接删除
-                    redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, key);
-                    return;
-                }
-                boolean exists = existFenceVehicle(arr[0], arr[1]);
-                if (!exists) {
-                    //车辆与围栏关系解除了，直接删除
-                    redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, key);
-                }
-
-            });
+    @Override
+    public void dataCheck(BiConsumer<String, String> noticeCallback) {
+        LOCK.lock();
+        if( check ){
+            LOCK.unlock();
+            return;
         }
+        check = true;
+        LOCK.unlock();
 
-        //判断围栏与事件关系是否被解除
-        Set<String> fenceEventNoticeKeys = redis.hkeys(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE);
-        if (fenceEventNoticeKeys != null) {
-            fenceEventNoticeKeys.forEach(key -> {
-                /**
-                 * arr[0] 围栏ID
-                 * arr[1] 事件ID
-                 */
-                String[] arr = key.split("\\.");
-                if (arr.length < 2) {
-                    //key不正确，直接删除
-                    redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE, key);
-                    return;
-                }
-                boolean exists = existFenceEvent(arr[0], arr[1]);
-                if (!exists) {
-                    //车辆与围栏关系解除了，直接删除
-                    redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE, key);
-                }
-            });
+        try {
+            long time = System.currentTimeMillis();
+            //判断围栏与车辆关系是否被解除
+            Set<String> fenceVehicleStatusKeys = redis.hkeys(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE);
+            if (fenceVehicleStatusKeys != null) {
+                //检查围栏车辆状态
+                fenceVehicleStatusKeys.forEach(key -> {
+                    /**
+                     * arr[0] 围栏ID
+                     * arr[1] 车辆VID
+                     */
+                    String[] arr = key.split("\\.");
+                    if (arr.length < 2) {
+                        //key不正确，直接删除
+                        redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, key);
+                        return;
+                    }
+                    boolean existsFence = existFence(arr[0], time);
+                    if( !existsFence ){
+                        //围栏处理于激活时间外
+                        redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, key);
+                        return;
+                    }
+                    boolean exists = existFenceVehicle(arr[0], arr[1]);
+                    if (!exists) {
+                        //车辆与围栏关系解除了，直接删除
+                        redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, key);
+                    }
+
+                });
+            }
+
+            //判断围栏与事件关系是否被解除
+            Set<String> fenceEventNoticeKeys = redis.hkeys(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE);
+            if (fenceEventNoticeKeys != null) {
+                fenceEventNoticeKeys.forEach(key -> {
+                    /**
+                     * arr[0] 围栏ID
+                     * arr[1] 事件ID
+                     */
+                    String[] arr = key.split("\\.");
+                    if (arr.length < 2) {
+                        //key不正确，直接删除
+                        redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE, key);
+                        return;
+                    }
+                    boolean existsFence = existFence(arr[0], time);
+                    if( !existsFence ){
+                        //围栏处理于激活时间外
+                        filterRedisBeginEventNotice(key, noticeCallback);
+                        return;
+                    }
+                    boolean existEvent = existFenceEvent(arr[0], arr[1]);
+                    if (!existEvent) {
+                        //车辆与围栏关系解除了，直接删除
+                        filterRedisBeginEventNotice(key, noticeCallback);
+                    }
+                });
+            }
+        } catch (Exception e) {
+            LOGGER.error("数据检查出现异常", e);
         }
+        check = false;
+    }
 
+    /**
+     * 将redis中 eventStage = BEGIN的过滤出来
+     * @param redisKey
+     */
+    private void filterRedisBeginEventNotice(String redisKey, BiConsumer<String, String> noticeCallback){
+        try {
+            String noticeString = redis.mapGet(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE, redisKey);
+            String outside = "OUTSIDE";
+            String inside = "INSIDE";
+            Map noticeMap = JSON.parseObject(noticeString, Map.class);
+            String vid = noticeMap.get("vehicleId").toString();
+            if( !"BEGIN".equals(noticeMap.get("eventStage")) ){
+                return;
+            }
+            String fromArea = noticeMap.get("fromArea").toString();
+            if( fromArea.equals(outside) ){
+                noticeMap.put("fromArea", inside);
+                noticeMap.put("gotoArea", outside);
+            }else{
+                noticeMap.put("fromArea", outside);
+                noticeMap.put("gotoArea", inside);
+            }
+            noticeMap.put("eventStage", "END");
+            noticeMap.put("noticeTime", DataUtils.buildFormatTime(
+                System.currentTimeMillis()
+            ));
+            noticeCallback.accept(vid, JSON.toJSONString(noticeMap));
+            redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE, redisKey);
+        } catch (Exception e) {
+            LOGGER.error("JSON反序列化 " + FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE + " 出现异常, key : " + redisKey, e);
+        }
     }
 
     /**
@@ -203,64 +267,24 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
     }
 
     @Override
-    public void deleteFenceVehicleStatusCache(final String fenceId, final String vid) {
+    public void deleteFenceVehicleStatusCache(final String fenceId, final String vid, final Set<String> eventIds) {
         if (deleteFenceVehicleStatusFlag.containsKey(fenceId) && deleteFenceVehicleStatusFlag.get(fenceId).contains(vid)) {
             //该缓存已从redis删除
             return;
         }
-        String needDeleteKey = fenceId + "." + vid;
-        redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE, needDeleteKey);
+
+        //删除围栏车辆状态
+        String deleteFenceVehicleRedisKey = fenceId + "." + vid;
+        redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, deleteFenceVehicleRedisKey);
+
+        //删除车辆缓存通知
+        if( eventIds != null ){
+            redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_EVENT_NOTICE_CACHE, eventIds.toArray(new String[0]));
+        }
+
         Set<String> vids = deleteFenceVehicleStatusFlag.getOrDefault(fenceId, new HashSet<>());
         vids.add(vid);
         deleteFenceVehicleStatusFlag.put(fenceId, vids);
     }
 
-    /**
-     * 数据检查
-     * 1、检查围栏由【激活 --> 未激活】遗留的脏数据
-     * @param noticeCallback
-     */
-    @Override
-    public void dirtyDataClear(final BiConsumer<String, String> noticeCallback) {
-        LOCK.lock();
-        if (cleaning) {
-            LOCK.unlock();
-            return;
-        }
-        cleaning = true;
-        LOCK.unlock();
-
-        long time = System.currentTimeMillis();
-        //清理车辆无效的驶入驶出缓存
-        Set<String> fenceVehicleStatusKeys = redis.hkeys(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE);
-        if (fenceVehicleStatusKeys != null) {
-            fenceVehicleStatusKeys.forEach(redisMapKey -> {
-                /**
-                 * arr[0] 围栏ID
-                 * arr[1] 车辆VID
-                 */
-                String[] arr = redisMapKey.split("\\.");
-                if (arr.length < 2) {
-                    return;
-                }
-                if (!fenceMap.containsKey(arr[0])) {
-                    //没有这个电子围栏，有可能被删掉了
-                    noticeCallback.accept(arr[0], arr[1]);
-                    redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, redisMapKey);
-                    return;
-                }
-                Fence fence = fenceMap.get(arr[0]);
-                if (fence.active(time)) {
-                    //围栏处理激活状态，忽略
-                    return;
-                }
-                //围栏未激活，清理脏数据
-                noticeCallback.accept(arr[0], arr[1]);
-                redis.hdel(DataToRedis.REDIS_DB_6, FenceVehicleStatus.FENCE_VEHICLE_STATUS_CACHE, redisMapKey);
-            });
-        }
-
-
-        cleaning = false;
-    }
 }

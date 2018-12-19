@@ -3,6 +3,7 @@ package storm.domain.fence.service;
 import com.google.common.collect.ImmutableMap;
 import storm.domain.fence.Fence;
 
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 /**
@@ -52,13 +53,15 @@ public interface IFenceQueryService {
      *
      * @param fenceId
      * @param vid
+     * @param eventIds
      */
-    void deleteFenceVehicleStatusCache(String fenceId, String vid);
+    void deleteFenceVehicleStatusCache(String fenceId, String vid, Set<String> eventIds);
 
     /**
-     * 将之前触发驶入驶出通知的车辆因为修改了围栏导致没有结束掉的缓存清理掉
-     * @param consumer
+     * 检查围栏是否被修改，删除，并且删除无法结束的通知
+     *
+     * @param noticeCallback
      */
-    void dirtyDataClear(BiConsumer<String, String> consumer);
+    void dataCheck(BiConsumer<String, String> noticeCallback);
 
 }

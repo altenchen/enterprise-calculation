@@ -19,6 +19,7 @@ import storm.domain.fence.cron.WeeklyCycle;
 import storm.domain.fence.event.DriveInside;
 import storm.domain.fence.event.DriveOutside;
 import storm.domain.fence.event.EventCron;
+import storm.extension.DateExtension;
 import storm.system.SysDefine;
 import storm.util.ConfigUtils;
 import storm.util.SqlUtils;
@@ -241,7 +242,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                     LOGGER.warn("FENCE_ID:{} 执行计划[ 单次执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId);
                     cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), 0, 0));
                 } else {
-                    cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), startTime.getTime(), endTime.getTime()));
+                    cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), DateExtension.getMillisecondOfDay(startTime.getTime()), DateExtension.getMillisecondOfDay(endTime.getTime())));
                 }
                 break;
             case 2:
@@ -266,7 +267,10 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                         weekFlag = weekFlag | 1 << (weekNumber % 7);
                     }
                 }
-                cronBuilder.add(new WeeklyCycle((byte) weekFlag, startTime.getTime(), endTime.getTime()));
+                cronBuilder.add(new WeeklyCycle((byte) weekFlag,
+                    DateExtension.getMillisecondOfDay(startTime.getTime()),
+                    DateExtension.getMillisecondOfDay(endTime.getTime()))
+                );
                 break;
             case 3:
                 //每天执行
@@ -274,7 +278,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                     LOGGER.warn("FENCE_ID:{} 执行计划[ 每天执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId, startTime == null, endTime == null);
                     break;
                 }
-                cronBuilder.add(new DailyCycle(startTime.getTime(), endTime.getTime()));
+                cronBuilder.add(new DailyCycle(DateExtension.getMillisecondOfDay(startTime.getTime()), DateExtension.getMillisecondOfDay(endTime.getTime())));
                 break;
             default:
                 break;

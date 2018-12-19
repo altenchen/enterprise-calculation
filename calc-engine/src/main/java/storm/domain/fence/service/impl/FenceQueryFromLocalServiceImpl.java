@@ -17,6 +17,7 @@ import storm.domain.fence.cron.WeeklyCycle;
 import storm.domain.fence.event.DriveInside;
 import storm.domain.fence.event.DriveOutside;
 import storm.domain.fence.event.EventCron;
+import storm.extension.DateExtension;
 import storm.system.SysDefine;
 
 import java.sql.Time;
@@ -35,8 +36,8 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
 
     private Date prevDate;
     private Date nextDate;
-    private Time startTime;
-    private Time endTime;
+    private long startTime;
+    private long endTime;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     private SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 
@@ -56,7 +57,8 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
     public FenceQueryFromLocalServiceImpl() {
         super(new DataToRedis());
         try {
-            Calendar calendar = Calendar.getInstance();
+            Calendar calendar = null;
+            calendar = Calendar.getInstance();
             //昨天
             calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) - 2);
             String prevDateString = dateFormat.format(calendar.getTime());
@@ -67,13 +69,16 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
             String nextDateString = dateFormat.format(calendar.getTime());
             nextDate = dateFormat.parse(nextDateString);
 
-            //09:33:00
-//            startTime = new Time(34380000);
-//            startTime = new Time(count(9,33,00));
-            startTime = new Time(9,33,00);
-            //22:59:59
-//            endTime = new Time(count(22,59,59));
-            endTime = new Time(22,59,59);
+            //初始化startTime
+            calendar = Calendar.getInstance();
+            calendar.set(Calendar.MILLISECOND, 0);
+            calendar.set(2018,Calendar.DECEMBER,31, 9, 33, 00);
+            startTime = DateExtension.getMillisecondOfDay(calendar.getTime());
+
+            //初始化endTime
+            calendar.set(Calendar.MILLISECOND, 0);
+            calendar.set(2018,Calendar.DECEMBER,31, 22, 59, 59);
+            endTime = DateExtension.getMillisecondOfDay(calendar.getTime());
         } catch (ParseException e) {
             LOGGER.info("日期初始化异常", e);
         }
@@ -134,14 +139,14 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
             ImmutableList<Cron> crons;
             if (index[0] == 0) {
                 //驶入驶离
-//                events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null), SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
+                events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null), SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 //驶入
-                events = ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
+//                events = ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 //驶离
 //                events = ImmutableMap.of(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
 
                 //单次执行
-                crons = ImmutableList.of(new DailyOnce(prevDate.getTime(), nextDate.getTime(), startTime.getTime(), endTime.getTime()));
+                crons = ImmutableList.of(new DailyOnce(prevDate.getTime(), nextDate.getTime(), startTime, endTime));
 
                 Set<String> event = fenceEvent.getOrDefault(fenceId, new HashSet<>());
                 event.add(SysDefine.FENCE_OUTSIDE_EVENT_ID);
@@ -151,7 +156,7 @@ public class FenceQueryFromLocalServiceImpl extends AbstractFenceQuery {
                 events = ImmutableMap.of(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 //周一， 周三， 周五执行
                 byte weekFlag = 1 << (1 % 7) | 1 << (3 % 7) | 1 << (5 % 7);
-                crons = ImmutableList.of(new WeeklyCycle(weekFlag, startTime.getTime(), endTime.getTime()));
+                crons = ImmutableList.of(new WeeklyCycle(weekFlag, startTime, endTime));
 
                 Set<String> event = fenceEvent.getOrDefault(fenceId, new HashSet<>());
                 event.add(SysDefine.FENCE_INSIDE_EVENT_ID);

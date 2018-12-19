@@ -5,6 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.extension.DateExtension;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -422,6 +426,46 @@ final class DailyOnceTest {
         }
 
         // endregion same_day
+    }
+
+
+
+
+    @DisplayName("时间比较")
+    @Test
+    void millisecondEq() throws ParseException {
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+        Calendar calendar = Calendar.getInstance();
+
+        calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) - 2);
+        String prevDateString = dateFormat.format(calendar.getTime());
+        Date prevDate = dateFormat.parse(prevDateString);
+
+        calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) + 4);
+        String nextDateString = dateFormat.format(calendar.getTime());
+        Date nextDate = dateFormat.parse(nextDateString);
+
+        //初始化startTime
+        calendar = Calendar.getInstance();
+        calendar.set(Calendar.MILLISECOND, 0);
+        calendar.set(2018,Calendar.DECEMBER,31, 9, 33, 00);
+        Date startTime = calendar.getTime();
+
+        //初始化endTime
+        calendar.set(Calendar.MILLISECOND, 0);
+        calendar.set(2018,Calendar.DECEMBER,31, 22, 59, 59);
+        Date endTime = calendar.getTime();
+
+        DailyOnce dailyOnce = new DailyOnce(
+            prevDate.getTime(),
+            nextDate.getTime(),
+            DateExtension.getMillisecondOfDay(startTime.getTime()),
+            DateExtension.getMillisecondOfDay(endTime.getTime()));
+
+
+        Assertions.assertTrue(dailyOnce.active(System.currentTimeMillis()));
     }
 
     @SuppressWarnings("unused")

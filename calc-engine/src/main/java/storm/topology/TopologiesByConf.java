@@ -262,7 +262,7 @@ public final class TopologiesByConf {
         builder.setSpout(
             messageEmitSpoutComponentId,
             messageEmitSpout
-            ,spoutParallelism
+            ,1
         );
 
         builder
@@ -310,7 +310,7 @@ public final class TopologiesByConf {
             .setBolt(
                 ElectronicFenceBolt.getComponentId(),
                 new ElectronicFenceBolt(),
-                boltParallelism * 3
+                1
             )
             .setNumTasks(boltParallelism * 9)
             // 电子围栏告警实时数据
@@ -344,7 +344,7 @@ public final class TopologiesByConf {
             .setBolt(
                 messageSendBoltComponentId,
                 messageSendBolt)
-            .setNumTasks(boltParallelism * 6)
+//            .setNumTasks(boltParallelism * 6)
             // 车辆平台报警状态、实时需要存储的数据
             .fieldsGrouping(
                 AlarmBolt.getComponentId(),

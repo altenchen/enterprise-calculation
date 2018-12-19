@@ -34,9 +34,7 @@ import storm.util.DataUtils;
 import storm.util.JsonUtils;
 
 import java.text.ParseException;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -60,7 +58,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
     private static final long COORDINATE_COEFFICIENT = 1000000;
 
     @NotNull
-    private static IFenceQueryService fenceQueryService = new FenceQueryMysqlServiceImpl();
+    private static final IFenceQueryService fenceQueryService = new FenceQueryMysqlServiceImpl();
 
     @NotNull
     private static final DataToRedis DATA_TO_REDIS = new DataToRedis();
@@ -202,20 +200,24 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
 
                 FenceVehicleStatus status = vehicleEntry.getValue();
 
-//                if (!existFence) {
-//                    //围栏区域已修改或启用时间等已被修改导致处理激活外的，从redis删除车辆驶入驶出状态
-//                    fenceQueryService.deleteFenceVehicleStatusCache(fenceId, vehicleId);
-//                    status.cleanStatus(
-//                        (_fenceId, eventId) -> false,
-//                        notice -> emitToKafka(input, notice)
-//                    );
-//                } else {
+                if (!existFence) {
+                    Set<String> eventIds = new HashSet<>();
+                    //围栏区域已修改或启用时间等已被修改导致处理激活外的，从redis删除车辆驶入驶出状态
+                    status.cleanStatus(
+                        (_fenceId, eventId) -> {
+                            eventIds.add(_fenceId + "." + eventId);
+                            return false;
+                        },
+                        notice -> emitToKafka(input, notice)
+                    );
+                    fenceQueryService.deleteFenceVehicleStatusCache(fenceId, vehicleId, eventIds);
+                } else {
                     status.cleanStatus(
                         // 清理无效的事件
                         this::existFenceEvent,
                         notice -> emitToKafka(input, notice)
                     );
-//                }
+                }
 
                 // 清理无效的车辆
                 return !existFenceVehicle(fenceId, vehicleId);
@@ -224,11 +226,10 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
             return !existFence;
         });
 
-//        //清理电子围栏由【激活 --> 未激活】遗留的脏数据
-//        fenceQueryService.dirtyDataClear((fenceId, vid) -> {
-//            //发送结束通知
-//        });
-
+        /**
+         * 脏数据检查
+         */
+        fenceQueryService.dataCheck((vid, notice) -> emitToKafka(input, vid, notice));
     }
 
     private void executeFromDataCacheStream(
@@ -262,9 +263,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
                             getVehicleFences(vehicleId)
                                 .values()
                                 .stream()
-                                .filter(fence -> {
-                                    return fence.active(platformReceiveTime);
-                                })
+                                .filter(fence -> fence.active(platformReceiveTime))
                                 // 逐个处理激活的电子围栏
                                 .forEach(fence -> fence.process(
                                     coordinate,
