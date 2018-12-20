@@ -25,6 +25,7 @@ import storm.util.ConfigUtils;
 import storm.util.SqlUtils;
 
 import java.sql.Date;
+import java.sql.SQLException;
 import java.sql.Time;
 import java.util.*;
 
@@ -128,37 +129,42 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
             List<Fence> fences = new ArrayList<>();
             while (resultSet.next()) {
                 //围栏ID
-                String fenceId = resultSet.getString("FENCE_ID");
-                //规则类型1、驶离；2、驶入；3、驶入驶离
-                String ruleType = resultSet.getString("RULE_TYPE");
-                //周期类型1、单次执行；2、每周循环；3、每天循环
-                int periodType = resultSet.getInt("PERIOD_TYPE");
-                //开始日期
-                Date startDate = resultSet.getDate("START_DATE");
-                //结束日期
-                Date endDate = resultSet.getDate("END_DATE");
-                //星期，多个之间用的逗号分隔，周一为1到周日为7
-                String week = resultSet.getString("WEEK");
-                //开始启用时间【时分秒】
-                Time startTime = resultSet.getTime("START_TIME");
-                //结束启用时间【时分秒】
-                Time endTime = resultSet.getTime("END_TIME");
-                //1、圆形；2、多边形
-                int chartType = resultSet.getInt("CHART_TYPE");
-                //经纬度范围【1圆形时=半径;圆点， 2多边形时=每一个;的值为经纬度点】
-                String lonlatRange = resultSet.getString("LONLAT_RANGE");
+                String fenceId = null;
+                try {
+                    fenceId = resultSet.getString("FENCE_ID");
+                    //规则类型1、驶离；2、驶入；3、驶入驶离
+                    String ruleType = resultSet.getString("RULE_TYPE");
+                    //周期类型1、单次执行；2、每周循环；3、每天循环
+                    int periodType = resultSet.getInt("PERIOD_TYPE");
+                    //开始日期
+                    Date startDate = resultSet.getDate("START_DATE");
+                    //结束日期
+                    Date endDate = resultSet.getDate("END_DATE");
+                    //星期，多个之间用的逗号分隔，周一为1到周日为7
+                    String week = resultSet.getString("WEEK");
+                    //开始启用时间【时分秒】
+                    Time startTime = resultSet.getTime("START_TIME");
+                    //结束启用时间【时分秒】
+                    Time endTime = resultSet.getTime("END_TIME");
+                    //1、圆形；2、多边形
+                    int chartType = resultSet.getInt("CHART_TYPE");
+                    //经纬度范围【1圆形时=半径;圆点， 2多边形时=每一个;的值为经纬度点】
+                    String lonlatRange = resultSet.getString("LONLAT_RANGE");
 
-                //初始化电子围栏区域
-                ImmutableMap<String, AreaCron> areas = initFenceArea(chartType, lonlatRange);
+                    //初始化电子围栏区域
+                    ImmutableMap<String, AreaCron> areas = initFenceArea(chartType, lonlatRange);
 
-                //初始化规则列表
-                ImmutableMap<String, EventCron> events = initFenceEvent(fenceId, fenceEvent, ruleType);
+                    //初始化规则列表
+                    ImmutableMap<String, EventCron> events = initFenceEvent(fenceId, fenceEvent, ruleType);
 
-                //初始化执行计划
-                ImmutableList<Cron> cron = initFenceCron(fenceId, periodType, week, startDate, endDate, startTime, endTime);
+                    //初始化执行计划
+                    ImmutableList<Cron> cron = initFenceCron(fenceId, periodType, week, startDate, endDate, startTime, endTime);
 
-                Fence fence = new Fence(fenceId, areas, events, cron);
-                fences.add(fence);
+                    Fence fence = new Fence(fenceId, areas, events, cron);
+                    fences.add(fence);
+                } catch (SQLException e) {
+                    LOGGER.error("FENCE_ID:" + fenceId + " 电子围栏初始化失败", e);
+                }
             }
             return fences;
         });
@@ -232,6 +238,8 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      */
     private ImmutableList<Cron> initFenceCron(String fenceId, int periodType, String week, Date startDate, Date endDate, Time startTime, Time endTime) {
         ImmutableList.Builder<Cron> cronBuilder = new ImmutableList.Builder<>();
+        long startTimeNumber = 0;
+        long endTimeNumber = 0;
         switch (periodType) {
             case 1:
                 //单次执行
@@ -243,7 +251,12 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                     LOGGER.warn("FENCE_ID:{} 执行计划[ 单次执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId);
                     cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), 0, 0));
                 } else {
-                    cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), DateExtension.getMillisecondOfDay(startTime.getTime()), DateExtension.getMillisecondOfDay(endTime.getTime())));
+                    startTimeNumber = DateExtension.getMillisecondOfDay(startTime.getTime());
+                    endTimeNumber = DateExtension.getMillisecondOfDay(endTime.getTime());
+                    if( startTimeNumber != endTimeNumber ){
+                        endTimeNumber += 1000;
+                    }
+                    cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), startTimeNumber, endTimeNumber));
                 }
                 break;
             case 2:
@@ -268,10 +281,12 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                         weekFlag = weekFlag | 1 << (weekNumber % 7);
                     }
                 }
-                cronBuilder.add(new WeeklyCycle((byte) weekFlag,
-                    DateExtension.getMillisecondOfDay(startTime.getTime()),
-                    DateExtension.getMillisecondOfDay(endTime.getTime()))
-                );
+                startTimeNumber = DateExtension.getMillisecondOfDay(startTime.getTime());
+                endTimeNumber = DateExtension.getMillisecondOfDay(endTime.getTime());
+                if( startTimeNumber != endTimeNumber ){
+                    endTimeNumber += 1000;
+                }
+                cronBuilder.add(new WeeklyCycle((byte) weekFlag, startTimeNumber, endTimeNumber));
                 break;
             case 3:
                 //每天执行
@@ -279,7 +294,12 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                     LOGGER.warn("FENCE_ID:{} 执行计划[ 每天执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId, startTime == null, endTime == null);
                     break;
                 }
-                cronBuilder.add(new DailyCycle(DateExtension.getMillisecondOfDay(startTime.getTime()), DateExtension.getMillisecondOfDay(endTime.getTime())));
+                startTimeNumber = DateExtension.getMillisecondOfDay(startTime.getTime());
+                endTimeNumber = DateExtension.getMillisecondOfDay(endTime.getTime());
+                if( startTimeNumber != endTimeNumber ){
+                    endTimeNumber += 1000;
+                }
+                cronBuilder.add(new DailyCycle(startTimeNumber, endTimeNumber));
                 break;
             default:
                 break;
@@ -314,7 +334,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 if (coordinateArray.length < coordinateSize) {
                     break;
                 }
-                areas.put(areaId, new Circle(areaId, new Coordinate(Double.valueOf(coordinateArray[0]), Double.valueOf(coordinateArray[1])), Double.valueOf(splitArray[0]), null));
+                areas.put(areaId, new Circle(areaId, new Coordinate(Double.valueOf(coordinateArray[0]), Double.valueOf(coordinateArray[1])), Double.valueOf(splitArray[0]) / COORDINATE_COEFFICIENT, null));
                 break;
             case 2:
                 //多边形区域

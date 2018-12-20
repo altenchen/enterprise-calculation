@@ -55,7 +55,7 @@ public final class ElectronicFenceBolt extends BaseRichBolt {
     /**
      * 经纬度坐标系中距离为1的两个坐标间近似距离93164米, 这里简化为1000000
      */
-    private static final long COORDINATE_COEFFICIENT = 1000000;
+    private static final long COORDINATE_COEFFICIENT = ConfigUtils.getSysDefine().getFenceCoordinateCoefficient();
 
     @NotNull
     private static final IFenceQueryService fenceQueryService = new FenceQueryMysqlServiceImpl();

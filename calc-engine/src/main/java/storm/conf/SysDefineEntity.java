@@ -189,6 +189,7 @@ public class SysDefineEntity {
     //                                        电子围栏 配置
     // ############################################################################################
 
+    private long fenceCoordinateCoefficient = 1000000;
     /**
      * 电子围栏图形外部缓冲区
      */
@@ -1108,6 +1109,13 @@ public class SysDefineEntity {
         this.fenceEventDriveOutsideStopTriggerTimeoutMillisecond = fenceEventDriveOutsideStopTriggerTimeoutMillisecond;
     }
 
-    // endregion 自动生成的访问器
+    public long getFenceCoordinateCoefficient() {
+        return fenceCoordinateCoefficient;
+    }
+
+    public void setFenceCoordinateCoefficient(final long fenceCoordinateCoefficient) {
+        this.fenceCoordinateCoefficient = fenceCoordinateCoefficient;
+    }
+// endregion 自动生成的访问器
 
 }

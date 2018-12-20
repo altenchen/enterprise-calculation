@@ -60,6 +60,11 @@ public abstract class AbstractFenceQuery implements IFenceQueryService {
      */
     private Map<String, Set<String>> deleteFenceVehicleStatusFlag = new HashMap<>();
 
+    /**
+     * 经纬度坐标系中距离为1的两个坐标间近似距离93164米, 这里简化为1000000
+     */
+    protected static final long COORDINATE_COEFFICIENT = ConfigUtils.getSysDefine().getFenceCoordinateCoefficient();
+
     private DataToRedis redis;
 
     private static final Lock LOCK = new ReentrantLock();
