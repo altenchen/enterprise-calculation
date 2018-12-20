@@ -129,8 +129,8 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
             while (resultSet.next()) {
                 //围栏ID
                 String fenceId = resultSet.getString("FENCE_ID");
-                //规则类型1、驶离；2、驶入
-                int ruleType = resultSet.getInt("RULE_TYPE");
+                //规则类型1、驶离；2、驶入；3、驶入驶离
+                String ruleType = resultSet.getString("RULE_TYPE");
                 //周期类型1、单次执行；2、每周循环；3、每天循环
                 int periodType = resultSet.getInt("PERIOD_TYPE");
                 //开始日期
@@ -175,10 +175,10 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      * @return 电子围栏事件
      */
     @NotNull
-    private ImmutableMap<String, EventCron> initFenceEvent(final String fenceId, final Map<String, Set<String>> fenceEvent, int ruleType) {
+    private ImmutableMap<String, EventCron> initFenceEvent(final String fenceId, final Map<String, Set<String>> fenceEvent, String ruleType) {
         ImmutableMap.Builder<String, EventCron> events = new ImmutableMap.Builder<>();
         switch (ruleType) {
-            case 1:
+            case "1":
                 //驶离
                 events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
                 //生成围栏与事件关系
@@ -186,7 +186,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 outSideEvent.add(SysDefine.FENCE_OUTSIDE_EVENT_ID);
                 fenceEvent.put(fenceId, outSideEvent);
                 break;
-            case 2:
+            case "2":
                 //驶入
                 events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 //生成围栏与事件关系
@@ -194,7 +194,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 inSideEvent.add(SysDefine.FENCE_INSIDE_EVENT_ID);
                 fenceEvent.put(fenceId, inSideEvent);
                 break;
-            case 3:
+            case "3":
                 //驶入驶离
                 events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
@@ -209,6 +209,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 fenceEvent.put(fenceId, insideEvent);
                 break;
             default:
+                //不做处理
                 break;
         }
         return events.build();
