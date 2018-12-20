@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Jedis;
 import storm.extension.UuidExtension;
 import storm.protocol.CommandType;
 import storm.stream.GeneralStream;
@@ -20,6 +21,7 @@ import storm.system.DataKey;
 import storm.util.DataUtils;
 import storm.util.JedisPoolUtils;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +34,32 @@ import java.util.concurrent.TimeUnit;
 public final class DebugEmitSpout extends BaseRichSpout {
 
     private static final long serialVersionUID = 1L;
+
+    /**
+     * 车辆VID
+     */
+    private String vid;
+
+    /**
+     * 车辆VIN
+     */
+    private String vin;
+
+    /**
+     * 行驶路线
+     */
+    private List<String[]> coordinates;
+
+
+    public DebugEmitSpout(final String vid, final String vin) {
+        this(vid, vin, null);
+    }
+
+    public DebugEmitSpout(final String vid, final String vin, final List<String[]> coordinates) {
+        this.vid = vid;
+        this.vin = vin;
+        this.coordinates = coordinates;
+    }
 
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(DebugEmitSpout.class);
@@ -65,9 +93,7 @@ public final class DebugEmitSpout extends BaseRichSpout {
         ImmutableMap.<String, String>builder()
             .put(DataKey.PREFIX, CommandType.SUBMIT)
             .put(DataKey.SERIAL_NO, "0")
-            .put(DataKey.VEHICLE_NUMBER, UuidExtension.toStringWithoutDashes(UUID.randomUUID()).toUpperCase())
             .put(DataKey.MESSAGE_TYPE, CommandType.SUBMIT_REALTIME)
-            .put(DataKey.VEHICLE_ID, UUID.randomUUID().toString())
             .put(DataKey.CAR_TYPE, "1_1_1")
             .put(DataKey.VEHICLE_TYPE, UuidExtension.toStringWithoutDashes(UUID.randomUUID()).toLowerCase())
             // ↑固定数据项↑
@@ -91,8 +117,6 @@ public final class DebugEmitSpout extends BaseRichSpout {
             .put(DataKey._2307_DRIVING_ELE_MAC_COUNT, "1")
             .put(DataKey._2308_DRIVING_ELE_MAC_LIST, "MjMwOToxLDIzMTA6LDIzMDI6LDIzMDM6LDIzMTE6LDIzMDQ6LDIzMDU6LDIzMDY6")
             .put(DataKey._2501_ORIENTATION, "0")
-            .put(DataKey._2502_LONGITUDE, "103734629")
-            .put(DataKey._2503_LATITUDE, "30524003")
             .put(DataKey._2601_HIGHVOLT_CHILD_NUM, "1")
             .put(DataKey._2602_HIGHVOLT_SINGLE_NUM, "3")
             .put(DataKey._2603_SINGLE_VOLT_HIGN_VAL, "3994")
@@ -170,9 +194,6 @@ public final class DebugEmitSpout extends BaseRichSpout {
 
     @Override
     public void nextTuple() {
-        final String currentTimeFormatString = DataUtils.buildFormatTime(
-            System.currentTimeMillis()
-        );
         try {
             final String redisKey = "storm.debug.vehicle";
             JEDIS_POOL_UTILS.useResource(jedis -> {
@@ -189,60 +210,81 @@ public final class DebugEmitSpout extends BaseRichSpout {
                     (field, value) -> String.valueOf(
                         NumberUtils.toLong(value, 0L) + 1L)
                 );
-                data.put(
-                    DataKey._2000_TERMINAL_COLLECT_TIME,
-                    currentTimeFormatString
-                );
-                data.put(
-                    DataKey._9999_PLATFORM_RECEIVE_TIME,
-                    currentTimeFormatString
-                );
 
-                final String prefix = data.get(DataKey.PREFIX);
                 final String serialNo = data.get(DataKey.SERIAL_NO);
                 final String vin = data.get(DataKey.VEHICLE_NUMBER);
-                final String cmd = data.get(DataKey.MESSAGE_TYPE);
-                final String vehicleId = data.get(DataKey.VEHICLE_ID);
 
                 jedis.hset(
                     redisKey,
                     DataKey.SERIAL_NO,
                     serialNo
                 );
-                jedis.hset(
-                    redisKey,
-                    DataKey._2000_TERMINAL_COLLECT_TIME,
-                    currentTimeFormatString
-                );
-                jedis.hset(
-                    redisKey,
-                    DataKey._9999_PLATFORM_RECEIVE_TIME,
-                    currentTimeFormatString
-                );
 
-                final StringBuilder builder = new StringBuilder();
-                builder.append(prefix).append(" ");
-                builder.append(serialNo).append(" ");
-                builder.append(vin).append(" ");
-                builder.append(cmd).append(" {");
-                builder.append(DataKey.VEHICLE_ID).append(':').append(data.get(DataKey.VEHICLE_ID)).append(',');
-
-                data.forEach((key, value) -> {
-                    if( key.equals(DataKey.VEHICLE_ID) ){
-                        return;
-                    }
-                    builder.append(',').append(key).append(':').append(value);
-                });
-                builder.append("}");
-                final String content = builder.toString();
-
-                generalStreamSender.emit(new MessageId<>(vehicleId), vehicleId, content);
+                //组装测试车辆和行驶轨迹
+                data.put(DataKey.VEHICLE_ID, vid);
+                data.put(DataKey.VEHICLE_NUMBER, vin);
+                if (coordinates == null || coordinates.isEmpty()) {
+                    data.put(DataKey._2502_LONGITUDE, "0");
+                    data.put(DataKey._2503_LATITUDE, "0");
+                    emit(data, jedis, redisKey);
+                    Utils.sleep(TimeUnit.SECONDS.toMillis(10));
+                } else {
+                    //组装经纬度
+                    coordinates.forEach(coords -> {
+                        data.put(DataKey._2502_LONGITUDE, coords[0]);
+                        data.put(DataKey._2503_LATITUDE, coords[1]);
+                        emit(data, jedis, redisKey);
+                        Utils.sleep(10000);
+                    });
+                    LOG.info("路线已经行驶结束");
+                }
             });
         } catch (@NotNull final Exception e) {
             LOG.error("", e);
-        } finally {
-            Utils.sleep(TimeUnit.SECONDS.toMillis(10));
         }
+    }
+
+    private void emit(Map<String, String> data, final Jedis jedis, final String redisKey) {
+        final String currentTimeFormatString = DataUtils.buildFormatTime(
+            System.currentTimeMillis()
+        );
+        data.put(DataKey._2000_TERMINAL_COLLECT_TIME, currentTimeFormatString);
+        data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, currentTimeFormatString);
+
+        jedis.hset(
+            redisKey,
+            DataKey._2000_TERMINAL_COLLECT_TIME,
+            currentTimeFormatString
+        );
+        jedis.hset(
+            redisKey,
+            DataKey._9999_PLATFORM_RECEIVE_TIME,
+            currentTimeFormatString
+        );
+
+        final String prefix = data.get(DataKey.PREFIX);
+        final String serialNo = data.get(DataKey.SERIAL_NO);
+        final String vin = data.get(DataKey.VEHICLE_NUMBER);
+        final String cmd = data.get(DataKey.MESSAGE_TYPE);
+        final String vehicleId = data.get(DataKey.VEHICLE_ID);
+
+        final StringBuilder builder = new StringBuilder();
+        builder.append(prefix).append(" ");
+        builder.append(serialNo).append(" ");
+        builder.append(vin).append(" ");
+        builder.append(cmd).append(" {");
+        builder.append(DataKey.VEHICLE_ID).append(':').append(data.get(DataKey.VEHICLE_ID)).append(',');
+
+        data.forEach((key, value) -> {
+            if (key.equals(DataKey.VEHICLE_ID)) {
+                return;
+            }
+            builder.append(',').append(key).append(':').append(value);
+        });
+        builder.append("}");
+        final String content = builder.toString();
+
+        generalStreamSender.emit(new MessageId<>(vehicleId), vehicleId, content);
     }
 
     @Override

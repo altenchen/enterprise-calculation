@@ -48,7 +48,7 @@ public final class CoefficientOffsetGetter {
     private static ImmutableMap<String, ImmutableMap<String, CoefficientOffset>> rules = ImmutableMap.of();
 
     private static synchronized void rebuild(final long currentTimeMillis) {
-        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
+        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushtime());
         if (currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
 
             try {
@@ -169,7 +169,7 @@ public final class CoefficientOffsetGetter {
     public static ImmutableMap<String, ImmutableMap<String, CoefficientOffset>> getAllCoefficientOffsets() {
 
         final long currentTimeMillis = System.currentTimeMillis();
-        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
+        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushtime());
         if(currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
             rebuild(currentTimeMillis);
         }
@@ -183,7 +183,7 @@ public final class CoefficientOffsetGetter {
         @Nullable final String dataKey) {
 
         final long currentTimeMillis = System.currentTimeMillis();
-        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushTime());
+        long DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND = TimeUnit.SECONDS.toMillis(ConfigUtils.getSysDefine().getDbCacheFlushtime());
         if (currentTimeMillis - lastRebuildTime > DB_CACHE_FLUSH_MIN_TIME_SPAN_MILLISECOND) {
             rebuild(currentTimeMillis);
         }

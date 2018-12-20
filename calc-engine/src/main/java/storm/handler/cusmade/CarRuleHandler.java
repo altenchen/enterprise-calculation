@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import storm.cache.SysRealDataCache;
 import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
-import storm.dao.DataToRedis;
 import storm.dto.FillChargeCar;
 import storm.handler.ctx.RedisRecorder;
 import storm.protocol.CommandType;
@@ -83,8 +82,6 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Map<String, Object>> vidLastDat = new HashMap<>();//vid和最后一帧数据的缓存
     private Map<String, Long> lastTime = new HashMap<>();
 
-
-    DataToRedis redis;
     private RedisRecorder recorder;
     static String onOffRedisKeys = "vehCache.qy.onoff.notice";
 
@@ -101,7 +98,6 @@ public class CarRuleHandler implements InfoNotice {
     private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
 
     {
-        redis = new DataToRedis();
         recorder = new RedisRecorder();
         restartInit(true);
     }
@@ -275,7 +271,7 @@ public class CarRuleHandler implements InfoNotice {
             }
 
             if (MapUtils.isNotEmpty(topnCarsToRedis)) {
-                redis.saveMap(topnCarsToRedis, 2, "charge-car-" + vid);
+                recorder.saveMap(topnCarsToRedis, 2, "charge-car-" + vid);
             }
 
             if (CollectionUtils.isNotEmpty(chargeCars)) {

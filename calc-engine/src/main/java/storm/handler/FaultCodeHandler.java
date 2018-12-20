@@ -96,7 +96,7 @@ public class FaultCodeHandler implements Serializable {
      */
     private void autoPullRules() {
         long requestTime = System.currentTimeMillis();
-        long dbFlushTimeSpanMillisecond = ConfigUtils.getSysDefine().getDbCacheFlushTime() * 1000;
+        long dbFlushTimeSpanMillisecond = ConfigUtils.getSysDefine().getDbCacheFlushtime() * 1000;
         if (requestTime - lastPullRuleTime > dbFlushTimeSpanMillisecond) {
             synchronized (autoPullRulesLock) {
                 if(requestTime - lastPullRuleTime > dbFlushTimeSpanMillisecond) {

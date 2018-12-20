@@ -21,7 +21,8 @@ public enum ScanRange {
     Otherwish(2);
 
     private final int value;
-    private ScanRange(int value) {
+
+    ScanRange(int value) {
         this.value = value;
     }
 }

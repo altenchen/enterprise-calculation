@@ -150,6 +150,18 @@
             <artifactId>aviator</artifactId>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.locationtech.jts/jts-core -->
+        <dependency>
+            <groupId>org.locationtech.jts</groupId>
+            <artifactId>jts-core</artifactId>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.cronutils/cron-utils -->
+        <dependency>
+            <groupId>com.cronutils</groupId>
+            <artifactId>cron-utils</artifactId>
+        </dependency>
+
         <!-- 工具组件依赖结束 -->
 
     </dependencies>

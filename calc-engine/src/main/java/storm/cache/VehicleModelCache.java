@@ -70,7 +70,7 @@ public class VehicleModelCache {
     private String refreshCache(@NotNull String vid) {
         String mid = "";
         final long now = System.currentTimeMillis();
-        long veh_model_cache_refresh_millisecond = ConfigUtils.getSysDefine().getDbCacheFlushTime() * 1000;
+        long veh_model_cache_refresh_millisecond = ConfigUtils.getSysDefine().getDbCacheFlushtime() * 1000;
         if(now - lastUpdateTime > veh_model_cache_refresh_millisecond) {
             synchronized (refreshCacheLock) {
                 if(now - lastUpdateTime > veh_model_cache_refresh_millisecond) {

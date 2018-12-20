@@ -19,6 +19,19 @@ public class SysParamEntity {
      */
     private String vehModelSql = "SELECT veh.uuid vid,model.id mid FROM sys_vehicle veh LEFT JOIN sys_veh_model model ON veh.veh_model_id=model.id WHERE model.id IS NOT NULL";
     /**
+     * 电子围栏
+     */
+    private String fenceSql = new StringBuilder()
+        .append(" SELECT SEF.ID AS FENCE_ID, SEF.RULE_TYPE, SEF.PERIOD_TYPE, SEF.START_DATE, SEF.END_DATE, SEF.WEEK, SEF.START_TIME, SEF.END_TIME, SEF.CHART_TYPE, SEF.LONLAT_RANGE ")
+        .append(" FROM SYS_ELECTRONIC_FENCE SEF ")
+        .append(" WHERE SEF.STATUS_FLAG = 1 ")
+        .append(" AND SEF.RULE_STATUS = 1 ")
+        .toString();
+    /**
+     * 电子围栏与车辆关联
+     */
+    private String fenceVehicleSql = "SELECT LK.ELECTRONIC_FENCE_ID as FENCE_ID , LK.VID FROM SYS_FENCE_VEH_LK LK";
+    /**
      * 预警规则(旧)
      */
     private String earlyWarningSql = "SELECT ID, NAME, VEH_MODEL_ID, LEVELS, DEPEND_ID, L1_SEQ_NO, EXPR_LEFT, L2_SEQ_NO, EXPR_MID, R1_VAL, R2_VAL FROM SYS_DATA_CONST WHERE TYPE = 1 AND IS_VALID = 1 AND ID is not null AND R1_VAL is not null";
@@ -41,7 +54,7 @@ public class SysParamEntity {
         return chargeCarTypeId;
     }
 
-    public void setChargeCarTypeId(String chargeCarTypeId) {
+    public void setChargeCarTypeId(final String chargeCarTypeId) {
         this.chargeCarTypeId = chargeCarTypeId;
     }
 
@@ -49,7 +62,7 @@ public class SysParamEntity {
         return alarmCodeSql;
     }
 
-    public void setAlarmCodeSql(String alarmCodeSql) {
+    public void setAlarmCodeSql(final String alarmCodeSql) {
         this.alarmCodeSql = alarmCodeSql;
     }
 
@@ -57,7 +70,7 @@ public class SysParamEntity {
         return alarmCodeBitSql;
     }
 
-    public void setAlarmCodeBitSql(String alarmCodeBitSql) {
+    public void setAlarmCodeBitSql(final String alarmCodeBitSql) {
         this.alarmCodeBitSql = alarmCodeBitSql;
     }
 
@@ -65,15 +78,31 @@ public class SysParamEntity {
         return vehModelSql;
     }
 
-    public void setVehModelSql(String vehModelSql) {
+    public void setVehModelSql(final String vehModelSql) {
         this.vehModelSql = vehModelSql;
+    }
+
+    public String getFenceSql() {
+        return fenceSql;
+    }
+
+    public void setFenceSql(final String fenceSql) {
+        this.fenceSql = fenceSql;
+    }
+
+    public String getFenceVehicleSql() {
+        return fenceVehicleSql;
+    }
+
+    public void setFenceVehicleSql(final String fenceVehicleSql) {
+        this.fenceVehicleSql = fenceVehicleSql;
     }
 
     public String getEarlyWarningSql() {
         return earlyWarningSql;
     }
 
-    public void setEarlyWarningSql(String earlyWarningSql) {
+    public void setEarlyWarningSql(final String earlyWarningSql) {
         this.earlyWarningSql = earlyWarningSql;
     }
 
@@ -81,7 +110,7 @@ public class SysParamEntity {
         return itemCoefOffsetSql;
     }
 
-    public void setItemCoefOffsetSql(String itemCoefOffsetSql) {
+    public void setItemCoefOffsetSql(final String itemCoefOffsetSql) {
         this.itemCoefOffsetSql = itemCoefOffsetSql;
     }
 
@@ -89,7 +118,7 @@ public class SysParamEntity {
         return alarmRuleSql;
     }
 
-    public void setAlarmRuleSql(String alarmRuleSql) {
+    public void setAlarmRuleSql(final String alarmRuleSql) {
         this.alarmRuleSql = alarmRuleSql;
     }
 
@@ -97,7 +126,7 @@ public class SysParamEntity {
         return dataOffsetCoefficientSql;
     }
 
-    public void setDataOffsetCoefficientSql(String dataOffsetCoefficientSql) {
+    public void setDataOffsetCoefficientSql(final String dataOffsetCoefficientSql) {
         this.dataOffsetCoefficientSql = dataOffsetCoefficientSql;
     }
 
@@ -105,7 +134,7 @@ public class SysParamEntity {
         return vehicleIdSql;
     }
 
-    public void setVehicleIdSql(String vehicleIdSql) {
+    public void setVehicleIdSql(final String vehicleIdSql) {
         this.vehicleIdSql = vehicleIdSql;
     }
 }
