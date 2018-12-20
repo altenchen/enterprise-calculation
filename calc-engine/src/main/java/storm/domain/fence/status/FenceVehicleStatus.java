@@ -303,7 +303,6 @@ public final class FenceVehicleStatus {
                 break;
         }
         saveAreaSide(AreaSide.INSIDE);
-        LOG.info("======> insideEvent : " + loadAreaSide());
     }
 
     private void outsideArea(
@@ -354,6 +353,5 @@ public final class FenceVehicleStatus {
                 break;
         }
         saveAreaSide(AreaSide.OUTSIDE);
-        LOG.info("======> outsideArea : " + loadAreaSide());
     }
 }
