@@ -51,6 +51,10 @@ final class FormatTest {
     @Test
     void timeFormat() throws ParseException {
 
+        final Date now = new Date();
+        Date second = DateUtils.setMilliseconds(now, 0);
+        LOG.trace("{} -> {}", now, second);
+
         final TimeZone utcZone = TimeZone.getTimeZone("GMT");
         final TimeZone chinaZone = TimeZone.getTimeZone("Asia/Shanghai");
         final TimeZone chinaZoneToo = TimeZone.getTimeZone("GMT+8:00");
