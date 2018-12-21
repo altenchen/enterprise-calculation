@@ -3,6 +3,7 @@ package storm.domain.fence.service.impl;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.time.DateUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -147,7 +148,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                     //结束启用时间【时分秒】
                     Time endTime = resultSet.getTime("END_TIME");
                     //1、圆形；2、多边形
-                    int chartType = resultSet.getInt("CHART_TYPE");
+                    String chartType = resultSet.getString("CHART_TYPE");
                     //经纬度范围【1圆形时=半径;圆点， 2多边形时=每一个;的值为经纬度点】
                     String lonlatRange = resultSet.getString("LONLAT_RANGE");
 
@@ -185,6 +186,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
         ImmutableMap.Builder<String, EventCron> events = new ImmutableMap.Builder<>();
         switch (ruleType) {
             case "1":
+                LOGGER.info("FENCE_ID:{} 规则类型[驶离]", fenceId);
                 //驶离
                 events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
                 //生成围栏与事件关系
@@ -193,6 +195,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 fenceEvent.put(fenceId, outSideEvent);
                 break;
             case "2":
+                LOGGER.info("FENCE_ID:{} 规则类型[驶入]", fenceId);
                 //驶入
                 events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 //生成围栏与事件关系
@@ -200,8 +203,9 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 inSideEvent.add(SysDefine.FENCE_INSIDE_EVENT_ID);
                 fenceEvent.put(fenceId, inSideEvent);
                 break;
-            case "3":
-                //驶入驶离
+            default:
+                LOGGER.info("FENCE_ID:{} 规则类型[全部 或 驶入驶离]", fenceId);
+                //全部 或者 ["3" 驶入驶离]
                 events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
                 events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
                 //生成围栏与事件关系
@@ -213,9 +217,6 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 Set<String> insideEvent = fenceEvent.getOrDefault(fenceId, new HashSet<>());
                 insideEvent.add(SysDefine.FENCE_INSIDE_EVENT_ID);
                 fenceEvent.put(fenceId, insideEvent);
-                break;
-            default:
-                //不做处理
                 break;
         }
         return events.build();
@@ -251,9 +252,9 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                     LOGGER.warn("FENCE_ID:{} 执行计划[ 单次执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId);
                     cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), 0, 0));
                 } else {
-                    startTimeNumber = DateExtension.getMillisecondOfDay(startTime.getTime());
-                    endTimeNumber = DateExtension.getMillisecondOfDay(endTime.getTime());
-                    if( startTimeNumber != endTimeNumber ){
+                    startTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(startTime, 0).getTime());
+                    endTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(endTime, 0).getTime());
+                    if (startTimeNumber != endTimeNumber) {
                         endTimeNumber += 1000;
                     }
                     cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), startTimeNumber, endTimeNumber));
@@ -281,9 +282,9 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                         weekFlag = weekFlag | 1 << (weekNumber % 7);
                     }
                 }
-                startTimeNumber = DateExtension.getMillisecondOfDay(startTime.getTime());
-                endTimeNumber = DateExtension.getMillisecondOfDay(endTime.getTime());
-                if( startTimeNumber != endTimeNumber ){
+                startTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(startTime, 0).getTime());
+                endTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(endTime, 0).getTime());
+                if (startTimeNumber != endTimeNumber) {
                     endTimeNumber += 1000;
                 }
                 cronBuilder.add(new WeeklyCycle((byte) weekFlag, startTimeNumber, endTimeNumber));
@@ -294,9 +295,9 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                     LOGGER.warn("FENCE_ID:{} 执行计划[ 每天执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId, startTime == null, endTime == null);
                     break;
                 }
-                startTimeNumber = DateExtension.getMillisecondOfDay(startTime.getTime());
-                endTimeNumber = DateExtension.getMillisecondOfDay(endTime.getTime());
-                if( startTimeNumber != endTimeNumber ){
+                startTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(startTime, 0).getTime());
+                endTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(endTime, 0).getTime());
+                if (startTimeNumber != endTimeNumber) {
                     endTimeNumber += 1000;
                 }
                 cronBuilder.add(new DailyCycle(startTimeNumber, endTimeNumber));
@@ -315,7 +316,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      * @return 返回围栏区域
      */
     @NotNull
-    private ImmutableMap<String, AreaCron> initFenceArea(int chartType, String lonlatRange) {
+    private ImmutableMap<String, AreaCron> initFenceArea(String chartType, String lonlatRange) {
         if (StringUtils.isEmpty(lonlatRange)) {
             return ImmutableMap.of();
         }
@@ -324,7 +325,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
         //坐标值按逗号拆分后,length为2
         int coordinateSize = 2;
         switch (chartType) {
-            case 1:
+            case "1":
                 //圆形区域
                 String[] splitArray = lonlatRange.split("[;:]");
                 if (splitArray.length < coordinateSize) {
@@ -336,7 +337,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 }
                 areas.put(areaId, new Circle(areaId, new Coordinate(Double.valueOf(coordinateArray[0]), Double.valueOf(coordinateArray[1])), Double.valueOf(splitArray[0]) / COORDINATE_COEFFICIENT, null));
                 break;
-            case 2:
+            case "2":
                 //多边形区域
                 final Coordinate[] first = {null};
                 final Coordinate[] last = {null};
