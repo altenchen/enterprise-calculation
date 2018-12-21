@@ -199,9 +199,6 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                 createOutsideEvent(fenceId, events, fenceEvent);
                 break;
             default:
-                LOGGER.info("FENCE_ID:{} 规则类型[全部]", fenceId);
-                createInsideEvent(fenceId, events, fenceEvent);
-                createOutsideEvent(fenceId, events, fenceEvent);
                 break;
         }
         return events.build();
