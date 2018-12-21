@@ -187,39 +187,56 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
         switch (ruleType) {
             case "1":
                 LOGGER.info("FENCE_ID:{} 规则类型[驶离]", fenceId);
-                //驶离
-                events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
-                //生成围栏与事件关系
-                Set<String> outSideEvent = fenceEvent.getOrDefault(fenceId, new HashSet<>());
-                outSideEvent.add(SysDefine.FENCE_OUTSIDE_EVENT_ID);
-                fenceEvent.put(fenceId, outSideEvent);
+                createOutsideEvent(fenceId, events, fenceEvent);
                 break;
             case "2":
                 LOGGER.info("FENCE_ID:{} 规则类型[驶入]", fenceId);
-                //驶入
-                events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
-                //生成围栏与事件关系
-                Set<String> inSideEvent = fenceEvent.getOrDefault(fenceId, new HashSet<>());
-                inSideEvent.add(SysDefine.FENCE_INSIDE_EVENT_ID);
-                fenceEvent.put(fenceId, inSideEvent);
+                createInsideEvent(fenceId, events, fenceEvent);
+                break;
+            case "3":
+                LOGGER.info("FENCE_ID:{} 规则类型[驶入驶离]", fenceId);
+                createInsideEvent(fenceId, events, fenceEvent);
+                createOutsideEvent(fenceId, events, fenceEvent);
                 break;
             default:
-                LOGGER.info("FENCE_ID:{} 规则类型[全部 或 驶入驶离]", fenceId);
-                //全部 或者 ["3" 驶入驶离]
-                events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
-                events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
-                //生成围栏与事件关系
-
-                Set<String> outsideEvent = fenceEvent.getOrDefault(fenceId, new HashSet<>());
-                outsideEvent.add(SysDefine.FENCE_OUTSIDE_EVENT_ID);
-                fenceEvent.put(fenceId, outsideEvent);
-
-                Set<String> insideEvent = fenceEvent.getOrDefault(fenceId, new HashSet<>());
-                insideEvent.add(SysDefine.FENCE_INSIDE_EVENT_ID);
-                fenceEvent.put(fenceId, insideEvent);
+                LOGGER.info("FENCE_ID:{} 规则类型[全部]", fenceId);
+                createInsideEvent(fenceId, events, fenceEvent);
+                createOutsideEvent(fenceId, events, fenceEvent);
                 break;
         }
         return events.build();
+    }
+
+    /**
+     * 生成驶离事件
+     *
+     * @param fenceId    围栏ID
+     * @param events     事件列表
+     * @param fenceEvent 围栏与事件关系
+     */
+    private void createOutsideEvent(String fenceId, ImmutableMap.Builder<String, EventCron> events, Map<String, Set<String>> fenceEvent) {
+        //驶离
+        events.put(SysDefine.FENCE_OUTSIDE_EVENT_ID, new DriveOutside(SysDefine.FENCE_OUTSIDE_EVENT_ID, null));
+        //生成围栏与事件关系
+        Set<String> outSideEvent = fenceEvent.getOrDefault(fenceId, new HashSet<>());
+        outSideEvent.add(SysDefine.FENCE_OUTSIDE_EVENT_ID);
+        fenceEvent.put(fenceId, outSideEvent);
+    }
+
+    /**
+     * 生成驶入事件
+     *
+     * @param fenceId    围栏ID
+     * @param events     事件列表
+     * @param fenceEvent 围栏与事件关系
+     */
+    private void createInsideEvent(String fenceId, ImmutableMap.Builder<String, EventCron> events, Map<String, Set<String>> fenceEvent) {
+        //驶入
+        events.put(SysDefine.FENCE_INSIDE_EVENT_ID, new DriveInside(SysDefine.FENCE_INSIDE_EVENT_ID, null));
+        //生成围栏与事件关系
+        Set<String> inSideEvent = fenceEvent.getOrDefault(fenceId, new HashSet<>());
+        inSideEvent.add(SysDefine.FENCE_INSIDE_EVENT_ID);
+        fenceEvent.put(fenceId, inSideEvent);
     }
 
     /**
