@@ -86,9 +86,7 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Map<String, Object>> vidSpeedGtZeroNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidFlyNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidOnOffNotice = new HashMap<>();
-    private Map<String, Map<String, String>> vidMileHopCache = new HashMap<>();
-    private static final Type TREE_MAP_STRING_STRING_TYPE = new TypeToken<TreeMap<String, String>>() {
-    }.getType();
+
 
     //vid和最后一帧数据的缓存
     private Map<String, Map<String, Object>> vidLastDat = new HashMap<>();
@@ -107,6 +105,8 @@ public class CarRuleHandler implements InfoNotice {
     private static final CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
 
     private static final CarHighSocJudge carHighSocJudge = new CarHighSocJudge();
+
+    private static final CarMileHopJudge carMileHopJudge = new CarMileHopJudge();
 
     private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
 
@@ -221,9 +221,9 @@ public class CarRuleHandler implements InfoNotice {
         }
         if (1 == ConfigUtils.getSysDefine().getSysMilehopRule()) {
             // 里程跳变处理
-            final Map<String, String> mileHopJudge = mileHopHandle(clone);
-            if (MapUtils.isNotEmpty(mileHopJudge)) {
-                builder.add(JSON_UTILS.toJson(mileHopJudge));
+            final String mileHopNotice = carMileHopJudge.processFrame(clone);
+            if (StringUtils.isNotBlank(mileHopNotice)) {
+                builder.add(mileHopNotice);
             }
         }
 
@@ -297,147 +297,6 @@ public class CarRuleHandler implements InfoNotice {
             }
         }
         return null;
-    }
-
-    /**
-     * 里程跳变处理（这块只是连续里程跳变处理）
-     * @param data 实时报文
-     * @return 实时里程跳变通知notice，map类型。
-     */
-    private Map<String, String> mileHopHandle(Map<String, String> data) {
-        if (MapUtils.isEmpty(data)) {
-            return null;
-        }
-        try {
-            final String vid = data.get(DataKey.VEHICLE_ID);
-            final String time = data.get(DataKey.TIME);
-            final String msgType = data.get(DataKey.MESSAGE_TYPE);
-            if (StringUtils.isEmpty(vid)
-                    || StringUtils.isEmpty(time)
-                    || StringUtils.isEmpty(msgType)) {
-                return null;
-            }
-            //判断是否为实时报文
-            if (!CommandType.SUBMIT_REALTIME.equals(msgType)) {
-                return null;
-            }
-
-            String nowMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
-            nowMileage = NumberUtils.isNumber(nowMileage) ? nowMileage : Numbers.ZERO;
-
-            //如果当前帧里程值无效，则返回null
-            if (StringUtils.equals(Numbers.ZERO,nowMileage)){
-                return null;
-            }
-
-            //如果缓存中没有这辆车的缓存，则去redis读一次。
-            if (!vidMileHopCache.containsKey(vid)){
-                JEDIS_POOL_UTILS.useResource(jedis -> {
-                    jedis.select(db);
-                    vidMileHopCache.put(vid,loadMileHopCacheFromRedis(jedis,vid));
-                });
-            }
-
-            //如果缓存中这辆车的缓存为空，则返回null。
-            if (vidMileHopCache.get(vid).isEmpty()){
-                return null;
-            }
-
-            //如果最后一帧里程值为无效，则返回null
-            Map<String,String> lastUsefulMileCache = vidMileHopCache.get(vid);
-            String lastMileage = String.valueOf(lastUsefulMileCache.get("lastUsefulMileage"));
-            if (StringUtils.equals(Numbers.NEGATIVE_ONE,lastMileage)){
-                LOG.info("vid:{}，时间:{},里程值:{}, 最后一帧里程值为无效！", vid,time,nowMileage);
-
-                //将当前帧里程值与时间缓存到 redis中
-                saveNowTimeAndMileage(vid, time, nowMileage);
-
-                return null;
-            }
-
-            //获得当前里程值、上一帧有效里程值、里程跳变值、里程跳变报警阈值。
-            int nowMile = Integer.parseInt(nowMileage);
-            int lastMile = Integer.parseInt(lastMileage);
-            int mileHopValue = Math.abs(nowMile - lastMile);
-            int mileHopThreshold = ConfigUtils.getSysDefine().getMileHopNum() * 10;
-
-            //将当前帧里程值与时间缓存到 redis中
-            saveNowTimeAndMileage(vid, time, nowMileage);
-
-            //如果里程差值小于里程跳变报警阈值则返回null
-            if (mileHopValue < mileHopThreshold){
-                return null;
-            }
-
-            LOG.info("vid:{} 判定为里程跳变！从{}跳变为{}！", vid, lastMile, nowMile);
-            //发出里程跳变通知
-            String lastTime = String.valueOf(lastUsefulMileCache.get("time"));
-            String vin = data.get(DataKey.VEHICLE_NUMBER);
-            Map<String, String> mileageHopNotice = new TreeMap<>();
-            mileageHopNotice.put("msgType", NoticeType.HOP_MILE);
-            mileageHopNotice.put("vid", vid);
-            mileageHopNotice.put("vin", vin);
-            mileageHopNotice.put("stime", lastTime);
-            mileageHopNotice.put("etime", time);
-            mileageHopNotice.put("stmile", String.valueOf(lastMile));
-            mileageHopNotice.put("edmile", String.valueOf(nowMile));
-            mileageHopNotice.put("hopValue", String.valueOf(mileHopValue));
-
-            return mileageHopNotice;
-        } catch (Exception e) {
-            LOG.error("VID:{},里程跳变判断发生异常，异常信息如下：{}",data.get(DataKey.VEHICLE_ID),e);
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    /**
-     * 从redis中加载为计算里程跳变所存储的最近一帧有效里程值
-     * 可以将redis中缓存的json字符串转化为map形式
-     * @param jedis
-     * @param vehicleId 车辆id
-     * @return map形式的最近一帧有效里程值缓存
-     */
-    @NotNull
-    private ImmutableMap<String, String> loadMileHopCacheFromRedis(
-            @NotNull final Jedis jedis,
-            @NotNull final String vehicleId) {
-
-        final String json = jedis.hget(mileHopRedisKeys, vehicleId);
-        if (StringUtils.isNotBlank(json)) {
-            return ImmutableMap.copyOf(
-                    ObjectExtension.defaultIfNull(
-                            JSON_UTILS.fromJson(
-                                    json,
-                                    TREE_MAP_STRING_STRING_TYPE,
-                                    e -> {
-                                        LOG.warn("VID:{} REDIS DB:{} KEY:{} 中不是合法json的里程跳变的时间与里程值缓存{}", vehicleId, db, mileHopRedisKeys, json);
-                                        return null;
-                                    }),
-                            Maps::newTreeMap)
-            );
-        } else {
-            return ImmutableMap.of();
-        }
-    }
-
-    /**
-     * 保存“时间”和“里程值”到缓存和redis中
-     * @param vid 车辆id
-     * @param time 最近一帧有效里程值的服务器接收报文时间
-     * @param nowMileage 最近一帧有效里程值
-     */
-    private void saveNowTimeAndMileage(String vid, String time, String nowMileage){
-        Map<String, String> usefulTimeAndMileage = null;
-        usefulTimeAndMileage.put("time",time);
-        usefulTimeAndMileage.put("lastUsefulMileage",nowMileage);
-        vidMileHopCache.put(vid,usefulTimeAndMileage);
-
-        final String json = JSON_UTILS.toJson(usefulTimeAndMileage);
-        JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(db);
-            jedis.hset(mileHopRedisKeys, vid, json);
-        });
     }
 
     /**
