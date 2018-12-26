@@ -316,19 +316,16 @@ public class CarRuleHandler implements InfoNotice {
                 if (StringUtils.equals(Numbers.ZERO,nowMileage)){
                     return null;
                 }
-                //将当前帧里程值与时间缓存到 redis中
-                Map<String, String> usefulTimeAndMileage = null;
-                usefulTimeAndMileage.put("time",time);
-                usefulTimeAndMileage.put("data",nowMileage);
-                final ImmutableMap<String, String> notice = new ImmutableMap.Builder<String, String>()
-                        .putAll(usefulTimeAndMileage)
-                        .build();
-                VEHICLE_CACHE.putField(vid, "useful2202", notice);
+
 
                 //如果最后一帧里程值为无效，则返回null
                 String lastMileage = VEHICLE_CACHE.getTotalMileageString(vid, Numbers.NEGATIVE_ONE);
                 if (StringUtils.equals(Numbers.NEGATIVE_ONE,lastMileage)){
                     LOG.info("vid:{}，时间:{},里程值:{}, 最后一帧里程值为无效！", vid,time,nowMileage);
+
+                    //将当前帧里程值与时间缓存到 redis中
+                    saveNowTimeAndMileage(vid, time, nowMileage);
+
                     return null;
                 }
 
@@ -337,6 +334,9 @@ public class CarRuleHandler implements InfoNotice {
                 int lastMile = Integer.parseInt(lastMileage);
                 int mileHopValue = Math.abs(nowMile - lastMile);
                 int mileHopThreshold = ConfigUtils.getSysDefine().getMileHopNum() * 10;
+
+                //将当前帧里程值与时间缓存到 redis中
+                saveNowTimeAndMileage(vid, time, nowMileage);
 
                 //如果里程差值小于里程跳变报警阈值则返回null
                 if (mileHopValue < mileHopThreshold){
@@ -363,6 +363,16 @@ public class CarRuleHandler implements InfoNotice {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private void saveNowTimeAndMileage(String vid, String time, String nowMileage) throws ExecutionException {
+        Map<String, String> usefulTimeAndMileage = null;
+        usefulTimeAndMileage.put("time",time);
+        usefulTimeAndMileage.put("data",nowMileage);
+        final ImmutableMap<String, String> notice = new ImmutableMap.Builder<String, String>()
+                .putAll(usefulTimeAndMileage)
+                .build();
+        VEHICLE_CACHE.putField(vid, "useful2202", notice);
     }
 
     /**
