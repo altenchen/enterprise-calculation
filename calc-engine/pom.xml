@@ -14,7 +14,7 @@
     <artifactId>calc-engine</artifactId>
     <!-- 语义化版本 -->
     <!-- https://semver.org/lang/zh-CN/ -->
-    <version>0.5.x-alpha</version>
+    <version>0.5.x</version>
     <!-- 模块描述 -->
     <description>计算引擎</description>
 
