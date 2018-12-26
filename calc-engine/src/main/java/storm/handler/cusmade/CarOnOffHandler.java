@@ -2,6 +2,8 @@ package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.sun.xml.internal.bind.v2.TODO;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -61,6 +63,7 @@ public final class CarOnOffHandler implements Serializable {
      * @param timeout
      * @return
      */
+    //TODO:需要整理一下逻辑
     public void onOffCheck(String type, int status, long now, long timeout) {
         if ("TIMEOUT".equals(type)) {
             Map<String,Map<String,String>> cluster = null;
@@ -129,6 +132,7 @@ public final class CarOnOffHandler implements Serializable {
      * @param markAlive
      * @return
      */
+    //TODO:需要整理下逻辑
     private Map<String, Object> offMile(Map<String, String> dat,long now,long timeout,List<String> markAlive){
         if (null == dat || dat.size() ==0) {
             return null;
@@ -174,66 +178,69 @@ public final class CarOnOffHandler implements Serializable {
         return null;
     }
     /**
-     *
+     *当车辆上线的时候，发送ON_OFF_MILE通知。这也是kafkaservice用来判断“再次上线时里程异常”的依据。
      * @param immutableMap
      * @param now
      * @param timeout
      * @return
      */
+    // TODO: 需要整理一下代码逻辑
     private Map<String, Object> onoffMile(@NotNull final ImmutableMap<String, String> immutableMap,long now,long timeout){
-        if (null == immutableMap || immutableMap.size() ==0) {
+        if (MapUtils.isEmpty(immutableMap)) {
             return null;
         }
 
         final Map<String, String> data = Maps.newHashMap(immutableMap);
+        final String vehicleId = data.get(DataKey.VEHICLE_ID);
+        final String platformReceiverTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+        final String msgType = data.get(DataKey.MESSAGE_TYPE);
 
-        String msgType = data.get(DataKey.MESSAGE_TYPE);
-        String vid = data.get(DataKey.VEHICLE_ID);
-        String time = data.get(DataKey.TIME);
-        if (StringUtils.isEmpty(msgType)
-                || StringUtils.isEmpty(vid)
-                || StringUtils.isEmpty(time)) {
+        //检查数据有效性
+        if (StringUtils.isBlank(vehicleId)
+                || !NumberUtils.isDigits(platformReceiverTimeString)
+                ){
             return null;
         }
+
         String lastUtc = data.get(SysDefine.ONLINE_UTC);
         String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
         double lastmileage = -1;
         if (data.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
             String str = data.get(DataKey._2202_TOTAL_MILEAGE);
-            String mileage = org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0";
+            String mileage = NumberUtils.isNumber(str) ? str : "0";
             if (! "0".equals(mileage)) {
 
                 lastmileage = Double.parseDouble(mileage);
                 if (-1 != lastmileage) {
-                    vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
+                    vidLastTimeMile.put(vehicleId, new TimeMileage(now,platformReceiverTimeString,lastmileage));
                 }
             }
         }
         boolean isoff = isOffline(data);
-        boolean isout = isTimeout(time, lastUtc, now, timeout);
+        boolean isout = isTimeout(platformReceiverTimeString, lastUtc, now, timeout);
         //根据报文判断离线了，或者，很长时间没发报文了，判断为离线
         if (isoff || isout) {
-            TimeMileage timeMileage = vidLastTimeMile.get(vid);
+            TimeMileage timeMileage = vidLastTimeMile.get(vehicleId);
             if (null != timeMileage
                     && timeMileage.mileage>0
-                    && !onOffMileNotice.containsKey(vid)) {
+                    && !onOffMileNotice.containsKey(vehicleId)) {
                 Map<String, Object> notice = new TreeMap<>();
                 notice.put("msgType", NoticeType.ON_OFF_MILE);
-                notice.put("vid", vid);
-                notice.put("stime", time);
+                notice.put("vid", vehicleId);
+                notice.put("stime", platformReceiverTimeString);
                 notice.put("smileage", timeMileage.mileage);
-                onOffMileNotice.put(vid, notice);
+                onOffMileNotice.put(vehicleId, notice);
             }
 
         } else {
             if (CommandType.SUBMIT_REALTIME.equals(msgType)
                     && -1 != lastmileage){
 
-                if (onOffMileNotice.containsKey(vid)) {
-                    Map<String, Object> notice = onOffMileNotice.get(vid);
-                    onOffMileNotice.remove(vid);
+                if (onOffMileNotice.containsKey(vehicleId)) {
+                    Map<String, Object> notice = onOffMileNotice.get(vehicleId);
+                    onOffMileNotice.remove(vehicleId);
                     if (null != notice) {
-                        notice.put("etime", time);
+                        notice.put("etime", platformReceiverTimeString);
                         notice.put("emileage", lastmileage);
                         notice.put("noticetime", noticetime);
                         return notice;

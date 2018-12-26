@@ -3,6 +3,7 @@ package storm.handler.cusmade;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.sun.org.apache.xpath.internal.operations.Number;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -23,6 +24,7 @@ import storm.protocol.SUBMIT_LINKSTATUS;
 import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.NoticeType;
+import storm.system.Numbers;
 import storm.system.ProtocolItem;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
@@ -79,7 +81,8 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Map<String, Object>> vidFlyNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidOnOffNotice = new HashMap<>();
 
-    private Map<String, Map<String, Object>> vidLastDat = new HashMap<>();//vid和最后一帧数据的缓存
+    //vid和最后一帧数据的缓存
+    private Map<String, Map<String, Object>> vidLastDat = new HashMap<>();
     private Map<String, Long> lastTime = new HashMap<>();
 
     private RedisRecorder recorder;
@@ -208,7 +211,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         if (1 == ConfigUtils.getSysDefine().getSysMilehopRule()) {
             // 里程跳变处理
-            final Map<String, Object> mileHopJudge = mileHopHandle(clone);
+            final Map<String, String> mileHopJudge = mileHopHandle(clone);
             if (MapUtils.isNotEmpty(mileHopJudge)) {
                 builder.add(JSON_UTILS.toJson(mileHopJudge));
             }
@@ -288,78 +291,78 @@ public class CarRuleHandler implements InfoNotice {
 
     /**
      * 里程跳变处理
-     *
-     * @param dat
-     * @return 实时里程跳变通知notice，treemap类型。
+     * @param data 实时报文
+     * @return 实时里程跳变通知notice，map类型。
      */
-    private Map<String, Object> mileHopHandle(Map<String, String> dat) {
-        if (MapUtils.isEmpty(dat)) {
+    private Map<String, String> mileHopHandle(Map<String, String> data) {
+        if (MapUtils.isEmpty(data)) {
             return null;
         }
         try {
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(DataKey.TIME);
-            String msgType = dat.get(DataKey.MESSAGE_TYPE);
+            final String vid = data.get(DataKey.VEHICLE_ID);
+            final String time = data.get(DataKey.TIME);
+            final String msgType = data.get(DataKey.MESSAGE_TYPE);
             if (StringUtils.isEmpty(vid)
                     || StringUtils.isEmpty(time)
                     || StringUtils.isEmpty(msgType)) {
                 return null;
             }
-            Map<String, Object> notice = null;
+            //判断是否为实时报文
             if (CommandType.SUBMIT_REALTIME.equals(msgType)) {
+                String nowMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
+                nowMileage = NumberUtils.isNumber(nowMileage) ? nowMileage : Numbers.ZERO;
 
-                String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);//当前总里程
-
-                if (vidLastDat.containsKey(vid)) {
-                    //mileage如果是数字字符串则返回，不是则返回字符串“0”
-                    mileage = org.apache.commons.lang.math.NumberUtils.isNumber(mileage) ? mileage : "0";
-                    if (!"0".equals(mileage)) {
-                        int mile = Integer.parseInt(mileage);//当前总里程
-                        Map<String, Object> lastMap = vidLastDat.get(vid);
-                        int lastMile = (int) lastMap.get(DataKey._2202_TOTAL_MILEAGE);//上一帧的总里程
-                        int nowmileHop = Math.abs(mile - lastMile);//里程跳变
-
-                        int mileHop = ConfigUtils.getSysDefine().getMileHopNum() * 10;
-                        if (nowmileHop >= mileHop) {
-                            String lastTime = (String) lastMap.get(DataKey.TIME);//上一帧的时间即为跳变的开始时间
-                            String vin = dat.get(DataKey.VEHICLE_NUMBER);
-                            notice = new TreeMap<>();
-                            notice.put("msgType", NoticeType.HOP_MILE);//这些字段是前端方面要求的。
-                            notice.put("vid", vid);
-                            notice.put("vin", vin);
-                            notice.put("stime", lastTime);
-                            notice.put("etime", time);
-                            notice.put("stmile", lastMile);
-                            notice.put("edmile", mile);
-                            notice.put("hopValue", nowmileHop);
-                        }
-                    }
+                //如果当前帧里程值无效，则返回null
+                if (StringUtils.equals(Numbers.ZERO,nowMileage)){
+                    return null;
                 }
-                //如果vidLastDat中没有缓存此vid，则把这一帧报文中的vid、time、mileage字段缓存到LastDat
-                setLastDat(dat);
+                //将当前帧里程值与时间缓存到 redis中
+                Map<String, String> usefulTimeAndMileage = null;
+                usefulTimeAndMileage.put("time",time);
+                usefulTimeAndMileage.put("data",nowMileage);
+                final ImmutableMap<String, String> notice = new ImmutableMap.Builder<String, String>()
+                        .putAll(usefulTimeAndMileage)
+                        .build();
+                VEHICLE_CACHE.putField(vid, "useful2202", notice);
+
+                //如果最后一帧里程值为无效，则返回null
+                String lastMileage = VEHICLE_CACHE.getTotalMileageString(vid, Numbers.NEGATIVE_ONE);
+                if (StringUtils.equals(Numbers.NEGATIVE_ONE,lastMileage)){
+                    LOG.info("vid:{}，时间:{},里程值:{}, 最后一帧里程值为无效！", vid,time,nowMileage);
+                    return null;
+                }
+
+                //获得当前里程值、上一帧有效里程值、里程跳变值、里程跳变报警阈值。
+                int nowMile = Integer.parseInt(nowMileage);
+                int lastMile = Integer.parseInt(lastMileage);
+                int mileHopValue = Math.abs(nowMile - lastMile);
+                int mileHopThreshold = ConfigUtils.getSysDefine().getMileHopNum() * 10;
+
+                //如果里程差值小于里程跳变报警阈值则返回null
+                if (mileHopValue < mileHopThreshold){
+                    return null;
+                }
+
+                LOG.info("vid:{} 判定为里程跳变！从{}跳变为{}！", vid, lastMile, nowMile);
+                //发出里程跳变通知
+                String lastTime = VEHICLE_CACHE.getField(vid, VehicleCache.TOTAL_MILEAGE_FIELD).get(time);
+                String vin = data.get(DataKey.VEHICLE_NUMBER);
+                Map<String, String> mileageHopNotice = new TreeMap<>();
+                mileageHopNotice.put("msgType", NoticeType.HOP_MILE);
+                mileageHopNotice.put("vid", vid);
+                mileageHopNotice.put("vin", vin);
+                mileageHopNotice.put("stime", lastTime);
+                mileageHopNotice.put("etime", time);
+                mileageHopNotice.put("stmile", String.valueOf(lastMile));
+                mileageHopNotice.put("edmile", String.valueOf(nowMile));
+                mileageHopNotice.put("hopValue", String.valueOf(mileHopValue));
+                return mileageHopNotice;
             }
-
-            return notice;
-
         } catch (Exception e) {
+            LOG.error("VID:{},里程跳变判断发生异常，异常信息如下：{}",data.get(DataKey.VEHICLE_ID),e);
             e.printStackTrace();
         }
         return null;
-    }
-
-    private void setLastDat(Map<String, String> dat) {
-        String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
-        mileage = org.apache.commons.lang.math.NumberUtils.isNumber(mileage) ? mileage : "0";
-        if (!"0".equals(mileage)) {
-            Map<String, Object> lastMap = new TreeMap<>();
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(DataKey.TIME);
-            int mile = Integer.parseInt(mileage);
-            lastMap.put(DataKey.VEHICLE_ID, vid);
-            lastMap.put(DataKey.TIME, time);
-            lastMap.put(DataKey._2202_TOTAL_MILEAGE, mile);
-            vidLastDat.put(vid, lastMap);
-        }
     }
 
     /**
