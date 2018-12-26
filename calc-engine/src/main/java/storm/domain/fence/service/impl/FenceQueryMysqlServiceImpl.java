@@ -1,5 +1,6 @@
 package storm.domain.fence.service.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang.StringUtils;
@@ -128,7 +129,12 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
         String sql = ConfigUtils.getSysParam().getFenceSql();
         List<Fence> result = SQL_UTILS.query(sql, resultSet -> {
             List<Fence> fences = new ArrayList<>();
+            //无效围栏ID
+            Set<String> invalidFenceIds = new HashSet<>(0);
+            //围栏总数
+            int totalFence = 0;
             while (resultSet.next()) {
+                totalFence += 1;
                 //围栏ID
                 String fenceId = null;
                 try {
@@ -136,7 +142,7 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
                     //规则类型1、驶离；2、驶入；3、驶入驶离
                     String ruleType = resultSet.getString("RULE_TYPE");
                     //周期类型1、单次执行；2、每周循环；3、每天循环
-                    int periodType = resultSet.getInt("PERIOD_TYPE");
+                    String periodType = resultSet.getString("PERIOD_TYPE");
                     //开始日期
                     Date startDate = resultSet.getDate("START_DATE");
                     //结束日期
@@ -154,18 +160,39 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
 
                     //初始化电子围栏区域
                     ImmutableMap<String, AreaCron> areas = initFenceArea(chartType, lonlatRange);
+                    if (areas.isEmpty()) {
+                        LOGGER.warn("FENCE_ID:{} 围栏区域为空, 围栏不生效", fenceId);
+                        invalidFenceIds.add(fenceId);
+                        continue;
+                    }
 
                     //初始化规则列表
                     ImmutableMap<String, EventCron> events = initFenceEvent(fenceId, fenceEvent, ruleType);
+                    if (events.isEmpty()) {
+                        LOGGER.warn("FENCE_ID:{} 围栏事件为空, 围栏不生效", fenceId);
+                        invalidFenceIds.add(fenceId);
+                        continue;
+                    }
 
                     //初始化执行计划
                     ImmutableList<Cron> cron = initFenceCron(fenceId, periodType, week, startDate, endDate, startTime, endTime);
+                    if (cron.isEmpty()) {
+                        LOGGER.warn("FENCE_ID:{} 围栏执行计划为空, 围栏不生效", fenceId);
+                        invalidFenceIds.add(fenceId);
+                        continue;
+                    }
 
                     Fence fence = new Fence(fenceId, areas, events, cron);
                     fences.add(fence);
                 } catch (SQLException e) {
                     LOGGER.error("FENCE_ID:" + fenceId + " 电子围栏初始化失败", e);
+                    invalidFenceIds.add(fenceId);
                 }
+            }
+            if( invalidFenceIds.isEmpty() ){
+                LOGGER.warn("电子围栏总数：{}, 已生效：{}", totalFence, fences.size());
+            }else{
+                LOGGER.warn("电子围栏总数：{}, 已生效：{}, 无效：{}, 无效FENCE_ID：{}", totalFence, fences.size(), invalidFenceIds.size(), JSON.toJSONString(invalidFenceIds));
             }
             return fences;
         });
@@ -251,75 +278,117 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
      * @param endTime    例：23:22:22
      * @return 返回执行计划列表
      */
-    private ImmutableList<Cron> initFenceCron(String fenceId, int periodType, String week, Date startDate, Date endDate, Time startTime, Time endTime) {
+    private ImmutableList<Cron> initFenceCron(String fenceId, String periodType, String week, Date startDate, Date endDate, Time startTime, Time endTime) {
         ImmutableList.Builder<Cron> cronBuilder = new ImmutableList.Builder<>();
-        long startTimeNumber = 0;
-        long endTimeNumber = 0;
         switch (periodType) {
-            case 1:
+            case "1":
                 //单次执行
-                if (startDate == null || endDate == null) {
-                    LOGGER.warn("FENCE_ID:{} 执行计划[ 单次执行 ], 开始日期(startDate)或结束日期(endDate)为空，已启用默认执行计划[ 每天24小时都生效 ]", fenceId);
-                    break;
-                }
-                if (startTime == null || endTime == null) {
-                    LOGGER.warn("FENCE_ID:{} 执行计划[ 单次执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId);
-                    cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), 0, 0));
-                } else {
-                    startTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(startTime, 0).getTime());
-                    endTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(endTime, 0).getTime());
-                    if (startTimeNumber != endTimeNumber) {
-                        endTimeNumber += 1000;
-                    }
-                    cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), startTimeNumber, endTimeNumber));
-                }
+                createDailyOnceCron(fenceId, startDate, endDate, startTime, endTime, cronBuilder);
                 break;
-            case 2:
-                if (startTime == null || endTime == null) {
-                    LOGGER.warn("FENCE_ID:{} 执行计划[ 每周循环 ] 周[ " + week + " ]执行, 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId);
-                    break;
-                }
+            case "2":
                 //每周循环
-                String[] weekStringArray = week.split(",");
-                if (weekStringArray.length == 0) {
-                    break;
-                }
-                int weekFlag = -1;
-                for (String weekString : weekStringArray) {
-                    if (StringUtils.isEmpty(weekString)) {
-                        continue;
-                    }
-                    int weekNumber = Integer.valueOf(weekString);
-                    if (weekFlag == -1) {
-                        weekFlag = 1 << (weekNumber % 7);
-                    } else {
-                        weekFlag = weekFlag | 1 << (weekNumber % 7);
-                    }
-                }
-                startTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(startTime, 0).getTime());
-                endTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(endTime, 0).getTime());
-                if (startTimeNumber != endTimeNumber) {
-                    endTimeNumber += 1000;
-                }
-                cronBuilder.add(new WeeklyCycle((byte) weekFlag, startTimeNumber, endTimeNumber));
+                createWeeklyCycleCron(fenceId, week, startTime, endTime, cronBuilder);
                 break;
-            case 3:
+            case "3":
                 //每天执行
-                if (startTime == null || endTime == null) {
-                    LOGGER.warn("FENCE_ID:{} 执行计划[ 每天执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId, startTime == null, endTime == null);
-                    break;
-                }
-                startTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(startTime, 0).getTime());
-                endTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(endTime, 0).getTime());
-                if (startTimeNumber != endTimeNumber) {
-                    endTimeNumber += 1000;
-                }
-                cronBuilder.add(new DailyCycle(startTimeNumber, endTimeNumber));
+                createDailyCycleCron(fenceId, startTime, endTime, cronBuilder);
                 break;
             default:
                 break;
         }
         return cronBuilder.build();
+    }
+
+    /**
+     * 创建单次执行计划
+     *
+     * @param fenceId     围栏ID
+     * @param startDate   开始日期
+     * @param endDate     结束日期
+     * @param startTime   开始时间段
+     * @param endTime     结束时间段
+     * @param cronBuilder 计划构造器
+     */
+    private void createDailyOnceCron(String fenceId, Date startDate, Date endDate, Time startTime, Time endTime, ImmutableList.Builder<Cron> cronBuilder) {
+        //单次执行
+        if (startDate == null || endDate == null) {
+            LOGGER.warn("FENCE_ID:{} 执行计划[ 单次执行 ], 开始日期(startDate)或结束日期(endDate)为空, 围栏不生效", fenceId);
+            return;
+        }
+        if (startTime == null || endTime == null) {
+            LOGGER.warn("FENCE_ID:{} 执行计划[ 单次执行 ], 开始时间段(startTime)或结束时间段(endTime)为空，已启用默认执行计划[ 24小时都生效 ]", fenceId);
+            cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), 0, 0));
+        } else {
+            long startTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(startTime, 0).getTime());
+            long endTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(endTime, 0).getTime());
+            if (startTimeNumber != endTimeNumber) {
+                endTimeNumber += 1000;
+            }
+            cronBuilder.add(new DailyOnce(startDate.getTime(), endDate.getTime(), startTimeNumber, endTimeNumber));
+        }
+    }
+
+    /**
+     * 创建按周执行计划
+     *
+     * @param fenceId     围栏ID
+     * @param week        星期
+     * @param startTime   开始时间段
+     * @param endTime     结束时间段
+     * @param cronBuilder 计划构造器
+     */
+    private void createWeeklyCycleCron(String fenceId, String week, Time startTime, Time endTime, ImmutableList.Builder<Cron> cronBuilder) {
+        if (StringUtils.isEmpty(week)) {
+            LOGGER.warn("FENCE_ID:{} 执行计划[ 每周循环 ] 周[ " + week + " ]为空, 围栏不生效", fenceId);
+            return;
+        }
+        if (startTime == null || endTime == null) {
+            LOGGER.warn("FENCE_ID:{} 执行计划[ 每周循环 ] 周[ " + week + " ]执行, 开始时间段(startTime)或结束时间段(endTime)为空, 围栏不生效", fenceId);
+            return;
+        }
+        String[] weekStringArray = week.split(",");
+        if (weekStringArray.length == 0) {
+            return;
+        }
+        int weekFlag = -1;
+        for (String weekString : weekStringArray) {
+            if (StringUtils.isEmpty(weekString)) {
+                continue;
+            }
+            int weekNumber = Integer.valueOf(weekString);
+            if (weekFlag == -1) {
+                weekFlag = 1 << (weekNumber % 7);
+            } else {
+                weekFlag = weekFlag | 1 << (weekNumber % 7);
+            }
+        }
+        long startTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(startTime, 0).getTime());
+        long endTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(endTime, 0).getTime());
+        if (startTimeNumber != endTimeNumber) {
+            endTimeNumber += 1000;
+        }
+        cronBuilder.add(new WeeklyCycle((byte) weekFlag, startTimeNumber, endTimeNumber));
+    }
+
+    /**
+     * 创建每天执行计划
+     *
+     * @param fenceId     围栏ID
+     * @param startTime   开始时间段
+     * @param endTime     结束时间段
+     * @param cronBuilder 计划构造器
+     */
+    private void createDailyCycleCron(String fenceId, Time startTime, Time endTime, ImmutableList.Builder<Cron> cronBuilder) {
+        if (startTime == null || endTime == null) {
+            LOGGER.warn("FENCE_ID:{} 执行计划[ 每天执行 ], 开始时间段(startTime)或结束时间段(endTime)为空, 围栏不生效", fenceId);
+            return;
+        }
+        long startTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(startTime, 0).getTime());
+        long endTimeNumber = DateExtension.getMillisecondOfDay(DateUtils.setMilliseconds(endTime, 0).getTime());
+        if (startTimeNumber != endTimeNumber) {
+            endTimeNumber += 1000;
+        }
+        cronBuilder.add(new DailyCycle(startTimeNumber, endTimeNumber));
     }
 
     /**
@@ -336,48 +405,72 @@ public class FenceQueryMysqlServiceImpl extends AbstractFenceQuery {
         }
         ImmutableMap.Builder<String, AreaCron> areas = new ImmutableMap.Builder<>();
         String areaId = SysDefine.FENCE_AREA_ID;
-        //坐标值按逗号拆分后,length为2
-        int coordinateSize = 2;
         switch (chartType) {
             case "1":
                 //圆形区域
-                String[] splitArray = lonlatRange.split("[;:]");
-                if (splitArray.length < coordinateSize) {
-                    break;
-                }
-                String[] coordinateArray = splitArray[1].split(",");
-                if (coordinateArray.length < coordinateSize) {
-                    break;
-                }
-                areas.put(areaId, new Circle(areaId, new Coordinate(Double.valueOf(coordinateArray[0]), Double.valueOf(coordinateArray[1])), Double.valueOf(splitArray[0]) / COORDINATE_COEFFICIENT, null));
+                createCircleArea(areaId, lonlatRange, areas);
                 break;
             case "2":
                 //多边形区域
-                final Coordinate[] first = {null};
-                final Coordinate[] last = {null};
-                ImmutableList.Builder<Coordinate> coordinates = new ImmutableList.Builder();
-                Arrays.stream(lonlatRange.split("[;:]")).forEach(item -> {
-                    String[] coordinateArrays = item.split(",");
-                    if (coordinateArrays.length < coordinateSize) {
-                        return;
-                    }
-                    Coordinate point = new Coordinate(Double.valueOf(coordinateArrays[0]), Double.valueOf(coordinateArrays[1]));
-                    if (first[0] == null) {
-                        first[0] = point;
-                    }
-                    last[0] = point;
-                    coordinates.add(point);
-                });
-                if (!first[0].equals(last[0])) {
-                    //多边形没有闭环,添加坐标点使多边形闭合
-                    coordinates.add(first[0]);
-                }
-                areas.put(areaId, new Polygon(areaId, coordinates.build(), null));
+                createPolygonArea(areaId, lonlatRange, areas);
                 break;
             default:
                 break;
         }
         return areas.build();
+    }
+
+    /**
+     * 创建圆形区域
+     *
+     * @param areaId      区域ID
+     * @param lonlatRange 半径(米)/中心点坐标
+     * @param areas       区域构造器
+     */
+    private void createCircleArea(String areaId, String lonlatRange, ImmutableMap.Builder<String, AreaCron> areas) {
+        //坐标值按逗号拆分后,length为2
+        int coordinateSize = 2;
+        String[] splitArray = lonlatRange.split("[;:]");
+        if (splitArray.length < coordinateSize) {
+            return;
+        }
+        String[] coordinateArray = splitArray[1].split(",");
+        if (coordinateArray.length < coordinateSize) {
+            return;
+        }
+        areas.put(areaId, new Circle(areaId, new Coordinate(Double.valueOf(coordinateArray[0]), Double.valueOf(coordinateArray[1])), Double.valueOf(splitArray[0]) / COORDINATE_COEFFICIENT, null));
+    }
+
+    /**
+     * 创建多边形区域
+     *
+     * @param areaId      区域ID
+     * @param lonlatRange 经纬度;经纬度;...
+     * @param areas       区域构造器
+     */
+    private void createPolygonArea(String areaId, String lonlatRange, ImmutableMap.Builder<String, AreaCron> areas) {
+        //坐标值按逗号拆分后,length为2
+        int coordinateSize = 2;
+        final Coordinate[] first = {null};
+        final Coordinate[] last = {null};
+        ImmutableList.Builder<Coordinate> coordinates = new ImmutableList.Builder();
+        Arrays.stream(lonlatRange.split("[;:]")).forEach(item -> {
+            String[] coordinateArrays = item.split(",");
+            if (coordinateArrays.length < coordinateSize) {
+                return;
+            }
+            Coordinate point = new Coordinate(Double.valueOf(coordinateArrays[0]), Double.valueOf(coordinateArrays[1]));
+            if (first[0] == null) {
+                first[0] = point;
+            }
+            last[0] = point;
+            coordinates.add(point);
+        });
+        if (!first[0].equals(last[0])) {
+            //多边形没有闭环,添加坐标点使多边形闭合
+            coordinates.add(first[0]);
+        }
+        areas.put(areaId, new Polygon(areaId, coordinates.build(), null));
     }
 
     /**
