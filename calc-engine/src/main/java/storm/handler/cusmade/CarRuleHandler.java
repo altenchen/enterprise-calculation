@@ -81,14 +81,10 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Map<String, Object>> vidFlyNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidOnOffNotice = new HashMap<>();
 
-
-    //vid和最后一帧数据的缓存
-    private Map<String, Map<String, Object>> vidLastDat = new HashMap<>();
     private Map<String, Long> lastTime = new HashMap<>();
 
     private RedisRecorder recorder;
     static String onOffRedisKeys = "vehCache.qy.onoff.notice";
-    static String mileHopRedisKeys = "vehCache.qy.mileHop.timeAndLastMileage";
 
     static int topn = 20;
 
@@ -215,7 +211,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         if (1 == ConfigUtils.getSysDefine().getSysMilehopRule()) {
             // 里程跳变处理
-            final String mileHopNotice = carMileHopJudge.processFrame(clone);
+            final String mileHopNotice = carMileHopJudge.processFrame(data);
             if (StringUtils.isNotBlank(mileHopNotice)) {
                 builder.add(mileHopNotice);
             }

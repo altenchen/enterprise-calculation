@@ -29,8 +29,8 @@ public class CarMileHopJudge {
     private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
     private static final Type TREE_MAP_STRING_STRING_TYPE = new TypeToken<TreeMap<String, String>>() {
     }.getType();
-    static int db = 6;
-    static String mileHopRedisKeys = "vehCache.qy.mileHop.timeAndLastMileage";
+    private static int REDIS_DB_INDEX = 6;
+    private static String mileHopRedisKeys = "vehCache.qy.mileHop.timeAndLastMileage";
     /**
      * 缓存里程跳变的最近一帧有效里程的里程和时间
      */
@@ -40,7 +40,7 @@ public class CarMileHopJudge {
      * @param data 实时报文
      * @return 实时里程跳变通知notice，json字符串类型。
      */
-    public String processFrame(Map<String, String> data){
+    public String processFrame(final ImmutableMap<String, String> data){
 
         if (MapUtils.isEmpty(data)) {
             return null;
@@ -70,7 +70,7 @@ public class CarMileHopJudge {
             //如果缓存中没有这辆车的缓存，则去redis读一次。
             if (!vidMileHopCache.containsKey(vid)){
                 JEDIS_POOL_UTILS.useResource(jedis -> {
-                    jedis.select(db);
+                    jedis.select(REDIS_DB_INDEX);
                     vidMileHopCache.put(vid,loadMileHopCacheFromRedis(jedis,vid));
                 });
             }
@@ -137,7 +137,7 @@ public class CarMileHopJudge {
                                     json,
                                     TREE_MAP_STRING_STRING_TYPE,
                                     e -> {
-                                        LOG.warn("VID:{} REDIS DB:{} KEY:{} 中不是合法json的里程跳变的时间与里程值缓存{}", vehicleId, db, mileHopRedisKeys, json);
+                                        LOG.warn("VID:{} REDIS DB:{} KEY:{} 中不是合法json的里程跳变的时间与里程值缓存{}", vehicleId, REDIS_DB_INDEX, mileHopRedisKeys, json);
                                         return null;
                                     }),
                             Maps::newTreeMap)
@@ -153,7 +153,7 @@ public class CarMileHopJudge {
      * @param time 最近一帧有效里程值的服务器接收报文时间
      * @param nowMileage 最近一帧有效里程值
      */
-    private void saveNowTimeAndMileage(String vid, String time, String nowMileage){
+    private void saveNowTimeAndMileage(final String vid, final String time, final String nowMileage){
         Map<String, String> usefulTimeAndMileage = new HashMap<>();
         usefulTimeAndMileage.put("time",time);
         usefulTimeAndMileage.put("lastUsefulMileage",nowMileage);
@@ -161,7 +161,7 @@ public class CarMileHopJudge {
 
         final String json = JSON_UTILS.toJson(usefulTimeAndMileage);
         JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(db);
+            jedis.select(REDIS_DB_INDEX);
             jedis.hset(mileHopRedisKeys, vid, json);
         });
     }

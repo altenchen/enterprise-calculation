@@ -16,16 +16,10 @@ import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
-
-import java.sql.SQLOutput;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static storm.handler.cusmade.CarMileHopJudge.mileHopRedisKeys;
-import static storm.handler.cusmade.CarMileHopJudge.db;
 
 class CarMileHopJudgeTest {
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
@@ -42,6 +36,8 @@ class CarMileHopJudgeTest {
 
     private static final int REDIS_DB_INDEX = VehicleCache.REDIS_DB_INDEX;
     private static final String REDIS_KEY = VehicleCache.buildRedisKey(TEST_VID);
+
+    private static String mileHopRedisKeys = "vehCache.qy.mileHop.timeAndLastMileage";
 
     private static final String usefulTotalMileage = String.valueOf(
             Math.abs(
@@ -80,23 +76,27 @@ class CarMileHopJudgeTest {
 
         data.put(DataKey._2202_TOTAL_MILEAGE, "20200");
         data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 101000, FormatConstant.DATE_FORMAT));
-        final String processFrame1 = carMileHopJudge.processFrame(data);
+        ImmutableMap data1 = ImmutableMap.copyOf(data);
+        final String processFrame1 = carMileHopJudge.processFrame(data1);
         Assertions.assertTrue(StringUtils.isEmpty(processFrame1), "第1帧不该出现里程跳变通知");
 
         data.put(DataKey._2202_TOTAL_MILEAGE, "20300");
         data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 102000, FormatConstant.DATE_FORMAT));
-        final String processFrame2 = carMileHopJudge.processFrame(data);
+        ImmutableMap data2 = ImmutableMap.copyOf(data);
+        final String processFrame2 = carMileHopJudge.processFrame(data2);
         System.out.println(processFrame2);
         Assertions.assertTrue(StringUtils.isNotEmpty(processFrame2), "第2帧发生里程跳变");
 
         data.put(DataKey._2202_TOTAL_MILEAGE, "20310");
         data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 103000, FormatConstant.DATE_FORMAT));
-        final String processFrame3 = carMileHopJudge.processFrame(data);
+        ImmutableMap data3 = ImmutableMap.copyOf(data);
+        final String processFrame3 = carMileHopJudge.processFrame(data3);
         System.out.println(processFrame3);
         Assertions.assertTrue(StringUtils.isEmpty(processFrame3), "第3帧不应该发生里程跳变通知");
         data.put(DataKey._2202_TOTAL_MILEAGE, "20320");
         data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 104000, FormatConstant.DATE_FORMAT));
-        final String processFrame4 = carMileHopJudge.processFrame(data);
+        ImmutableMap data4 = ImmutableMap.copyOf(data);
+        final String processFrame4 = carMileHopJudge.processFrame(data4);
         System.out.println(processFrame4);
         Assertions.assertTrue(StringUtils.isEmpty(processFrame4), "第4帧不应该发生里程跳变通知");
 
@@ -109,7 +109,8 @@ class CarMileHopJudgeTest {
         data.put(DataKey.VEHICLE_ID, "TV-5a251171-749c-46a0-80d4-a72a52b2770c");
         data.put(DataKey._2202_TOTAL_MILEAGE, "20620");
         data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 106000, FormatConstant.DATE_FORMAT));
-        final String processFrame5 = carMileHopJudge.processFrame(data);
+        ImmutableMap data5 = ImmutableMap.copyOf(data);
+        final String processFrame5 = carMileHopJudge.processFrame(data5);
         System.out.println(processFrame5);
         Assertions.assertTrue(StringUtils.isNotEmpty(processFrame5), "第5帧应该发生里程跳变通知");
 
@@ -127,7 +128,7 @@ class CarMileHopJudgeTest {
 
         final String json = JSON_UTILS.toJson(usefulTimeAndMileage);
         JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(db);
+            jedis.select(REDIS_DB_INDEX);
             jedis.hset(mileHopRedisKeys, vid, json);
         });
     }
