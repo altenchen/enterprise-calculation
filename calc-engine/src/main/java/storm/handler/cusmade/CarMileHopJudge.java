@@ -10,12 +10,10 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
-import storm.cache.VehicleCache;
 import storm.extension.ObjectExtension;
 import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.system.NoticeType;
-import storm.system.Numbers;
 import storm.util.ConfigUtils;
 import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
@@ -62,10 +60,10 @@ public class CarMileHopJudge {
             }
 
             String nowMileage = data.get(DataKey._2202_TOTAL_MILEAGE);
-            nowMileage = NumberUtils.isNumber(nowMileage) ? nowMileage : Numbers.ZERO;
+            nowMileage = NumberUtils.isNumber(nowMileage) ? nowMileage : "0";
 
             //如果当前帧里程值无效，则返回null
-            if (StringUtils.equals(Numbers.ZERO,nowMileage)){
+            if (StringUtils.equals("0",nowMileage)){
                 return null;
             }
 
@@ -85,7 +83,7 @@ public class CarMileHopJudge {
             //如果最后一帧里程值为无效，则返回null
             Map<String,String> lastUsefulMileCache = vidMileHopCache.get(vid);
             String lastMileage = String.valueOf(lastUsefulMileCache.get("lastUsefulMileage"));
-            if (StringUtils.equals(Numbers.NEGATIVE_ONE,lastMileage)){
+            if (StringUtils.equals("-1",lastMileage)){
                 LOG.info("vid:{}，时间:{},里程值:{}, 最后一帧里程值为无效！", vid,time,nowMileage);
 
                 //将当前帧里程值与时间缓存到 redis中
