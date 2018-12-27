@@ -77,6 +77,8 @@ public class CarMileHopJudge {
 
             //如果缓存中这辆车的缓存为空，则返回null。
             if (vidMileHopCache.get(vid).isEmpty()){
+                //将当前帧里程值与时间缓存到 redis中
+                saveNowTimeAndMileage(vid, time, nowMileage);
                 return null;
             }
 
@@ -165,7 +167,7 @@ public class CarMileHopJudge {
      * @param nowMileage 最近一帧有效里程值
      */
     private void saveNowTimeAndMileage(String vid, String time, String nowMileage){
-        Map<String, String> usefulTimeAndMileage = null;
+        Map<String, String> usefulTimeAndMileage = new HashMap<>();
         usefulTimeAndMileage.put("time",time);
         usefulTimeAndMileage.put("lastUsefulMileage",nowMileage);
         vidMileHopCache.put(vid,usefulTimeAndMileage);
