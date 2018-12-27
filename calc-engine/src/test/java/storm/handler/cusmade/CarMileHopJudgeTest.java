@@ -18,13 +18,17 @@ import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
 
 import java.sql.SQLOutput;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static storm.handler.cusmade.CarMileHopJudge.mileHopRedisKeys;
+import static storm.handler.cusmade.CarMileHopJudge.db;
 
 class CarMileHopJudgeTest {
+    private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
     @SuppressWarnings("unused")
     private static final Logger logger = LoggerFactory.getLogger(CarMileHopJudgeTest.class);
@@ -96,5 +100,36 @@ class CarMileHopJudgeTest {
         System.out.println(processFrame4);
         Assertions.assertTrue(StringUtils.isEmpty(processFrame4), "第4帧不应该发生里程跳变通知");
 
+        //如果没错，则说明能把reids中的数据读回来。
+        String vid_tmp = "TV-5a251171-749c-46a0-80d4-a72a52b2770c";
+        String time_tmp = DateFormatUtils.format(currentTimeMillis + 105000, FormatConstant.DATE_FORMAT);
+        String nowMileage = "20520";
+        saveNowTimeAndMileage(vid_tmp,time_tmp,nowMileage);
+
+        data.put(DataKey.VEHICLE_ID, "TV-5a251171-749c-46a0-80d4-a72a52b2770c");
+        data.put(DataKey._2202_TOTAL_MILEAGE, "20620");
+        data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 106000, FormatConstant.DATE_FORMAT));
+        final String processFrame5 = carMileHopJudge.processFrame(data);
+        System.out.println(processFrame5);
+        Assertions.assertTrue(StringUtils.isNotEmpty(processFrame5), "第5帧应该发生里程跳变通知");
+
     }
+    /**
+     * 保存“时间”和“里程值”到缓存和redis中
+     * @param vid 车辆id
+     * @param time 最近一帧有效里程值的服务器接收报文时间
+     * @param nowMileage 最近一帧有效里程值
+     */
+    private void saveNowTimeAndMileage(String vid, String time, String nowMileage){
+        Map<String, String> usefulTimeAndMileage = new HashMap<>();
+        usefulTimeAndMileage.put("time",time);
+        usefulTimeAndMileage.put("lastUsefulMileage",nowMileage);
+
+        final String json = JSON_UTILS.toJson(usefulTimeAndMileage);
+        JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(db);
+            jedis.hset(mileHopRedisKeys, vid, json);
+        });
+    }
+
 }
