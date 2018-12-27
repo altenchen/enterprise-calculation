@@ -75,54 +75,42 @@ public class CarMileHopJudge {
                 });
             }
 
-            //如果缓存中这辆车的缓存为空，则返回null。
-            if (vidMileHopCache.get(vid).isEmpty()){
-                //将当前帧里程值与时间缓存到 redis中
-                saveNowTimeAndMileage(vid, time, nowMileage);
-                return null;
+            String mileHopNotice = null;
+            //如果缓存中这辆车的缓存不为空，则返回往下操作
+            if (!vidMileHopCache.get(vid).isEmpty()){
+                //如果最后一帧里程值为无效，则返回null
+                Map<String,String> lastUsefulMileCache = vidMileHopCache.get(vid);
+                String lastMileage = String.valueOf(lastUsefulMileCache.get("lastUsefulMileage"));
+                if (!StringUtils.equals("-1",lastMileage)){
+
+                    //获得当前里程值、上一帧有效里程值、里程跳变值、里程跳变报警阈值。
+                    int nowMile = Integer.parseInt(nowMileage);
+                    int lastMile = Integer.parseInt(lastMileage);
+                    int mileHopValue = Math.abs(nowMile - lastMile);
+                    int mileHopThreshold = ConfigUtils.getSysDefine().getMileHopNum() * 10;
+                    //如果里程差值小于里程跳变报警阈值则返回null
+                    if (mileHopValue >= mileHopThreshold){
+                        LOG.info("vid:{} 判定为里程跳变！从{}跳变为{}！", vid, lastMile, nowMile);
+                        //发出里程跳变通知
+                        String lastTime = String.valueOf(lastUsefulMileCache.get("time"));
+                        String vin = data.get(DataKey.VEHICLE_NUMBER);
+                        Map<String, String> mileageHopNotice = new TreeMap<>();
+                        mileageHopNotice.put("msgType", NoticeType.HOP_MILE);
+                        mileageHopNotice.put("vid", vid);
+                        mileageHopNotice.put("vin", vin);
+                        mileageHopNotice.put("stime", lastTime);
+                        mileageHopNotice.put("etime", time);
+                        mileageHopNotice.put("stmile", String.valueOf(lastMile));
+                        mileageHopNotice.put("edmile", String.valueOf(nowMile));
+                        mileageHopNotice.put("hopValue", String.valueOf(mileHopValue));
+                        mileHopNotice = JSON_UTILS.toJson(mileageHopNotice);
+                    }
+
+                }
+                saveNowTimeAndMileage(vid,time,nowMileage);
+                return mileHopNotice;
             }
 
-            //如果最后一帧里程值为无效，则返回null
-            Map<String,String> lastUsefulMileCache = vidMileHopCache.get(vid);
-            String lastMileage = String.valueOf(lastUsefulMileCache.get("lastUsefulMileage"));
-            if (StringUtils.equals("-1",lastMileage)){
-                LOG.info("vid:{}，时间:{},里程值:{}, 最后一帧里程值为无效！", vid,time,nowMileage);
-
-                //将当前帧里程值与时间缓存到 redis中
-                saveNowTimeAndMileage(vid, time, nowMileage);
-
-                return null;
-            }
-
-            //获得当前里程值、上一帧有效里程值、里程跳变值、里程跳变报警阈值。
-            int nowMile = Integer.parseInt(nowMileage);
-            int lastMile = Integer.parseInt(lastMileage);
-            int mileHopValue = Math.abs(nowMile - lastMile);
-            int mileHopThreshold = ConfigUtils.getSysDefine().getMileHopNum() * 10;
-
-            //将当前帧里程值与时间缓存到 redis中
-            saveNowTimeAndMileage(vid, time, nowMileage);
-
-            //如果里程差值小于里程跳变报警阈值则返回null
-            if (mileHopValue < mileHopThreshold){
-                return null;
-            }
-
-            LOG.info("vid:{} 判定为里程跳变！从{}跳变为{}！", vid, lastMile, nowMile);
-            //发出里程跳变通知
-            String lastTime = String.valueOf(lastUsefulMileCache.get("time"));
-            String vin = data.get(DataKey.VEHICLE_NUMBER);
-            Map<String, String> mileageHopNotice = new TreeMap<>();
-            mileageHopNotice.put("msgType", NoticeType.HOP_MILE);
-            mileageHopNotice.put("vid", vid);
-            mileageHopNotice.put("vin", vin);
-            mileageHopNotice.put("stime", lastTime);
-            mileageHopNotice.put("etime", time);
-            mileageHopNotice.put("stmile", String.valueOf(lastMile));
-            mileageHopNotice.put("edmile", String.valueOf(nowMile));
-            mileageHopNotice.put("hopValue", String.valueOf(mileHopValue));
-            String result = JSON_UTILS.toJson(mileageHopNotice);
-            return result;
         } catch (Exception e) {
             LOG.error("VID:{},里程跳变判断发生异常，异常信息如下：{}",data.get(DataKey.VEHICLE_ID),e);
             e.printStackTrace();
