@@ -78,6 +78,7 @@ class CarMileHopJudgeTest {
         data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 101000, FormatConstant.DATE_FORMAT));
         final String processFrame1 = carMileHopJudge.processFrame(data);
         Assertions.assertTrue(StringUtils.isEmpty(processFrame1), "第1帧不该出现里程跳变通知");
+
         data.put(DataKey._2202_TOTAL_MILEAGE, "20300");
         data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 102000, FormatConstant.DATE_FORMAT));
         final String processFrame2 = carMileHopJudge.processFrame(data);

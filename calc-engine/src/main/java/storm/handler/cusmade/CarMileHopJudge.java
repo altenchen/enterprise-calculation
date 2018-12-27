@@ -76,7 +76,7 @@ public class CarMileHopJudge {
             }
 
             String mileHopNotice = null;
-            //如果缓存中这辆车的缓存不为空，则返回往下操作
+            //如果缓存中这辆车的缓存不为空，则往下操作
             if (!vidMileHopCache.get(vid).isEmpty()){
                 //如果最后一帧里程值为无效，则返回null
                 Map<String,String> lastUsefulMileCache = vidMileHopCache.get(vid);
@@ -105,16 +105,15 @@ public class CarMileHopJudge {
                         mileageHopNotice.put("hopValue", String.valueOf(mileHopValue));
                         mileHopNotice = JSON_UTILS.toJson(mileageHopNotice);
                     }
-
                 }
-                saveNowTimeAndMileage(vid,time,nowMileage);
-                return mileHopNotice;
             }
-
+            saveNowTimeAndMileage(vid,time,nowMileage);
+            return mileHopNotice;
         } catch (Exception e) {
             LOG.error("VID:{},里程跳变判断发生异常，异常信息如下：{}",data.get(DataKey.VEHICLE_ID),e);
             e.printStackTrace();
         }
+
         return null;
     }
 
