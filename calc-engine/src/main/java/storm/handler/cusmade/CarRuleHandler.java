@@ -26,6 +26,7 @@ import storm.system.NoticeType;
 import storm.system.ProtocolItem;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
+import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
 
 import java.text.ParseException;
@@ -48,6 +49,7 @@ public class CarRuleHandler implements InfoNotice {
     private static final Logger LOG = LoggerFactory.getLogger(CarRuleHandler.class);
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
+    private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
     private final Map<String, Integer> vidGpsFaultCount = new HashMap<>();
     private final Map<String, Integer> vidGpsNormalCount = new HashMap<>();
@@ -79,7 +81,6 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Map<String, Object>> vidFlyNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidOnOffNotice = new HashMap<>();
 
-    private Map<String, Map<String, Object>> vidLastDat = new HashMap<>();//vid和最后一帧数据的缓存
     private Map<String, Long> lastTime = new HashMap<>();
 
     private RedisRecorder recorder;
@@ -94,6 +95,8 @@ public class CarRuleHandler implements InfoNotice {
     private static final CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
 
     private static final CarHighSocJudge carHighSocJudge = new CarHighSocJudge();
+
+    private static final CarMileHopJudge carMileHopJudge = new CarMileHopJudge();
 
     private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
 
@@ -208,9 +211,9 @@ public class CarRuleHandler implements InfoNotice {
         }
         if (1 == ConfigUtils.getSysDefine().getSysMilehopRule()) {
             // 里程跳变处理
-            final Map<String, Object> mileHopJudge = mileHopHandle(clone);
-            if (MapUtils.isNotEmpty(mileHopJudge)) {
-                builder.add(JSON_UTILS.toJson(mileHopJudge));
+            final String mileHopNotice = carMileHopJudge.processFrame(data);
+            if (StringUtils.isNotBlank(mileHopNotice)) {
+                builder.add(mileHopNotice);
             }
         }
 
@@ -284,82 +287,6 @@ public class CarRuleHandler implements InfoNotice {
             }
         }
         return null;
-    }
-
-    /**
-     * 里程跳变处理
-     *
-     * @param dat
-     * @return 实时里程跳变通知notice，treemap类型。
-     */
-    private Map<String, Object> mileHopHandle(Map<String, String> dat) {
-        if (MapUtils.isEmpty(dat)) {
-            return null;
-        }
-        try {
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(DataKey.TIME);
-            String msgType = dat.get(DataKey.MESSAGE_TYPE);
-            if (StringUtils.isEmpty(vid)
-                    || StringUtils.isEmpty(time)
-                    || StringUtils.isEmpty(msgType)) {
-                return null;
-            }
-            Map<String, Object> notice = null;
-            if (CommandType.SUBMIT_REALTIME.equals(msgType)) {
-
-                String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);//当前总里程
-
-                if (vidLastDat.containsKey(vid)) {
-                    //mileage如果是数字字符串则返回，不是则返回字符串“0”
-                    mileage = org.apache.commons.lang.math.NumberUtils.isNumber(mileage) ? mileage : "0";
-                    if (!"0".equals(mileage)) {
-                        int mile = Integer.parseInt(mileage);//当前总里程
-                        Map<String, Object> lastMap = vidLastDat.get(vid);
-                        int lastMile = (int) lastMap.get(DataKey._2202_TOTAL_MILEAGE);//上一帧的总里程
-                        int nowmileHop = Math.abs(mile - lastMile);//里程跳变
-
-                        int mileHop = ConfigUtils.getSysDefine().getMileHopNum() * 10;
-                        if (nowmileHop >= mileHop) {
-                            String lastTime = (String) lastMap.get(DataKey.TIME);//上一帧的时间即为跳变的开始时间
-                            String vin = dat.get(DataKey.VEHICLE_NUMBER);
-                            notice = new TreeMap<>();
-                            notice.put("msgType", NoticeType.HOP_MILE);//这些字段是前端方面要求的。
-                            notice.put("vid", vid);
-                            notice.put("vin", vin);
-                            notice.put("stime", lastTime);
-                            notice.put("etime", time);
-                            notice.put("stmile", lastMile);
-                            notice.put("edmile", mile);
-                            notice.put("hopValue", nowmileHop);
-                        }
-                    }
-                }
-                //如果vidLastDat中没有缓存此vid，则把这一帧报文中的vid、time、mileage字段缓存到LastDat
-                setLastDat(dat);
-            }
-
-            return notice;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    private void setLastDat(Map<String, String> dat) {
-        String mileage = dat.get(DataKey._2202_TOTAL_MILEAGE);
-        mileage = org.apache.commons.lang.math.NumberUtils.isNumber(mileage) ? mileage : "0";
-        if (!"0".equals(mileage)) {
-            Map<String, Object> lastMap = new TreeMap<>();
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String time = dat.get(DataKey.TIME);
-            int mile = Integer.parseInt(mileage);
-            lastMap.put(DataKey.VEHICLE_ID, vid);
-            lastMap.put(DataKey.TIME, time);
-            lastMap.put(DataKey._2202_TOTAL_MILEAGE, mile);
-            vidLastDat.put(vid, lastMap);
-        }
     }
 
     /**
@@ -1155,7 +1082,6 @@ public class CarRuleHandler implements InfoNotice {
     void restartInit(boolean isRestart) {
         if (isRestart) {
             recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
-//            recorder.rebootInit(REDIS_DB_INDEX, socHighRedisKeys, vidHighSocNotice);
         }
     }
 
