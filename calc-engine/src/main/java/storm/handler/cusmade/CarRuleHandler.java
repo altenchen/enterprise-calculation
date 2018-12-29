@@ -54,51 +54,33 @@ public class CarRuleHandler implements InfoNotice {
     private final Map<String, Integer> vidGpsFaultCount = new HashMap<>();
     private final Map<String, Integer> vidGpsNormalCount = new HashMap<>();
 
-    /**
-     * 无CAN计数器
-     */
-    private final Map<String, Integer> vidNoCanCount = new HashMap<>();
-    /**
-     * CAN正常计数器
-     */
-    private final Map<String, Integer> vidNormalCanCount = new HashMap<>();
-
-    private Map<String, Integer> vidIgnite = new HashMap<>();
-    private Map<String, Integer> vidShut = new HashMap<>();
-    private Map<String, Double> igniteShutMaxSpeed = new HashMap<>();
-    private Map<String, Double> lastSoc = new HashMap<>();
-    private Map<String, Double> lastMile = new HashMap<>();
-
     private Map<String, Integer> vidSpeedGtZero = new HashMap<>();
     private Map<String, Integer> vidSpeedZero = new HashMap<>();
 
     private Map<String, Integer> vidFlySt = new HashMap<>();
     private Map<String, Integer> vidFlyEd = new HashMap<>();
-    private Map<String, Map<String, Object>> vidcanNotice = new HashMap<>();
-    private Map<String, Map<String, Object>> vidIgniteShutNotice = new HashMap<>();
     private Map<String, Map<String, String>> vidGpsNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidSpeedGtZeroNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidFlyNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidOnOffNotice = new HashMap<>();
 
+    private Map<String, Map<String, Object>> vidLastData = new HashMap<>();//vid和最后一帧数据的缓存
     private Map<String, Long> lastTime = new HashMap<>();
 
     private RedisRecorder recorder;
-    static String onOffRedisKeys = "vehCache.qy.onoff.notice";
+    private static final String ON_OFF_REDIS_KEYS = "vehCache.qy.onoff.notice";
 
-    static int topn = 20;
+    private static final int TOPN = 20;
+    private static final int DB = 6;
 
-    static int db = 6;
+    private static final CarNoCanJudge CAR_NO_CAN_JUDGE = new CarNoCanJudge();
+    private static final CarIgniteShutJudge CAR_IGNITE_SHUT_JUDGE = new CarIgniteShutJudge();
+    private static final CarLowSocJudge CAR_LOW_SOC_JUDGE = new CarLowSocJudge();
+    private static final CarHighSocJudge CAR_HIGH_SOC_JUDGE = new CarHighSocJudge();
+    private static final CarLockStatusChangeJudge CAR_LOCK_STATUS_CHANGE_JUDGE = new CarLockStatusChangeJudge();
 
-    private final CarNoCanJudge carNoCanJudge = new CarNoCanJudge();
-
-    private static final CarLowSocJudge carLowSocJudge = new CarLowSocJudge();
-
-    private static final CarHighSocJudge carHighSocJudge = new CarHighSocJudge();
 
     private static final CarMileHopJudge carMileHopJudge = new CarMileHopJudge();
-
-    private final CarLockStatusChangeJudge carLockStatusChangeJudge = new CarLockStatusChangeJudge();
 
     {
         recorder = new RedisRecorder();
@@ -119,8 +101,8 @@ public class CarRuleHandler implements InfoNotice {
 
         // 验证data的有效性
         if (MapUtils.isEmpty(data)
-                || !data.containsKey(DataKey.VEHICLE_ID)
-                || !data.containsKey(DataKey.TIME)) {
+            || !data.containsKey(DataKey.VEHICLE_ID)
+            || !data.containsKey(DataKey.TIME)) {
             return builder.build();
         }
 
@@ -128,7 +110,7 @@ public class CarRuleHandler implements InfoNotice {
 
         final String vid = data.get(DataKey.VEHICLE_ID);
         if (StringUtils.isEmpty(vid)
-                || StringUtils.isEmpty(data.get(DataKey.TIME))) {
+            || StringUtils.isEmpty(data.get(DataKey.TIME))) {
             return builder.build();
         }
 
@@ -139,15 +121,15 @@ public class CarRuleHandler implements InfoNotice {
         // 如果规则启用了，则把data放到相应的处理方法中。将返回结果放到list中，返回。
 
         if (1 == ConfigUtils.getSysDefine().getSysCarLockStatusRule()) {
-            final Map<String, Object> lockStatueChange = carLockStatusChangeJudge.carLockStatueChangeJudge(clone);
+            final Map<String, Object> lockStatueChange = CAR_LOCK_STATUS_CHANGE_JUDGE.carLockStatueChangeJudge(clone);
             if (MapUtils.isNotEmpty(lockStatueChange)) {
                 builder.add(JSON_UTILS.toJson(lockStatueChange));
             }
         }
 
-        if(ConfigUtils.getSysDefine().isNoticeSocLowEnable()) {
+        if (ConfigUtils.getSysDefine().isNoticeSocLowEnable()) {
             final String[] chargeCarsNoticeJson = new String[1];
-            final String socLowNoticeJson = carLowSocJudge.processFrame(
+            final String socLowNoticeJson = CAR_LOW_SOC_JUDGE.processFrame(
                 data,
                 (final String vehicleId, final Double longitude, final Double latitude) -> {
                     chargeCarsNoticeJson[0] = getNoticesOfChargeCars(vehicleId, longitude, latitude);
@@ -160,8 +142,8 @@ public class CarRuleHandler implements InfoNotice {
             }
         }
 
-        if(ConfigUtils.getSysDefine().isNoticeSocHighEnable()) {
-            final String socLowNoticeJson = carHighSocJudge.processFrame(data);
+        if (ConfigUtils.getSysDefine().isNoticeSocHighEnable()) {
+            final String socLowNoticeJson = CAR_HIGH_SOC_JUDGE.processFrame(data);
             if (StringUtils.isNotBlank(socLowNoticeJson)) {
                 builder.add(socLowNoticeJson);
             }
@@ -169,14 +151,14 @@ public class CarRuleHandler implements InfoNotice {
 
         if (1 == ConfigUtils.getSysDefine().getSysCanRule()) {
             // 无CAN车辆
-            final Map<String, Object> canJudge = carNoCanJudge.processFrame(clone);
+            final Map<String, Object> canJudge = CAR_NO_CAN_JUDGE.processFrame(clone);
             if (MapUtils.isNotEmpty(canJudge)) {
                 builder.add(JSON_UTILS.toJson(canJudge));
             }
         }
         if (1 == ConfigUtils.getSysDefine().getSysIgniteRule()) {
             // 点火熄火
-            final Map<String, Object> igniteJudge = igniteOrShut(clone);
+            final Map<String, Object> igniteJudge = CAR_IGNITE_SHUT_JUDGE.processFrame(clone);
             if (MapUtils.isNotEmpty(igniteJudge)) {
                 builder.add(JSON_UTILS.toJson(igniteJudge));
             }
@@ -223,6 +205,7 @@ public class CarRuleHandler implements InfoNotice {
 
     /**
      * 获得附近补电车的信息通知，并保存到 redis 中
+     *
      * @param vid
      * @param longitude
      * @param latitude
@@ -243,7 +226,7 @@ public class CarRuleHandler implements InfoNotice {
                 final List<FillChargeCar> listOfChargeCar = entry.getValue();
                 for (FillChargeCar ChargeCar : listOfChargeCar) {
                     cts += 1;
-                    if (cts > topn) {
+                    if (cts > TOPN) {
                         break;
                     }
 
@@ -268,7 +251,7 @@ public class CarRuleHandler implements InfoNotice {
 
                     chargeCars.add(kMap);
                 }
-                if (cts > topn) {
+                if (cts > TOPN) {
                     break;
                 }
             }
@@ -290,159 +273,6 @@ public class CarRuleHandler implements InfoNotice {
     }
 
     /**
-     * IGNITE_SHUT_MESSAGE
-     * 点火熄火
-     *
-     * @param dat
-     * @return
-     */
-    private Map<String, Object> igniteOrShut(Map<String, String> dat) {
-        if (MapUtils.isEmpty(dat)) {
-            return null;
-        }
-        try {
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String vin = dat.get(DataKey.VEHICLE_NUMBER);
-            String time = dat.get(DataKey.TIME);
-            String carStatus = dat.get(DataKey._3201_CAR_STATUS);
-            if (StringUtils.isEmpty(vid)
-                    || StringUtils.isEmpty(time)
-                    || StringUtils.isEmpty(carStatus)) {
-                return null;
-            }
-
-            String latit = dat.get(DataKey._2503_LATITUDE);
-            String longi = dat.get(DataKey._2502_LONGITUDE);
-            String location = longi + "," + latit;
-            String noticetime = DateFormatUtils.format(new Date(), FormatConstant.DATE_FORMAT);
-            String speed = dat.get(DataKey._2201_SPEED);
-            String socStr = dat.get(DataKey._7615_STATE_OF_CHARGE);
-            String mileageStr = dat.get(DataKey._2202_TOTAL_MILEAGE);
-
-            double soc = -1;
-            if (!StringUtils.isEmpty(socStr)) {
-                soc = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(socStr) ? socStr : "0");
-                if (-1 != soc) {
-
-                    lastSoc.put(vid, soc);
-                }
-            } else {
-                if (lastSoc.containsKey(vid)) {
-                    soc = lastSoc.get(vid);
-                }
-            }
-            double mileage = -1;
-            if (!StringUtils.isEmpty(mileageStr)) {
-                mileage = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(mileageStr) ? mileageStr : "0");
-                if (-1 != mileage) {
-
-                    lastMile.put(vid, mileage);
-                }
-            } else {
-                if (lastMile.containsKey(vid)) {
-                    mileage = lastMile.get(vid);
-                }
-            }
-
-            double maxSpd = -1;
-            if ("1".equals(carStatus)
-                    || "2".equals(carStatus)) {
-                double spd = -1;
-                if (!igniteShutMaxSpeed.containsKey(vid)) {
-                    igniteShutMaxSpeed.put(vid, maxSpd);
-                }
-                if (!StringUtils.isEmpty(speed)) {
-
-                    maxSpd = igniteShutMaxSpeed.get(vid);
-                    spd = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(speed) ? speed : "0");
-                    if (spd > maxSpd) {
-                        maxSpd = spd;
-                        igniteShutMaxSpeed.put(vid, maxSpd);
-                    }
-                }
-
-            }
-            if ("1".equals(carStatus)) {//是否点火
-                int cnts = 0;
-                if (vidIgnite.containsKey(vid)) {
-                    cnts = vidIgnite.get(vid);
-                }
-                cnts++;
-                vidIgnite.put(vid, cnts);
-                if (vidShut.containsKey(vid)) {
-                    vidShut.remove(vid);
-                }
-                if (cnts >= 2) {
-
-                    Map<String, Object> notice = vidIgniteShutNotice.get(vid);
-                    if (null == notice) {
-                        notice = new TreeMap<>();
-                        notice.put("msgType", NoticeType.IGNITE_SHUT_MESSAGE);
-                        notice.put("vid", vid);
-                        notice.put("vin", vin);
-                        notice.put("msgId", UUID.randomUUID().toString());
-                        notice.put("stime", time);
-                        notice.put("soc", soc);
-                        notice.put("ssoc", soc);
-                        notice.put("mileage", mileage);
-                        notice.put("status", 1);
-                        notice.put("location", location);
-                    } else {
-                        double ssoc = (double) notice.get("ssoc");
-                        double energy = Math.abs(ssoc - soc);
-                        notice.put("soc", soc);
-                        notice.put("mileage", mileage);
-                        notice.put("maxSpeed", maxSpd);
-                        notice.put("energy", energy);
-                        notice.put("status", 2);
-                        notice.put("location", location);
-                    }
-                    notice.put("noticetime", noticetime);
-                    vidIgniteShutNotice.put(vid, notice);
-
-                    if (1 == (int) notice.get("status")) {
-                        return notice;
-                    }
-                }
-            } else if ("2".equals(carStatus)) {//是否熄火
-                if (vidIgnite.containsKey(vid)) {
-                    int cnts = 0;
-                    if (vidShut.containsKey(vid)) {
-                        cnts = vidShut.get(vid);
-                    }
-                    cnts++;
-                    vidShut.put(vid, cnts);
-
-                    if (cnts >= 1) {
-                        Map<String, Object> notice = vidIgniteShutNotice.get(vid);
-                        vidIgnite.remove(vid);
-                        vidIgniteShutNotice.remove(vid);
-
-                        if (null != notice) {
-                            double ssoc = (double) notice.get("ssoc");
-                            double energy = Math.abs(ssoc - soc);
-                            notice.put("soc", soc);
-                            notice.put("mileage", mileage);
-                            notice.put("maxSpeed", maxSpd);
-                            notice.put("energy", energy);
-                            notice.put("status", 3);
-                            notice.put("location", location);
-                            notice.put("etime", time);
-                            notice.put("noticetime", noticetime);
-                            vidShut.remove(vid);
-                            return notice;
-                        }
-                    }
-
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    /**
      * ???
      *
      * @param dat
@@ -458,9 +288,9 @@ public class CarRuleHandler implements InfoNotice {
             String speed = dat.get(DataKey._2201_SPEED);
             String rev = dat.get(DataKey._2303_DRIVING_ELE_MAC_REV);
             if (StringUtils.isEmpty(vid)
-                    || StringUtils.isEmpty(time)
-                    || StringUtils.isEmpty(speed)
-                    || StringUtils.isEmpty(rev)) {
+                || StringUtils.isEmpty(time)
+                || StringUtils.isEmpty(speed)
+                || StringUtils.isEmpty(rev)) {
                 return null;
             }
             double spd = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(speed) ? speed : "0");
@@ -546,8 +376,8 @@ public class CarRuleHandler implements InfoNotice {
             String time = dat.get(DataKey.TIME);
             String speed = dat.get(DataKey._2201_SPEED);
             if (StringUtils.isEmpty(vid)
-                    || StringUtils.isEmpty(time)
-                    || StringUtils.isEmpty(speed)) {
+                || StringUtils.isEmpty(time)
+                || StringUtils.isEmpty(speed)) {
                 return null;
             }
             String latit = dat.get(DataKey._2503_LATITUDE);
@@ -643,14 +473,14 @@ public class CarRuleHandler implements InfoNotice {
             final String vid = dat.get(DataKey.VEHICLE_ID);
             final String timeString = dat.get(DataKey.TIME);
             if (StringUtils.isEmpty(vid)
-                    || StringUtils.isEmpty(timeString)) {
+                || StringUtils.isEmpty(timeString)) {
                 return null;
             }
 
             final long currentTimeMillis = System.currentTimeMillis();
             final String noticeTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
 
-            final String orientationString= dat.get(DataKey._2501_ORIENTATION);
+            final String orientationString = dat.get(DataKey._2501_ORIENTATION);
             final String longitudeString = dat.get(DataKey._2502_LONGITUDE);
             final String latitudeString = dat.get(DataKey._2503_LATITUDE);
 
@@ -699,7 +529,7 @@ public class CarRuleHandler implements InfoNotice {
                     }
                 }
 
-                if(gpsFaultCount < ConfigUtils.getSysDefine().getGpsNovalueContinueNo()) {
+                if (gpsFaultCount < ConfigUtils.getSysDefine().getGpsNovalueContinueNo()) {
                     LOG.info("VID:{} GPS故障连续帧数不足 {} 帧", vid, ConfigUtils.getSysDefine().getGpsNovalueContinueNo());
                     return null;
                 }
@@ -795,7 +625,7 @@ public class CarRuleHandler implements InfoNotice {
                     return null;
                 }
 
-                if(1 == gpsNormalCount) {
+                if (1 == gpsNormalCount) {
 
                     final String location = DataUtils.buildLocation(
                         longitudeString,
@@ -810,7 +640,7 @@ public class CarRuleHandler implements InfoNotice {
                     LOG.info("VID:{} GPS正常首帧初始化", vid);
                 }
 
-                if(gpsNormalCount < ConfigUtils.getSysDefine().getGpsHasvalueContinueNo()) {
+                if (gpsNormalCount < ConfigUtils.getSysDefine().getGpsHasvalueContinueNo()) {
 
                     LOG.info("VID:{} GPS正常连续帧数不足 {} 帧", vid, ConfigUtils.getSysDefine().getGpsHasvalueContinueNo());
                     return null;
@@ -907,7 +737,7 @@ public class CarRuleHandler implements InfoNotice {
 
 
         final int orientationValue = NumberUtils.toInt(orientationString);
-        if(!DataUtils.isOrientationUseful(orientationValue)) {
+        if (!DataUtils.isOrientationUseful(orientationValue)) {
             LOG.info("VID:{} 定位状态 {} 无效, 判定为GPS故障.", vid, orientationString);
             return true;
         }
@@ -921,7 +751,7 @@ public class CarRuleHandler implements InfoNotice {
         final int longitudeValue = NumberUtils.toInt(longitudeString);
         final int latitudeValue = NumberUtils.toInt(latitudeString);
 
-        if(DataUtils.isOrientationLongitudeUseful(longitudeValue)
+        if (DataUtils.isOrientationLongitudeUseful(longitudeValue)
             && DataUtils.isOrientationLatitudeUseful(latitudeValue)) {
 
             LOG.info("VID:{} 经度 {} 纬度 {} 有效, 判定为GPS正常.", vid, longitudeString, latitudeString);
@@ -942,8 +772,8 @@ public class CarRuleHandler implements InfoNotice {
             String vin = dat.get(DataKey.VEHICLE_NUMBER);
             String time = dat.get(DataKey.TIME);
             if (StringUtils.isEmpty(vid)
-                    || StringUtils.isEmpty(time)
-                    || StringUtils.isEmpty(vin)) {
+                || StringUtils.isEmpty(time)
+                || StringUtils.isEmpty(vin)) {
                 return null;
             }
 
@@ -966,7 +796,7 @@ public class CarRuleHandler implements InfoNotice {
                 vidOnOffNotice.put(vid, notice);
 
                 if (1 == (int) notice.get("status")) {
-                    recorder.save(db, onOffRedisKeys, vid, notice);
+                    recorder.save(DB, ON_OFF_REDIS_KEYS, vid, notice);
                     return notice;
                 }
             } else {//是否离线
@@ -979,7 +809,7 @@ public class CarRuleHandler implements InfoNotice {
                         notice.put("etime", time);
                         notice.put("noticetime", noticetime);
                         vidOnOffNotice.remove(vid);
-                        recorder.del(db, onOffRedisKeys, vid);
+                        recorder.del(DB, ON_OFF_REDIS_KEYS, vid);
                         return notice;
                     }
 
@@ -1003,7 +833,7 @@ public class CarRuleHandler implements InfoNotice {
                 String logoutTime = dat.get(SUBMIT_LOGIN.LOGOUT_TIME);
                 String loginTime = dat.get(SUBMIT_LOGIN.LOGIN_TIME);
                 if (!StringUtils.isEmpty(logoutTime)
-                        && !StringUtils.isEmpty(logoutTime)) {
+                    && !StringUtils.isEmpty(logoutTime)) {
                     long logout = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(logoutTime) ? logoutTime : "0");
                     long login = Long.parseLong(org.apache.commons.lang.math.NumberUtils.isNumber(loginTime) ? loginTime : "0");
                     if (login > logout) {
@@ -1021,7 +851,7 @@ public class CarRuleHandler implements InfoNotice {
         } else if (CommandType.SUBMIT_LINKSTATUS.equals(msgType)) {
             String linkType = dat.get(SUBMIT_LINKSTATUS.LINK_TYPE);
             if ("1".equals(linkType)
-                    || "2".equals(linkType)) {
+                || "2".equals(linkType)) {
                 return false;
             } else if ("3".equals(linkType)) {
                 return true;
@@ -1081,7 +911,7 @@ public class CarRuleHandler implements InfoNotice {
 
     void restartInit(boolean isRestart) {
         if (isRestart) {
-            recorder.rebootInit(db, onOffRedisKeys, vidOnOffNotice);
+            recorder.rebootInit(DB, ON_OFF_REDIS_KEYS, vidOnOffNotice);
         }
     }
 
