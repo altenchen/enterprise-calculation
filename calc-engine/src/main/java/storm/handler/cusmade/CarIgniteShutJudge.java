@@ -1,206 +1,184 @@
 package storm.handler.cusmade;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.time.DateFormatUtils;
-import storm.constant.FormatConstant;
+import org.apache.commons.lang.math.NumberUtils;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.system.DataKey;
 import storm.system.NoticeType;
+import storm.util.ConfigUtils;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * 车辆点火熄火通知
  *
  * @author 智杰
  */
-public class CarIgniteShutJudge {
+public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
 
-    /**
-     * 车辆点火统计
-     * <vid, 计数>
-     */
-    private Map<String, Integer> vidIgnite = new HashMap<>();
-    /**
-     * 车辆熄火统计
-     * <vid, 计数>
-     */
-    private Map<String, Integer> vidShut = new HashMap<>();
+    private static final Logger LOG = LoggerFactory.getLogger(CarIgniteShutJudge.class);
+
     /**
      * 车辆点火至熄火这段期间最大车速
      * <vid, speed>
      */
     private Map<String, Double> igniteShutMaxSpeed = new HashMap<>();
+
     /**
-     * 最好一帧soc
+     * 最后一帧soc
      * <vid, soc>
      */
     private Map<String, Double> lastSoc = new HashMap<>();
+
     /**
      * 最后一帧里程
      * <vid, mile>
      */
     private Map<String, Double> lastMile = new HashMap<>();
-    /**
-     * 车辆点火熄火通知
-     * <vid, notice>
-     */
-    private Map<String, Map<String, Object>> vidIgniteShutNotice = new HashMap<>();
 
-    /**
-     * IGNITE_SHUT_MESSAGE
-     * 点火熄火
-     *
-     * @param dat
-     * @return
-     */
-    public Map<String, Object> processFrame(Map<String, String> dat) {
-        if (MapUtils.isEmpty(dat)) {
-            return null;
-        }
-        try {
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String vin = dat.get(DataKey.VEHICLE_NUMBER);
-            String time = dat.get(DataKey.TIME);
-            String carStatus = dat.get(DataKey._3201_CAR_STATUS);
-            if (StringUtils.isEmpty(vid)
-                || StringUtils.isEmpty(time)
-                || StringUtils.isEmpty(carStatus)) {
-                return null;
-            }
-
-            String latit = dat.get(DataKey._2503_LATITUDE);
-            String longi = dat.get(DataKey._2502_LONGITUDE);
-            String location = longi + "," + latit;
-            String noticetime = DateFormatUtils.format(new Date(), FormatConstant.DATE_FORMAT);
-            String speed = dat.get(DataKey._2201_SPEED);
-            String socStr = dat.get(DataKey._7615_STATE_OF_CHARGE);
-            String mileageStr = dat.get(DataKey._2202_TOTAL_MILEAGE);
-
-            double soc = -1;
-            if (!StringUtils.isEmpty(socStr)) {
-                soc = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(socStr) ? socStr : "0");
-                if (-1 != soc) {
-
-                    lastSoc.put(vid, soc);
-                }
-            } else {
-                if (lastSoc.containsKey(vid)) {
-                    soc = lastSoc.get(vid);
-                }
-            }
-            double mileage = -1;
-            if (!StringUtils.isEmpty(mileageStr)) {
-                mileage = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(mileageStr) ? mileageStr : "0");
-                if (-1 != mileage) {
-
-                    lastMile.put(vid, mileage);
-                }
-            } else {
-                if (lastMile.containsKey(vid)) {
-                    mileage = lastMile.get(vid);
-                }
-            }
-
-            double maxSpd = -1;
-            if ("1".equals(carStatus)
-                || "2".equals(carStatus)) {
-                double spd = -1;
-                if (!igniteShutMaxSpeed.containsKey(vid)) {
-                    igniteShutMaxSpeed.put(vid, maxSpd);
-                }
-                if (!StringUtils.isEmpty(speed)) {
-
-                    maxSpd = igniteShutMaxSpeed.get(vid);
-                    spd = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(speed) ? speed : "0");
-                    if (spd > maxSpd) {
-                        maxSpd = spd;
-                        igniteShutMaxSpeed.put(vid, maxSpd);
-                    }
-                }
-
-            }
-            if ("1".equals(carStatus)) {
-                //点火
-                int cnts = 0;
-                if (vidIgnite.containsKey(vid)) {
-                    cnts = vidIgnite.get(vid);
-                }
-                cnts++;
-                vidIgnite.put(vid, cnts);
-                if (vidShut.containsKey(vid)) {
-                    vidShut.remove(vid);
-                }
-                if (cnts >= 2) {
-
-                    Map<String, Object> notice = vidIgniteShutNotice.get(vid);
-                    if (null == notice) {
-                        //生成点火通知
-                        notice = new TreeMap<>();
-                        notice.put("msgType", NoticeType.IGNITE_SHUT_MESSAGE);
-                        notice.put("vid", vid);
-                        notice.put("vin", vin);
-                        notice.put("msgId", UUID.randomUUID().toString());
-                        notice.put("stime", time);
-                        notice.put("soc", soc);
-                        notice.put("ssoc", soc);
-                        notice.put("mileage", mileage);
-                        notice.put("status", 1);
-                        notice.put("location", location);
-                    } else {
-                        double ssoc = (double) notice.get("ssoc");
-                        double energy = Math.abs(ssoc - soc);
-                        notice.put("soc", soc);
-                        notice.put("mileage", mileage);
-                        notice.put("maxSpeed", maxSpd);
-                        notice.put("energy", energy);
-                        notice.put("status", 2);
-                        notice.put("location", location);
-                    }
-                    notice.put("noticetime", noticetime);
-                    vidIgniteShutNotice.put(vid, notice);
-
-                    if (1 == (int) notice.get("status")) {
-                        return notice;
-                    }
-                }
-            } else if ("2".equals(carStatus)) {
-                //熄火
-                if (vidIgnite.containsKey(vid)) {
-                    int cnts = 0;
-                    if (vidShut.containsKey(vid)) {
-                        cnts = vidShut.get(vid);
-                    }
-                    cnts++;
-                    vidShut.put(vid, cnts);
-
-                    if (cnts >= 1) {
-                        Map<String, Object> notice = vidIgniteShutNotice.get(vid);
-                        vidIgnite.remove(vid);
-                        vidIgniteShutNotice.remove(vid);
-
-                        if (null != notice) {
-                            double ssoc = (double) notice.get("ssoc");
-                            double energy = Math.abs(ssoc - soc);
-                            notice.put("soc", soc);
-                            notice.put("mileage", mileage);
-                            notice.put("maxSpeed", maxSpd);
-                            notice.put("energy", energy);
-                            notice.put("status", 3);
-                            notice.put("location", location);
-                            notice.put("etime", time);
-                            notice.put("noticetime", noticetime);
-                            vidShut.remove(vid);
-                            return notice;
-                        }
-                    }
-                }
-                igniteShutMaxSpeed.remove(vid);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+    public CarIgniteShutJudge() {
+        super(ConfigUtils.getSysDefine().getNoticeIgniteTriggerContinueCount(),
+            ConfigUtils.getSysDefine().getNoticeIgniteTriggerTimeoutMillisecond(),
+            ConfigUtils.getSysDefine().getNoticeShutTriggerContinueCount(),
+            ConfigUtils.getSysDefine().getNoticeShutTriggerTimeoutMillisecond());
     }
 
+    @Override
+    protected String initRedisKey() {
+        return "vehCache.qy.ignite.shut.notice";
+    }
+
+    @Override
+    protected boolean filter(final ImmutableMap<String, String> data) {
+        String carStatus = data.get(DataKey._3201_CAR_STATUS);
+        return StringUtils.isEmpty(carStatus);
+    }
+
+    @Override
+    protected void prepareData(final @NotNull ImmutableMap<String, String> data) {
+        final String vehicleId = data.get(DataKey.VEHICLE_ID);
+        //缓存最后一帧soc
+        String socStr = data.get(DataKey._7615_STATE_OF_CHARGE);
+        if (StringUtils.isNotEmpty(socStr)) {
+            double soc = stringToDouble(socStr);
+            if (soc > 0) {
+                lastSoc.put(vehicleId, soc);
+            }
+        }
+
+        //缓存最后一帧里程
+        String mileageStr = data.get(DataKey._2202_TOTAL_MILEAGE);
+        if (StringUtils.isNotEmpty(mileageStr)) {
+            double mileage = stringToDouble(mileageStr);
+            if (mileage > 0) {
+                lastMile.put(vehicleId, mileage);
+            }
+        }
+
+        //缓存车辆最大车速
+        if (MapUtils.isEmpty(readMemoryVehicleNotice(vehicleId))) {
+            //没有触发通知，清空最大车速重新统计
+            igniteShutMaxSpeed.remove(vehicleId);
+        }
+        double speed = stringToDouble(data.get(DataKey._2201_SPEED));
+        if (igniteShutMaxSpeed.containsKey(vehicleId)) {
+            double cacheSpeed = igniteShutMaxSpeed.get(vehicleId);
+            if (speed > cacheSpeed) {
+                igniteShutMaxSpeed.put(vehicleId, speed);
+            }
+        } else {
+            igniteShutMaxSpeed.put(vehicleId, speed);
+        }
+    }
+
+    /**
+     * 字符串转double
+     *
+     * @param str
+     * @return
+     */
+    private double stringToDouble(String str) {
+        if (NumberUtils.isNumber(str)) {
+            return Double.valueOf(str);
+        }
+        return 0;
+    }
+
+    @Override
+    protected State initState(final ImmutableMap<String, String> data) {
+        String carStatus = data.get(DataKey._3201_CAR_STATUS);
+        switch (carStatus) {
+            case "1":
+                return State.BEGIN;
+            case "2":
+                return State.END;
+            default:
+                return State.UNKNOW;
+        }
+    }
+
+    @Override
+    protected @NotNull ImmutableMap<String, String> beginNoticeInit(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
+        LOG.debug("VID:{} 车辆点火首帧缓存初始化", vehicleId);
+        String vin = data.get(DataKey.VEHICLE_NUMBER);
+        return new ImmutableMap.Builder<String, String>()
+            .put("msgType", NoticeType.IGNITE_SHUT_MESSAGE)
+            .put("vid", vehicleId)
+            .put("vin", vin)
+            .put("msgId", UUID.randomUUID().toString())
+            .build();
+    }
+
+    @Override
+    protected Map<String, String> beginNoticeSend(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+        final Map<String, String> socLowStartNotice = Maps.newHashMap(
+            readMemoryVehicleNotice(vehicleId)
+        );
+        double soc = lastSoc.getOrDefault(vehicleId, 0d);
+        String time = data.get(DataKey.TIME);
+        socLowStartNotice.put("stime", time);
+        socLowStartNotice.put("soc", soc + "");
+        socLowStartNotice.put("ssoc", soc + "");
+        socLowStartNotice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
+        socLowStartNotice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
+        socLowStartNotice.put("location", buildLocation(data));
+        socLowStartNotice.put("noticetime", createNoticeTime());
+        LOG.debug("VID:{} 车辆点火通知发送 MSGID:{}", vehicleId, socLowStartNotice.get("msgId"));
+        return socLowStartNotice;
+    }
+
+    @Override
+    protected Map<String, String> endNoticeSend(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+        LOG.trace("VID:{} 车辆熄火通知发送", vehicleId);
+        final ImmutableMap<String, String> igniteShutBeginNotice = readRedisVehicleNotice(vehicleId);
+        if (MapUtils.isEmpty(igniteShutBeginNotice)) {
+            return null;
+        }
+        final Map<String, String> igniteShutEndNotice = Maps.newHashMap(igniteShutBeginNotice);
+        igniteShutEndNotice.putAll(readMemoryVehicleNotice(vehicleId));
+
+        double soc = lastSoc.getOrDefault(vehicleId, 0d);
+        igniteShutEndNotice.put("soc", soc + "");
+        igniteShutEndNotice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
+        igniteShutEndNotice.put("maxSpeed", igniteShutMaxSpeed.getOrDefault(vehicleId, 0d) + "");
+
+        double ssoc = stringToDouble(igniteShutEndNotice.get("ssoc"));
+        double energy = Math.abs(ssoc - soc);
+        igniteShutEndNotice.put("energy", energy + "");
+
+        igniteShutEndNotice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
+        igniteShutEndNotice.put("location", buildLocation(data));
+
+        String time = data.get(DataKey.TIME);
+        igniteShutEndNotice.put("etime", time);
+        igniteShutEndNotice.put("noticetime", createNoticeTime());
+        return igniteShutEndNotice;
+    }
 }

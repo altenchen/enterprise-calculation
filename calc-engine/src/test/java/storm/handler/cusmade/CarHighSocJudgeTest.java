@@ -6,6 +6,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
 import storm.system.DataKey;
 import storm.util.ConfigUtils;
@@ -20,6 +22,7 @@ import java.util.concurrent.TimeUnit;
  * @author xzj
  */
 class CarHighSocJudgeTest {
+    private static final Logger LOG = LoggerFactory.getLogger(CarHighSocJudgeTest.class);
 
     //车辆vid
     private static String TEST_VID = "TV-" + UUID.randomUUID();
@@ -36,13 +39,13 @@ class CarHighSocJudgeTest {
      */
     private void reset(){
         //初始化测试对象
-        carHighSocJudge = new CarHighSocJudge();
         ConfigUtils.getSysDefine().setNoticeSocHighBeginTriggerThreshold(90);
         ConfigUtils.getSysDefine().setNoticeSocHighBeginTriggerContinueCount(3);
         ConfigUtils.getSysDefine().setNoticeSocHighBeginTriggerTimeoutMillisecond(30000);
         ConfigUtils.getSysDefine().setNoticeSocHighEndTriggerThreshold(80);
         ConfigUtils.getSysDefine().setNoticeSocHighEndTriggerContinueCount(1);
         ConfigUtils.getSysDefine().setNoticeSocHighEndTriggerTimeoutMillisecond(0);
+        carHighSocJudge = new CarHighSocJudge();
 
 
         //初始化车辆基础数据
@@ -77,6 +80,7 @@ class CarHighSocJudgeTest {
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date3, FormatConstant.DATE_FORMAT));
         String result_3 = carHighSocJudge.processFrame(ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isNotBlank(result_3),"第3帧出现故障通知");
+        LOG.info("notice : {}", result_3);
 
         Date date3_1 = new Date(TimeUnit.MINUTES.toMillis(40));
         data.put(DataKey.TIME, DateFormatUtils.format(date3_1, FormatConstant.DATE_FORMAT));
@@ -97,6 +101,7 @@ class CarHighSocJudgeTest {
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date5, FormatConstant.DATE_FORMAT));
         String result_5 = carHighSocJudge.processFrame(ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isNotBlank(result_5),"第5帧故障结束");
+        LOG.info("notice : {}", result_5);
 
     }
 
@@ -126,6 +131,7 @@ class CarHighSocJudgeTest {
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date4, FormatConstant.DATE_FORMAT));
         String result_4 = carHighSocJudge.processFrame(ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isNotBlank(result_4),"第4帧出现故障通知");
+        LOG.info("notice : {}", result_4);
 
         Date date5 = new Date(TimeUnit.MINUTES.toMillis(60));
         data.put(DataKey.TIME, DateFormatUtils.format(date5, FormatConstant.DATE_FORMAT));

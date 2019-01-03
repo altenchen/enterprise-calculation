@@ -26,7 +26,6 @@ import storm.system.NoticeType;
 import storm.system.ProtocolItem;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
-import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
 
 import java.text.ParseException;
@@ -49,7 +48,6 @@ public class CarRuleHandler implements InfoNotice {
     private static final Logger LOG = LoggerFactory.getLogger(CarRuleHandler.class);
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
-    private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
     private final Map<String, Integer> vidGpsFaultCount = new HashMap<>();
     private final Map<String, Integer> vidGpsNormalCount = new HashMap<>();
@@ -64,7 +62,6 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Map<String, Object>> vidFlyNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidOnOffNotice = new HashMap<>();
 
-    private Map<String, Map<String, Object>> vidLastData = new HashMap<>();//vid和最后一帧数据的缓存
     private Map<String, Long> lastTime = new HashMap<>();
 
     private RedisRecorder recorder;
@@ -131,8 +128,24 @@ public class CarRuleHandler implements InfoNotice {
             final String[] chargeCarsNoticeJson = new String[1];
             final String socLowNoticeJson = CAR_LOW_SOC_JUDGE.processFrame(
                 data,
-                (final String vehicleId, final Double longitude, final Double latitude) -> {
-                    chargeCarsNoticeJson[0] = getNoticesOfChargeCars(vehicleId, longitude, latitude);
+                () -> {
+                    final String longitudeString = data.get(DataKey._2502_LONGITUDE);
+                    final String latitudeString = data.get(DataKey._2503_LATITUDE);
+                    try {
+                        final double longitude = NumberUtils.toDouble(longitudeString, 0);
+                        final double latitude = NumberUtils.toDouble(latitudeString, 0);
+                        //检查经纬度是否为无效值
+                        final double absLongitude = Math.abs(longitude);
+                        final double absLatitude = Math.abs(latitude);
+                        if (0 == absLongitude || absLongitude > DataKey.MAX_2502_LONGITUDE || 0 == absLatitude || absLatitude > DataKey.MAX_2503_LATITUDE) {
+                            return;
+                        }
+                        // 附近补电车信息
+                        chargeCarsNoticeJson[0] = getNoticesOfChargeCars(vid, longitude / 1000000d, latitude / 1000000d);
+                    } catch (final Exception e) {
+                        LOG.warn("获取补电车信息的时出现异常", e);
+                    }
+
                 });
             if (StringUtils.isNotBlank(socLowNoticeJson)) {
                 builder.add(socLowNoticeJson);
@@ -151,16 +164,16 @@ public class CarRuleHandler implements InfoNotice {
 
         if (1 == ConfigUtils.getSysDefine().getSysCanRule()) {
             // 无CAN车辆
-            final Map<String, Object> canJudge = CAR_NO_CAN_JUDGE.processFrame(clone);
-            if (MapUtils.isNotEmpty(canJudge)) {
-                builder.add(JSON_UTILS.toJson(canJudge));
+            final String canNoticeJson = CAR_NO_CAN_JUDGE.processFrame(data);
+            if (StringUtils.isNotBlank(canNoticeJson)) {
+                builder.add(canNoticeJson);
             }
         }
         if (1 == ConfigUtils.getSysDefine().getSysIgniteRule()) {
             // 点火熄火
-            final Map<String, Object> igniteJudge = CAR_IGNITE_SHUT_JUDGE.processFrame(clone);
-            if (MapUtils.isNotEmpty(igniteJudge)) {
-                builder.add(JSON_UTILS.toJson(igniteJudge));
+            final String igniteNoticeJson = CAR_IGNITE_SHUT_JUDGE.processFrame(data);
+            if (StringUtils.isNotBlank(igniteNoticeJson)) {
+                builder.add(JSON_UTILS.toJson(igniteNoticeJson));
             }
         }
         if (1 == ConfigUtils.getSysDefine().getSysGpsRule()) {
