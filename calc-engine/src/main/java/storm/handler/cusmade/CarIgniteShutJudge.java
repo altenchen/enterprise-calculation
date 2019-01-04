@@ -194,8 +194,8 @@ public class CarIgniteShutJudge {
                             return notice;
                         }
                     }
-
                 }
+                igniteShutMaxSpeed.remove(vid);
             }
         } catch (Exception e) {
             e.printStackTrace();
