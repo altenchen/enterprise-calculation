@@ -285,7 +285,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
                     }
                 }
             }
-            //如果下线了，则发送上下线的里程值
+            //当车辆上线时发出上下线里程通知，具体是否产生再次上线里程跳变告警，是由kafkaservice做判断的。
             long offlineTimeMillisecond = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
             Map<String, Object> map = carOnOffhandler.generateNotices(data, currentTimeMillis, offlineTimeMillisecond);
             if (null != map && map.size() > 0) {

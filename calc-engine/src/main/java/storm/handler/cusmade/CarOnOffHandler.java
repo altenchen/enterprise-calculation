@@ -54,7 +54,7 @@ public final class CarOnOffHandler implements Serializable {
 
     /**
      * 此方法检查离线。
-     * 里面逻辑有问题，可以优化
+     *
      * @param type
      * @param status
      * @param now
