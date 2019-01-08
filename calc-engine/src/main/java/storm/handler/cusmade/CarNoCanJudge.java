@@ -1,8 +1,6 @@
 package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.NotNull;
@@ -72,7 +70,11 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected @NotNull ImmutableMap<String, String> initBeginNotice(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
+    protected @NotNull ImmutableMap<String, String> initBeginNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final String vehicleId,
+        @NotNull final String platformReceiverTimeString) {
+
         String time = data.get(DataKey.TIME);
         LOG.trace("VID:{} 无CAN开始通知初始化", vehicleId);
         return new ImmutableMap.Builder<String, String>()
@@ -86,30 +88,37 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected Map<String, String> buildBeginNotice(@NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
-        final Map<String, String> noCanStartNotice = Maps.newHashMap(
-            readMemoryVehicleNotice(vehicleId)
-        );
-        noCanStartNotice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
-        noCanStartNotice.put("sdelay", String.valueOf(getBeginTriggerTimeoutMillisecond() / 1000));
-        noCanStartNotice.put("noticetime", DataUtils.buildFormatTime());
+    protected Map<String, String> buildBeginNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        final int count,
+        final long timeout,
+        @NotNull final String vehicleId,
+        Map<String, String> notice) {
+
+        notice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
+        notice.put("sdelay", String.valueOf(getBeginTriggerTimeoutMillisecond() / 1000));
+        notice.put("noticetime", DataUtils.buildFormatTime());
 
         try {
             VEHICLE_CACHE.putField(
                 vehicleId,
                 NoticeType.NO_CAN_VEH,
-                ImmutableMap.copyOf(noCanStartNotice)
+                ImmutableMap.copyOf(notice)
             );
         } catch (ExecutionException e) {
             LOG.warn("VID:{} 更新 VEHICLE_CACHE 失败", vehicleId);
         }
 
-        LOG.debug("VID:{} 无CAN开始通知发送 MSGID:{}", vehicleId, noCanStartNotice.get("msgId"));
-        return noCanStartNotice;
+        LOG.debug("VID:{} 无CAN开始通知发送 MSGID:{}", vehicleId, notice.get("msgId"));
+        return notice;
     }
 
     @Override
-    protected @NotNull ImmutableMap<String, String> initEndNotice(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
+    protected @NotNull ImmutableMap<String, String> initEndNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final String vehicleId,
+        @NotNull final String platformReceiverTimeString) {
+
         String time = data.get(DataKey.TIME);
         LOG.trace("VID:{} 无CAN结束通知初始化", vehicleId);
         return new ImmutableMap.Builder<String, String>()
@@ -120,16 +129,16 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected Map<String, String> buildEndNotice(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
-        final ImmutableMap<String, String> noCanBeginNotice = readRedisVehicleNotice(vehicleId);
-        if (MapUtils.isEmpty(noCanBeginNotice)) {
-            return null;
-        }
-        final Map<String, String> socLowEndNotice = Maps.newHashMap(noCanBeginNotice);
-        socLowEndNotice.putAll(readMemoryVehicleNotice(vehicleId));
-        socLowEndNotice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
-        socLowEndNotice.put("edelay", String.valueOf(getEndTriggerTimeoutMillisecond() / 1000));
-        socLowEndNotice.put("noticetime", DataUtils.buildFormatTime());
+    protected Map<String, String> buildEndNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        int count,
+        long timeout,
+        @NotNull final String vehicleId,
+        final Map<String, String> notice) {
+
+        notice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
+        notice.put("edelay", String.valueOf(getEndTriggerTimeoutMillisecond() / 1000));
+        notice.put("noticetime", DataUtils.buildFormatTime());
 
         try {
             VEHICLE_CACHE.delField(
@@ -141,8 +150,8 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
             LOG.error("VID:{} 删除CAN正常通知缓存异常", vehicleId);
         }
 
-        LOG.info("VID:{} 无CAN结束通知发送 MSGID:{}", vehicleId, socLowEndNotice.get("msgId"));
-        return socLowEndNotice;
+        LOG.info("VID:{} 无CAN结束通知发送 MSGID:{}", vehicleId, notice.get("msgId"));
+        return notice;
     }
 
     //region 内部方法

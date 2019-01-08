@@ -32,7 +32,6 @@ public class CarHighSocJudge extends AbstractVehicleDelaySwitchJudge {
             ConfigUtils.getSysDefine().getNoticeSocHighEndTriggerTimeoutMillisecond());
     }
 
-
     @Override
     public String buildRedisKey() {
         return "vehCache.qy.soc.high.notice";
@@ -67,7 +66,11 @@ public class CarHighSocJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    public ImmutableMap<String, String> initBeginNotice(@NotNull final ImmutableMap<String, String> data, @NotNull final String vehicleId, @NotNull final String platformReceiverTimeString) {
+    protected @NotNull ImmutableMap<String, String> initBeginNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final String vehicleId,
+        @NotNull final String platformReceiverTimeString) {
+
         final int soc = Integer.parseInt(data.get(DataKey._7615_STATE_OF_CHARGE));
         String location = DataUtils.buildLocation(data);
         LOG.trace("VID:{} SOC过高开始首帧缓存初始化", vehicleId);
@@ -84,21 +87,28 @@ public class CarHighSocJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    public Map<String, String> buildBeginNotice(@NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
-        final Map<String, String> socHighStartNotice = Maps.newHashMap(
-            readMemoryVehicleNotice(vehicleId)
-        );
-        socHighStartNotice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
-        socHighStartNotice.put("scontinue", String.valueOf(count));
-        socHighStartNotice.put("slazy", String.valueOf(timeout));
-        socHighStartNotice.put("noticeTime", DataUtils.buildFormatTime());
+    protected Map<String, String> buildBeginNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        final int count,
+        final long timeout,
+        @NotNull final String vehicleId,
+        Map<String, String> notice) {
 
-        LOG.debug("VID:{} SOC过高开始通知发送 MSGID:{}", vehicleId, socHighStartNotice.get("msgId"));
-        return socHighStartNotice;
+        notice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
+        notice.put("scontinue", String.valueOf(count));
+        notice.put("slazy", String.valueOf(timeout));
+        notice.put("noticeTime", DataUtils.buildFormatTime());
+
+        LOG.debug("VID:{} SOC过高开始通知发送 MSGID:{}", vehicleId, notice.get("msgId"));
+        return notice;
     }
 
     @Override
-    public ImmutableMap<String, String> initEndNotice(@NotNull final ImmutableMap<String, String> data, @NotNull final String vehicleId, @NotNull final String platformReceiverTimeString) {
+    protected @NotNull ImmutableMap<String, String> initEndNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final String vehicleId,
+        @NotNull final String platformReceiverTimeString) {
+
         final int soc = Integer.parseInt(data.get(DataKey._7615_STATE_OF_CHARGE));
         String location = DataUtils.buildLocation(data);
         LOG.trace("VID:{} SOC过高结束首帧初始化", vehicleId);
@@ -111,22 +121,20 @@ public class CarHighSocJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    public Map<String, String> buildEndNotice(ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+    protected Map<String, String> buildEndNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        int count,
+        long timeout,
+        @NotNull final String vehicleId,
+        final Map<String, String> notice) {
 
-        final ImmutableMap<String, String> socHighBeginNotice = readRedisVehicleNotice(vehicleId);
-        if (MapUtils.isEmpty(socHighBeginNotice)) {
-            return null;
-        }
+        notice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
+        notice.put("econtinue", String.valueOf(count));
+        notice.put("elazy", String.valueOf(timeout));
+        notice.put("noticeTime", DataUtils.buildFormatTime());
 
-        final Map<String, String> socHighEndNotice = Maps.newHashMap(socHighBeginNotice);
-        socHighEndNotice.putAll(readMemoryVehicleNotice(vehicleId));
-        socHighEndNotice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
-        socHighEndNotice.put("econtinue", String.valueOf(count));
-        socHighEndNotice.put("elazy", String.valueOf(timeout));
-        socHighEndNotice.put("noticeTime", DataUtils.buildFormatTime());
-
-        LOG.debug("VID:{} SOC过高结束通知发送 MSGID:{}", vehicleId, socHighEndNotice.get("msgId"));
-        return socHighEndNotice;
+        LOG.debug("VID:{} SOC过高结束通知发送 MSGID:{}", vehicleId, notice.get("msgId"));
+        return notice;
     }
 
 }

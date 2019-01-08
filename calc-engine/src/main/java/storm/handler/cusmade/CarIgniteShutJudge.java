@@ -130,7 +130,11 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected @NotNull ImmutableMap<String, String> initBeginNotice(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
+    protected @NotNull ImmutableMap<String, String> initBeginNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final String vehicleId,
+        @NotNull final String platformReceiverTimeString) {
+
         LOG.debug("VID:{} 车辆点火首帧缓存初始化", vehicleId);
         String vin = data.get(DataKey.VEHICLE_NUMBER);
         if(getState(vehicleId) != State.BEGIN) {
@@ -147,48 +151,50 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected Map<String, String> buildBeginNotice(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
-        final Map<String, String> socLowStartNotice = Maps.newHashMap(
-            readMemoryVehicleNotice(vehicleId)
-        );
+    protected Map<String, String> buildBeginNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        final int count,
+        final long timeout,
+        @NotNull final String vehicleId,
+        Map<String, String> notice) {
+
         final String socString = lastSoc.getOrDefault(vehicleId, 0d).toString();
         String time = data.get(DataKey.TIME);
-        socLowStartNotice.put("stime", time);
-        socLowStartNotice.put("soc", socString);
-        socLowStartNotice.put("ssoc", socString);
-        socLowStartNotice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
-        socLowStartNotice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
-        socLowStartNotice.put("location", DataUtils.buildLocation(data));
-        socLowStartNotice.put("noticetime", DataUtils.buildFormatTime());
-        LOG.debug("VID:{} 车辆点火通知发送 MSGID:{}", vehicleId, socLowStartNotice.get("msgId"));
-        return socLowStartNotice;
+        notice.put("stime", time);
+        notice.put("soc", socString);
+        notice.put("ssoc", socString);
+        notice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
+        notice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
+        notice.put("location", DataUtils.buildLocation(data));
+        notice.put("noticetime", DataUtils.buildFormatTime());
+        LOG.debug("VID:{} 车辆点火通知发送 MSGID:{}", vehicleId, notice.get("msgId"));
+        return notice;
     }
 
     @Override
-    protected Map<String, String> buildEndNotice(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+    protected Map<String, String> buildEndNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        int count,
+        long timeout,
+        @NotNull final String vehicleId,
+        final Map<String, String> notice) {
+
         LOG.trace("VID:{} 车辆熄火通知发送", vehicleId);
-        final ImmutableMap<String, String> igniteShutBeginNotice = readRedisVehicleNotice(vehicleId);
-        if (MapUtils.isEmpty(igniteShutBeginNotice)) {
-            return null;
-        }
-        final Map<String, String> igniteShutEndNotice = Maps.newHashMap(igniteShutBeginNotice);
-        igniteShutEndNotice.putAll(readMemoryVehicleNotice(vehicleId));
-
         double soc = lastSoc.getOrDefault(vehicleId, 0d);
-        igniteShutEndNotice.put("soc", soc + "");
-        igniteShutEndNotice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
-        igniteShutEndNotice.put("maxSpeed", igniteShutMaxSpeed.getOrDefault(vehicleId, 0d) + "");
+        notice.put("soc", soc + "");
+        notice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
+        notice.put("maxSpeed", igniteShutMaxSpeed.getOrDefault(vehicleId, 0d) + "");
 
-        double ssoc = NumberUtils.toDouble(igniteShutEndNotice.get("ssoc"));
+        double ssoc = NumberUtils.toDouble(notice.get("ssoc"));
         double energy = Math.abs(ssoc - soc);
-        igniteShutEndNotice.put("energy", energy + "");
+        notice.put("energy", energy + "");
 
-        igniteShutEndNotice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
-        igniteShutEndNotice.put("location", DataUtils.buildLocation(data));
+        notice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
+        notice.put("location", DataUtils.buildLocation(data));
 
         String time = data.get(DataKey.TIME);
-        igniteShutEndNotice.put("etime", time);
-        igniteShutEndNotice.put("noticetime", DataUtils.buildFormatTime());
-        return igniteShutEndNotice;
+        notice.put("etime", time);
+        notice.put("noticetime", DataUtils.buildFormatTime());
+        return notice;
     }
 }

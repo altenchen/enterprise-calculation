@@ -58,28 +58,28 @@ public class CarIgniteShutJudgeTest {
         //车辆熄火
         data.put(DataKey._3201_CAR_STATUS, "2");
         data.put(DataKey._2201_SPEED, "720");
-        String notice1 = judge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
+        String notice1 = judge.processFrame(ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(notice1), "第1帧不该出现通知");
 
         //车辆点火
         data.put(DataKey._3201_CAR_STATUS, "1");
         data.put(DataKey._2201_SPEED, "190");
-        String notice2 = judge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
+        String notice2 = judge.processFrame(ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(notice2), "第2帧不该出现通知");
 
         data.put(DataKey._2201_SPEED, "220");
-        String notice3 = judge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
+        String notice3 = judge.processFrame(ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isNotBlank(notice3), "第3帧发出点火通知");
         LOG.info("notice : {}", notice3);
 
         data.put(DataKey._2201_SPEED, "330");
-        String notice4 = judge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
+        String notice4 = judge.processFrame(ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(notice4), "第4帧不该出现通知");
 
         //车辆熄火
         data.put(DataKey._3201_CAR_STATUS, "2");
         data.put(DataKey._2201_SPEED, "0");
-        String notice5 = judge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
+        String notice5 = judge.processFrame(ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isNotBlank(notice5), "第5帧出现熄火通知");
         LOG.info("notice : {}", notice5);
 

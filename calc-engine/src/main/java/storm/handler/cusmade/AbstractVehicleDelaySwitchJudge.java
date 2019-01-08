@@ -5,6 +5,7 @@ import com.google.common.collect.Maps;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -90,9 +91,14 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     private final Map<String, MultiDelaySwitch<State>> vehicleStatus = Maps.newHashMap();
 
     /**
-     * 车辆通知缓存表 <vehicleId, partNotice>
+     * 车辆首帧通知缓存表 <vehicleId, partNotice>
      */
-    private final Map<String, ImmutableMap<String, String>> vehicleNoticeCache = Maps.newHashMap();
+    private final Map<String, ImmutableMap<String, String>> vehicleFirstFrameNoticeCache = Maps.newHashMap();
+
+    /**
+     * 车辆开始通知缓存表 <vehicleId, partNotice>
+     */
+    private final Map<String, Map<String, String>> vehicleBeginNoticeCache = Maps.newHashMap();
 
     //endregion
 
@@ -117,129 +123,18 @@ public abstract class AbstractVehicleDelaySwitchJudge {
 
     //region 对外接口
 
-    @NotNull
-    public State getState(@NotNull final String vehicleId) {
-        return ObjectExtension.defaultIfNull(
-            ensureVehicleStatus(vehicleId).getSwitchStatus(),
-            State.UNKNOWN
-        );
-    }
-
     /**
      * 处理实时数据
      *
-     * @param data 报文
+     * @param data 车辆实时数据
      * @return
      */
     @Nullable
-    public String processFrame(@NotNull final String vehicleId, @NotNull final ImmutableMap<String, String> data) {
+    public String processFrame(@NotNull final ImmutableMap<String, String> data) {
         beforeProcess(data);
-        String result = privateProcessFrame(vehicleId, data);
+        String result = handle(data);
         afterProcess(data);
         return result;
-    }
-
-    @Nullable
-    private String privateProcessFrame(@NotNull final String vehicleId, @NotNull final ImmutableMap<String, String> data) {
-        try {
-            final String platformReceiverTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
-            final long platformReceiverTime;
-            try {
-                platformReceiverTime = DataUtils.parseFormatTime(platformReceiverTimeString);
-            } catch (@NotNull final ParseException e) {
-                LOG.warn("解析服务器时间异常", e);
-                return null;
-            }
-
-            //检查数据有效性
-            if (ignore(data)) {
-                return null;
-            }
-
-            switch (parseState(data)) {
-                case BEGIN: {
-                    //超过开始阈值
-                    return processBeginFrame(
-                        vehicleId,
-                        platformReceiverTime,
-                        data,
-                        platformReceiverTimeString);
-                }
-                case END: {
-                    //小于结束阈值
-                    return processEndFrame(
-                        vehicleId,
-                        data,
-                        platformReceiverTime,
-                        platformReceiverTimeString);
-                }
-                default:
-                    break;
-            }
-        } catch (Exception e) {
-            LOG.error("VID:" + vehicleId + " + 处理数据异常", e);
-        }
-        return null;
-    }
-
-    @Nullable
-    private String processEndFrame(
-        final String vehicleId,
-        final @NotNull ImmutableMap<String, String> data,
-        final long platformReceiverTime,
-        final String platformReceiverTimeString) {
-
-        return ensureVehicleStatus(vehicleId).increase(
-            State.END,
-            platformReceiverTime,
-            state -> {
-                //初始化结束通知
-                ImmutableMap<String, String> notice = initEndNotice(data, vehicleId, platformReceiverTimeString);
-                vehicleNoticeCache.put(vehicleId, notice);
-            },
-            (state, count, timeout) -> {
-                //发送结束通知
-                Map<String, String> endNoticeMap = buildEndNotice(data, count, timeout, vehicleId);
-                if (MapUtils.isNotEmpty(endNoticeMap)) {
-                    final String json = JSON_UTILS.toJson(endNoticeMap);
-                    //清除redis中的车辆通知
-                    removeNoticeToRedis(vehicleId);
-                    //清除内存中的车辆通知
-                    vehicleNoticeCache.remove(vehicleId);
-                    return json;
-                }
-                return null;
-            }
-        );
-    }
-
-    @Nullable
-    private String processBeginFrame(
-        final String vehicleId,
-        final long platformReceiverTime,
-        final @NotNull ImmutableMap<String, String> data,
-        final String platformReceiverTimeString) {
-
-        return ensureVehicleStatus(vehicleId).increase(
-            State.BEGIN,
-            platformReceiverTime,
-            state -> {
-                //初始化开始通知
-                ImmutableMap<String, String> notice = initBeginNotice(data, vehicleId, platformReceiverTimeString);
-                vehicleNoticeCache.put(vehicleId, notice);
-            },
-            (state, count, timeout) -> {
-                //发送开始通知
-                Map<String, String> startNotice = buildBeginNotice(data, count, timeout, vehicleId);
-                if (MapUtils.isNotEmpty(startNotice)) {
-                    final String json = JSON_UTILS.toJson(startNotice);
-                    //写入redis
-                    insertNoticeToRedis(vehicleId, json);
-                    return json;
-                }
-                return null;
-            }
-        );
     }
 
     /**
@@ -261,48 +156,17 @@ public abstract class AbstractVehicleDelaySwitchJudge {
                 .setTimeoutMillisecond(State.END, this.endTriggerTimeoutMillisecond);
         });
     }
+
+    @NotNull
+    public State getState(@NotNull final String vehicleId) {
+        return ObjectExtension.defaultIfNull(
+            ensureVehicleStatus(vehicleId).getSwitchStatus(),
+            State.UNKNOWN
+        );
+    }
     //endregion
 
     //region 供子类调用
-
-    /**
-     * 读取redis中的通知
-     *
-     * @param vehicleId 车辆ID
-     * @return
-     */
-    @NotNull
-    protected ImmutableMap<String, String> readRedisVehicleNotice(@NotNull final String vehicleId) {
-        ImmutableMap<String, String> result = JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(redisDb);
-            String noticeKey = buildRedisKey();
-            final String json = jedis.hget(noticeKey, vehicleId);
-            if (StringUtils.isNotBlank(json)) {
-                return ImmutableMap.copyOf(
-                    ObjectExtension.defaultIfNull(
-                        JSON_UTILS.fromJson(
-                            json,
-                            TREE_MAP_STRING_STRING_TYPE,
-                            e -> {
-                                LOG.warn("VID:{} REDIS DB:{} KEY:{} 中不是合法json通知 {}", vehicleId, redisDb, noticeKey, json);
-                                return null;
-                            }),
-                        Maps::newTreeMap)
-                );
-            } else {
-                return ImmutableMap.of();
-            }
-        });
-        return result;
-    }
-
-    @NotNull
-    protected ImmutableMap<String, String> readMemoryVehicleNotice(@NotNull final String vehicleId) {
-        return ObjectExtension.defaultIfNull(
-            vehicleNoticeCache.get(vehicleId),
-            ImmutableMap::of
-        );
-    }
 
     /**
      * 开始阈值连接帧数
@@ -360,6 +224,56 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     }
 
     /**
+     * 处理车辆实时数据
+     *
+     * @param data                车辆实时数据
+     * @return
+     */
+    @Nullable
+    private String handle(@NotNull final ImmutableMap<String, String> data) {
+        final String vehicleId = data.get(DataKey.VEHICLE_ID);
+        try {
+            final String platformReceiverTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
+            final long platformReceiverTime;
+            try {
+                platformReceiverTime = DataUtils.parseFormatTime(platformReceiverTimeString);
+            } catch (@NotNull final ParseException e) {
+                LOG.warn("解析服务器时间异常", e);
+                return null;
+            }
+
+            //检查数据有效性
+            if (ignore(data)) {
+                return null;
+            }
+
+            switch (parseState(data)) {
+                case BEGIN: {
+                    //超过开始阈值
+                    return processBeginFrame(
+                        vehicleId,
+                        data,
+                        platformReceiverTime,
+                        platformReceiverTimeString);
+                }
+                case END: {
+                    //小于结束阈值
+                    return processEndFrame(
+                        vehicleId,
+                        data,
+                        platformReceiverTime,
+                        platformReceiverTimeString);
+                }
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            LOG.error("VID:" + vehicleId + " + 处理数据异常", e);
+        }
+        return null;
+    }
+
+    /**
      * 获取车辆状态
      *
      * @param vehicleId 车辆ID
@@ -377,10 +291,10 @@ public abstract class AbstractVehicleDelaySwitchJudge {
                         return buildDelaySwitch().setSwitchStatus(State.BEGIN);
                     } else if (NOTICE_END_STATUS.equals(status)) {
                         LOG.warn("VID:{} REDIS DB:{} KEY:{} 中已结束的报警通知 {}", vehicleId, redisDb, buildRedisKey(), JSON_UTILS.toJson(startNotice));
-                        removeNoticeToRedis(vehicleId);
+                        removeRedisNotice(vehicleId);
                     } else {
                         LOG.warn("VID:{} REDIS DB:{} KEY:{} 中状态为 {} 的异常报警通知 {}", vehicleId, redisDb, buildRedisKey(), status, JSON_UTILS.toJson(startNotice));
-                        removeNoticeToRedis(vehicleId);
+                        removeRedisNotice(vehicleId);
                     }
                 }
                 return buildDelaySwitch().setSwitchStatus(State.END);
@@ -408,7 +322,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      *
      * @param vehicleId 车辆ID
      */
-    private void removeNoticeToRedis(@NotNull final String vehicleId) {
+    private void removeRedisNotice(@NotNull final String vehicleId) {
         JEDIS_POOL_UTILS.useResource(jedis -> {
             jedis.select(redisDb);
             jedis.hdel(buildRedisKey(), vehicleId);
@@ -416,15 +330,173 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     }
 
     /**
-     * 往redis写入车辆通知
+     * 缓存开始通知
+     * 将通知缓存在内存和redis
      *
      * @param vehicleId 车辆ID
      */
-    private void insertNoticeToRedis(@NotNull final String vehicleId, @NotNull final String value) {
+    private String cacheBeginNotice(@NotNull final String vehicleId, @NotNull Map<String, String> startNotice) {
+        //将开始通知写入内存
+        vehicleBeginNoticeCache.put(vehicleId, startNotice);
+        //将开始通知写入REDIS
+        final String json = JSON_UTILS.toJson(startNotice);
         JEDIS_POOL_UTILS.useResource(jedis -> {
             jedis.select(redisDb);
-            jedis.hset(buildRedisKey(), vehicleId, value);
+            jedis.hset(buildRedisKey(), vehicleId, json);
         });
+        return json;
+    }
+
+    /**
+     * 查询开始通知
+     * 内存中没有开始通知，则从redis查找
+     *
+     * @param vehicleId 车辆ID
+     */
+    private Map<String, String> queryBeginNotice(@NotNull final String vehicleId) {
+        if (vehicleBeginNoticeCache.containsKey(vehicleId)) {
+            //返回内存中的开始通知
+            return vehicleBeginNoticeCache.get(vehicleId);
+        }
+        //从redis读取
+        return readRedisVehicleNotice(vehicleId);
+    }
+
+    /**
+     * 读取redis中的通知
+     *
+     * @param vehicleId 车辆ID
+     * @return
+     */
+    @NotNull
+    private ImmutableMap<String, String> readRedisVehicleNotice(@NotNull final String vehicleId) {
+        ImmutableMap<String, String> result = JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(redisDb);
+            String noticeKey = buildRedisKey();
+            final String json = jedis.hget(noticeKey, vehicleId);
+            if (StringUtils.isNotBlank(json)) {
+                return ImmutableMap.copyOf(
+                    ObjectExtension.defaultIfNull(
+                        JSON_UTILS.fromJson(
+                            json,
+                            TREE_MAP_STRING_STRING_TYPE,
+                            e -> {
+                                LOG.warn("VID:{} REDIS DB:{} KEY:{} 中不是合法json通知 {}", vehicleId, redisDb, noticeKey, json);
+                                return null;
+                            }),
+                        Maps::newTreeMap)
+                );
+            } else {
+                return ImmutableMap.of();
+            }
+        });
+        return result;
+    }
+
+    /**
+     * 读取内存中的首帧通知缓存
+     *
+     * @param vehicleId 车辆ID
+     * @return
+     */
+    @NotNull
+    private ImmutableMap<String, String> readFirstFrameNoticeCache(@NotNull final String vehicleId) {
+        return ObjectExtension.defaultIfNull(
+            vehicleFirstFrameNoticeCache.get(vehicleId),
+            ImmutableMap::of
+        );
+    }
+
+    /**
+     * 处理开始通知
+     *
+     * @param vehicleId                  车辆ID
+     * @param data                       车辆实时数据
+     * @param platformReceiverTime       平台接收时间
+     * @param platformReceiverTimeString 平台接收时间
+     * @return
+     */
+    @Nullable
+    private String processBeginFrame(
+        final String vehicleId,
+        final @NotNull ImmutableMap<String, String> data,
+        final long platformReceiverTime,
+        final String platformReceiverTimeString) {
+
+        return ensureVehicleStatus(vehicleId).increase(
+            State.BEGIN,
+            platformReceiverTime,
+            state -> {
+                //初始化开始通知
+                ImmutableMap<String, String> notice = initBeginNotice(data, vehicleId, platformReceiverTimeString);
+                vehicleFirstFrameNoticeCache.put(vehicleId, notice);
+            },
+            (state, count, timeout) -> {
+                final Map<String, String> notice = Maps.newHashMap(
+                    readFirstFrameNoticeCache(vehicleId)
+                );
+                //构建开始通知
+                Map<String, String> startNotice = buildBeginNotice(data, count, timeout, vehicleId, notice);
+                if (MapUtils.isNotEmpty(startNotice)) {
+                    //写入redis
+                    String json = cacheBeginNotice(vehicleId, startNotice);
+                    //清除首帧通知
+                    vehicleFirstFrameNoticeCache.remove(vehicleId);
+                    return json;
+                }
+                return null;
+            }
+        );
+    }
+
+    /**
+     * 处理结束通知
+     *
+     * @param vehicleId                  车辆ID
+     * @param data                       车辆实时数据
+     * @param platformReceiverTime       平台接收时间
+     * @param platformReceiverTimeString 平台接收时间
+     * @return
+     */
+    @Nullable
+    private String processEndFrame(
+        final String vehicleId,
+        final @NotNull ImmutableMap<String, String> data,
+        final long platformReceiverTime,
+        final String platformReceiverTimeString) {
+
+        return ensureVehicleStatus(vehicleId).increase(
+            State.END,
+            platformReceiverTime,
+            state -> {
+                //初始化结束通知
+                ImmutableMap<String, String> notice = initEndNotice(data, vehicleId, platformReceiverTimeString);
+                vehicleFirstFrameNoticeCache.put(vehicleId, notice);
+            },
+            (state, count, timeout) -> {
+                //读取开始通知
+                final Map<String, String> beginNotice = queryBeginNotice(vehicleId);
+                if (MapUtils.isEmpty(beginNotice)) {
+                    return null;
+                }
+                //读取结束通知首帧缓存
+                final Map<String, String> notice = Maps.newHashMap(beginNotice);
+                notice.putAll(readFirstFrameNoticeCache(vehicleId));
+
+                //构建结束通知
+                Map<String, String> endNoticeMap = buildEndNotice(data, count, timeout, vehicleId, notice);
+                if (MapUtils.isNotEmpty(endNoticeMap)) {
+                    final String json = JSON_UTILS.toJson(endNoticeMap);
+                    //清除redis中的车辆通知
+                    removeRedisNotice(vehicleId);
+                    //清除内存中的车辆通知
+                    vehicleFirstFrameNoticeCache.remove(vehicleId);
+                    vehicleBeginNoticeCache.remove(vehicleId);
+                    return json;
+                }
+                return null;
+            }
+        );
     }
 
     //endregion
@@ -432,7 +504,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     //region 需要子类实现的部分
 
     /**
-     * 初始化redis key
+     * 初始化redis key用于持久化通知
      *
      * @return
      */
@@ -440,14 +512,15 @@ public abstract class AbstractVehicleDelaySwitchJudge {
 
     /**
      * 处理之前
-     * @param data 数据集
+     *
+     * @param data 车辆实时数据
      */
-    protected void beforeProcess(@NotNull final ImmutableMap<String, String> data) {
+    protected void beforeProcess(final ImmutableMap<String, String> data) {
         // default do nothing
     }
 
     /**
-     * 数据有效性过滤
+     * 忽略无效数据
      *
      * @param data
      * @return true 不处理该帧数据
@@ -486,12 +559,14 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @param count     达到指定帧数
      * @param timeout   指定时间内
      * @param vehicleId 车辆VID
+     * @param notice    车辆开始通知首帧初始化里面的值
      * @return
      */
     protected abstract Map<String, String> buildBeginNotice(
         @NotNull final ImmutableMap<String, String> data,
         int count, long timeout,
-        @NotNull String vehicleId);
+        @NotNull String vehicleId,
+        Map<String, String> notice);
 
     //region 结束通知不强制实现，根据需要重写这两个方法
 
@@ -520,13 +595,15 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @param count     达到指定帧数
      * @param timeout   指定时间内
      * @param vehicleId 车辆VID
+     * @param notice    车辆开始通知，包含结束通知首帧初始化里面的值
      * @return
      */
     protected Map<String, String> buildEndNotice(
         @NotNull final ImmutableMap<String, String> data,
         int count,
         long timeout,
-        @NotNull String vehicleId) {
+        @NotNull String vehicleId,
+        Map<String, String> notice) {
         //nothing to do.
         return ImmutableMap.of();
     }
@@ -534,7 +611,8 @@ public abstract class AbstractVehicleDelaySwitchJudge {
 
     /**
      * 处理之后
-     * @param data 数据集
+     *
+     * @param data 车辆实时数据
      */
     protected void afterProcess(@NotNull final ImmutableMap<String, String> data) {
         // default do nothing

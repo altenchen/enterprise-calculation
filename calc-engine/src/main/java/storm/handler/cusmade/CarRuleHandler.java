@@ -76,6 +76,7 @@ public class CarRuleHandler implements InfoNotice {
     private static final CarHighSocJudge CAR_HIGH_SOC_JUDGE = new CarHighSocJudge();
     private static final CarLockStatusChangeJudge CAR_LOCK_STATUS_CHANGE_JUDGE = new CarLockStatusChangeJudge();
 
+
     private static final CarMileHopJudge carMileHopJudge = new CarMileHopJudge();
 
     {
@@ -98,8 +99,7 @@ public class CarRuleHandler implements InfoNotice {
         final ImmutableList.Builder<String> builder = new ImmutableList.Builder<>();
 
         // 验证data的有效性
-        if (MapUtils.isEmpty(data)
-            || !data.containsKey(DataKey.TIME)) {
+        if (MapUtils.isEmpty(data) || !data.containsKey(DataKey.TIME)) {
             return builder.build();
         }
 
@@ -123,13 +123,9 @@ public class CarRuleHandler implements InfoNotice {
         }
 
         if (ConfigUtils.getSysDefine().isNoticeSocLowEnable()) {
-
-            final String socNoticeJson = CAR_LOW_SOC_JUDGE.processFrame(
-                vehicleId,
-                data);
-            if(StringUtils.isNotBlank(socNoticeJson)) {
-                builder.add(socNoticeJson);
-
+            final String socLowNoticeJson = CAR_LOW_SOC_JUDGE.processFrame(data);
+            if (StringUtils.isNotBlank(socLowNoticeJson)) {
+                builder.add(socLowNoticeJson);
                 if (AbstractVehicleDelaySwitchJudge.State.BEGIN == CAR_LOW_SOC_JUDGE.getState(vehicleId)) {
                     final String chargeCarsInfo = generateChargeCarsInfo(vehicleId, data);
                     if (StringUtils.isNotBlank(chargeCarsInfo)) {
@@ -140,7 +136,7 @@ public class CarRuleHandler implements InfoNotice {
         }
 
         if (ConfigUtils.getSysDefine().isNoticeSocHighEnable()) {
-            final String socLowNoticeJson = CAR_HIGH_SOC_JUDGE.processFrame(vehicleId, data);
+            final String socLowNoticeJson = CAR_HIGH_SOC_JUDGE.processFrame(data);
             if (StringUtils.isNotBlank(socLowNoticeJson)) {
                 builder.add(socLowNoticeJson);
             }
@@ -148,14 +144,14 @@ public class CarRuleHandler implements InfoNotice {
 
         if (1 == ConfigUtils.getSysDefine().getSysCanRule()) {
             // 无CAN车辆
-            final String canNoticeJson = CAR_NO_CAN_JUDGE.processFrame(vehicleId, data);
+            final String canNoticeJson = CAR_NO_CAN_JUDGE.processFrame(data);
             if (StringUtils.isNotBlank(canNoticeJson)) {
                 builder.add(canNoticeJson);
             }
         }
         if (1 == ConfigUtils.getSysDefine().getSysIgniteRule()) {
             // 点火熄火
-            final String igniteNoticeJson = CAR_IGNITE_SHUT_JUDGE.processFrame(vehicleId, data);
+            final String igniteNoticeJson = CAR_IGNITE_SHUT_JUDGE.processFrame(data);
             if (StringUtils.isNotBlank(igniteNoticeJson)) {
                 builder.add(JSON_UTILS.toJson(igniteNoticeJson));
             }
