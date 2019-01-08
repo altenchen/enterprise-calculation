@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.ConfigUtils;
+import storm.util.DataUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,12 +52,12 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected String initRedisKey() {
+    protected String buildRedisKey() {
         return "vehCache.qy.ignite.shut.notice";
     }
 
     @Override
-    protected boolean filter(final ImmutableMap<String, String> data) {
+    protected boolean ignore(final ImmutableMap<String, String> data) {
         String carStatus = data.get(DataKey._3201_CAR_STATUS);
         return StringUtils.isEmpty(carStatus);
     }
@@ -112,7 +113,7 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected State initState(final ImmutableMap<String, String> data) {
+    protected State parseState(final ImmutableMap<String, String> data) {
         String carStatus = data.get(DataKey._3201_CAR_STATUS);
         switch (carStatus) {
             case "1":
@@ -120,12 +121,12 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
             case "2":
                 return State.END;
             default:
-                return State.UNKNOW;
+                return State.UNKNOWN;
         }
     }
 
     @Override
-    protected @NotNull ImmutableMap<String, String> beginNoticeInit(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
+    protected @NotNull ImmutableMap<String, String> initBeginNotice(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
         LOG.debug("VID:{} 车辆点火首帧缓存初始化", vehicleId);
         String vin = data.get(DataKey.VEHICLE_NUMBER);
         return new ImmutableMap.Builder<String, String>()
@@ -137,7 +138,7 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected Map<String, String> beginNoticeSend(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+    protected Map<String, String> buildBeginNotice(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
         final Map<String, String> socLowStartNotice = Maps.newHashMap(
             readMemoryVehicleNotice(vehicleId)
         );
@@ -148,14 +149,14 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
         socLowStartNotice.put("ssoc", soc + "");
         socLowStartNotice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
         socLowStartNotice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
-        socLowStartNotice.put("location", buildLocation(data));
-        socLowStartNotice.put("noticetime", createNoticeTime());
+        socLowStartNotice.put("location", DataUtils.buildLocation(data));
+        socLowStartNotice.put("noticetime", DataUtils.buildFormatTime());
         LOG.debug("VID:{} 车辆点火通知发送 MSGID:{}", vehicleId, socLowStartNotice.get("msgId"));
         return socLowStartNotice;
     }
 
     @Override
-    protected Map<String, String> endNoticeSend(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+    protected Map<String, String> buildEndNotice(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
         LOG.trace("VID:{} 车辆熄火通知发送", vehicleId);
         final ImmutableMap<String, String> igniteShutBeginNotice = readRedisVehicleNotice(vehicleId);
         if (MapUtils.isEmpty(igniteShutBeginNotice)) {
@@ -174,11 +175,11 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
         igniteShutEndNotice.put("energy", energy + "");
 
         igniteShutEndNotice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
-        igniteShutEndNotice.put("location", buildLocation(data));
+        igniteShutEndNotice.put("location", DataUtils.buildLocation(data));
 
         String time = data.get(DataKey.TIME);
         igniteShutEndNotice.put("etime", time);
-        igniteShutEndNotice.put("noticetime", createNoticeTime());
+        igniteShutEndNotice.put("noticetime", DataUtils.buildFormatTime());
         return igniteShutEndNotice;
     }
 }

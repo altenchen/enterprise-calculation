@@ -12,6 +12,7 @@ import storm.cache.VehicleCache;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.ConfigUtils;
+import storm.util.DataUtils;
 
 import java.util.Map;
 import java.util.UUID;
@@ -42,12 +43,12 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected String initRedisKey() {
+    protected String buildRedisKey() {
         return "vehCache.qy.can.notice";
     }
 
     @Override
-    protected boolean filter(final ImmutableMap<String, String> data) {
+    protected boolean ignore(final ImmutableMap<String, String> data) {
         final String vehicleId = data.get(DataKey.VEHICLE_ID);
         String timeString = data.get(DataKey.TIME);
         if (StringUtils.isBlank(timeString)) {
@@ -58,7 +59,7 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected State initState(final ImmutableMap<String, String> data) {
+    protected State parseState(final ImmutableMap<String, String> data) {
         boolean hasCan = carNoCanDecide.hasCan(data);
         if (!hasCan) {
             //无can
@@ -67,11 +68,11 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
             //有can
             return State.END;
         }
-        return State.UNKNOW;
+        return State.UNKNOWN;
     }
 
     @Override
-    protected @NotNull ImmutableMap<String, String> beginNoticeInit(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
+    protected @NotNull ImmutableMap<String, String> initBeginNotice(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
         String time = data.get(DataKey.TIME);
         LOG.trace("VID:{} 无CAN开始通知初始化", vehicleId);
         return new ImmutableMap.Builder<String, String>()
@@ -80,18 +81,18 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
             .put("msgId", UUID.randomUUID().toString())
             .put("stime", time)
             .put("smileage", getTotalMileageString(vehicleId, data))
-            .put("slocation", buildLocation(data))
+            .put("slocation", DataUtils.buildLocation(data))
             .build();
     }
 
     @Override
-    protected Map<String, String> beginNoticeSend(ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+    protected Map<String, String> buildBeginNotice(ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
         final Map<String, String> noCanStartNotice = Maps.newHashMap(
             readMemoryVehicleNotice(vehicleId)
         );
         noCanStartNotice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
         noCanStartNotice.put("sdelay", String.valueOf(getBeginTriggerTimeoutMillisecond() / 1000));
-        noCanStartNotice.put("noticetime", createNoticeTime());
+        noCanStartNotice.put("noticetime", DataUtils.buildFormatTime());
 
         try {
             VEHICLE_CACHE.putField(
@@ -108,18 +109,18 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected @NotNull ImmutableMap<String, String> endNoticeInit(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
+    protected @NotNull ImmutableMap<String, String> initEndNotice(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
         String time = data.get(DataKey.TIME);
         LOG.trace("VID:{} 无CAN结束通知初始化", vehicleId);
         return new ImmutableMap.Builder<String, String>()
             .put("etime", time)
             .put("emileage", getTotalMileageString(vehicleId, data))
-            .put("elocation", buildLocation(data))
+            .put("elocation", DataUtils.buildLocation(data))
             .build();
     }
 
     @Override
-    protected Map<String, String> endNoticeSend(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+    protected Map<String, String> buildEndNotice(final @NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
         final ImmutableMap<String, String> noCanBeginNotice = readRedisVehicleNotice(vehicleId);
         if (MapUtils.isEmpty(noCanBeginNotice)) {
             return null;
@@ -128,7 +129,7 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
         socLowEndNotice.putAll(readMemoryVehicleNotice(vehicleId));
         socLowEndNotice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
         socLowEndNotice.put("edelay", String.valueOf(getEndTriggerTimeoutMillisecond() / 1000));
-        socLowEndNotice.put("noticetime", createNoticeTime());
+        socLowEndNotice.put("noticetime", DataUtils.buildFormatTime());
 
         try {
             VEHICLE_CACHE.delField(

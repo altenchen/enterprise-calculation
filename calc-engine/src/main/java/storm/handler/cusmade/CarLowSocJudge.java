@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.ConfigUtils;
+import storm.util.DataUtils;
 
 import java.util.Map;
 import java.util.UUID;
@@ -30,12 +31,12 @@ class CarLowSocJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected String initRedisKey() {
+    protected String buildRedisKey() {
         return "vehCache.qy.soc.notice";
     }
 
     @Override
-    protected boolean filter(final ImmutableMap<String, String> data) {
+    protected boolean ignore(final ImmutableMap<String, String> data) {
         final String socString = data.get(DataKey._7615_STATE_OF_CHARGE);
         if (!NumberUtils.isDigits(socString)) {
             return true;
@@ -44,7 +45,7 @@ class CarLowSocJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected State initState(final ImmutableMap<String, String> data) {
+    protected State parseState(final ImmutableMap<String, String> data) {
         final int soc = Integer.parseInt(data.get(DataKey._7615_STATE_OF_CHARGE));
         if (soc <= ConfigUtils.getSysDefine().getNoticeSocLowBeginTriggerThreshold()) {
             //SOC过高开始阈值
@@ -53,13 +54,13 @@ class CarLowSocJudge extends AbstractVehicleDelaySwitchJudge {
             //SOC过高结束阈值
             return State.END;
         }
-        return State.UNKNOW;
+        return State.UNKNOWN;
     }
 
     @Override
-    protected @NotNull ImmutableMap<String, String> beginNoticeInit(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
+    protected @NotNull ImmutableMap<String, String> initBeginNotice(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
         final int soc = Integer.parseInt(data.get(DataKey._7615_STATE_OF_CHARGE));
-        String location = buildLocation(data);
+        String location = DataUtils.buildLocation(data);
         LOG.trace("VID:{} SOC过低开始首帧缓存初始化", vehicleId);
         return new ImmutableMap.Builder<String, String>()
             .put("msgType", NoticeType.SOC_LOW_NOTICE)
@@ -76,23 +77,23 @@ class CarLowSocJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected Map<String, String> beginNoticeSend(ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+    protected Map<String, String> buildBeginNotice(ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
         final Map<String, String> socLowStartNotice = Maps.newHashMap(
             readMemoryVehicleNotice(vehicleId)
         );
         socLowStartNotice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
         socLowStartNotice.put("scontinue", String.valueOf(count));
         socLowStartNotice.put("slazy", String.valueOf(timeout));
-        socLowStartNotice.put("noticeTime", createNoticeTime());
+        socLowStartNotice.put("noticeTime", DataUtils.buildFormatTime());
 
         LOG.debug("VID:{} SOC过低开始通知发送 MSGID:{}", vehicleId, socLowStartNotice.get("msgId"));
         return socLowStartNotice;
     }
 
     @Override
-    protected @NotNull ImmutableMap<String, String> endNoticeInit(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
+    protected @NotNull ImmutableMap<String, String> initEndNotice(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
         final int soc = Integer.parseInt(data.get(DataKey._7615_STATE_OF_CHARGE));
-        String location = buildLocation(data);
+        String location = DataUtils.buildLocation(data);
         LOG.trace("VID:{} SOC过低结束首帧初始化", vehicleId);
         return new ImmutableMap.Builder<String, String>()
             .put("etime", platformReceiverTimeString)
@@ -103,7 +104,7 @@ class CarLowSocJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected Map<String, String> endNoticeSend(ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+    protected Map<String, String> buildEndNotice(ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
         final ImmutableMap<String, String> socLowBeginNotice = readRedisVehicleNotice(vehicleId);
         if (MapUtils.isEmpty(socLowBeginNotice)) {
             return null;
@@ -113,7 +114,7 @@ class CarLowSocJudge extends AbstractVehicleDelaySwitchJudge {
         socLowEndNotice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
         socLowEndNotice.put("econtinue", String.valueOf(count));
         socLowEndNotice.put("elazy", String.valueOf(timeout));
-        socLowEndNotice.put("noticeTime", createNoticeTime());
+        socLowEndNotice.put("noticeTime", DataUtils.buildFormatTime());
 
         LOG.debug("VID:{} SOC过低结束通知发送 MSGID:{}", vehicleId, socLowEndNotice.get("msgId"));
         return socLowEndNotice;
