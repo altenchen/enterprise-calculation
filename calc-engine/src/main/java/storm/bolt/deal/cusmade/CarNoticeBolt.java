@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.storm.Config;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -22,6 +23,7 @@ import storm.cache.VehicleCache;
 import storm.dao.DataToRedis;
 import storm.handler.FaultCodeHandler;
 import storm.handler.cusmade.CarOnOffHandler;
+import storm.handler.cusmade.CarOnOffMileJudge;
 import storm.handler.cusmade.CarRuleHandler;
 import storm.protocol.CommandType;
 import storm.stream.KafkaStream;
@@ -103,6 +105,11 @@ public final class CarNoticeBolt extends BaseRichBolt {
     private transient CarOnOffHandler carOnOffhandler;
 
     /**
+     * 车辆上下线里程通知处理
+     */
+    private transient CarOnOffMileJudge carOnOffMileJudge;
+
+    /**
      * 故障码处理
      */
     private transient FaultCodeHandler faultCodeHandler;
@@ -124,6 +131,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
         carRuleHandler = new CarRuleHandler();
         carOnOffhandler = new CarOnOffHandler();
         faultCodeHandler = new FaultCodeHandler();
+        carOnOffMileJudge = new CarOnOffMileJudge();
 
         prepareStreamSender(stormConf, collector);
 
@@ -285,12 +293,11 @@ public final class CarNoticeBolt extends BaseRichBolt {
                     }
                 }
             }
+
             //当车辆上线时发出上下线里程通知，具体是否产生再次上线里程跳变告警，是由kafkaservice做判断的。
-            long offlineTimeMillisecond = ConfigUtils.getSysDefine().getRedisOfflineTime() * 1000;
-            Map<String, Object> map = carOnOffhandler.generateNotices(data, currentTimeMillis, offlineTimeMillisecond);
-            if (null != map && map.size() > 0) {
-                String json = JSON_UTILS.toJson(map);
-                kafkaStreamVehicleNoticeSender.emit(vid, json);
+            String onOffMileNotice = carOnOffMileJudge.processFrame(data);
+            if (StringUtils.isNotEmpty(onOffMileNotice)) {
+                kafkaStreamVehicleNoticeSender.emit(vid, onOffMileNotice);
             }
         }catch (Exception e){
             LOG.error("VID:" + vid + " 异常", e);
