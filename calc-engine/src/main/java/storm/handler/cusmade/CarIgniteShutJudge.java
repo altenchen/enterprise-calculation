@@ -63,62 +63,66 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected void prepareData(final @NotNull ImmutableMap<String, String> data) {
+    protected void beforeProcess(@NotNull final ImmutableMap<String, String> data) {
         final String vehicleId = data.get(DataKey.VEHICLE_ID);
-        //缓存最后一帧soc
-        String socStr = data.get(DataKey._7615_STATE_OF_CHARGE);
-        if (StringUtils.isNotEmpty(socStr)) {
-            double soc = stringToDouble(socStr);
-            if (soc > 0) {
-                lastSoc.put(vehicleId, soc);
-            }
-        }
 
-        //缓存最后一帧里程
+        // 缓存最后一帧soc
+        cacheLastUsefulSoc(vehicleId, data);
+
+        // 缓存最后一帧里程
+        cacheLastUsefulTotalMileage(vehicleId, data);
+
+        // 缓存车辆最大车速
+        cacheMaxSpeed(vehicleId, data);
+    }
+
+    private void cacheMaxSpeed(
+        @NotNull final String vehicleId,
+        final @NotNull ImmutableMap<String, String> data) {
+
+        igniteShutMaxSpeed.compute(
+            vehicleId,
+            (vid, cacheSpeed) -> {
+                String speedString = data.get(DataKey._2201_SPEED);
+                final double speed = NumberUtils.toDouble(speedString, 0d);
+                if (null != cacheSpeed && cacheSpeed > speed) {
+                    return  cacheSpeed;
+                }
+                return speed;
+            }
+        );
+    }
+
+    private void cacheLastUsefulTotalMileage(final String vehicleId, final @NotNull ImmutableMap<String, String> data) {
         String mileageStr = data.get(DataKey._2202_TOTAL_MILEAGE);
         if (StringUtils.isNotEmpty(mileageStr)) {
-            double mileage = stringToDouble(mileageStr);
+            double mileage = NumberUtils.toDouble(mileageStr);
             if (mileage > 0) {
                 lastMile.put(vehicleId, mileage);
             }
         }
+    }
 
-        //缓存车辆最大车速
-        if (MapUtils.isEmpty(readMemoryVehicleNotice(vehicleId))) {
-            //没有触发通知，清空最大车速重新统计
-            igniteShutMaxSpeed.remove(vehicleId);
-        }
-        double speed = stringToDouble(data.get(DataKey._2201_SPEED));
-        if (igniteShutMaxSpeed.containsKey(vehicleId)) {
-            double cacheSpeed = igniteShutMaxSpeed.get(vehicleId);
-            if (speed > cacheSpeed) {
-                igniteShutMaxSpeed.put(vehicleId, speed);
+    private void cacheLastUsefulSoc(final String vehicleId, final @NotNull ImmutableMap<String, String> data) {
+        String socStr = data.get(DataKey._7615_STATE_OF_CHARGE);
+        if (StringUtils.isNotEmpty(socStr)) {
+            double soc = NumberUtils.toDouble(socStr);
+            if (soc > 0) {
+                lastSoc.put(vehicleId, soc);
             }
-        } else {
-            igniteShutMaxSpeed.put(vehicleId, speed);
         }
     }
 
-    /**
-     * 字符串转double
-     *
-     * @param str
-     * @return
-     */
-    private double stringToDouble(String str) {
-        if (NumberUtils.isNumber(str)) {
-            return Double.valueOf(str);
-        }
-        return 0;
-    }
+    private static final String CAR_STATUS_IGNITE = "1";
+    private static final String CAR_STATUS_FLAMEOUT = "2";
 
     @Override
     protected State parseState(final ImmutableMap<String, String> data) {
-        String carStatus = data.get(DataKey._3201_CAR_STATUS);
+        final String carStatus = data.get(DataKey._3201_CAR_STATUS);
         switch (carStatus) {
-            case "1":
+            case CAR_STATUS_IGNITE:
                 return State.BEGIN;
-            case "2":
+            case CAR_STATUS_FLAMEOUT:
                 return State.END;
             default:
                 return State.UNKNOWN;
@@ -129,6 +133,11 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
     protected @NotNull ImmutableMap<String, String> initBeginNotice(@NotNull final ImmutableMap<String, String> data, final @NotNull String vehicleId, final @NotNull String platformReceiverTimeString) {
         LOG.debug("VID:{} 车辆点火首帧缓存初始化", vehicleId);
         String vin = data.get(DataKey.VEHICLE_NUMBER);
+        if(getState(vehicleId) != State.BEGIN) {
+            String speedString = data.get(DataKey._2201_SPEED);
+            final double speed = NumberUtils.toDouble(speedString, 0d);
+            igniteShutMaxSpeed.put(vehicleId, speed);
+        }
         return new ImmutableMap.Builder<String, String>()
             .put("msgType", NoticeType.IGNITE_SHUT_MESSAGE)
             .put("vid", vehicleId)
@@ -142,11 +151,11 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
         final Map<String, String> socLowStartNotice = Maps.newHashMap(
             readMemoryVehicleNotice(vehicleId)
         );
-        double soc = lastSoc.getOrDefault(vehicleId, 0d);
+        final String socString = lastSoc.getOrDefault(vehicleId, 0d).toString();
         String time = data.get(DataKey.TIME);
         socLowStartNotice.put("stime", time);
-        socLowStartNotice.put("soc", soc + "");
-        socLowStartNotice.put("ssoc", soc + "");
+        socLowStartNotice.put("soc", socString);
+        socLowStartNotice.put("ssoc", socString);
         socLowStartNotice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
         socLowStartNotice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
         socLowStartNotice.put("location", DataUtils.buildLocation(data));
@@ -170,7 +179,7 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
         igniteShutEndNotice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
         igniteShutEndNotice.put("maxSpeed", igniteShutMaxSpeed.getOrDefault(vehicleId, 0d) + "");
 
-        double ssoc = stringToDouble(igniteShutEndNotice.get("ssoc"));
+        double ssoc = NumberUtils.toDouble(igniteShutEndNotice.get("ssoc"));
         double energy = Math.abs(ssoc - soc);
         igniteShutEndNotice.put("energy", energy + "");
 
