@@ -184,7 +184,6 @@ public final class MultiDelaySwitch<S> {
             continueCount = 1;
             resetTimeMillisecond = timeMillisecond;
             resetCallback.accept(status);
-
         }
 
         final Integer thresholdTimes =

@@ -30,7 +30,6 @@ import java.util.UUID;
  * @date: 2018-07-09
  * @description:
  */
-@Disabled
 @DisplayName("无CAN通知测试")
 final class CarNoCanJudgeTest {
 

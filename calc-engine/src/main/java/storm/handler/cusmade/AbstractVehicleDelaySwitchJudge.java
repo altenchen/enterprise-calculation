@@ -13,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.extension.ObjectExtension;
 import storm.system.DataKey;
-import storm.tool.DelaySwitch;
+import storm.tool.MultiDelaySwitch;
 import storm.util.DataUtils;
 import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
@@ -88,7 +88,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     /**
      * 车辆状态缓存表 <vehicleId, DelaySwitch>
      */
-    private final Map<String, DelaySwitch> vehicleStatus = Maps.newHashMap();
+    private final Map<String, MultiDelaySwitch<State>> vehicleStatus = Maps.newHashMap();
 
     /**
      * 车辆通知缓存表 <vehicleId, partNotice>
@@ -162,15 +162,16 @@ public abstract class AbstractVehicleDelaySwitchJudge {
             switch (parseState(data)) {
                 case BEGIN: {
                     //超过开始阈值
-                    final DelaySwitch delaySwitch = ensureVehicleStatus(vehicleId);
-                    return delaySwitch.positiveIncrease(
+                    final MultiDelaySwitch<State> delaySwitch = ensureVehicleStatus(vehicleId);
+                    return delaySwitch.increase(
+                        State.BEGIN,
                         platformReceiverTime,
-                        () -> {
+                        state -> {
                             //初始化开始通知
                             ImmutableMap<String, String> notice = initBeginNotice(data, vehicleId, platformReceiverTimeString);
                             vehicleNoticeCache.put(vehicleId, notice);
                         },
-                        (count, timeout) -> {
+                        (state, count, timeout) -> {
                             //发送开始通知
                             Map<String, String> startNotice = buildBeginNotice(data, count, timeout, vehicleId);
                             if (MapUtils.isNotEmpty(startNotice)) {
@@ -186,15 +187,16 @@ public abstract class AbstractVehicleDelaySwitchJudge {
                 }
                 case END: {
                     //小于结束阈值
-                    final DelaySwitch delaySwitch = ensureVehicleStatus(vehicleId);
-                    return delaySwitch.negativeIncrease(
+                    final MultiDelaySwitch<State> delaySwitch = ensureVehicleStatus(vehicleId);
+                    return delaySwitch.increase(
+                        State.END,
                         platformReceiverTime,
-                        () -> {
+                        state -> {
                             //初始化结束通知
                             ImmutableMap<String, String> notice = initEndNotice(data, vehicleId, platformReceiverTimeString);
                             vehicleNoticeCache.put(vehicleId, notice);
                         },
-                        (count, timeout) -> {
+                        (state, count, timeout) -> {
                             //发送结束通知
                             Map<String, String> endNoticeMap = buildEndNotice(data, count, timeout, vehicleId);
                             if (MapUtils.isNotEmpty(endNoticeMap)) {
@@ -230,10 +232,11 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     public void syncDelaySwitchConfig(int beginTriggerContinueCount, int beginTriggerTimeoutMillisecond, int endTriggerContinueCount, int endTriggerTimeoutMillisecond) {
         init(beginTriggerContinueCount, beginTriggerTimeoutMillisecond, endTriggerContinueCount, endTriggerTimeoutMillisecond);
         vehicleStatus.forEach((vehicleId, delaySwitch) -> {
-            delaySwitch.setPositiveThreshold(this.beginTriggerContinueCount);
-            delaySwitch.setPositiveTimeout(this.beginTriggerTimeoutMillisecond);
-            delaySwitch.setNegativeThreshold(this.endTriggerContinueCount);
-            delaySwitch.setNegativeTimeout(this.endTriggerTimeoutMillisecond);
+            delaySwitch
+                .setThresholdTimes(State.BEGIN, this.beginTriggerContinueCount)
+                .setTimeoutMillisecond(State.BEGIN, this.beginTriggerTimeoutMillisecond)
+                .setThresholdTimes(State.END, this.endTriggerContinueCount)
+                .setTimeoutMillisecond(State.END, this.endTriggerTimeoutMillisecond);
         });
     }
     //endregion
@@ -351,7 +354,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @return
      */
     @NotNull
-    private DelaySwitch ensureVehicleStatus(@NotNull final String vehicleId) {
+    private MultiDelaySwitch<State> ensureVehicleStatus(@NotNull final String vehicleId) {
         return vehicleStatus.computeIfAbsent(
             vehicleId,
             k -> {
@@ -359,7 +362,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
                 if (!startNotice.isEmpty()) {
                     final String status = startNotice.get(NOTICE_STATUS_KEY);
                     if (NOTICE_START_STATUS.equals(status)) {
-                        return buildDelaySwitch().setSwitchStatus(true);
+                        return buildDelaySwitch().setSwitchStatus(State.BEGIN);
                     } else if (NOTICE_END_STATUS.equals(status)) {
                         LOG.warn("VID:{} REDIS DB:{} KEY:{} 中已结束的报警通知 {}", vehicleId, redisDb, buildRedisKey(), JSON_UTILS.toJson(startNotice));
                         removeNoticeToRedis(vehicleId);
@@ -368,7 +371,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
                         removeNoticeToRedis(vehicleId);
                     }
                 }
-                return buildDelaySwitch().setSwitchStatus(false);
+                return buildDelaySwitch().setSwitchStatus(State.END);
             }
         );
     }
@@ -380,12 +383,12 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      */
     @NotNull
     @Contract(" -> new")
-    private DelaySwitch buildDelaySwitch() {
-        return new DelaySwitch(
-            this.beginTriggerContinueCount,
-            this.beginTriggerTimeoutMillisecond,
-            this.endTriggerContinueCount,
-            this.endTriggerTimeoutMillisecond);
+    private MultiDelaySwitch<State> buildDelaySwitch() {
+        return new MultiDelaySwitch<State>()
+            .setThresholdTimes(State.BEGIN, this.beginTriggerContinueCount)
+            .setTimeoutMillisecond(State.BEGIN, this.beginTriggerTimeoutMillisecond)
+            .setThresholdTimes(State.END, this.endTriggerContinueCount)
+            .setTimeoutMillisecond(State.END, this.endTriggerTimeoutMillisecond);
     }
 
     /**
