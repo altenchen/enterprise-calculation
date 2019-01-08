@@ -105,14 +105,14 @@ final class CarNoCanJudgeTest {
 
         data.put(DataKey._7615_STATE_OF_CHARGE, "");
         appendTime(data, currentTimeMillis, 101000);
-        final String processFrame1 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame1 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame1), "第1帧不该出现故障通知");
         appendTime(data, currentTimeMillis, 102000);
-        final String processFrame2 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame2 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame2), "第2帧不该出现故障通知");
         appendTime(data, currentTimeMillis, 103000);
         data.put(DataKey._7615_STATE_OF_CHARGE, "80");
-        final String processFrame3 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame3 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame3), "第3帧不该出现故障通知");
 
         // endregion 连续帧未达到阈值不发出通知
@@ -121,13 +121,13 @@ final class CarNoCanJudgeTest {
 
         data.put(DataKey._7615_STATE_OF_CHARGE, "");
         String formatTime4 = appendTime(data, currentTimeMillis, 104000);
-        final String processFrame4 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame4 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame4), "第4帧不该出现故障通知");
         appendTime(data, currentTimeMillis, 105000);
-        final String processFrame5 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame5 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame5), "第5帧不该出现故障通知");
         appendTime(data, currentTimeMillis, 106000);
-        final String processFrame6 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame6 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isNotBlank(processFrame6), "第6帧应该出现故障通知");
         LOG.info("notice : {}", processFrame6);
 
@@ -156,13 +156,13 @@ final class CarNoCanJudgeTest {
         // region 持续故障帧不再发出通知
 
         appendTime(data, currentTimeMillis, 107000);
-        final String processFrame7 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame7 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame7), "第7帧不该出现故障通知");
         appendTime(data, currentTimeMillis, 108000);
-        final String processFrame8 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame8 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame8), "第8帧不该出现故障通知");
         appendTime(data, currentTimeMillis, 109000);
-        final String processFrame9 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame9 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame9), "第9帧不该出现故障通知");
 
         // endregion 持续故障帧不再发出通知
@@ -203,11 +203,11 @@ final class CarNoCanJudgeTest {
 
         data.put(DataKey._7615_STATE_OF_CHARGE, "");
         appendTime(data, currentTimeMillis, 201000);
-        carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         appendTime(data, currentTimeMillis, 202000);
-        carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         appendTime(data, currentTimeMillis, 203000);
-        carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
 
         // endregion 确保CAN故障
 
@@ -216,14 +216,14 @@ final class CarNoCanJudgeTest {
 
         data.put(DataKey._7615_STATE_OF_CHARGE, "80");
         appendTime(data, currentTimeMillis, 211000);
-        final String processFrame1 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame1 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame1), "第1帧不该出现恢复通知");
         appendTime(data, currentTimeMillis, 212000);
-        final String processFrame2 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame2 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame2), "第2帧不该出现恢复通知");
         appendTime(data, currentTimeMillis, 213000);
         data.put(DataKey._7615_STATE_OF_CHARGE, "");
-        final String processFrame3 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame3 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame3), "第3帧不该出现恢复通知");
 
         // endregion 连续帧未达到阈值不发出通知
@@ -232,13 +232,13 @@ final class CarNoCanJudgeTest {
 
         data.put(DataKey._7615_STATE_OF_CHARGE, "80");
         String formatTime4 = appendTime(data, currentTimeMillis, 104000);
-        final String processFrame4 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame4 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame4), "第4帧不该出现恢复通知");
         appendTime(data, currentTimeMillis, 105000);
-        final String processFrame5 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame5 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame5), "第5帧不该出现恢复通知");
         appendTime(data, currentTimeMillis, 106000);
-        final String processFrame6 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame6 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isNotBlank(processFrame6), "第6帧应该出现恢复通知");
         LOG.info("notice : {}", processFrame6);
 
@@ -263,13 +263,13 @@ final class CarNoCanJudgeTest {
         // region 持续故障帧不再发出通知
 
         appendTime(data, currentTimeMillis, 107000);
-        final String processFrame7 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame7 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame7), "第7帧不该出现恢复通知");
         appendTime(data, currentTimeMillis, 108000);
-        final String processFrame8 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame8 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame8), "第8帧不该出现恢复通知");
         appendTime(data, currentTimeMillis, 109000);
-        final String processFrame9 = carNoCanJudge.processFrame(ImmutableMap.copyOf(data));
+        final String processFrame9 = carNoCanJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(processFrame9), "第9帧不该出现恢复通知");
 
         // endregion 持续故障帧不再发出通知

@@ -46,19 +46,19 @@ class CarLowSocJudgeTest {
         Date date1 = new Date(TimeUnit.MINUTES.toMillis(10));
         data.put(DataKey.TIME, DateFormatUtils.format(date1, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date1, FormatConstant.DATE_FORMAT));
-        String result_1 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data), () -> {});
+        String result_1 = carLowSocJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(result_1),"1不应该出现通知");
 
         Date date2 = new Date(TimeUnit.MINUTES.toMillis(20));
         data.put(DataKey.TIME, DateFormatUtils.format(date2, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date2, FormatConstant.DATE_FORMAT));
-        String result_2 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data), () -> {});
+        String result_2 = carLowSocJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(result_2),"2不应该出现通知");
 
         Date date3 = new Date(TimeUnit.MINUTES.toMillis(30));
         data.put(DataKey.TIME, DateFormatUtils.format(date3, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date3, FormatConstant.DATE_FORMAT));
-        String result_3 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data), () -> {});
+        String result_3 = carLowSocJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isNotBlank(result_3),"3应该出现通知֪");
         LOG.info("notice : {}", result_3);
 
@@ -67,7 +67,7 @@ class CarLowSocJudgeTest {
         Date date4 =  new Date(TimeUnit.MINUTES.toMillis(40));
         data.put(DataKey.TIME, DateFormatUtils.format(date4, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date4, FormatConstant.DATE_FORMAT));
-        String result_4 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data), () -> {});
+        String result_4 = carLowSocJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isBlank(result_4),"4不应该出现通知");
 
         //大于soc过低通知结束阈值
@@ -75,7 +75,7 @@ class CarLowSocJudgeTest {
         Date date5 =  new Date(TimeUnit.MINUTES.toMillis(50));
         data.put(DataKey.TIME, DateFormatUtils.format(date5, FormatConstant.DATE_FORMAT));
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, DateFormatUtils.format(date5, FormatConstant.DATE_FORMAT));
-        String result_5 = carLowSocJudge.processFrame(ImmutableMap.copyOf(data), () -> {});
+        String result_5 = carLowSocJudge.processFrame(TEST_VID, ImmutableMap.copyOf(data));
         Assertions.assertTrue(StringUtils.isNotBlank(result_5),"5应该出现通知");
         LOG.info("notice : {}", result_5);
 

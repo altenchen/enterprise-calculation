@@ -86,7 +86,7 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected Map<String, String> buildBeginNotice(ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+    protected Map<String, String> buildBeginNotice(@NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
         final Map<String, String> noCanStartNotice = Maps.newHashMap(
             readMemoryVehicleNotice(vehicleId)
         );

@@ -84,7 +84,7 @@ public class CarHighSocJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    public Map<String, String> buildBeginNotice(ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
+    public Map<String, String> buildBeginNotice(@NotNull ImmutableMap<String, String> data, final int count, final long timeout, @NotNull final String vehicleId) {
         final Map<String, String> socHighStartNotice = Maps.newHashMap(
             readMemoryVehicleNotice(vehicleId)
         );

@@ -5,7 +5,6 @@ import com.google.common.collect.Maps;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -118,6 +117,14 @@ public abstract class AbstractVehicleDelaySwitchJudge {
 
     //region 对外接口
 
+    @NotNull
+    public State getState(@NotNull final String vehicleId) {
+        return ObjectExtension.defaultIfNull(
+            ensureVehicleStatus(vehicleId).getSwitchStatus(),
+            State.UNKNOWN
+        );
+    }
+
     /**
      * 处理实时数据
      *
@@ -125,28 +132,15 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @return
      */
     @Nullable
-    public String processFrame(@NotNull final ImmutableMap<String, String> data) {
-        return processFrame(data, ()->{});
-    }
-
-    /**
-     * 处理实时数据
-     *
-     * @param data                报文
-     * @param beginNoticeCallback 触发开始通知发送时回调
-     * @return
-     */
-    @Nullable
-    public String processFrame(@NotNull final ImmutableMap<String, String> data, @NotNull Runnable beginNoticeCallback) {
+    public String processFrame(@NotNull final String vehicleId, @NotNull final ImmutableMap<String, String> data) {
         beforeProcess(data);
-        String result = privateProcessFrame(data, beginNoticeCallback);
+        String result = privateProcessFrame(vehicleId, data);
         afterProcess(data);
         return result;
     }
 
     @Nullable
-    private String privateProcessFrame(@NotNull final ImmutableMap<String, String> data, @NotNull Runnable beginNoticeCallback) {
-        final String vehicleId = data.get(DataKey.VEHICLE_ID);
+    private String privateProcessFrame(@NotNull final String vehicleId, @NotNull final ImmutableMap<String, String> data) {
         try {
             final String platformReceiverTimeString = data.get(DataKey._9999_PLATFORM_RECEIVE_TIME);
             final long platformReceiverTime;
@@ -158,9 +152,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
             }
 
             //检查数据有效性
-            if (StringUtils.isBlank(vehicleId)
-                || !NumberUtils.isDigits(platformReceiverTimeString)
-                || ignore(data)) {
+            if (ignore(data)) {
                 return null;
             }
 
@@ -171,8 +163,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
                         vehicleId,
                         platformReceiverTime,
                         data,
-                        platformReceiverTimeString,
-                        beginNoticeCallback);
+                        platformReceiverTimeString);
                 }
                 case END: {
                     //小于结束阈值
@@ -227,8 +218,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
         final String vehicleId,
         final long platformReceiverTime,
         final @NotNull ImmutableMap<String, String> data,
-        final String platformReceiverTimeString,
-        final @NotNull Runnable beginNoticeCallback) {
+        final String platformReceiverTimeString) {
 
         return ensureVehicleStatus(vehicleId).increase(
             State.BEGIN,
@@ -245,7 +235,6 @@ public abstract class AbstractVehicleDelaySwitchJudge {
                     final String json = JSON_UTILS.toJson(startNotice);
                     //写入redis
                     insertNoticeToRedis(vehicleId, json);
-                    beginNoticeCallback.run();
                     return json;
                 }
                 return null;
@@ -349,14 +338,6 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      */
     protected long getEndTriggerTimeoutMillisecond() {
         return endTriggerTimeoutMillisecond;
-    }
-
-    @NotNull
-    protected State getState(@NotNull final String vehicleId) {
-        return ObjectExtension.defaultIfNull(
-            ensureVehicleStatus(vehicleId).getSwitchStatus(),
-            State.UNKNOWN
-        );
     }
 
     //endregion
