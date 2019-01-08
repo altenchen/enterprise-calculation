@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 /**
  * @author: xzp
@@ -48,9 +49,9 @@ public final class DelaySwitch {
 
     /**
      * @param positiveThreshold 正向连续计数阈值
-     * @param positiveTimeout 正向连续超时阈值
+     * @param positiveTimeout   正向连续超时阈值
      * @param negativeThreshold 反向连续计数阈值
-     * @param negativeTimeout 反向连续超时阈值
+     * @param negativeTimeout   反向连续超时阈值
      */
     public DelaySwitch(
         final int positiveThreshold,
@@ -58,20 +59,20 @@ public final class DelaySwitch {
         final int negativeThreshold,
         final long negativeTimeout
     ) {
-        if(positiveThreshold < 0) {
+        if (positiveThreshold < 0) {
             throw new IllegalArgumentException("正向连续计数阈值必须不小于0");
         }
         this.positiveThreshold = positiveThreshold;
-        if(positiveTimeout < 0) {
+        if (positiveTimeout < 0) {
             throw new IllegalArgumentException("正向连续超时阈值必须不小于0");
         }
         this.positiveTimeout = positiveTimeout;
 
-        if(negativeThreshold < 0) {
+        if (negativeThreshold < 0) {
             throw new IllegalArgumentException("反向连续计数阈值必须不小于0");
         }
         this.negativeThreshold = -negativeThreshold;
-        if(negativeTimeout < 0) {
+        if (negativeTimeout < 0) {
             throw new IllegalArgumentException("反向连续超时阈值必须不小于0");
         }
         this.negativeTimeout = negativeTimeout;
@@ -84,9 +85,9 @@ public final class DelaySwitch {
     @Contract(pure = true)
     public Boolean getSwitchStatus() {
         final int switchStatus = this.switchStatus;
-        if(switchStatus > 0) {
+        if (switchStatus > 0) {
             return true;
-        } else if(switchStatus < 0) {
+        } else if (switchStatus < 0) {
             return false;
         } else {
             return null;
@@ -98,9 +99,9 @@ public final class DelaySwitch {
      */
     @Contract("_ -> this")
     public DelaySwitch setSwitchStatus(@Nullable final Boolean switchStatus) {
-        if(null == switchStatus) {
+        if (null == switchStatus) {
             this.switchStatus = 0;
-        } else if(switchStatus) {
+        } else if (switchStatus) {
             this.switchStatus = 1;
         } else {
             this.switchStatus = -1;
@@ -125,14 +126,58 @@ public final class DelaySwitch {
 
     /**
      * 正向增长
-     * @param timeMillisecond 数据时间
-     * @param positiveReset 正向重置行为
+     *
+     * @param timeMillisecond  数据时间
+     * @param positiveReset    正向重置行为
      * @param positiveOverflow 正向溢出行为
      */
     public void positiveIncrease(
         final long timeMillisecond,
         @NotNull final Runnable positiveReset,
-        @NotNull final BiConsumer<Integer, Long> positiveOverflow) {
+        @NotNull final BiConsumer<@NotNull Integer, @NotNull Long> positiveOverflow) {
+        positiveIncrease(
+            timeMillisecond,
+            positiveReset,
+            (positiveThreshold, positiveTimeout) ->{
+                positiveOverflow.accept(positiveThreshold, positiveTimeout);
+                return null;
+            }
+        );
+    }
+
+    /**
+     * 反向增长
+     *
+     * @param timeMillisecond  数据时间
+     * @param negativeReset    反向重置行为
+     * @param negativeOverflow 反向溢出行为
+     */
+    public void negativeIncrease(
+        final long timeMillisecond,
+        @NotNull final Runnable negativeReset,
+        @NotNull final BiConsumer<@NotNull Integer, @NotNull Long> negativeOverflow) {
+        negativeIncrease(
+            timeMillisecond,
+            negativeReset,
+            (negativeThreshold, negativeTimeout) ->{
+                negativeOverflow.accept(negativeThreshold, negativeTimeout);
+                return null;
+            }
+        );
+    }
+
+    /**
+     * 正向增长
+     *
+     * @param timeMillisecond  数据时间
+     * @param positiveReset    正向重置行为
+     * @param positiveOverflow 正向溢出行为
+     */
+    @Nullable
+    public <T> T positiveIncrease(
+        final long timeMillisecond,
+        @NotNull final Runnable positiveReset,
+        @NotNull final BiFunction<@NotNull Integer, @NotNull Long, @Nullable ? extends T> positiveOverflow) {
         if (switchStatus <= 0) {
             if (continueCount < 1) {
                 continueCount = 1;
@@ -143,24 +188,29 @@ public final class DelaySwitch {
             if (continueCount < positiveThreshold) {
                 continueCount += 1;
             } else if (timeMillisecond - resetTimeMillisecond >= positiveTimeout) {
-                positiveOverflow.accept(positiveThreshold, positiveTimeout);
+                final T result = positiveOverflow.apply(positiveThreshold, positiveTimeout);
                 switchStatus = 1;
+                return result;
             }
         } else {
             continueCount = 0;
         }
+
+        return null;
     }
 
     /**
      * 反向增长
-     * @param timeMillisecond 数据时间
-     * @param negativeReset 反向重置行为
+     *
+     * @param timeMillisecond  数据时间
+     * @param negativeReset    反向重置行为
      * @param negativeOverflow 反向溢出行为
      */
-    public void negativeIncrease(
+    @Nullable
+    public <T> T negativeIncrease(
         final long timeMillisecond,
         @NotNull final Runnable negativeReset,
-        @NotNull final BiConsumer<Integer, Long> negativeOverflow) {
+        @NotNull final BiFunction<@NotNull Integer, @NotNull Long, @Nullable ? extends T> negativeOverflow) {
         if (switchStatus >= 0) {
             if (continueCount > -1) {
                 continueCount = -1;
@@ -171,12 +221,15 @@ public final class DelaySwitch {
             if (continueCount > negativeThreshold) {
                 continueCount -= 1;
             } else if (timeMillisecond - resetTimeMillisecond >= negativeTimeout) {
-                negativeOverflow.accept(-negativeThreshold, negativeTimeout);
+                final T result = negativeOverflow.apply(-negativeThreshold, negativeTimeout);
                 switchStatus = -1;
+                return result;
             }
         } else {
             continueCount = 0;
         }
+
+        return null;
     }
 
     /**

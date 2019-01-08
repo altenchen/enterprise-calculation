@@ -35,7 +35,7 @@ public interface EventStatus {
         @NotNull final String vehicleId,
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final ImmutableMap<String, String> cache,
-        @NotNull final Consumer<BaseNotice> noticeCallback) {}
+        @NotNull final Consumer<@NotNull ? super BaseNotice> noticeCallback) {}
 
     /**
      * 滞留电子围栏内部事件
@@ -56,7 +56,7 @@ public interface EventStatus {
         @NotNull final String vehicleId,
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final ImmutableMap<String, String> cache,
-        @NotNull final Consumer<BaseNotice> noticeCallback) {}
+        @NotNull final Consumer<@NotNull ? super BaseNotice> noticeCallback) {}
 
     /**
      * 驶入电子围栏外部事件
@@ -77,7 +77,7 @@ public interface EventStatus {
         @NotNull final String vehicleId,
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final ImmutableMap<String, String> cache,
-        @NotNull final Consumer<BaseNotice> noticeCallback) {}
+        @NotNull final Consumer<@NotNull ? super BaseNotice> noticeCallback) {}
 
     /**
      * 滞留电子围栏外部事件
@@ -98,12 +98,14 @@ public interface EventStatus {
         @NotNull final String vehicleId,
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final ImmutableMap<String, String> cache,
-        @NotNull final Consumer<BaseNotice> noticeCallback) {}
+        @NotNull final Consumer<@NotNull ? super BaseNotice> noticeCallback) {}
 
     /**
      * 清理通知状态
      * @param noticeCallback 通知回调
+     * @param reason 清理原因
      */
     default void cleanStatus(
-        @NotNull final Consumer<BaseNotice> noticeCallback) {}
+        @NotNull final Consumer<@NotNull ? super BaseNotice> noticeCallback,
+        @NotNull final String reason) {}
 }

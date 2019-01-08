@@ -98,7 +98,7 @@ public final class DriveOutside extends BaseEvent implements Event {
             @NotNull final String vehicleId,
             @NotNull final ImmutableMap<String, String> data,
             @NotNull final ImmutableMap<String, String> cache,
-            @NotNull final Consumer<BaseNotice> noticeCallback) {
+            @NotNull final Consumer<@NotNull ? super BaseNotice> noticeCallback) {
 
             delaySwitch.increase(
                 EventStage.END,
@@ -121,7 +121,9 @@ public final class DriveOutside extends BaseEvent implements Event {
                         AreaSide.INSIDE,
                         EventStage.END);
                 },
-                (status, threshold, timeout) -> endOverflowCallback(threshold, timeout, noticeCallback)
+                (status, threshold, timeout) -> {
+                    endOverflowCallback(threshold, timeout, noticeCallback::accept);
+                }
             );
         }
 
@@ -134,20 +136,22 @@ public final class DriveOutside extends BaseEvent implements Event {
             @NotNull final String vehicleId,
             @NotNull final ImmutableMap<String, String> data,
             @NotNull final ImmutableMap<String, String> cache,
-            @NotNull final Consumer<BaseNotice> noticeCallback) {
+            @NotNull final Consumer<@NotNull ? super BaseNotice> noticeCallback) {
 
             delaySwitch.increase(
                 EventStage.END,
                 platformReceiveTime,
                 status ->{},
-                (status, threshold, timeout) -> endOverflowCallback(threshold, timeout, noticeCallback)
+                (status, threshold, timeout) -> {
+                    endOverflowCallback(threshold, timeout, noticeCallback::accept);
+                }
             );
         }
 
         private void endOverflowCallback(
             int threshold,
             long timeout,
-            @NotNull final Consumer<BaseNotice> noticeCallback){
+            @NotNull final Consumer<@NotNull DriveOutsideNotice> noticeCallback){
 
             if(null == notice || EventStage.BEGIN != notice.eventStage) {
                 return;
@@ -178,7 +182,7 @@ public final class DriveOutside extends BaseEvent implements Event {
             @NotNull final String vehicleId,
             @NotNull final ImmutableMap<String, String> data,
             @NotNull final ImmutableMap<String, String> cache,
-            @NotNull final Consumer<BaseNotice> noticeCallback) {
+            @NotNull final Consumer<@NotNull ? super BaseNotice> noticeCallback) {
 
             delaySwitch.increase(
                 EventStage.BEGIN,
@@ -201,7 +205,9 @@ public final class DriveOutside extends BaseEvent implements Event {
                         AreaSide.OUTSIDE,
                         EventStage.BEGIN);
                 },
-                (status, threshold, timeout) -> beginOverflowCallback(threshold, timeout, noticeCallback)
+                (status, threshold, timeout) -> {
+                    beginOverflowCallback(threshold, timeout, noticeCallback::accept);
+                }
             );
         }
 
@@ -214,20 +220,23 @@ public final class DriveOutside extends BaseEvent implements Event {
             @NotNull final String vehicleId,
             @NotNull final ImmutableMap<String, String> data,
             @NotNull final ImmutableMap<String, String> cache,
-            @NotNull final Consumer<BaseNotice> noticeCallback) {
+            @NotNull final Consumer<@NotNull ? super BaseNotice> noticeCallback) {
 
             delaySwitch.increase(
                 EventStage.BEGIN,
                 platformReceiveTime,
                 status ->{},
-                (status, threshold, timeout) -> beginOverflowCallback(threshold, timeout, noticeCallback)
+                (status, threshold, timeout) -> {
+                    beginOverflowCallback(threshold, timeout, noticeCallback::accept);
+                }
             );
         }
 
+        @Nullable
         private void beginOverflowCallback(
             int threshold,
             long timeout,
-            @NotNull final Consumer<BaseNotice> noticeCallback){
+            @NotNull final Consumer<@NotNull DriveOutsideNotice> noticeCallback){
 
             if(null != notice && EventStage.BEGIN == notice.eventStage) {
                 return;
@@ -245,11 +254,12 @@ public final class DriveOutside extends BaseEvent implements Event {
 
             notice = buffer;
             buffer = null;
-
         }
 
         @Override
-        public void cleanStatus(@NotNull final Consumer<BaseNotice> noticeCallback) {
+        public void cleanStatus(
+            @NotNull final Consumer<@NotNull ? super BaseNotice> noticeCallback,
+            @NotNull final String reason) {
 
             final DriveOutsideNotice startNotice = notice;
 
@@ -277,6 +287,7 @@ public final class DriveOutside extends BaseEvent implements Event {
             endNotice.endThresholdTimes = Optional.ofNullable(delaySwitch.getThresholdTimes(EventStage.END)).orElse(1);
             endNotice.endTimeoutMillisecond = Optional.ofNullable(delaySwitch.getTimeoutMillisecond(EventStage.END)).orElse(0L);
             endNotice.noticeTime = DataUtils.buildFormatTime(System.currentTimeMillis());
+            endNotice.reason = reason;
 
             noticeCallback.accept(endNotice);
 

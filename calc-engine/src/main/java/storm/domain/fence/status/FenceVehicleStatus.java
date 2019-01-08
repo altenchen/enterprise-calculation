@@ -140,7 +140,7 @@ public final class FenceVehicleStatus {
             }
 
             // 清理无效的事件
-            eventStatus.getValue().cleanStatus(noticeCallback);
+            eventStatus.getValue().cleanStatus(noticeCallback, "rule_unable");
 
             return true;
         });

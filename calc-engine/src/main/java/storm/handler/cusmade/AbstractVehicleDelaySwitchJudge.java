@@ -133,9 +133,8 @@ public abstract class AbstractVehicleDelaySwitchJudge {
             switch (initState(data)) {
                 case BEGIN: {
                     //超过开始阈值
-                    final String[] result = new String[1];
                     final DelaySwitch delaySwitch = ensureVehicleStatus(vehicleId);
-                    delaySwitch.positiveIncrease(
+                    return delaySwitch.positiveIncrease(
                         platformReceiverTime,
                         () -> {
                             //初始化开始通知
@@ -146,22 +145,22 @@ public abstract class AbstractVehicleDelaySwitchJudge {
                             //发送开始通知
                             Map<String, String> startNoticeMap = beginNoticeSend(data, count, timeout, vehicleId);
                             if (MapUtils.isNotEmpty(startNoticeMap)) {
-                                result[0] = JSON_UTILS.toJson(startNoticeMap);
+                                final String json = JSON_UTILS.toJson(startNoticeMap);
                                 //写入redis
-                                writeRedisVehicleNotice(vehicleId, result[0]);
+                                writeRedisVehicleNotice(vehicleId, json);
                                 if (beginNoticeCallback != null) {
                                     beginNoticeCallback.run();
                                 }
+                                return json;
                             }
+                            return null;
                         }
                     );
-                    return result[0];
                 }
                 case END: {
                     //小于结束阈值
-                    final String[] result = new String[1];
                     final DelaySwitch delaySwitch = ensureVehicleStatus(vehicleId);
-                    delaySwitch.negativeIncrease(
+                    return delaySwitch.negativeIncrease(
                         platformReceiverTime,
                         () -> {
                             //初始化结束通知
@@ -172,15 +171,16 @@ public abstract class AbstractVehicleDelaySwitchJudge {
                             //发送结束通知
                             Map<String, String> endNoticeMap = endNoticeSend(data, count, timeout, vehicleId);
                             if (MapUtils.isNotEmpty(endNoticeMap)) {
-                                result[0] = JSON_UTILS.toJson(endNoticeMap);
+                                final String json = JSON_UTILS.toJson(endNoticeMap);
                                 //清除redis中的车辆通知
                                 removeRedisVehicleNotice(vehicleId);
                                 //清除内存中的车辆通知
                                 vehicleNoticeCache.remove(vehicleId);
+                                return json;
                             }
+                            return null;
                         }
                     );
-                    return result[0];
                 }
                 case UNKNOW:
                     break;

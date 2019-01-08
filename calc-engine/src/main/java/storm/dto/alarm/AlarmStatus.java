@@ -85,27 +85,31 @@ public final class AlarmStatus {
             delaySwitch.positiveIncrease(
                 platformReceiveTime,
                 () -> startReset(data),
-                (positiveThreshold, positiveTimeout)-> startOverflow(
-                    positiveThreshold,
-                    positiveTimeout,
-                    ruleId,
-                    level,
-                    data,
-                    rule,
-                    noticeCallback));
+                (positiveThreshold, positiveTimeout)-> {
+                    startOverflow(
+                        positiveThreshold,
+                        positiveTimeout,
+                        ruleId,
+                        level,
+                        data,
+                        rule,
+                        noticeCallback);
+                });
         } else {
             delaySwitch.negativeIncrease(
                 platformReceiveTime,
                 ()->endReset(data),
-                (negativeThreshold, negativeTimeout)-> endOverflow(
-                    negativeThreshold,
-                    negativeTimeout,
-                    ruleId,
-                    level,
-                    data,
-                    rule,
-                    noticeCallback
-                ));
+                (negativeThreshold, negativeTimeout)-> {
+                    endOverflow(
+                        negativeThreshold,
+                        negativeTimeout,
+                        ruleId,
+                        level,
+                        data,
+                        rule,
+                        noticeCallback
+                    );
+                });
         }
     }
 
