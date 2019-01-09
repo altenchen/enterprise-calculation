@@ -1,5 +1,6 @@
 package storm.handler.cusmade;
 
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -7,12 +8,12 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
+import storm.dto.notice.NoCanNotice;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
@@ -22,7 +23,7 @@ import java.util.concurrent.ExecutionException;
  * @date 2019-1-2
  * @description: 无CAN车辆审计者
  */
-public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
+public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge<NoCanNotice> {
     private static final Logger LOG = LoggerFactory.getLogger(CarNoCanJudge.class);
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
@@ -57,88 +58,94 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
     }
 
     @Override
-    protected State parseState(final ImmutableMap<String, String> data) {
+    protected NoticeState parseState(final ImmutableMap<String, String> data) {
         boolean hasCan = carNoCanDecide.hasCan(data);
         if (!hasCan) {
             //无can
-            return State.BEGIN;
+            return NoticeState.BEGIN;
         } else if (hasCan) {
             //有can
-            return State.END;
+            return NoticeState.END;
         }
-        return State.UNKNOWN;
+        return NoticeState.UNKNOWN;
     }
 
+    @NotNull
     @Override
-    protected @NotNull ImmutableMap<String, String> initBeginNotice(
+    protected NoCanNotice initBeginNotice(
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final String vehicleId,
         @NotNull final String platformReceiverTimeString) {
 
-        String time = data.get(DataKey.TIME);
         LOG.trace("VID:{} 无CAN开始通知初始化", vehicleId);
-        return new ImmutableMap.Builder<String, String>()
-            .put("vid", vehicleId)
-            .put("msgType", NoticeType.NO_CAN_VEH)
-            .put("msgId", UUID.randomUUID().toString())
-            .put("stime", time)
-            .put("smileage", getTotalMileageString(vehicleId, data))
-            .put("slocation", DataUtils.buildLocation(data))
-            .build();
+
+        NoCanNotice notice = new NoCanNotice();
+        notice.setVid(vehicleId);
+        notice.setMsgId(UUID.randomUUID().toString());
+        notice.setMsgType(NoticeType.NO_CAN_VEH);
+        notice.setStime(data.get(DataKey.TIME));
+        notice.setSmileage(getTotalMileageString(vehicleId, data));
+        notice.setSlocation(DataUtils.buildLocation(data));
+
+        return notice;
     }
 
     @Override
-    protected Map<String, String> buildBeginNotice(
+    protected void buildBeginNotice(
         @NotNull final ImmutableMap<String, String> data,
         final int count,
         final long timeout,
         @NotNull final String vehicleId,
-        Map<String, String> notice) {
+        @NotNull final NoCanNotice notice) {
 
-        notice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
-        notice.put("sdelay", String.valueOf(getBeginTriggerTimeoutMillisecond() / 1000));
-        notice.put("noticetime", DataUtils.buildFormatTime());
+        LOG.debug("VID:{} 无CAN开始通知发送 MSGID:{}", vehicleId, notice.getMsgId());
+        String noticeTime = DataUtils.buildFormatTime();
+
+        notice.setSdelay(String.valueOf(getBeginTriggerTimeoutMillisecond() / 1000));
+        notice.setNoticeTime(noticeTime);
+        //兼容旧的消息格式
+        notice.setNoticetime(noticeTime);
 
         try {
             VEHICLE_CACHE.putField(
                 vehicleId,
                 NoticeType.NO_CAN_VEH,
-                ImmutableMap.copyOf(notice)
+                ImmutableMap.of(vehicleId, JSON.toJSONString(notice))
             );
         } catch (ExecutionException e) {
             LOG.warn("VID:{} 更新 VEHICLE_CACHE 失败", vehicleId);
         }
-
-        LOG.debug("VID:{} 无CAN开始通知发送 MSGID:{}", vehicleId, notice.get("msgId"));
-        return notice;
     }
 
     @Override
-    protected @NotNull ImmutableMap<String, String> initEndNotice(
+    protected void initEndNotice(
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final String vehicleId,
-        @NotNull final String platformReceiverTimeString) {
+        @NotNull final String platformReceiverTimeString,
+        @NotNull final NoCanNotice notice) {
 
-        String time = data.get(DataKey.TIME);
         LOG.trace("VID:{} 无CAN结束通知初始化", vehicleId);
-        return new ImmutableMap.Builder<String, String>()
-            .put("etime", time)
-            .put("emileage", getTotalMileageString(vehicleId, data))
-            .put("elocation", DataUtils.buildLocation(data))
-            .build();
+
+        notice.setEtime(data.get(DataKey.TIME));
+        notice.setEmileage(getTotalMileageString(vehicleId, data));
+        notice.setElocation(DataUtils.buildLocation(data));
     }
 
     @Override
-    protected Map<String, String> buildEndNotice(
+    protected void buildEndNotice(
         @NotNull final ImmutableMap<String, String> data,
-        int count,
-        long timeout,
+        final int count,
+        final long timeout,
         @NotNull final String vehicleId,
-        final Map<String, String> notice) {
+        @NotNull final NoCanNotice notice) {
 
-        notice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
-        notice.put("edelay", String.valueOf(getEndTriggerTimeoutMillisecond() / 1000));
-        notice.put("noticetime", DataUtils.buildFormatTime());
+        LOG.info("VID:{} 无CAN结束通知发送 MSGID:{}", vehicleId, notice.getMsgId());
+        String noticeTime = DataUtils.buildFormatTime();
+
+        notice.setEdelay(String.valueOf(getEndTriggerTimeoutMillisecond() / 1000));
+        notice.setNoticeTime(noticeTime);
+        //兼容旧的消息格式
+        notice.setNoticetime(noticeTime);
 
         try {
             VEHICLE_CACHE.delField(
@@ -149,9 +156,6 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge {
         } catch (ExecutionException e) {
             LOG.error("VID:{} 删除CAN正常通知缓存异常", vehicleId);
         }
-
-        LOG.info("VID:{} 无CAN结束通知发送 MSGID:{}", vehicleId, notice.get("msgId"));
-        return notice;
     }
 
     //region 内部方法

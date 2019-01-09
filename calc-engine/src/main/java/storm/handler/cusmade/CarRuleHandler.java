@@ -75,9 +75,7 @@ public class CarRuleHandler implements InfoNotice {
     private static final CarLowSocJudge CAR_LOW_SOC_JUDGE = new CarLowSocJudge();
     private static final CarHighSocJudge CAR_HIGH_SOC_JUDGE = new CarHighSocJudge();
     private static final CarLockStatusChangeJudge CAR_LOCK_STATUS_CHANGE_JUDGE = new CarLockStatusChangeJudge();
-
-
-    private static final CarMileHopJudge carMileHopJudge = new CarMileHopJudge();
+    private static final CarMileHopJudge CAR_MILE_HOP_JUDGE = new CarMileHopJudge();
 
     {
         recorder = new RedisRecorder();
@@ -126,7 +124,7 @@ public class CarRuleHandler implements InfoNotice {
             final String socLowNoticeJson = CAR_LOW_SOC_JUDGE.processFrame(data);
             if (StringUtils.isNotBlank(socLowNoticeJson)) {
                 builder.add(socLowNoticeJson);
-                if (AbstractVehicleDelaySwitchJudge.State.BEGIN == CAR_LOW_SOC_JUDGE.getState(vehicleId)) {
+                if (NoticeState.BEGIN == CAR_LOW_SOC_JUDGE.getState(vehicleId)) {
                     final String chargeCarsInfo = generateChargeCarsInfo(vehicleId, data);
                     if (StringUtils.isNotBlank(chargeCarsInfo)) {
                         builder.add(chargeCarsInfo);
@@ -186,7 +184,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         if (1 == ConfigUtils.getSysDefine().getSysMilehopRule()) {
             // 里程跳变处理
-            final String mileHopNotice = carMileHopJudge.processFrame(data);
+            final String mileHopNotice = CAR_MILE_HOP_JUDGE.processFrame(data);
             if (StringUtils.isNotBlank(mileHopNotice)) {
                 builder.add(mileHopNotice);
             }
@@ -237,7 +235,7 @@ public class CarRuleHandler implements InfoNotice {
             for (final Map.Entry<Double, List<FillChargeCar>> entry : chargeCarInfo.entrySet()) {
                 final double distance = entry.getKey();
                 final List<FillChargeCar> listOfChargeCar = entry.getValue();
-                for (FillChargeCar ChargeCar : listOfChargeCar) {
+                for (FillChargeCar chargeCar : listOfChargeCar) {
                     cts += 1;
                     if (cts > TOPN) {
                         break;
@@ -245,22 +243,22 @@ public class CarRuleHandler implements InfoNotice {
 
                     //save to redis map
                     final Map<String, String> jsonMap = Maps.newTreeMap();
-                    jsonMap.put("vid", ChargeCar.vid);
-                    jsonMap.put("LONGITUDE", String.valueOf(ChargeCar.longitude));
-                    jsonMap.put("LATITUDE", String.valueOf(ChargeCar.latitude));
-                    jsonMap.put("lastOnline", ChargeCar.lastOnline);
+                    jsonMap.put("vid", chargeCar.vid);
+                    jsonMap.put("LONGITUDE", String.valueOf(chargeCar.longitude));
+                    jsonMap.put("LATITUDE", String.valueOf(chargeCar.latitude));
+                    jsonMap.put("lastOnline", chargeCar.lastOnline);
                     jsonMap.put("distance", String.valueOf(distance));
                     final String jsonToRedis = JSON_UTILS.toJson(jsonMap);
                     topnCarsToRedis.put(String.valueOf(cts), jsonToRedis);
 
                     //send to kafka map
                     final Map<String, String> kMap = Maps.newTreeMap();
-                    kMap.put("vid", ChargeCar.vid);
-                    kMap.put("location", ChargeCar.longitude + "," + ChargeCar.latitude);
-                    kMap.put("lastOnline", ChargeCar.lastOnline);
+                    kMap.put("vid", chargeCar.vid);
+                    kMap.put("location", chargeCar.longitude + "," + chargeCar.latitude);
+                    kMap.put("lastOnline", chargeCar.lastOnline);
                     kMap.put("gpsDis", String.valueOf(distance));
                     kMap.put("ranking", String.valueOf(cts));
-                    kMap.put("running", String.valueOf(ChargeCar.running));
+                    kMap.put("running", String.valueOf(chargeCar.running));
 
                     chargeCars.add(kMap);
                 }

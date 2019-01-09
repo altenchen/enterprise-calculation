@@ -1,16 +1,15 @@
 package storm.handler.cusmade;
 
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import com.google.gson.reflect.TypeToken;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.dto.notice.VehicleNotice;
 import storm.extension.ObjectExtension;
 import storm.system.DataKey;
 import storm.tool.MultiDelaySwitch;
@@ -18,10 +17,9 @@ import storm.util.DataUtils;
 import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
 
-import java.lang.reflect.Type;
+import java.lang.reflect.ParameterizedType;
 import java.text.ParseException;
 import java.util.Map;
-import java.util.TreeMap;
 
 /**
  * 实现了车辆基本的连续帧数统计处理
@@ -29,11 +27,16 @@ import java.util.TreeMap;
  *
  * @author 智杰
  */
-public abstract class AbstractVehicleDelaySwitchJudge {
+public abstract class AbstractVehicleDelaySwitchJudge<E extends VehicleNotice> {
 
     //region 其他属性
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractVehicleDelaySwitchJudge.class);
+
+    /**
+     * 通知类的class
+     */
+    private Class<E> noticeClass;
 
     //endregion
 
@@ -43,19 +46,14 @@ public abstract class AbstractVehicleDelaySwitchJudge {
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
-    private static final Type TREE_MAP_STRING_STRING_TYPE = new TypeToken<TreeMap<String, String>>() {
-    }.getType();
-
     /**
      * 默认存储在6库
      */
     private final int redisDb;
 
-    protected static final String NOTICE_STATUS_KEY = "status";
+    private static final String NOTICE_START_STATUS = "1";
 
-    protected static final String NOTICE_START_STATUS = "1";
-
-    protected static final String NOTICE_END_STATUS = "3";
+    private static final String NOTICE_END_STATUS = "3";
 
     //endregion
 
@@ -86,19 +84,14 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     //region 内存缓存
 
     /**
-     * 车辆状态缓存表 <vehicleId, DelaySwitch>
+     * 车辆状态缓存表 <vehicleId, 车辆状态>
      */
-    private final Map<String, MultiDelaySwitch<State>> vehicleStatus = Maps.newHashMap();
+    private final Map<String, MultiDelaySwitch<NoticeState>> vehicleStatus = Maps.newHashMap();
 
     /**
-     * 车辆首帧通知缓存表 <vehicleId, partNotice>
+     * 车辆开始通知缓存表 <vehicleId, 车辆通知>
      */
-    private final Map<String, ImmutableMap<String, String>> vehicleFirstFrameNoticeCache = Maps.newHashMap();
-
-    /**
-     * 车辆开始通知缓存表 <vehicleId, partNotice>
-     */
-    private final Map<String, Map<String, String>> vehicleBeginNoticeCache = Maps.newHashMap();
+    private final Map<String, E> vehicleNoticeCache = Maps.newHashMap();
 
     //endregion
 
@@ -150,18 +143,18 @@ public abstract class AbstractVehicleDelaySwitchJudge {
         init(beginTriggerContinueCount, beginTriggerTimeoutMillisecond, endTriggerContinueCount, endTriggerTimeoutMillisecond);
         vehicleStatus.forEach((vehicleId, delaySwitch) -> {
             delaySwitch
-                .setThresholdTimes(State.BEGIN, this.beginTriggerContinueCount)
-                .setTimeoutMillisecond(State.BEGIN, this.beginTriggerTimeoutMillisecond)
-                .setThresholdTimes(State.END, this.endTriggerContinueCount)
-                .setTimeoutMillisecond(State.END, this.endTriggerTimeoutMillisecond);
+                .setThresholdTimes(NoticeState.BEGIN, this.beginTriggerContinueCount)
+                .setTimeoutMillisecond(NoticeState.BEGIN, this.beginTriggerTimeoutMillisecond)
+                .setThresholdTimes(NoticeState.END, this.endTriggerContinueCount)
+                .setTimeoutMillisecond(NoticeState.END, this.endTriggerTimeoutMillisecond);
         });
     }
 
     @NotNull
-    public State getState(@NotNull final String vehicleId) {
+    public NoticeState getState(@NotNull final String vehicleId) {
         return ObjectExtension.defaultIfNull(
             ensureVehicleStatus(vehicleId).getSwitchStatus(),
-            State.UNKNOWN
+            NoticeState.UNKNOWN
         );
     }
     //endregion
@@ -226,7 +219,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     /**
      * 处理车辆实时数据
      *
-     * @param data                车辆实时数据
+     * @param data 车辆实时数据
      * @return
      */
     @Nullable
@@ -280,15 +273,15 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @return
      */
     @NotNull
-    private MultiDelaySwitch<State> ensureVehicleStatus(@NotNull final String vehicleId) {
+    private MultiDelaySwitch<NoticeState> ensureVehicleStatus(@NotNull final String vehicleId) {
         return vehicleStatus.computeIfAbsent(
             vehicleId,
             k -> {
-                final ImmutableMap<String, String> startNotice = readRedisVehicleNotice(vehicleId);
-                if (!startNotice.isEmpty()) {
-                    final String status = startNotice.get(NOTICE_STATUS_KEY);
+                final E startNotice = readRedisVehicleNotice(vehicleId);
+                if (startNotice != null) {
+                    final String status = startNotice.getStatus();
                     if (NOTICE_START_STATUS.equals(status)) {
-                        return buildDelaySwitch().setSwitchStatus(State.BEGIN);
+                        return buildDelaySwitch().setSwitchStatus(NoticeState.BEGIN);
                     } else if (NOTICE_END_STATUS.equals(status)) {
                         LOG.warn("VID:{} REDIS DB:{} KEY:{} 中已结束的报警通知 {}", vehicleId, redisDb, buildRedisKey(), JSON_UTILS.toJson(startNotice));
                         removeRedisNotice(vehicleId);
@@ -297,7 +290,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
                         removeRedisNotice(vehicleId);
                     }
                 }
-                return buildDelaySwitch().setSwitchStatus(State.END);
+                return buildDelaySwitch().setSwitchStatus(NoticeState.END);
             }
         );
     }
@@ -309,12 +302,12 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      */
     @NotNull
     @Contract(" -> new")
-    private MultiDelaySwitch<State> buildDelaySwitch() {
-        return new MultiDelaySwitch<State>()
-            .setThresholdTimes(State.BEGIN, this.beginTriggerContinueCount)
-            .setTimeoutMillisecond(State.BEGIN, this.beginTriggerTimeoutMillisecond)
-            .setThresholdTimes(State.END, this.endTriggerContinueCount)
-            .setTimeoutMillisecond(State.END, this.endTriggerTimeoutMillisecond);
+    private MultiDelaySwitch<NoticeState> buildDelaySwitch() {
+        return new MultiDelaySwitch<NoticeState>()
+            .setThresholdTimes(NoticeState.BEGIN, this.beginTriggerContinueCount)
+            .setTimeoutMillisecond(NoticeState.BEGIN, this.beginTriggerTimeoutMillisecond)
+            .setThresholdTimes(NoticeState.END, this.endTriggerContinueCount)
+            .setTimeoutMillisecond(NoticeState.END, this.endTriggerTimeoutMillisecond);
     }
 
     /**
@@ -330,15 +323,15 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     }
 
     /**
-     * 缓存开始通知
+     * 缓存车辆通知
      * 将通知缓存在内存和redis
      *
      * @param vehicleId 车辆ID
      */
-    private String cacheBeginNotice(@NotNull final String vehicleId, @NotNull Map<String, String> startNotice) {
-        //将开始通知写入内存
-        vehicleBeginNoticeCache.put(vehicleId, startNotice);
-        //将开始通知写入REDIS
+    private String cacheVehicleNotice(@NotNull final String vehicleId, @NotNull E startNotice) {
+        //将车辆通知写入内存
+        vehicleNoticeCache.put(vehicleId, startNotice);
+        //将车辆通知写入REDIS
         final String json = JSON_UTILS.toJson(startNotice);
         JEDIS_POOL_UTILS.useResource(jedis -> {
             jedis.select(redisDb);
@@ -348,15 +341,15 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     }
 
     /**
-     * 查询开始通知
-     * 内存中没有开始通知，则从redis查找
+     * 查询车辆通知
+     * 内存中没有车辆通知，则从redis查找
      *
      * @param vehicleId 车辆ID
      */
-    private Map<String, String> queryBeginNotice(@NotNull final String vehicleId) {
-        if (vehicleBeginNoticeCache.containsKey(vehicleId)) {
-            //返回内存中的开始通知
-            return vehicleBeginNoticeCache.get(vehicleId);
+    private E queryBeginNotice(@NotNull final String vehicleId) {
+        if (vehicleNoticeCache.containsKey(vehicleId)) {
+            //返回内存中的车辆通知
+            return vehicleNoticeCache.get(vehicleId);
         }
         //从redis读取
         return readRedisVehicleNotice(vehicleId);
@@ -368,43 +361,21 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @param vehicleId 车辆ID
      * @return
      */
-    @NotNull
-    private ImmutableMap<String, String> readRedisVehicleNotice(@NotNull final String vehicleId) {
-        ImmutableMap<String, String> result = JEDIS_POOL_UTILS.useResource(jedis -> {
+    private E readRedisVehicleNotice(@NotNull final String vehicleId) {
+        E result = JEDIS_POOL_UTILS.useResource(jedis -> {
             jedis.select(redisDb);
             String noticeKey = buildRedisKey();
             final String json = jedis.hget(noticeKey, vehicleId);
+            if (StringUtils.isEmpty(json)) {
+                return null;
+            }
             if (StringUtils.isNotBlank(json)) {
-                return ImmutableMap.copyOf(
-                    ObjectExtension.defaultIfNull(
-                        JSON_UTILS.fromJson(
-                            json,
-                            TREE_MAP_STRING_STRING_TYPE,
-                            e -> {
-                                LOG.warn("VID:{} REDIS DB:{} KEY:{} 中不是合法json通知 {}", vehicleId, redisDb, noticeKey, json);
-                                return null;
-                            }),
-                        Maps::newTreeMap)
-                );
+                return JSON.parseObject(json, getNoticeClass());
             } else {
-                return ImmutableMap.of();
+                return null;
             }
         });
         return result;
-    }
-
-    /**
-     * 读取内存中的首帧通知缓存
-     *
-     * @param vehicleId 车辆ID
-     * @return
-     */
-    @NotNull
-    private ImmutableMap<String, String> readFirstFrameNoticeCache(@NotNull final String vehicleId) {
-        return ObjectExtension.defaultIfNull(
-            vehicleFirstFrameNoticeCache.get(vehicleId),
-            ImmutableMap::of
-        );
     }
 
     /**
@@ -424,27 +395,22 @@ public abstract class AbstractVehicleDelaySwitchJudge {
         final String platformReceiverTimeString) {
 
         return ensureVehicleStatus(vehicleId).increase(
-            State.BEGIN,
+            NoticeState.BEGIN,
             platformReceiverTime,
             state -> {
                 //初始化开始通知
-                ImmutableMap<String, String> notice = initBeginNotice(data, vehicleId, platformReceiverTimeString);
-                vehicleFirstFrameNoticeCache.put(vehicleId, notice);
+                E notice = initBeginNotice(data, vehicleId, platformReceiverTimeString);
+                vehicleNoticeCache.put(vehicleId, notice);
             },
             (state, count, timeout) -> {
-                final Map<String, String> notice = Maps.newHashMap(
-                    readFirstFrameNoticeCache(vehicleId)
-                );
                 //构建开始通知
-                Map<String, String> startNotice = buildBeginNotice(data, count, timeout, vehicleId, notice);
-                if (MapUtils.isNotEmpty(startNotice)) {
-                    //写入redis
-                    String json = cacheBeginNotice(vehicleId, startNotice);
-                    //清除首帧通知
-                    vehicleFirstFrameNoticeCache.remove(vehicleId);
-                    return json;
-                }
-                return null;
+                E notice = vehicleNoticeCache.get(vehicleId);
+                //将通知状态设置为 ==> 开始
+                notice.setStatus(NOTICE_START_STATUS);
+                buildBeginNotice(data, count, timeout, vehicleId, notice);
+                //写入redis
+                String json = cacheVehicleNotice(vehicleId, notice);
+                return json;
             }
         );
     }
@@ -466,39 +432,49 @@ public abstract class AbstractVehicleDelaySwitchJudge {
         final String platformReceiverTimeString) {
 
         return ensureVehicleStatus(vehicleId).increase(
-            State.END,
+            NoticeState.END,
             platformReceiverTime,
             state -> {
+                //判断是否有开始通知
+                final E beginNotice = queryBeginNotice(vehicleId);
+                if (beginNotice == null) {
+                    return;
+                }
                 //初始化结束通知
-                ImmutableMap<String, String> notice = initEndNotice(data, vehicleId, platformReceiverTimeString);
-                vehicleFirstFrameNoticeCache.put(vehicleId, notice);
+                initEndNotice(data, vehicleId, platformReceiverTimeString, beginNotice);
+                vehicleNoticeCache.put(vehicleId, beginNotice);
             },
             (state, count, timeout) -> {
-                //读取开始通知
-                final Map<String, String> beginNotice = queryBeginNotice(vehicleId);
-                if (MapUtils.isEmpty(beginNotice)) {
+                //判断是否有开始通知
+                if (!vehicleNoticeCache.containsKey(vehicleId)) {
                     return null;
                 }
-                //读取结束通知首帧缓存
-                final Map<String, String> notice = Maps.newHashMap(beginNotice);
-                notice.putAll(readFirstFrameNoticeCache(vehicleId));
-
+                E cacheNotice = vehicleNoticeCache.get(vehicleId);
+                //将通知状态设置为 ==> 结束
+                cacheNotice.setStatus(NOTICE_END_STATUS);
                 //构建结束通知
-                Map<String, String> endNoticeMap = buildEndNotice(data, count, timeout, vehicleId, notice);
-                if (MapUtils.isNotEmpty(endNoticeMap)) {
-                    final String json = JSON_UTILS.toJson(endNoticeMap);
-                    //清除redis中的车辆通知
-                    removeRedisNotice(vehicleId);
-                    //清除内存中的车辆通知
-                    vehicleFirstFrameNoticeCache.remove(vehicleId);
-                    vehicleBeginNoticeCache.remove(vehicleId);
-                    return json;
-                }
-                return null;
+                buildEndNotice(data, count, timeout, vehicleId, cacheNotice);
+                //清除redis中的车辆通知
+                removeRedisNotice(vehicleId);
+                //清除内存中的车辆通知
+                vehicleNoticeCache.remove(vehicleId);
+
+                return JSON_UTILS.toJson(cacheNotice);
             }
         );
     }
 
+    /**
+     * 获取Notice的class
+     *
+     * @return
+     */
+    private synchronized Class<E> getNoticeClass() {
+        if (noticeClass == null) {
+            noticeClass = (Class<E>) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+        }
+        return noticeClass;
+    }
     //endregion
 
     //region 需要子类实现的部分
@@ -536,7 +512,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @param data
      * @return
      */
-    protected abstract State parseState(ImmutableMap<String, String> data);
+    protected abstract NoticeState parseState(ImmutableMap<String, String> data);
 
     /**
      * 初始化开始通知
@@ -547,7 +523,7 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @return
      */
     @NotNull
-    protected abstract ImmutableMap<String, String> initBeginNotice(
+    protected abstract E initBeginNotice(
         @NotNull ImmutableMap<String, String> data,
         @NotNull final String vehicleId,
         @NotNull final String platformReceiverTimeString);
@@ -559,14 +535,14 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @param count     达到指定帧数
      * @param timeout   指定时间内
      * @param vehicleId 车辆VID
-     * @param notice    车辆开始通知首帧初始化里面的值
-     * @return
+     * @param notice    车辆通知
      */
-    protected abstract Map<String, String> buildBeginNotice(
+    protected abstract void buildBeginNotice(
         @NotNull final ImmutableMap<String, String> data,
-        int count, long timeout,
-        @NotNull String vehicleId,
-        Map<String, String> notice);
+        final int count,
+        final long timeout,
+        @NotNull final String vehicleId,
+        @NotNull final E notice);
 
     //region 结束通知不强制实现，根据需要重写这两个方法
 
@@ -576,16 +552,15 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @param data                       车辆实时数据
      * @param vehicleId                  车辆ID
      * @param platformReceiverTimeString 平台接收时间
-     * @return
+     * @param notice                     车辆通知
      */
-    @NotNull
-    protected ImmutableMap<String, String> initEndNotice(
+    protected void initEndNotice(
         @NotNull ImmutableMap<String, String> data,
         @NotNull final String vehicleId,
-        @NotNull final String platformReceiverTimeString) {
+        @NotNull final String platformReceiverTimeString,
+        @NotNull final E notice) {
 
         //nothing to do.
-        return ImmutableMap.of();
     }
 
     /**
@@ -595,17 +570,16 @@ public abstract class AbstractVehicleDelaySwitchJudge {
      * @param count     达到指定帧数
      * @param timeout   指定时间内
      * @param vehicleId 车辆VID
-     * @param notice    车辆开始通知，包含结束通知首帧初始化里面的值
+     * @param notice    车辆通知
      * @return
      */
-    protected Map<String, String> buildEndNotice(
+    protected void buildEndNotice(
         @NotNull final ImmutableMap<String, String> data,
-        int count,
-        long timeout,
+        final int count,
+        final long timeout,
         @NotNull String vehicleId,
-        Map<String, String> notice) {
+        @NotNull final E notice) {
         //nothing to do.
-        return ImmutableMap.of();
     }
     //endregion
 
@@ -619,27 +593,4 @@ public abstract class AbstractVehicleDelaySwitchJudge {
     }
 
     //endregion
-
-    protected enum State {
-
-        /**
-         * 未知
-         */
-        UNKNOWN,
-
-        /**
-         * 开始
-         */
-        BEGIN,
-
-        /**
-         * 持续
-         */
-        CONTINUE,
-
-        /**
-         * 结束
-         */
-        END,
-    }
 }

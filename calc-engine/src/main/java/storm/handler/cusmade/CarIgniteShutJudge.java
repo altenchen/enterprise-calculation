@@ -1,13 +1,12 @@
 package storm.handler.cusmade;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.dto.notice.IgniteShutNotice;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.ConfigUtils;
@@ -22,7 +21,7 @@ import java.util.UUID;
  *
  * @author 智杰
  */
-public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
+public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge<IgniteShutNotice> {
 
     private static final Logger LOG = LoggerFactory.getLogger(CarIgniteShutJudge.class);
 
@@ -86,7 +85,7 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
                 String speedString = data.get(DataKey._2201_SPEED);
                 final double speed = NumberUtils.toDouble(speedString, 0d);
                 if (null != cacheSpeed && cacheSpeed > speed) {
-                    return  cacheSpeed;
+                    return cacheSpeed;
                 }
                 return speed;
             }
@@ -117,84 +116,88 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge {
     private static final String CAR_STATUS_FLAMEOUT = "2";
 
     @Override
-    protected State parseState(final ImmutableMap<String, String> data) {
+    protected NoticeState parseState(final ImmutableMap<String, String> data) {
         final String carStatus = data.get(DataKey._3201_CAR_STATUS);
         switch (carStatus) {
             case CAR_STATUS_IGNITE:
-                return State.BEGIN;
+                return NoticeState.BEGIN;
             case CAR_STATUS_FLAMEOUT:
-                return State.END;
+                return NoticeState.END;
             default:
-                return State.UNKNOWN;
+                return NoticeState.UNKNOWN;
         }
     }
 
+    @NotNull
     @Override
-    protected @NotNull ImmutableMap<String, String> initBeginNotice(
+    protected IgniteShutNotice initBeginNotice(
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final String vehicleId,
         @NotNull final String platformReceiverTimeString) {
 
         LOG.debug("VID:{} 车辆点火首帧缓存初始化", vehicleId);
         String vin = data.get(DataKey.VEHICLE_NUMBER);
-        if(getState(vehicleId) != State.BEGIN) {
+        if (getState(vehicleId) != NoticeState.BEGIN) {
             String speedString = data.get(DataKey._2201_SPEED);
             final double speed = NumberUtils.toDouble(speedString, 0d);
             igniteShutMaxSpeed.put(vehicleId, speed);
         }
-        return new ImmutableMap.Builder<String, String>()
-            .put("msgType", NoticeType.IGNITE_SHUT_MESSAGE)
-            .put("vid", vehicleId)
-            .put("vin", vin)
-            .put("msgId", UUID.randomUUID().toString())
-            .build();
+
+        IgniteShutNotice notice = new IgniteShutNotice();
+        notice.setVid(vehicleId);
+        notice.setVin(vin);
+        notice.setMsgId(UUID.randomUUID().toString());
+        notice.setMsgType(NoticeType.IGNITE_SHUT_MESSAGE);
+
+        return notice;
     }
 
     @Override
-    protected Map<String, String> buildBeginNotice(
+    protected void buildBeginNotice(
         @NotNull final ImmutableMap<String, String> data,
         final int count,
         final long timeout,
         @NotNull final String vehicleId,
-        Map<String, String> notice) {
+        @NotNull final IgniteShutNotice notice) {
 
+        LOG.debug("VID:{} 车辆点火通知发送 MSGID:{}", vehicleId, notice.getMsgId());
         final String socString = lastSoc.getOrDefault(vehicleId, 0d).toString();
-        String time = data.get(DataKey.TIME);
-        notice.put("stime", time);
-        notice.put("soc", socString);
-        notice.put("ssoc", socString);
-        notice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
-        notice.put(NOTICE_STATUS_KEY, NOTICE_START_STATUS);
-        notice.put("location", DataUtils.buildLocation(data));
-        notice.put("noticetime", DataUtils.buildFormatTime());
-        LOG.debug("VID:{} 车辆点火通知发送 MSGID:{}", vehicleId, notice.get("msgId"));
-        return notice;
+        final String noticeTime = DataUtils.buildFormatTime();
+
+        notice.setStime(data.get(DataKey.TIME));
+        notice.setSoc(socString);
+        notice.setSsoc(socString);
+        notice.setMileage(lastMile.getOrDefault(vehicleId, 0d) + "");
+        notice.setLocation(DataUtils.buildLocation(data));
+        //兼容以前的noticetime， 后期删除掉
+        notice.setNoticetime(noticeTime);
+        notice.setNoticeTime(noticeTime);
     }
 
     @Override
-    protected Map<String, String> buildEndNotice(
+    protected void buildEndNotice(
         @NotNull final ImmutableMap<String, String> data,
-        int count,
-        long timeout,
+        final int count,
+        final long timeout,
         @NotNull final String vehicleId,
-        final Map<String, String> notice) {
+        @NotNull final IgniteShutNotice notice) {
 
         LOG.trace("VID:{} 车辆熄火通知发送", vehicleId);
         double soc = lastSoc.getOrDefault(vehicleId, 0d);
-        notice.put("soc", soc + "");
-        notice.put("mileage", lastMile.getOrDefault(vehicleId, 0d) + "");
-        notice.put("maxSpeed", igniteShutMaxSpeed.getOrDefault(vehicleId, 0d) + "");
+        final String noticeTime = DataUtils.buildFormatTime();
 
-        double ssoc = NumberUtils.toDouble(notice.get("ssoc"));
+        notice.setSoc(soc + "");
+        notice.setMileage(lastMile.getOrDefault(vehicleId, 0d).toString());
+        notice.setMaxSpeed(igniteShutMaxSpeed.getOrDefault(vehicleId, 0d).toString());
+
+        double ssoc = NumberUtils.toDouble(notice.getSsoc());
         double energy = Math.abs(ssoc - soc);
-        notice.put("energy", energy + "");
+        notice.setEnergy(energy + "");
 
-        notice.put(NOTICE_STATUS_KEY, NOTICE_END_STATUS);
-        notice.put("location", DataUtils.buildLocation(data));
-
-        String time = data.get(DataKey.TIME);
-        notice.put("etime", time);
-        notice.put("noticetime", DataUtils.buildFormatTime());
-        return notice;
+        notice.setLocation(DataUtils.buildLocation(data));
+        notice.setEtime(data.get(DataKey.TIME));
+        //兼容以前的noticetime， 后期删除掉
+        notice.setNoticetime(noticeTime);
+        notice.setNoticeTime(noticeTime);
     }
 }

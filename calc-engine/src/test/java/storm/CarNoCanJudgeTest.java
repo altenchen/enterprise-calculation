@@ -1,5 +1,6 @@
 package storm;
 
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.gson.reflect.TypeToken;
@@ -11,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
 import storm.constant.FormatConstant;
+import storm.dto.notice.NoCanNotice;
 import storm.extension.ObjectExtension;
 import storm.handler.cusmade.CarNoCanJudge;
 import storm.system.DataKey;
@@ -60,6 +62,13 @@ final class CarNoCanJudgeTest {
     @BeforeAll
     private static void beforeAll() {
         // 所有测试之前
+
+    }
+
+    @SuppressWarnings("unused")
+    @BeforeEach
+    private void beforeEach() {
+        // 每个测试之前
         JEDIS_POOL_UTILS.useResource(jedis -> {
 
             jedis.select(REDIS_DB_INDEX);
@@ -80,12 +89,6 @@ final class CarNoCanJudgeTest {
         ConfigUtils.getSysDefine().setNoticeCanFaultTriggerTimeoutMillisecond(0);
         ConfigUtils.getSysDefine().setNoticeCanNormalTriggerContinueCount(3);
         ConfigUtils.getSysDefine().setNoticeCanNormalTriggerTimeoutMillisecond(0);
-    }
-
-    @SuppressWarnings("unused")
-    @BeforeEach
-    private void beforeEach() {
-        // 每个测试之前
     }
 
     @DisplayName("吉利故障测试")
@@ -132,24 +135,15 @@ final class CarNoCanJudgeTest {
         LOG.info("notice : {}", processFrame6);
 
         // 故障告警状态检查
-        ImmutableMap<String, String> processFrame6Map = convertJson(processFrame6);
+        NoCanNotice processFrame6Notice = JSON.parseObject(processFrame6, NoCanNotice.class);
         Assertions.assertEquals(
             "1",
-            ObjectUtils.toString(processFrame6Map.get("status")),
+            processFrame6Notice.getStatus(),
             "没有从缓存获取到正确的时间");
         // 取连续故障帧的首帧值
-        Assertions.assertEquals(formatTime4, processFrame6Map.get("stime"), "没有从缓存获取到正确的时间");
+        Assertions.assertEquals(formatTime4, processFrame6Notice.getStime(), "没有从缓存获取到正确的时间");
         // 从缓存获取累计里程
-        Assertions.assertEquals(usefulTotalMileage, processFrame6Map.get("smileage"), "没有从缓存获取到正确的累计里程");
-        JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(REDIS_DB_INDEX);
-            final String json = jedis.hget(REDIS_KEY, NoticeType.NO_CAN_VEH);
-            final Map<String, Object> notice = GSON_UTILS.fromJson(
-                json,
-                new TypeToken<TreeMap<String, Object>>() {
-                }.getType());
-            Assertions.assertEquals(processFrame6Map, notice, "缓存中的故障通知与内存中的不一致");
-        });
+        Assertions.assertEquals(usefulTotalMileage, processFrame6Notice.getSmileage(), "没有从缓存获取到正确的累计里程");
 
         // endregion 连续帧取首帧的数据作为通知数据, 残缺的数据从缓存中取最后有效值.
 
@@ -243,15 +237,15 @@ final class CarNoCanJudgeTest {
         LOG.info("notice : {}", processFrame6);
 
         // 故障告警状态检查
-        ImmutableMap<String, String> processFrame6Map = convertJson(processFrame6);
+        NoCanNotice processFrame6Notice = JSON.parseObject(processFrame6, NoCanNotice.class);
         Assertions.assertEquals(
             "3",
-            ObjectUtils.toString(processFrame6Map.get("status")),
+            ObjectUtils.toString(processFrame6Notice.getStatus()),
             "没有从缓存获取到正确的时间");
         // 取连续故障帧的首帧值
-        Assertions.assertEquals(formatTime4, processFrame6Map.get("etime"), "没有从缓存获取到正确的时间");
+        Assertions.assertEquals(formatTime4, processFrame6Notice.getEtime(), "没有从缓存获取到正确的时间");
         // 从缓存获取累计里程
-        Assertions.assertEquals(usefulTotalMileage, processFrame6Map.get("emileage"), "没有从缓存获取到正确的累计里程");
+        Assertions.assertEquals(usefulTotalMileage, processFrame6Notice.getEmileage(), "没有从缓存获取到正确的累计里程");
         JEDIS_POOL_UTILS.useResource(jedis -> {
             jedis.select(REDIS_DB_INDEX);
             final String json = jedis.hget(REDIS_KEY, NoticeType.NO_CAN_VEH);
