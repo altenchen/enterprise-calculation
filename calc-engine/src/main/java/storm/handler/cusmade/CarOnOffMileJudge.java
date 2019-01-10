@@ -20,6 +20,7 @@ import storm.protocol.SUBMIT_LOGIN;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.system.ProtocolItem;
+import storm.util.DataUtils;
 import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
 
@@ -71,9 +72,6 @@ public class CarOnOffMileJudge {
             return null;
         }
 
-        final long currentTimeMillis = System.currentTimeMillis();
-        final String nowTime = DateFormatUtils.format(currentTimeMillis, FormatConstant.DATE_FORMAT);
-
         try {
             String nowMileage = realTimeData.get(DataKey._2202_TOTAL_MILEAGE);
             nowMileage = NumberUtils.isNumber(nowMileage) ? nowMileage : MILEAGE_DEFAULT;
@@ -109,21 +107,22 @@ public class CarOnOffMileJudge {
             }
             //车辆在线  并且  缓存了上下线里程开始通知
             if (!isOffLine && !isEmptyOnOffMileNoticeCache) {
-                Map<String, String> notice = vidOnOffMileNotice.get(vid);
-                if (null != notice) {
-                    notice.put("etime", time);
-                    notice.put("emileage", nowMileage);
-                    notice.put("noticetime", nowTime);
 
-                    onOffMileNotice = JSON_UTILS.toJson(notice);
-                    vidOnOffMileNotice.remove(vid);
-                    deleteOnOffMileNotice(vid);
-                    return onOffMileNotice;
-                }
+                final long currentTimeMillis = System.currentTimeMillis();
+                final String nowTime = DataUtils.buildFormatTime(currentTimeMillis);
+
+                Map<String, String> notice = vidOnOffMileNotice.get(vid);
+                notice.put("etime", time);
+                notice.put("emileage", nowMileage);
+                notice.put("noticetime", nowTime);
+                onOffMileNotice = JSON_UTILS.toJson(notice);
+
+                vidOnOffMileNotice.remove(vid);
+                deleteOnOffMileNotice(vid);
+                return onOffMileNotice;
             }
         } catch (Exception e) {
-            LOG.error("VID:{},上下线里程通知判断发生异常，异常信息如下：{}", realTimeData.get(DataKey.VEHICLE_ID), e);
-            e.printStackTrace();
+            LOG.error("VID:" + realTimeData.get(DataKey.VEHICLE_ID) + ",上下线里程通知判断发生异常，异常信息如下：{}", e);
         }
         return null;
     }
@@ -194,38 +193,43 @@ public class CarOnOffMileJudge {
     private boolean isOffLineByRealTimeData(Map<String, String> realTimeData) {
         final String msgType = realTimeData.get(DataKey.MESSAGE_TYPE);
 
-        //1、登入登出报文，根据平台登入注册类型和登入登出流水号判断。
-        if (CommandType.SUBMIT_LOGIN.equals(msgType)) {
+        switch (msgType){
 
-            final String logoutSeq = realTimeData.get(SUBMIT_LOGIN.LOGOUT_SEQ);
-            final String loginSeq = realTimeData.get(SUBMIT_LOGIN.LOGIN_SEQ);
-            final String regType = realTimeData.get(ProtocolItem.REG_TYPE);
+             //1、登入登出报文，根据平台登入注册类型和登入登出流水号判断。
+            case CommandType.SUBMIT_LOGIN:
+                final String logoutSeq = realTimeData.get(SUBMIT_LOGIN.LOGOUT_SEQ);
+                final String loginSeq = realTimeData.get(SUBMIT_LOGIN.LOGIN_SEQ);
+                final String regType = realTimeData.get(ProtocolItem.REG_TYPE);
 
-            //1.1、先根据自带的TYPE字段进行判断。
-            // 平台注册通知类型 0:从未上过线，1:车机终端上线 ，2:车机离线，3:平台上线，4:平台下线
-            if ("2".equals(regType)) {
-                LOG.info("vid:{} 根据登入报文中的Type字段判定为车辆离线！", realTimeData.get(DataKey.VEHICLE_ID));
-                return true;
-            }
-
-            //1.2、如果自带的type字段没数据，则根据登入登出流水号判断。
-            if (!StringUtils.isEmpty(logoutSeq) && !StringUtils.isEmpty(logoutSeq)) {
-                int logout = Integer.parseInt(NumberUtils.isNumber(logoutSeq) ? logoutSeq : "0");
-                int login = Integer.parseInt(NumberUtils.isNumber(loginSeq) ? loginSeq : "0");
-                if (logout > login) {
-                    LOG.info("vid:{} 根据登入报文中的登入登出流水号判定为车辆离线！", realTimeData.get(DataKey.VEHICLE_ID));
+                //1.1、先根据自带的TYPE字段进行判断。
+                // 平台注册通知类型 0:从未上过线，1:车机终端上线 ，2:车机离线，3:平台上线，4:平台下线
+                if ("2".equals(regType)) {
+                    LOG.info("vid:{} 根据登入报文中的Type字段判定为车辆离线！", realTimeData.get(DataKey.VEHICLE_ID));
                     return true;
                 }
-            }
-        }
 
-        //2、如果是链接状态报文，则根据连接状态字段进行判断，1上线，2心跳，3离线
-        if (CommandType.SUBMIT_LINKSTATUS.equals(msgType)) {
-            final String linkType = realTimeData.get(SUBMIT_LINKSTATUS.LINK_TYPE);
-            if ("3".equals(linkType)) {
-                LOG.info("vid:{} 根据链接状态报文中的连接状态字段判定为车辆离线！", realTimeData.get(DataKey.VEHICLE_ID));
-                return true;
-            }
+                //1.2、如果自带的type字段没数据，则根据登入登出流水号判断。
+                if (!StringUtils.isEmpty(logoutSeq) && !StringUtils.isEmpty(logoutSeq)) {
+                    int logout = Integer.parseInt(NumberUtils.isNumber(logoutSeq) ? logoutSeq : "0");
+                    int login = Integer.parseInt(NumberUtils.isNumber(loginSeq) ? loginSeq : "0");
+                    if (logout > login) {
+                        LOG.info("vid:{} 根据登入报文中的登入登出流水号判定为车辆离线！", realTimeData.get(DataKey.VEHICLE_ID));
+                        return true;
+                    }
+                }
+                break;
+
+            //2、如果是链接状态报文，则根据连接状态字段进行判断，1上线，2心跳，3离线
+            case CommandType.SUBMIT_LINKSTATUS:
+                final String linkType = realTimeData.get(SUBMIT_LINKSTATUS.LINK_TYPE);
+                if ("3".equals(linkType)) {
+                    LOG.info("vid:{} 根据链接状态报文中的连接状态字段判定为车辆离线！", realTimeData.get(DataKey.VEHICLE_ID));
+                    return true;
+                }
+                break;
+
+             default:
+                 break;
         }
         return false;
     }
