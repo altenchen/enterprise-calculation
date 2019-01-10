@@ -44,7 +44,7 @@ public abstract class AbstractVehicleDelaySwitchJudge<E extends VehicleNotice> {
 
     //region redis操作相关属性
 
-    protected static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
+    private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 

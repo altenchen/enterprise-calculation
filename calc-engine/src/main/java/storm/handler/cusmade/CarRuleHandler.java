@@ -151,7 +151,7 @@ public class CarRuleHandler implements InfoNotice {
             // 点火熄火
             final String igniteNoticeJson = CAR_IGNITE_SHUT_JUDGE.processFrame(data);
             if (StringUtils.isNotBlank(igniteNoticeJson)) {
-                builder.add(JSON_UTILS.toJson(igniteNoticeJson));
+                builder.add(igniteNoticeJson);
             }
         }
         if (1 == ConfigUtils.getSysDefine().getSysGpsRule()) {
