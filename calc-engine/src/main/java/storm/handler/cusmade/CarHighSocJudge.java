@@ -103,18 +103,20 @@ public class CarHighSocJudge extends AbstractVehicleDelaySwitchJudge<VehicleAlar
     }
 
     @Override
-    protected @NotNull void initEndNotice(
+    protected @NotNull VehicleAlarmNotice initEndNotice(
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final String vehicleId,
-        @NotNull final String platformReceiverTimeString,
-        @NotNull final VehicleAlarmNotice notice) {
+        @NotNull final String platformReceiverTimeString) {
 
         LOG.trace("VID:{} SOC过高结束首帧初始化", vehicleId);
 
+        VehicleAlarmNotice notice = new VehicleAlarmNotice();
         notice.setEtime(platformReceiverTimeString);
         notice.setElocation(DataUtils.buildLocation(data));
         notice.setEthreshold(ConfigUtils.getSysDefine().getNoticeSocHighEndTriggerThreshold() + "");
         notice.setEsoc(data.get(DataKey._7615_STATE_OF_CHARGE));
+
+        return notice;
     }
 
     @Override

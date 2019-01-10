@@ -96,18 +96,20 @@ class CarLowSocJudge extends AbstractVehicleDelaySwitchJudge<LowSocNotice> {
     }
 
     @Override
-    protected @NotNull void initEndNotice(
+    protected @NotNull LowSocNotice initEndNotice(
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final String vehicleId,
-        @NotNull final String platformReceiverTimeString,
-        @NotNull final LowSocNotice notice) {
+        @NotNull final String platformReceiverTimeString) {
 
         LOG.trace("VID:{} SOC过低结束首帧初始化", vehicleId);
 
+        LowSocNotice notice = new LowSocNotice();
         notice.setEtime(platformReceiverTimeString);
         notice.setElocation(DataUtils.buildLocation(data));
         notice.setEthreshold(ConfigUtils.getSysDefine().getNoticeSocLowEndTriggerThreshold() + "");
         notice.setEsoc(data.get(DataKey._7615_STATE_OF_CHARGE));
+
+        return notice;
     }
 
     @Override

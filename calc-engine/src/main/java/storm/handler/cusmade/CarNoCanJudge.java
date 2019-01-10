@@ -118,17 +118,19 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge<NoCanNo
     }
 
     @Override
-    protected void initEndNotice(
+    protected NoCanNotice initEndNotice(
         @NotNull final ImmutableMap<String, String> data,
         @NotNull final String vehicleId,
-        @NotNull final String platformReceiverTimeString,
-        @NotNull final NoCanNotice notice) {
+        @NotNull final String platformReceiverTimeString) {
 
         LOG.trace("VID:{} 无CAN结束通知初始化", vehicleId);
 
+        NoCanNotice notice = new NoCanNotice();
         notice.setEtime(data.get(DataKey.TIME));
         notice.setEmileage(getTotalMileageString(vehicleId, data));
         notice.setElocation(DataUtils.buildLocation(data));
+
+        return notice;
     }
 
     @Override
