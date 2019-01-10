@@ -43,6 +43,11 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge<IgniteSh
      */
     private Map<String, Double> lastMile = new HashMap<>();
 
+    /**
+     * 车辆点火熄火最大车速redis key
+     */
+    private static final String MAX_SPEED_REDIS_KEY = "vehCache.qy.ignite.shut.max.speed";
+
     public CarIgniteShutJudge() {
         super(ConfigUtils.getSysDefine().getNoticeIgniteTriggerContinueCount(),
             ConfigUtils.getSysDefine().getNoticeIgniteTriggerTimeoutMillisecond(),
@@ -79,6 +84,12 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge<IgniteSh
         @NotNull final String vehicleId,
         final @NotNull ImmutableMap<String, String> data) {
 
+        //如果当前内存中没有最大车速记录，则从redis恢复
+        if( !igniteShutMaxSpeed.containsKey(vehicleId) ){
+            String redisSpeed = readRedisCache(MAX_SPEED_REDIS_KEY, vehicleId);
+            igniteShutMaxSpeed.put(vehicleId, NumberUtils.toDouble(redisSpeed, 0d));
+        }
+
         igniteShutMaxSpeed.compute(
             vehicleId,
             (vid, cacheSpeed) -> {
@@ -87,6 +98,8 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge<IgniteSh
                 if (null != cacheSpeed && cacheSpeed > speed) {
                     return cacheSpeed;
                 }
+                //将最大车速写入redis
+                writeRedisCache(MAX_SPEED_REDIS_KEY, vehicleId, speed + "");
                 return speed;
             }
         );
@@ -141,6 +154,8 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge<IgniteSh
             String speedString = data.get(DataKey._2201_SPEED);
             final double speed = NumberUtils.toDouble(speedString, 0d);
             igniteShutMaxSpeed.put(vehicleId, speed);
+            //将车速写入redis
+            writeRedisCache(MAX_SPEED_REDIS_KEY, vehicleId, speed + "");
         }
 
         IgniteShutNotice notice = new IgniteShutNotice();
@@ -200,4 +215,5 @@ public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge<IgniteSh
         notice.setNoticetime(noticeTime);
         notice.setNoticeTime(noticeTime);
     }
+
 }

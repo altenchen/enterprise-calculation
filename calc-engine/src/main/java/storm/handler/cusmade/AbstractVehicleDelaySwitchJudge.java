@@ -42,7 +42,7 @@ public abstract class AbstractVehicleDelaySwitchJudge<E extends VehicleNotice> {
 
     //region redis操作相关属性
 
-    private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
+    protected static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
 
@@ -197,6 +197,46 @@ public abstract class AbstractVehicleDelaySwitchJudge<E extends VehicleNotice> {
         return endTriggerTimeoutMillisecond;
     }
 
+    /**
+     * 删除redis缓存
+     *
+     * @param redisKey
+     * @param vehicleId
+     */
+    protected void removeRedisCache(String redisKey, String vehicleId) {
+        JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(redisDb);
+            jedis.hdel(redisKey, vehicleId);
+        });
+    }
+
+    /**
+     * 写入redis缓存
+     *
+     * @param redisKey
+     * @param vehicleId
+     * @param vlaue
+     */
+    protected void writeRedisCache(String redisKey, String vehicleId, String vlaue) {
+        JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(redisDb);
+            jedis.hset(redisKey, vehicleId, vlaue);
+        });
+    }
+
+    /**
+     * 读取redis缓存
+     *
+     * @param redisKey
+     * @param vehicleId
+     */
+    protected String readRedisCache(String redisKey, String vehicleId) {
+        return JEDIS_POOL_UTILS.useResource(jedis -> {
+            jedis.select(redisDb);
+            return jedis.hget(redisKey, vehicleId);
+        });
+    }
+
     //endregion
 
     //region 内部处理方法
@@ -316,10 +356,7 @@ public abstract class AbstractVehicleDelaySwitchJudge<E extends VehicleNotice> {
      * @param vehicleId 车辆ID
      */
     private void removeRedisNotice(@NotNull final String vehicleId) {
-        JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(redisDb);
-            jedis.hdel(buildRedisKey(), vehicleId);
-        });
+        removeRedisCache(buildRedisKey(), vehicleId);
     }
 
     /**
@@ -333,10 +370,8 @@ public abstract class AbstractVehicleDelaySwitchJudge<E extends VehicleNotice> {
         vehicleNoticeCache.put(vehicleId, startNotice);
         //将车辆通知写入REDIS
         final String json = JSON_UTILS.toJson(startNotice);
-        JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(redisDb);
-            jedis.hset(buildRedisKey(), vehicleId, json);
-        });
+
+        writeRedisCache(buildRedisKey(), vehicleId, json);
         return json;
     }
 
@@ -362,20 +397,11 @@ public abstract class AbstractVehicleDelaySwitchJudge<E extends VehicleNotice> {
      * @return
      */
     private E readRedisVehicleNotice(@NotNull final String vehicleId) {
-        E result = JEDIS_POOL_UTILS.useResource(jedis -> {
-            jedis.select(redisDb);
-            String noticeKey = buildRedisKey();
-            final String json = jedis.hget(noticeKey, vehicleId);
-            if (StringUtils.isEmpty(json)) {
-                return null;
-            }
-            if (StringUtils.isNotBlank(json)) {
-                return JSON.parseObject(json, getNoticeClass());
-            } else {
-                return null;
-            }
-        });
-        return result;
+        String json = readRedisCache(buildRedisKey(), vehicleId);
+        if (StringUtils.isEmpty(json)) {
+            return null;
+        }
+        return JSON.parseObject(json, getNoticeClass());
     }
 
     /**
