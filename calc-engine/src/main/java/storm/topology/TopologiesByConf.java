@@ -126,10 +126,10 @@ public final class TopologiesByConf {
 
         final Config stormConf = readStormConf();
         stormConf.setDebug(false);
-        stormConf.setMaxSpoutPending(1000);
         stormConf.setNumWorkers(workerAmount);
+        stormConf.put(Config.WORKER_HEAP_MEMORY_MB, workerHeapMemory);
         stormConf.setTopologyWorkerMaxHeapSize(workerHeapMemory);
-        //设置不需要应答
+        stormConf.setMaxSpoutPending(1000);
         stormConf.setNumAckers(0);
 
         return stormConf;
