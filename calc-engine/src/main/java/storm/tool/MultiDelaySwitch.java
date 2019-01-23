@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.util.function.TeConsumer;
+import storm.util.function.TeFunction;
 
 import java.util.Map;
 import java.util.Objects;
@@ -14,10 +15,10 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
+ * @param <S> 开关状态的类型
  * @author: xzp
  * @date: 2018-12-12
  * @description: 多路延迟开关
- * @param <S> 开关状态的类型
  */
 public final class MultiDelaySwitch<S> {
 
@@ -33,6 +34,7 @@ public final class MultiDelaySwitch<S> {
 
     /**
      * 获取连续计数阈值
+     *
      * @param status 状态
      * @return 连续计数阈值, 不存在则返回空.
      */
@@ -46,7 +48,8 @@ public final class MultiDelaySwitch<S> {
 
     /**
      * 设置连续计数阈值
-     * @param status 状态
+     *
+     * @param status         状态
      * @param thresholdTimes 连续计数阈值, 为 null 则删除配置, 否则取绝对值.
      * @return 当前对象自身
      */
@@ -78,6 +81,7 @@ public final class MultiDelaySwitch<S> {
 
     /**
      * 获取连续超时阈值
+     *
      * @param status 状态
      * @return 连续超时阈值
      */
@@ -91,7 +95,8 @@ public final class MultiDelaySwitch<S> {
 
     /**
      * 设置连续超时阈值
-     * @param status 状态
+     *
+     * @param status             状态
      * @param timeoutMillisecond 连续超时阈值, 为 null 则删除配置, 否则取绝对值.
      * @return 当前对象自身
      */
@@ -129,23 +134,49 @@ public final class MultiDelaySwitch<S> {
      */
     private long resetTimeMillisecond = 0;
 
-
     /**
      * 状态增长
-     * @param status 状态
-     * @param timeMillisecond 数据时间
-     * @param resetCallback 重置回调
+     *
+     * @param status           状态
+     * @param timeMillisecond  数据时间
+     * @param resetCallback    重置回调
      * @param overflowCallback 溢出回调
      */
     public void increase(
         @Nullable final S status,
         final long timeMillisecond,
         @NotNull final Consumer<@Nullable S> resetCallback,
-        @NotNull final TeConsumer<@Nullable S, Integer, Long> overflowCallback) {
+        @NotNull final TeConsumer<@Nullable S, @NotNull Integer, @NotNull Long> overflowCallback) {
+        increase(
+            status,
+            timeMillisecond,
+            resetCallback,
+            (overflowStatus, thresholdTimes, timeoutMillisecond) -> {
+                overflowCallback.accept(overflowStatus, thresholdTimes, timeoutMillisecond);
+                return null;
+            }
+        );
+    }
 
-        if(Objects.equals(status, this.switchStatus)) {
+
+    /**
+     * 状态增长
+     *
+     * @param status           状态
+     * @param timeMillisecond  数据时间
+     * @param resetCallback    重置回调
+     * @param overflowCallback 溢出回调
+     */
+    @Nullable
+    public <T> T increase(
+        @Nullable final S status,
+        final long timeMillisecond,
+        @NotNull final Consumer<@Nullable S> resetCallback,
+        @NotNull final TeFunction<@Nullable S, @NotNull Integer, @NotNull Long, @Nullable ? extends T> overflowCallback) {
+
+        if (Objects.equals(status, this.switchStatus)) {
             continueStatus = status;
-            return;
+            return null;
         }
 
         if (!Objects.equals(status, this.continueStatus)) {
@@ -153,21 +184,23 @@ public final class MultiDelaySwitch<S> {
             continueCount = 1;
             resetTimeMillisecond = timeMillisecond;
             resetCallback.accept(status);
-
         }
 
         final Integer thresholdTimes =
             this.thresholdTimes.getOrDefault(status, 1);
-        if(continueCount < thresholdTimes) {
+        if (continueCount < thresholdTimes) {
             continueCount += 1;
         } else {
             final Long timeoutMillisecond =
                 this.timeoutMillisecond.getOrDefault(status, 0L);
             if (timeMillisecond - resetTimeMillisecond >= timeoutMillisecond) {
-                overflowCallback.accept(status, thresholdTimes, timeoutMillisecond);
+                final T result = overflowCallback.apply(status, thresholdTimes, timeoutMillisecond);
                 this.switchStatus = status;
+                return result;
             }
         }
+
+        return null;
     }
 
 

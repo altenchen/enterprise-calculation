@@ -423,6 +423,13 @@
 
         <!-- 测试组件依赖结束 -->
 
+        <!-- 原common包里的beanUtil copyProperties有性能问题, 而且对象复制还不能忽略Null值 -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>4.4.0</version>
+        </dependency>
+
     </dependencies>
 
     <!-- 插件仓库 -->

@@ -1,206 +1,219 @@
 package storm.handler.cusmade;
 
-import org.apache.commons.collections.MapUtils;
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.time.DateFormatUtils;
-import storm.constant.FormatConstant;
+import org.apache.commons.lang.math.NumberUtils;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import storm.dto.notice.IgniteShutNotice;
 import storm.system.DataKey;
 import storm.system.NoticeType;
+import storm.util.ConfigUtils;
+import storm.util.DataUtils;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * 车辆点火熄火通知
  *
  * @author 智杰
  */
-public class CarIgniteShutJudge {
+public class CarIgniteShutJudge extends AbstractVehicleDelaySwitchJudge<IgniteShutNotice> {
 
-    /**
-     * 车辆点火统计
-     * <vid, 计数>
-     */
-    private Map<String, Integer> vidIgnite = new HashMap<>();
-    /**
-     * 车辆熄火统计
-     * <vid, 计数>
-     */
-    private Map<String, Integer> vidShut = new HashMap<>();
+    private static final Logger LOG = LoggerFactory.getLogger(CarIgniteShutJudge.class);
+
     /**
      * 车辆点火至熄火这段期间最大车速
      * <vid, speed>
      */
     private Map<String, Double> igniteShutMaxSpeed = new HashMap<>();
+
     /**
-     * 最好一帧soc
+     * 最后一帧soc
      * <vid, soc>
      */
     private Map<String, Double> lastSoc = new HashMap<>();
+
     /**
      * 最后一帧里程
      * <vid, mile>
      */
     private Map<String, Double> lastMile = new HashMap<>();
-    /**
-     * 车辆点火熄火通知
-     * <vid, notice>
-     */
-    private Map<String, Map<String, Object>> vidIgniteShutNotice = new HashMap<>();
 
     /**
-     * IGNITE_SHUT_MESSAGE
-     * 点火熄火
-     *
-     * @param dat
-     * @return
+     * 车辆点火熄火最大车速redis key
      */
-    public Map<String, Object> processFrame(Map<String, String> dat) {
-        if (MapUtils.isEmpty(dat)) {
-            return null;
+    private static final String MAX_SPEED_REDIS_KEY = "vehCache.qy.ignite.shut.max.speed";
+
+    public CarIgniteShutJudge() {
+        super(ConfigUtils.getSysDefine().getNoticeIgniteTriggerContinueCount(),
+            ConfigUtils.getSysDefine().getNoticeIgniteTriggerTimeoutMillisecond(),
+            ConfigUtils.getSysDefine().getNoticeShutTriggerContinueCount(),
+            ConfigUtils.getSysDefine().getNoticeShutTriggerTimeoutMillisecond());
+    }
+
+    @Override
+    protected String buildRedisKey() {
+        return "vehCache.qy.ignite.shut.notice";
+    }
+
+    @Override
+    protected boolean ignore(final ImmutableMap<String, String> data) {
+        String carStatus = data.get(DataKey._3201_CAR_STATUS);
+        return StringUtils.isEmpty(carStatus);
+    }
+
+    @Override
+    protected void beforeProcess(@NotNull final ImmutableMap<String, String> data) {
+        final String vehicleId = data.get(DataKey.VEHICLE_ID);
+
+        // 缓存最后一帧soc
+        cacheLastUsefulSoc(vehicleId, data);
+
+        // 缓存最后一帧里程
+        cacheLastUsefulTotalMileage(vehicleId, data);
+
+        // 缓存车辆最大车速
+        cacheMaxSpeed(vehicleId, data);
+    }
+
+    private void cacheMaxSpeed(
+        @NotNull final String vehicleId,
+        final @NotNull ImmutableMap<String, String> data) {
+
+        //如果当前内存中没有最大车速记录，则从redis恢复
+        if( !igniteShutMaxSpeed.containsKey(vehicleId) ){
+            String redisSpeed = readRedisCache(MAX_SPEED_REDIS_KEY, vehicleId);
+            igniteShutMaxSpeed.put(vehicleId, NumberUtils.toDouble(redisSpeed, 0d));
         }
-        try {
-            String vid = dat.get(DataKey.VEHICLE_ID);
-            String vin = dat.get(DataKey.VEHICLE_NUMBER);
-            String time = dat.get(DataKey.TIME);
-            String carStatus = dat.get(DataKey._3201_CAR_STATUS);
-            if (StringUtils.isEmpty(vid)
-                || StringUtils.isEmpty(time)
-                || StringUtils.isEmpty(carStatus)) {
-                return null;
+
+        igniteShutMaxSpeed.compute(
+            vehicleId,
+            (vid, cacheSpeed) -> {
+                String speedString = data.get(DataKey._2201_SPEED);
+                final double speed = NumberUtils.toDouble(speedString, 0d);
+                if (null != cacheSpeed && cacheSpeed > speed) {
+                    return cacheSpeed;
+                }
+                //将最大车速写入redis
+                writeRedisCache(MAX_SPEED_REDIS_KEY, vehicleId, speed + "");
+                return speed;
             }
+        );
+    }
 
-            String latit = dat.get(DataKey._2503_LATITUDE);
-            String longi = dat.get(DataKey._2502_LONGITUDE);
-            String location = longi + "," + latit;
-            String noticetime = DateFormatUtils.format(new Date(), FormatConstant.DATE_FORMAT);
-            String speed = dat.get(DataKey._2201_SPEED);
-            String socStr = dat.get(DataKey._7615_STATE_OF_CHARGE);
-            String mileageStr = dat.get(DataKey._2202_TOTAL_MILEAGE);
-
-            double soc = -1;
-            if (!StringUtils.isEmpty(socStr)) {
-                soc = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(socStr) ? socStr : "0");
-                if (-1 != soc) {
-
-                    lastSoc.put(vid, soc);
-                }
-            } else {
-                if (lastSoc.containsKey(vid)) {
-                    soc = lastSoc.get(vid);
-                }
+    private void cacheLastUsefulTotalMileage(final String vehicleId, final @NotNull ImmutableMap<String, String> data) {
+        String mileageStr = data.get(DataKey._2202_TOTAL_MILEAGE);
+        if (StringUtils.isNotEmpty(mileageStr)) {
+            double mileage = NumberUtils.toDouble(mileageStr);
+            if (mileage > 0) {
+                lastMile.put(vehicleId, mileage);
             }
-            double mileage = -1;
-            if (!StringUtils.isEmpty(mileageStr)) {
-                mileage = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(mileageStr) ? mileageStr : "0");
-                if (-1 != mileage) {
-
-                    lastMile.put(vid, mileage);
-                }
-            } else {
-                if (lastMile.containsKey(vid)) {
-                    mileage = lastMile.get(vid);
-                }
-            }
-
-            double maxSpd = -1;
-            if ("1".equals(carStatus)
-                || "2".equals(carStatus)) {
-                double spd = -1;
-                if (!igniteShutMaxSpeed.containsKey(vid)) {
-                    igniteShutMaxSpeed.put(vid, maxSpd);
-                }
-                if (!StringUtils.isEmpty(speed)) {
-
-                    maxSpd = igniteShutMaxSpeed.get(vid);
-                    spd = Double.parseDouble(org.apache.commons.lang.math.NumberUtils.isNumber(speed) ? speed : "0");
-                    if (spd > maxSpd) {
-                        maxSpd = spd;
-                        igniteShutMaxSpeed.put(vid, maxSpd);
-                    }
-                }
-
-            }
-            if ("1".equals(carStatus)) {
-                //点火
-                int cnts = 0;
-                if (vidIgnite.containsKey(vid)) {
-                    cnts = vidIgnite.get(vid);
-                }
-                cnts++;
-                vidIgnite.put(vid, cnts);
-                if (vidShut.containsKey(vid)) {
-                    vidShut.remove(vid);
-                }
-                if (cnts >= 2) {
-
-                    Map<String, Object> notice = vidIgniteShutNotice.get(vid);
-                    if (null == notice) {
-                        //生成点火通知
-                        notice = new TreeMap<>();
-                        notice.put("msgType", NoticeType.IGNITE_SHUT_MESSAGE);
-                        notice.put("vid", vid);
-                        notice.put("vin", vin);
-                        notice.put("msgId", UUID.randomUUID().toString());
-                        notice.put("stime", time);
-                        notice.put("soc", soc);
-                        notice.put("ssoc", soc);
-                        notice.put("mileage", mileage);
-                        notice.put("status", 1);
-                        notice.put("location", location);
-                    } else {
-                        double ssoc = (double) notice.get("ssoc");
-                        double energy = Math.abs(ssoc - soc);
-                        notice.put("soc", soc);
-                        notice.put("mileage", mileage);
-                        notice.put("maxSpeed", maxSpd);
-                        notice.put("energy", energy);
-                        notice.put("status", 2);
-                        notice.put("location", location);
-                    }
-                    notice.put("noticetime", noticetime);
-                    vidIgniteShutNotice.put(vid, notice);
-
-                    if (1 == (int) notice.get("status")) {
-                        return notice;
-                    }
-                }
-            } else if ("2".equals(carStatus)) {
-                //熄火
-                if (vidIgnite.containsKey(vid)) {
-                    int cnts = 0;
-                    if (vidShut.containsKey(vid)) {
-                        cnts = vidShut.get(vid);
-                    }
-                    cnts++;
-                    vidShut.put(vid, cnts);
-
-                    if (cnts >= 1) {
-                        Map<String, Object> notice = vidIgniteShutNotice.get(vid);
-                        vidIgnite.remove(vid);
-                        vidIgniteShutNotice.remove(vid);
-
-                        if (null != notice) {
-                            double ssoc = (double) notice.get("ssoc");
-                            double energy = Math.abs(ssoc - soc);
-                            notice.put("soc", soc);
-                            notice.put("mileage", mileage);
-                            notice.put("maxSpeed", maxSpd);
-                            notice.put("energy", energy);
-                            notice.put("status", 3);
-                            notice.put("location", location);
-                            notice.put("etime", time);
-                            notice.put("noticetime", noticetime);
-                            vidShut.remove(vid);
-                            return notice;
-                        }
-                    }
-                }
-                igniteShutMaxSpeed.remove(vid);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
-        return null;
+    }
+
+    private void cacheLastUsefulSoc(final String vehicleId, final @NotNull ImmutableMap<String, String> data) {
+        String socStr = data.get(DataKey._7615_STATE_OF_CHARGE);
+        if (StringUtils.isNotEmpty(socStr)) {
+            double soc = NumberUtils.toDouble(socStr);
+            if (soc > 0) {
+                lastSoc.put(vehicleId, soc);
+            }
+        }
+    }
+
+    private static final String CAR_STATUS_IGNITE = "1";
+    private static final String CAR_STATUS_FLAMEOUT = "2";
+
+    @Override
+    protected NoticeState parseState(final ImmutableMap<String, String> data) {
+        final String carStatus = data.get(DataKey._3201_CAR_STATUS);
+        switch (carStatus) {
+            case CAR_STATUS_IGNITE:
+                return NoticeState.BEGIN;
+            case CAR_STATUS_FLAMEOUT:
+                return NoticeState.END;
+            default:
+                return NoticeState.UNKNOWN;
+        }
+    }
+
+    @NotNull
+    @Override
+    protected IgniteShutNotice initBeginNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        @NotNull final String vehicleId,
+        @NotNull final String platformReceiverTimeString) {
+
+        LOG.debug("VID:{} 车辆点火首帧缓存初始化", vehicleId);
+        String vin = data.get(DataKey.VEHICLE_NUMBER);
+        if (getState(vehicleId) != NoticeState.BEGIN) {
+            String speedString = data.get(DataKey._2201_SPEED);
+            final double speed = NumberUtils.toDouble(speedString, 0d);
+            igniteShutMaxSpeed.put(vehicleId, speed);
+            //将车速写入redis
+            writeRedisCache(MAX_SPEED_REDIS_KEY, vehicleId, speed + "");
+        }
+
+        IgniteShutNotice notice = new IgniteShutNotice();
+        notice.setVid(vehicleId);
+        notice.setVin(vin);
+        notice.setMsgId(UUID.randomUUID().toString());
+        notice.setMsgType(NoticeType.IGNITE_SHUT_MESSAGE);
+
+        return notice;
+    }
+
+    @Override
+    protected void buildBeginNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        final int count,
+        final long timeout,
+        @NotNull final String vehicleId,
+        @NotNull final IgniteShutNotice notice) {
+
+        LOG.debug("VID:{} 车辆点火通知发送 MSGID:{}", vehicleId, notice.getMsgId());
+        final String socString = lastSoc.getOrDefault(vehicleId, 0d).toString();
+        final String noticeTime = DataUtils.buildFormatTime();
+
+        notice.setStime(data.get(DataKey.TIME));
+        notice.setSoc(socString);
+        notice.setSsoc(socString);
+        notice.setMileage(lastMile.getOrDefault(vehicleId, 0d) + "");
+        notice.setLocation(DataUtils.buildLocation(data));
+        //兼容以前的noticetime， 后期删除掉
+        notice.setNoticetime(noticeTime);
+        notice.setNoticeTime(noticeTime);
+    }
+
+    @Override
+    protected void buildEndNotice(
+        @NotNull final ImmutableMap<String, String> data,
+        final int count,
+        final long timeout,
+        @NotNull final String vehicleId,
+        @NotNull final IgniteShutNotice notice) {
+
+        LOG.trace("VID:{} 车辆熄火通知发送", vehicleId);
+        double soc = lastSoc.getOrDefault(vehicleId, 0d);
+        final String noticeTime = DataUtils.buildFormatTime();
+
+        notice.setSoc(soc + "");
+        notice.setMileage(lastMile.getOrDefault(vehicleId, 0d).toString());
+        notice.setMaxSpeed(igniteShutMaxSpeed.getOrDefault(vehicleId, 0d).toString());
+
+        double ssoc = NumberUtils.toDouble(notice.getSsoc());
+        double energy = Math.abs(ssoc - soc);
+        notice.setEnergy(energy + "");
+
+        notice.setLocation(DataUtils.buildLocation(data));
+        notice.setEtime(data.get(DataKey.TIME));
+        //兼容以前的noticetime， 后期删除掉
+        notice.setNoticetime(noticeTime);
+        notice.setNoticeTime(noticeTime);
     }
 
 }

@@ -1,6 +1,7 @@
 package storm.domain.fence.notice;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import storm.domain.fence.area.AreaSide;
 import storm.domain.fence.event.EventStage;
 
@@ -75,6 +76,12 @@ public abstract class BaseNotice {
      */
     @NotNull
     public String noticeTime;
+
+    /**
+     * 附加原因, 可用于描述一些非常规结束流程的原因
+     */
+    @Nullable
+    public String reason;
 
     protected BaseNotice(
         @NotNull final String messageId,

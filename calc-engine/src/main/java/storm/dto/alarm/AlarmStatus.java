@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.extension.ObjectExtension;
 import storm.system.DataKey;
-import storm.tool.DelaySwitch;
+import storm.tool.MultiDelaySwitch;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
 
@@ -34,12 +34,11 @@ public final class AlarmStatus {
 
     public static final String NOTICE_STATUS_END = "3";
 
-    private final DelaySwitch delaySwitch = new DelaySwitch(
-            ConfigUtils.getSysDefine().getAlarmStartTriggerContinueCount(),
-            ConfigUtils.getSysDefine().getAlarmStartTriggerTimeoutMillisecond(),
-            ConfigUtils.getSysDefine().getAlarmStopTriggerContinueCount(),
-            ConfigUtils.getSysDefine().getAlarmStopTriggerTimeoutMillisecond()
-    );
+    private final MultiDelaySwitch<Boolean> delaySwitch = new MultiDelaySwitch<Boolean>()
+        .setThresholdTimes(Boolean.TRUE, ConfigUtils.getSysDefine().getAlarmStartTriggerContinueCount())
+        .setTimeoutMillisecond(Boolean.TRUE, ConfigUtils.getSysDefine().getAlarmStartTriggerTimeoutMillisecond())
+        .setThresholdTimes(Boolean.FALSE, ConfigUtils.getSysDefine().getAlarmStopTriggerContinueCount())
+        .setTimeoutMillisecond(Boolean.FALSE, ConfigUtils.getSysDefine().getAlarmStopTriggerTimeoutMillisecond());
 
     private final String vehicleId;
 
@@ -82,30 +81,36 @@ public final class AlarmStatus {
                 }
             }
 
-            delaySwitch.positiveIncrease(
+            delaySwitch.increase(
+                true,
                 platformReceiveTime,
-                () -> startReset(data),
-                (positiveThreshold, positiveTimeout)-> startOverflow(
-                    positiveThreshold,
-                    positiveTimeout,
-                    ruleId,
-                    level,
-                    data,
-                    rule,
-                    noticeCallback));
+                status -> startReset(data),
+                (status, positiveThreshold, positiveTimeout)-> {
+                    startOverflow(
+                        positiveThreshold,
+                        positiveTimeout,
+                        ruleId,
+                        level,
+                        data,
+                        rule,
+                        noticeCallback);
+                });
         } else {
-            delaySwitch.negativeIncrease(
+            delaySwitch.increase(
+                false,
                 platformReceiveTime,
-                ()->endReset(data),
-                (negativeThreshold, negativeTimeout)-> endOverflow(
-                    negativeThreshold,
-                    negativeTimeout,
-                    ruleId,
-                    level,
-                    data,
-                    rule,
-                    noticeCallback
-                ));
+                status->endReset(data),
+                (status, negativeThreshold, negativeTimeout)-> {
+                    endOverflow(
+                        negativeThreshold,
+                        negativeTimeout,
+                        ruleId,
+                        level,
+                        data,
+                        rule,
+                        noticeCallback
+                    );
+                });
         }
     }
 
@@ -231,7 +236,6 @@ public final class AlarmStatus {
         endNotice.put(DataKey.VEHICLE_ID, vehicleId);
         endNotice.put("ALARM_ID", alarmId);
         endNotice.put(NOTICE_STATUS_KEY, NOTICE_STATUS_END);
-//        endNotice.put("TIME", platformReceiveTimeString);
         endNotice.put("CONST_ID", ruleId);
         endNotice.put("ALARM_LEVEL", String.valueOf(alarmLevel));
         //

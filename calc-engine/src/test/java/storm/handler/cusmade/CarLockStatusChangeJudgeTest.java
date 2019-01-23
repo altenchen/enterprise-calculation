@@ -13,7 +13,6 @@ import storm.constant.FormatConstant;
 import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.system.NoticeType;
-import storm.system.SysDefine;
 
 import java.util.Date;
 import java.util.Map;

@@ -26,7 +26,6 @@ import storm.system.NoticeType;
 import storm.system.ProtocolItem;
 import storm.util.ConfigUtils;
 import storm.util.DataUtils;
-import storm.util.JedisPoolUtils;
 import storm.util.JsonUtils;
 
 import java.text.ParseException;
@@ -49,7 +48,6 @@ public class CarRuleHandler implements InfoNotice {
     private static final Logger LOG = LoggerFactory.getLogger(CarRuleHandler.class);
     private static final JsonUtils JSON_UTILS = JsonUtils.getInstance();
     private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
-    private static final JedisPoolUtils JEDIS_POOL_UTILS = JedisPoolUtils.getInstance();
 
     private final Map<String, Integer> vidGpsFaultCount = new HashMap<>();
     private final Map<String, Integer> vidGpsNormalCount = new HashMap<>();
@@ -64,10 +62,9 @@ public class CarRuleHandler implements InfoNotice {
     private Map<String, Map<String, Object>> vidFlyNotice = new HashMap<>();
     private Map<String, Map<String, Object>> vidOnOffNotice = new HashMap<>();
 
-    private Map<String, Map<String, Object>> vidLastData = new HashMap<>();//vid和最后一帧数据的缓存
     private Map<String, Long> lastTime = new HashMap<>();
 
-    private RedisRecorder recorder;
+    private static RedisRecorder recorder;
     private static final String ON_OFF_REDIS_KEYS = "vehCache.qy.onoff.notice";
 
     private static final int TOPN = 20;
@@ -78,9 +75,7 @@ public class CarRuleHandler implements InfoNotice {
     private static final CarLowSocJudge CAR_LOW_SOC_JUDGE = new CarLowSocJudge();
     private static final CarHighSocJudge CAR_HIGH_SOC_JUDGE = new CarHighSocJudge();
     private static final CarLockStatusChangeJudge CAR_LOCK_STATUS_CHANGE_JUDGE = new CarLockStatusChangeJudge();
-
-
-    private static final CarMileHopJudge carMileHopJudge = new CarMileHopJudge();
+    private static final CarMileHopJudge CAR_MILE_HOP_JUDGE = new CarMileHopJudge();
 
     {
         recorder = new RedisRecorder();
@@ -94,29 +89,27 @@ public class CarRuleHandler implements InfoNotice {
      * @return
      */
     @NotNull
-    public ImmutableList<String> generateNotices(@NotNull final ImmutableMap<String, String> data) {
+    public ImmutableList<String> generateNotices(
+        @NotNull final String vehicleId,
+        @NotNull final ImmutableMap<String, String> data) {
 
         // 存放json格式通知的集合
         final ImmutableList.Builder<String> builder = new ImmutableList.Builder<>();
 
         // 验证data的有效性
-        if (MapUtils.isEmpty(data)
-            || !data.containsKey(DataKey.VEHICLE_ID)
-            || !data.containsKey(DataKey.TIME)) {
+        if (MapUtils.isEmpty(data) || !data.containsKey(DataKey.TIME)) {
             return builder.build();
         }
 
         final Map<String, String> clone = Maps.newHashMap(data);
 
-        final String vid = data.get(DataKey.VEHICLE_ID);
-        if (StringUtils.isEmpty(vid)
-            || StringUtils.isEmpty(data.get(DataKey.TIME))) {
+        if (StringUtils.isEmpty(data.get(DataKey.TIME))) {
             return builder.build();
         }
 
-        lastTime.put(vid, System.currentTimeMillis());
+        lastTime.put(vehicleId, System.currentTimeMillis());
 
-        LOG.trace("VID:" + vid + " 进入车辆规则处理");
+        LOG.trace("VID:" + vehicleId + " 进入车辆规则处理");
 
         // 如果规则启用了，则把data放到相应的处理方法中。将返回结果放到list中，返回。
 
@@ -128,17 +121,15 @@ public class CarRuleHandler implements InfoNotice {
         }
 
         if (ConfigUtils.getSysDefine().isNoticeSocLowEnable()) {
-            final String[] chargeCarsNoticeJson = new String[1];
-            final String socLowNoticeJson = CAR_LOW_SOC_JUDGE.processFrame(
-                data,
-                (final String vehicleId, final Double longitude, final Double latitude) -> {
-                    chargeCarsNoticeJson[0] = getNoticesOfChargeCars(vehicleId, longitude, latitude);
-                });
+            final String socLowNoticeJson = CAR_LOW_SOC_JUDGE.processFrame(data);
             if (StringUtils.isNotBlank(socLowNoticeJson)) {
                 builder.add(socLowNoticeJson);
-            }
-            if (StringUtils.isNotBlank(chargeCarsNoticeJson[0])) {
-                builder.add(chargeCarsNoticeJson);
+                if (NoticeState.BEGIN == CAR_LOW_SOC_JUDGE.getState(vehicleId)) {
+                    final String chargeCarsInfo = generateChargeCarsInfo(vehicleId, data);
+                    if (StringUtils.isNotBlank(chargeCarsInfo)) {
+                        builder.add(chargeCarsInfo);
+                    }
+                }
             }
         }
 
@@ -151,16 +142,16 @@ public class CarRuleHandler implements InfoNotice {
 
         if (1 == ConfigUtils.getSysDefine().getSysCanRule()) {
             // 无CAN车辆
-            final Map<String, Object> canJudge = CAR_NO_CAN_JUDGE.processFrame(clone);
-            if (MapUtils.isNotEmpty(canJudge)) {
-                builder.add(JSON_UTILS.toJson(canJudge));
+            final String canNoticeJson = CAR_NO_CAN_JUDGE.processFrame(data);
+            if (StringUtils.isNotBlank(canNoticeJson)) {
+                builder.add(canNoticeJson);
             }
         }
         if (1 == ConfigUtils.getSysDefine().getSysIgniteRule()) {
             // 点火熄火
-            final Map<String, Object> igniteJudge = CAR_IGNITE_SHUT_JUDGE.processFrame(clone);
-            if (MapUtils.isNotEmpty(igniteJudge)) {
-                builder.add(JSON_UTILS.toJson(igniteJudge));
+            final String igniteNoticeJson = CAR_IGNITE_SHUT_JUDGE.processFrame(data);
+            if (StringUtils.isNotBlank(igniteNoticeJson)) {
+                builder.add(igniteNoticeJson);
             }
         }
         if (1 == ConfigUtils.getSysDefine().getSysGpsRule()) {
@@ -193,7 +184,7 @@ public class CarRuleHandler implements InfoNotice {
         }
         if (1 == ConfigUtils.getSysDefine().getSysMilehopRule()) {
             // 里程跳变处理
-            final String mileHopNotice = carMileHopJudge.processFrame(data);
+            final String mileHopNotice = CAR_MILE_HOP_JUDGE.processFrame(data);
             if (StringUtils.isNotBlank(mileHopNotice)) {
                 builder.add(mileHopNotice);
             }
@@ -202,6 +193,26 @@ public class CarRuleHandler implements InfoNotice {
         return builder.build();
     }
 
+    @Nullable
+    private static String generateChargeCarsInfo(@NotNull final String vehicleId, @NotNull final ImmutableMap<String, String> data) {
+        final String longitudeString = data.get(DataKey._2502_LONGITUDE);
+        final String latitudeString = data.get(DataKey._2503_LATITUDE);
+        try {
+            final double longitude = NumberUtils.toDouble(longitudeString, 0);
+            final double latitude = NumberUtils.toDouble(latitudeString, 0);
+            //检查经纬度是否为无效值
+            final double absLongitude = Math.abs(longitude);
+            final double absLatitude = Math.abs(latitude);
+            if (0 == absLongitude || absLongitude > DataKey.MAX_2502_LONGITUDE || 0 == absLatitude || absLatitude > DataKey.MAX_2503_LATITUDE) {
+                return null;
+            }
+            // 附近补电车信息
+            return getNoticesOfChargeCars(vehicleId, longitude / 1000000d, latitude / 1000000d);
+        } catch (final Exception e) {
+            LOG.warn("获取补电车信息的时出现异常", e);
+        }
+        return null;
+    }
 
     /**
      * 获得附近补电车的信息通知，并保存到 redis 中
@@ -210,7 +221,7 @@ public class CarRuleHandler implements InfoNotice {
      * @param longitude
      * @param latitude
      */
-    private String getNoticesOfChargeCars(final String vid, final double longitude, final double latitude) {
+    private static String getNoticesOfChargeCars(final String vid, final double longitude, final double latitude) {
 
         final Map<Double, List<FillChargeCar>> chargeCarInfo = FindChargeCarsOfNearby.findChargeCarsOfNearby(
             longitude,
@@ -224,7 +235,7 @@ public class CarRuleHandler implements InfoNotice {
             for (final Map.Entry<Double, List<FillChargeCar>> entry : chargeCarInfo.entrySet()) {
                 final double distance = entry.getKey();
                 final List<FillChargeCar> listOfChargeCar = entry.getValue();
-                for (FillChargeCar ChargeCar : listOfChargeCar) {
+                for (FillChargeCar chargeCar : listOfChargeCar) {
                     cts += 1;
                     if (cts > TOPN) {
                         break;
@@ -232,22 +243,22 @@ public class CarRuleHandler implements InfoNotice {
 
                     //save to redis map
                     final Map<String, String> jsonMap = Maps.newTreeMap();
-                    jsonMap.put("vid", ChargeCar.vid);
-                    jsonMap.put("LONGITUDE", String.valueOf(ChargeCar.longitude));
-                    jsonMap.put("LATITUDE", String.valueOf(ChargeCar.latitude));
-                    jsonMap.put("lastOnline", ChargeCar.lastOnline);
+                    jsonMap.put("vid", chargeCar.vid);
+                    jsonMap.put("LONGITUDE", String.valueOf(chargeCar.longitude));
+                    jsonMap.put("LATITUDE", String.valueOf(chargeCar.latitude));
+                    jsonMap.put("lastOnline", chargeCar.lastOnline);
                     jsonMap.put("distance", String.valueOf(distance));
                     final String jsonToRedis = JSON_UTILS.toJson(jsonMap);
                     topnCarsToRedis.put(String.valueOf(cts), jsonToRedis);
 
                     //send to kafka map
                     final Map<String, String> kMap = Maps.newTreeMap();
-                    kMap.put("vid", ChargeCar.vid);
-                    kMap.put("location", ChargeCar.longitude + "," + ChargeCar.latitude);
-                    kMap.put("lastOnline", ChargeCar.lastOnline);
+                    kMap.put("vid", chargeCar.vid);
+                    kMap.put("location", chargeCar.longitude + "," + chargeCar.latitude);
+                    kMap.put("lastOnline", chargeCar.lastOnline);
                     kMap.put("gpsDis", String.valueOf(distance));
                     kMap.put("ranking", String.valueOf(cts));
-                    kMap.put("running", String.valueOf(ChargeCar.running));
+                    kMap.put("running", String.valueOf(chargeCar.running));
 
                     chargeCars.add(kMap);
                 }

@@ -246,7 +246,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
     @SuppressWarnings("AlibabaMethodTooLong")
     private void executeFromDataStream(
         @NotNull final Tuple input,
-        @NotNull final String vid,
+        @NotNull final String vehicleId,
         @NotNull final ImmutableMap<String, String> data) {
         collector.ack(input);
         try{
@@ -257,7 +257,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
                 return;
             }
 
-            LOG.warn("VID:{} 进入车辆通知处理", vid);
+            LOG.warn("VID:{} 进入车辆通知处理", vehicleId);
 
             // region 缓存有效状态
 
@@ -279,9 +279,9 @@ public final class CarNoticeBolt extends BaseRichBolt {
 
             //返回车辆通知,(重要)
             //先检查规则是否启用，启用了，则把dat放到相应的处理方法中。将返回结果放到list中，返回。
-            final ImmutableList<String> jsonNotices = carRuleHandler.generateNotices(data);
+            final ImmutableList<String> jsonNotices = carRuleHandler.generateNotices(vehicleId, data);
             for (final String json : jsonNotices) {
-                kafkaStreamVehicleNoticeSender.emit(vid, json);
+                kafkaStreamVehicleNoticeSender.emit(vehicleId, json);
             }
 
             final List<Map<String, Object>> faultCodeMessages = faultCodeHandler.generateNotice(data);
@@ -289,7 +289,7 @@ public final class CarNoticeBolt extends BaseRichBolt {
                 for (Map<String, Object> map : faultCodeMessages) {
                     if (null != map && map.size() > 0) {
                         String json = JSON_UTILS.toJson(map);
-                        kafkaStreamVehicleNoticeSender.emit(vid, json);
+                        kafkaStreamVehicleNoticeSender.emit(vehicleId, json);
                     }
                 }
             }
@@ -297,10 +297,10 @@ public final class CarNoticeBolt extends BaseRichBolt {
             //当车辆上线时发出上下线里程通知，具体是否产生再次上线里程跳变告警，是由kafkaservice做判断的。
             String onOffMileNotice = carOnOffMileJudge.processFrame(data);
             if (StringUtils.isNotEmpty(onOffMileNotice)) {
-                kafkaStreamVehicleNoticeSender.emit(vid, onOffMileNotice);
+                kafkaStreamVehicleNoticeSender.emit(vehicleId, onOffMileNotice);
             }
         }catch (Exception e){
-            LOG.error("VID:" + vid + " 异常", e);
+            LOG.error("VID:" + vehicleId + " 异常", e);
             e.printStackTrace();
         }
     }

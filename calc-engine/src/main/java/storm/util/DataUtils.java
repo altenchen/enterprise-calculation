@@ -54,11 +54,28 @@ public final class DataUtils {
 
     /**
      * 构建经纬度字符串表示
+     * @param data 数据集
+     * @return 经纬度
+     */
+    @NotNull
+    @Contract(pure = true)
+    public static String buildLocation(
+        @NotNull final ImmutableMap<String, String> data) {
+        final String longitudeString = data.get(DataKey._2502_LONGITUDE);
+        final String latitudeString = data.get(DataKey._2503_LATITUDE);
+        return buildLocation(
+            longitudeString,
+            latitudeString
+        );
+    }
+
+    /**
+     * 构建经纬度字符串表示
      * @param longitude 经度
      * @param latitude 纬度
      * @return 经纬度
      */
-    @Nullable
+    @NotNull
     @Contract(pure = true)
     public static String buildLocation(
         @Nullable final String longitude,
@@ -295,6 +312,14 @@ public final class DataUtils {
         } catch (final ParseException e) {
             return exceptionCallback.apply(e);
         }
+    }
+
+    /**
+     * 构建格式化当前系统时间
+     * @return 格式化时间
+     */
+    public static String buildFormatTime() {
+        return DateFormatUtils.format(System.currentTimeMillis(), FormatConstant.DATE_FORMAT);
     }
 
     /**

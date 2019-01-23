@@ -266,10 +266,6 @@ public class SysDefineEntity {
      */
     private long alarmStopTriggerTimeoutMillisecond = 30000;
     /**
-     * 是否启用点火熄火通知 1启用，0关闭
-     */
-    private int sysIgniteRule = 0;
-    /**
      * 是否启用异常用车通知 1启用，0关闭
      */
     private int sysAbnormalRule = 0;
@@ -293,6 +289,27 @@ public class SysDefineEntity {
      * 长期离线车辆判定时长
      */
     private long vehicleIdleTimeoutMillisecond = 86400000;
+
+    /**
+     * 是否启用点火熄火通知 1启用，0关闭
+     */
+    private int sysIgniteRule = 0;
+    /**
+     * 点火连续帧数
+     */
+    private int noticeIgniteTriggerContinueCount = 2;
+    /**
+     * 点火持续时长
+     */
+    private long noticeIgniteTriggerTimeoutMillisecond = 0;
+    /**
+     * 熄火连续帧数
+     */
+    private int noticeShutTriggerContinueCount = 1;
+    /**
+     * 熄火持续时长
+     */
+    private long noticeShutTriggerTimeoutMillisecond = 0;
     /**
      * 是否启用CAN监测通知
      */
@@ -773,14 +790,6 @@ public class SysDefineEntity {
         this.alarmStopTriggerTimeoutMillisecond = alarmStopTriggerTimeoutMillisecond;
     }
 
-    public int getSysIgniteRule() {
-        return sysIgniteRule;
-    }
-
-    public void setSysIgniteRule(final int sysIgniteRule) {
-        this.sysIgniteRule = sysIgniteRule;
-    }
-
     public int getSysAbnormalRule() {
         return sysAbnormalRule;
     }
@@ -827,6 +836,46 @@ public class SysDefineEntity {
 
     public void setVehicleIdleTimeoutMillisecond(final long vehicleIdleTimeoutMillisecond) {
         this.vehicleIdleTimeoutMillisecond = vehicleIdleTimeoutMillisecond;
+    }
+
+    public int getSysIgniteRule() {
+        return sysIgniteRule;
+    }
+
+    public void setSysIgniteRule(final int sysIgniteRule) {
+        this.sysIgniteRule = sysIgniteRule;
+    }
+
+    public int getNoticeIgniteTriggerContinueCount() {
+        return noticeIgniteTriggerContinueCount;
+    }
+
+    public void setNoticeIgniteTriggerContinueCount(final int noticeIgniteTriggerContinueCount) {
+        this.noticeIgniteTriggerContinueCount = noticeIgniteTriggerContinueCount;
+    }
+
+    public long getNoticeIgniteTriggerTimeoutMillisecond() {
+        return noticeIgniteTriggerTimeoutMillisecond;
+    }
+
+    public void setNoticeIgniteTriggerTimeoutMillisecond(final long noticeIgniteTriggerTimeoutMillisecond) {
+        this.noticeIgniteTriggerTimeoutMillisecond = noticeIgniteTriggerTimeoutMillisecond;
+    }
+
+    public int getNoticeShutTriggerContinueCount() {
+        return noticeShutTriggerContinueCount;
+    }
+
+    public void setNoticeShutTriggerContinueCount(final int noticeShutTriggerContinueCount) {
+        this.noticeShutTriggerContinueCount = noticeShutTriggerContinueCount;
+    }
+
+    public long getNoticeShutTriggerTimeoutMillisecond() {
+        return noticeShutTriggerTimeoutMillisecond;
+    }
+
+    public void setNoticeShutTriggerTimeoutMillisecond(final long noticeShutTriggerTimeoutMillisecond) {
+        this.noticeShutTriggerTimeoutMillisecond = noticeShutTriggerTimeoutMillisecond;
     }
 
     public int getSysCanRule() {

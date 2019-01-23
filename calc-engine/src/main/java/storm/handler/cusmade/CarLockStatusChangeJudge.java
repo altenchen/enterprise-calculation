@@ -15,7 +15,6 @@ import storm.constant.QualityOfService;
 import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.system.NoticeType;
-import storm.system.SysDefine;
 
 import java.util.HashMap;
 import java.util.Map;

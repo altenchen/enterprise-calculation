@@ -1,9 +1,6 @@
 package storm.system;
 
 import org.jetbrains.annotations.Contract;
-import storm.util.ConfigUtils;
-
-import java.util.Properties;
 
 /**
  * @author: xzp
@@ -21,9 +18,15 @@ public final class SysParams {
 
     public static final String VEH_MODEL_SQL = "veh.model.sql";
 
-    public static final String EARLY_WARNING_SQL = "early.warning.sql";
+    public static final String FENCE_SQL = "fence.sql";
 
-    public static final String ITEM_COEF_OFFSET_SQL = "item.coef.offset.sql";
+    public static final String FENCE_VEHICLE_SQL = "fence.vehicle.sql";
+
+    public static final String ALARM_RULE_SQL = "alarm.rule.sql";
+
+    public static final String DATA_OFFSET_COEFFICIENT_SQL = "data.offset.coefficient.sql";
+
+    public static final String VEHICLE_ID_SQL = "vehicle.id.sql";
 
     private static final SysParams INSTANCE = new SysParams();
 
