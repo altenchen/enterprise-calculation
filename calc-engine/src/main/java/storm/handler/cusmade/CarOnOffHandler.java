@@ -37,36 +37,23 @@ public final class CarOnOffHandler implements Serializable {
 
     private final Map<String, Map<String, Object>> onOffMileNotice = new HashMap<>();
     private final Map<String, TimeMileage> vidLastTimeMile = new HashMap<>();
-    private static final VehicleCache VEHICLE_CACHE = VehicleCache.getInstance();
 
-    /**
-     * TODO: 独立出去
-     * 生成通知
-     * @param data
-     * @param now
-     * @param timeout
-     * @return
-     */
-    public Map<String, Object> generateNotices(@NotNull final ImmutableMap<String, String> data, long now, long timeout) {
-        Map<String, Object> notice = onoffMile(data, now, timeout);
-        return notice;
-    }
 
     /**
      * 此方法检查离线。
-     * 里面逻辑有问题，可以优化
      * @param type
-     * @param status
-     * @param now
+     * @param status 是检查活跃车辆还是检查全量车辆。0全部车辆，1活跃车辆。
+     * @param nowTime 当前时间
      * @param timeout
      * @return
      */
-    public void onOffCheck(String type, int status, long now, long timeout) {
+    public void onOffCheck(String type, int status, long nowTime, long timeout) {
         if ("TIMEOUT".equals(type)) {
             Map<String,Map<String,String>> cluster = null;
             //LinkedBlockingQueue是一个单向链表实现的阻塞队列，先进先出的顺序。支持多线程并发操作。无界队列。
             LinkedBlockingQueue<String> vids = null;
             if (0 == status) {
+
                 //获取集群中车辆最后一条数据
                 cluster=SysRealDataCache.getLastDataCache();
                 vids = SysRealDataCache.LAST_DATA_QUEUE;
@@ -92,7 +79,7 @@ public final class CarOnOffHandler implements Serializable {
                     allCars.add(vid);
 
                     Map<String,String> dat = cluster.get(vid);
-                    offMile(dat, now, timeout,markAlives);
+                    offMile(dat, nowTime, timeout,markAlives);
                     vid = vids.poll();
                 }
 
@@ -173,76 +160,6 @@ public final class CarOnOffHandler implements Serializable {
         markAlive.add(vid);
         return null;
     }
-    /**
-     *
-     * @param immutableMap
-     * @param now
-     * @param timeout
-     * @return
-     */
-    private Map<String, Object> onoffMile(@NotNull final ImmutableMap<String, String> immutableMap,long now,long timeout){
-        if (null == immutableMap || immutableMap.size() ==0) {
-            return null;
-        }
-
-        final Map<String, String> data = Maps.newHashMap(immutableMap);
-
-        String msgType = data.get(DataKey.MESSAGE_TYPE);
-        String vid = data.get(DataKey.VEHICLE_ID);
-        String time = data.get(DataKey.TIME);
-        if (StringUtils.isEmpty(msgType)
-                || StringUtils.isEmpty(vid)
-                || StringUtils.isEmpty(time)) {
-            return null;
-        }
-        String lastUtc = data.get(SysDefine.ONLINE_UTC);
-        String noticetime = DateFormatUtils.format(new Date(now), FormatConstant.DATE_FORMAT);
-        double lastmileage = -1;
-        if (data.containsKey(DataKey._2202_TOTAL_MILEAGE)) {
-            String str = data.get(DataKey._2202_TOTAL_MILEAGE);
-            String mileage = org.apache.commons.lang.math.NumberUtils.isNumber(str) ? str : "0";
-            if (! "0".equals(mileage)) {
-
-                lastmileage = Double.parseDouble(mileage);
-                if (-1 != lastmileage) {
-                    vidLastTimeMile.put(vid, new TimeMileage(now,time,lastmileage));
-                }
-            }
-        }
-        boolean isoff = isOffline(data);
-        boolean isout = isTimeout(time, lastUtc, now, timeout);
-        //根据报文判断离线了，或者，很长时间没发报文了，判断为离线
-        if (isoff || isout) {
-            TimeMileage timeMileage = vidLastTimeMile.get(vid);
-            if (null != timeMileage
-                    && timeMileage.mileage>0
-                    && !onOffMileNotice.containsKey(vid)) {
-                Map<String, Object> notice = new TreeMap<>();
-                notice.put("msgType", NoticeType.ON_OFF_MILE);
-                notice.put("vid", vid);
-                notice.put("stime", time);
-                notice.put("smileage", timeMileage.mileage);
-                onOffMileNotice.put(vid, notice);
-            }
-
-        } else {
-            if (CommandType.SUBMIT_REALTIME.equals(msgType)
-                    && -1 != lastmileage){
-
-                if (onOffMileNotice.containsKey(vid)) {
-                    Map<String, Object> notice = onOffMileNotice.get(vid);
-                    onOffMileNotice.remove(vid);
-                    if (null != notice) {
-                        notice.put("etime", time);
-                        notice.put("emileage", lastmileage);
-                        notice.put("noticetime", noticetime);
-                        return notice;
-                    }
-                }
-            }
-        }
-        return null;
-    }
 
     /**
      * 车辆 是否达到 闲置或者停机 超时的标准
@@ -277,7 +194,6 @@ public final class CarOnOffHandler implements Serializable {
      * @param dat
      * @return 是否离线
      */
-
     private boolean isOffline(Map<String, String> dat){
         String msgType = dat.get(DataKey.MESSAGE_TYPE);
         if (CommandType.SUBMIT_LOGIN.equals(msgType)) {
