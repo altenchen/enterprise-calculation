@@ -55,7 +55,7 @@ public class CarOnOffMileJudge {
      * （这块只是“再次上线里程跳变”的处理，只是发出上线和下线时的里程值通知，
      * 具体是否判断为上下线里程跳变逻辑由kafkaservice判断，感觉可以优化，将计算 逻辑都放到storm中来。）
      *
-     * @param realTimeData 实时报文
+     * @param realTimeData 实时报文（topic为us_general的报文，里面的报文类型不止“REALTIME”一种）
      * @return 上下线时的里程通知notice，格式为json字符串类型。
      */
     public String processFrame(final ImmutableMap<String, String> realTimeData) {
@@ -105,8 +105,8 @@ public class CarOnOffMileJudge {
                 onOffMileNotice = JSON_UTILS.toJson(notice);
                 saveOnOffMileNotice(vid, onOffMileNotice);
             }
-            //车辆在线  并且  缓存了上下线里程开始通知
-            if (!isOffLine && !isEmptyOnOffMileNoticeCache) {
+            //车辆在线  并且  缓存了上下线里程开始通知 并且 此报文是实时报文类型（"REALTIME"）
+            if (!isOffLine && !isEmptyOnOffMileNoticeCache && CommandType.SUBMIT_REALTIME.equals(msgType)) {
 
                 final long currentTimeMillis = System.currentTimeMillis();
                 final String nowTime = DataUtils.buildFormatTime(currentTimeMillis);

@@ -52,22 +52,22 @@ class CarOnOffMileJudgeTest {
         final String processFrame2 = carOnOffMileJudge.processFrame(data2);
         Assertions.assertTrue(StringUtils.isEmpty(processFrame2), "第2帧不该出现上下线里程通知");
 
-        //1、测试车辆下线然后上线，是不是能产生上下线里程通知。
-        data.put(DataKey._2202_TOTAL_MILEAGE, "10030");
-        data.put(DataKey.MESSAGE_TYPE,CommandType.SUBMIT_LOGIN);
-        data.put(ProtocolItem.REG_TYPE,"2");
-        data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 30000, FormatConstant.DATE_FORMAT));
-        ImmutableMap data3 = ImmutableMap.copyOf(data);
-        final String processFrame3 = carOnOffMileJudge.processFrame(data3);
-        Assertions.assertTrue(StringUtils.isEmpty(processFrame3), "第3帧不该出现上下线里程通知");
-
-        data.put(DataKey._2202_TOTAL_MILEAGE, "10040");
-        data.put(DataKey.MESSAGE_TYPE,CommandType.SUBMIT_LOGIN);
-        data.put(ProtocolItem.REG_TYPE,"1");
-        data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 40000, FormatConstant.DATE_FORMAT));
-        ImmutableMap data4 = ImmutableMap.copyOf(data);
-        final String processFrame4 = carOnOffMileJudge.processFrame(data4);
-        Assertions.assertTrue(!StringUtils.isEmpty(processFrame4), "第4帧应该出现上下线里程通知");
+//        //1、测试车辆下线然后上线，是不是能产生上下线里程通知。
+//        data.put(DataKey._2202_TOTAL_MILEAGE, "10030");
+//        data.put(DataKey.MESSAGE_TYPE,CommandType.SUBMIT_LOGIN);
+//        data.put(ProtocolItem.REG_TYPE,"2");
+//        data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 30000, FormatConstant.DATE_FORMAT));
+//        ImmutableMap data3 = ImmutableMap.copyOf(data);
+//        final String processFrame3 = carOnOffMileJudge.processFrame(data3);
+//        Assertions.assertTrue(StringUtils.isEmpty(processFrame3), "第3帧不该出现上下线里程通知");
+//
+//        data.put(DataKey._2202_TOTAL_MILEAGE, "10040");
+//        data.put(DataKey.MESSAGE_TYPE,CommandType.SUBMIT_LOGIN);
+//        data.put(ProtocolItem.REG_TYPE,"1");
+//        data.put(DataKey.TIME, DateFormatUtils.format(currentTimeMillis + 40000, FormatConstant.DATE_FORMAT));
+//        ImmutableMap data4 = ImmutableMap.copyOf(data);
+//        final String processFrame4 = carOnOffMileJudge.processFrame(data4);
+//        Assertions.assertTrue(!StringUtils.isEmpty(processFrame4), "第4帧应该出现上下线里程通知");
 
         //2、测试车辆下线，然后发一条实时报文，是不是能产生上下线里程通知。
         data.put(DataKey._2202_TOTAL_MILEAGE, "10050");
