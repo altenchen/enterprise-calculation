@@ -4,6 +4,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.IRichBolt;
 import org.apache.storm.topology.IRichSpout;
 import org.apache.storm.topology.TopologyBuilder;
@@ -306,20 +307,6 @@ public final class TopologiesByConf {
                 new Fields(DataKey.VEHICLE_ID));
 
         builder
-            // 电子围栏告警处理
-            .setBolt(
-                ElectronicFenceBolt.getComponentId(),
-                new ElectronicFenceBolt(),
-                1
-            )
-            .setNumTasks(boltParallelism * 9)
-            // 电子围栏告警实时数据
-            .fieldsGrouping(
-                FilterBolt.getComponentId(),
-                FilterBolt.getDataCacheStreamId(),
-                new Fields(DataKey.VEHICLE_ID));
-
-        builder
             // 通知处理、故障码处理
             .setBolt(
                 CarNoticeBolt.getComponentId(),
@@ -331,6 +318,23 @@ public final class TopologiesByConf {
                 FilterBolt.getComponentId(),
                 FilterBolt.getDataStreamId(),
                 new Fields(DataKey.VEHICLE_ID));
+
+        // 判断是否启用电子围栏
+        if (ConfigUtils.getSysDefine().isFenceEnable()) {
+            builder
+                // 电子围栏告警处理
+                .setBolt(
+                    ElectronicFenceBolt.getComponentId(),
+                    new ElectronicFenceBolt(),
+                    boltParallelism * 3
+                )
+                .setNumTasks(boltParallelism * 9)
+                // 电子围栏告警实时数据
+                .fieldsGrouping(
+                    FilterBolt.getComponentId(),
+                    FilterBolt.getDataCacheStreamId(),
+                    new Fields(DataKey.VEHICLE_ID));
+        }
     }
 
     private static void buildMessageSendBolt(
@@ -339,7 +343,7 @@ public final class TopologiesByConf {
         @NotNull final IRichBolt messageSendBolt,
         final int boltParallelism) {
 
-        builder
+        BoltDeclarer messageSendBoltDeclarer = builder
             // 发送 kafka 消息
             .setBolt(
                 messageSendBoltComponentId,
@@ -349,11 +353,6 @@ public final class TopologiesByConf {
             .fieldsGrouping(
                 AlarmBolt.getComponentId(),
                 AlarmBolt.getKafkaStreamId(),
-                new Fields(KafkaStream.BOLT_KEY))
-            // 电子围栏
-            .fieldsGrouping(
-                ElectronicFenceBolt.getComponentId(),
-                ElectronicFenceBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY))
             // 车辆通知、故障处理
             .fieldsGrouping(
@@ -365,6 +364,16 @@ public final class TopologiesByConf {
                 FilterBolt.getComponentId(),
                 FilterBolt.getKafkaStreamId(),
                 new Fields(KafkaStream.BOLT_KEY));
+
+        // 判断是否启用电子围栏
+        if( ConfigUtils.getSysDefine().isFenceEnable() ){
+            messageSendBoltDeclarer
+                // 电子围栏
+                .fieldsGrouping(
+                    ElectronicFenceBolt.getComponentId(),
+                    ElectronicFenceBolt.getKafkaStreamId(),
+                    new Fields(KafkaStream.BOLT_KEY));
+        }
     }
 }
 

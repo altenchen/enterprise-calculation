@@ -188,8 +188,14 @@ public class SysDefineEntity {
     // ############################################################################################
     //                                        电子围栏 配置
     // ############################################################################################
-
-    private double fenceCoordinateCoefficient = 100000;
+    /**
+     * 电子围栏是否启用
+     */
+    private boolean fenceEnable = false;
+    /**
+     * 经纬度坐标系中距离为1的两个坐标间近似距离
+     */
+    private double fenceCoordinateCoefficient = 104708.1;
     /**
      * 电子围栏图形外部缓冲区
      */
@@ -1165,6 +1171,14 @@ public class SysDefineEntity {
     public void setFenceCoordinateCoefficient(final double fenceCoordinateCoefficient) {
         this.fenceCoordinateCoefficient = fenceCoordinateCoefficient;
     }
-// endregion 自动生成的访问器
+
+    public boolean isFenceEnable() {
+        return fenceEnable;
+    }
+
+    public void setFenceEnable(final boolean fenceEnable) {
+        this.fenceEnable = fenceEnable;
+    }
+    // endregion 自动生成的访问器
 
 }
