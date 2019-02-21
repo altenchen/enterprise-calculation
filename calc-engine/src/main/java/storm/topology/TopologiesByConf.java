@@ -262,8 +262,8 @@ public final class TopologiesByConf {
 
         builder.setSpout(
             messageEmitSpoutComponentId,
-            messageEmitSpout
-            ,1
+            messageEmitSpout,
+            spoutParallelism
         );
 
         builder
@@ -347,8 +347,9 @@ public final class TopologiesByConf {
             // 发送 kafka 消息
             .setBolt(
                 messageSendBoltComponentId,
-                messageSendBolt)
-//            .setNumTasks(boltParallelism * 6)
+                messageSendBolt,
+                boltParallelism * 3)
+            .setNumTasks(boltParallelism * 9)
             // 车辆平台报警状态、实时需要存储的数据
             .fieldsGrouping(
                 AlarmBolt.getComponentId(),
