@@ -223,6 +223,25 @@ public final class DataUtils {
     }
 
     /**
+     * @param longitude 经度
+     * @return 经度是否在中国境内
+     */
+    @Contract(pure = true)
+    public static boolean isLongitudeInChina(int longitude) {
+        return longitude >= DataKey.MIN_2502_LONGITUDE_CHINA && longitude <= DataKey.MAX_2502_LONGITUDE_CHINA;
+    }
+
+    /**
+     * @param latitude 纬度
+     * @return 纬度是否在中国境内
+     */
+    @Contract(pure = true)
+    public static boolean isLatitudeInChina(int latitude) {
+        return latitude >= DataKey.MIN_2503_LATITUDE_CHINA && latitude <= DataKey.MAX_2503_LATITUDE_CHINA;
+    }
+
+
+    /**
      * 解析平台接收时间
      * @param data
      * @return
