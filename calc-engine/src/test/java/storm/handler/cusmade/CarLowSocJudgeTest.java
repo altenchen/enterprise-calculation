@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.conf.SysDefineEntity;
 import storm.constant.FormatConstant;
+import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.util.ConfigUtils;
 
@@ -39,6 +40,7 @@ class CarLowSocJudgeTest {
 
         final Map<String, String> data = Maps.newTreeMap();
         data.put(DataKey.VEHICLE_ID, TEST_VID);
+        data.put(DataKey.MESSAGE_TYPE,CommandType.SUBMIT_REALTIME);
         data.put(DataKey._7615_STATE_OF_CHARGE, "8");
         data.put(DataKey._2502_LONGITUDE,"100");
         data.put(DataKey._2503_LATITUDE,"100");

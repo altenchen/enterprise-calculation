@@ -15,6 +15,7 @@ import storm.constant.FormatConstant;
 import storm.dto.notice.NoCanNotice;
 import storm.extension.ObjectExtension;
 import storm.handler.cusmade.CarNoCanJudge;
+import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.ConfigUtils;
@@ -103,6 +104,7 @@ final class CarNoCanJudgeTest {
         data.put(DataKey.VEHICLE_ID, TEST_VID);
         data.put(DataKey._2502_LONGITUDE, "100");
         data.put(DataKey._2503_LATITUDE, "100");
+        data.put(DataKey.MESSAGE_TYPE,CommandType.SUBMIT_REALTIME);
 
         // region 连续帧未达到阈值不发出通知
 
@@ -192,6 +194,7 @@ final class CarNoCanJudgeTest {
         data.put(DataKey.VEHICLE_ID, TEST_VID);
         data.put(DataKey._2502_LONGITUDE, "100");
         data.put(DataKey._2503_LATITUDE, "100");
+        data.put(DataKey.MESSAGE_TYPE,CommandType.SUBMIT_REALTIME);
 
         // region 确保CAN故障
 

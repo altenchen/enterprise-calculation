@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.cache.VehicleCache;
 import storm.dto.notice.NoCanNotice;
+import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.ConfigUtils;
@@ -52,6 +53,10 @@ public final class CarNoCanJudge extends AbstractVehicleDelaySwitchJudge<NoCanNo
         String timeString = data.get(DataKey.TIME);
         if (StringUtils.isBlank(timeString)) {
             LOG.info("vid:{} 无CAN放弃判定, 时间空白.", vehicleId);
+            return true;
+        }
+        final String msgType = data.get(DataKey.MESSAGE_TYPE);
+        if(!CommandType.SUBMIT_REALTIME.equals(msgType)) {
             return true;
         }
         return false;
