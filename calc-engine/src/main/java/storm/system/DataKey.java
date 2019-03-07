@@ -397,6 +397,16 @@ public final class DataKey {
     public static final int MAX_2502_LONGITUDE = 180000000;
 
     /**
+     * 中国经度最小有效值, 72°, 精确到小数点后6位.
+     */
+    public static final int MIN_2502_LONGITUDE_CHINA = 72000000;
+
+    /**
+     * 经度最大有效值, 136°, 精确到小数点后6位.
+     */
+    public static final int MAX_2502_LONGITUDE_CHINA = 136000000;
+
+    /**
      * 纬度
      */
     public static final String _2503_LATITUDE = "2503";
@@ -410,6 +420,16 @@ public final class DataKey {
      * 纬度最大有效值, 90°, 精确到小数点后6位.
      */
     public static final int MAX_2503_LATITUDE = 90000000;
+
+    /**
+     * 中国纬度最小有效值, 3°, 精确到小数点后6位.
+     */
+    public static final int MIN_2503_LATITUDE_CHINA = 3000000;
+
+    /**
+     * 中国纬度最大有效值, 54°, 精确到小数点后6位.
+     */
+    public static final int MAX_2503_LATITUDE_CHINA = 54000000;
 
     /**
      * 速度

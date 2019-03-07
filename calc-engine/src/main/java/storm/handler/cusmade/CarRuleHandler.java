@@ -499,6 +499,7 @@ public class CarRuleHandler implements InfoNotice {
             final String orientationString = dat.get(DataKey._2501_ORIENTATION);
             final String longitudeString = dat.get(DataKey._2502_LONGITUDE);
             final String latitudeString = dat.get(DataKey._2503_LATITUDE);
+            final int orientationValue = NumberUtils.toInt(orientationString);
 
             boolean isFault = isGpsFault(vid, orientationString, longitudeString, latitudeString);
             if (isFault) {
@@ -517,6 +518,7 @@ public class CarRuleHandler implements InfoNotice {
                     gpsFaultNotice.put("msgId", UUID.randomUUID().toString());
                     gpsFaultNotice.put("vid", vid);
                     gpsFaultNotice.put("status", "0");
+
                     vidGpsNotice.put(vid, gpsFaultNotice);
                     LOG.info("VID:{} GPS故障首帧缓存初始化", vid);
                 }
@@ -595,6 +597,13 @@ public class CarRuleHandler implements InfoNotice {
                 gpsFaultNotice.put("status", "1");
                 gpsFaultNotice.put("slazy", String.valueOf(gpsFaultIntervalMillisecond));
                 gpsFaultNotice.put("noticeTime", noticeTime);
+
+                //gpsFaultType（报警类型）：1为“无效定位”，2为“GPS数据异常”。
+                if (orientationValue == 1){
+                    gpsFaultNotice.put("gpsFaultType", "1");
+                }else{
+                    gpsFaultNotice.put("gpsFaultType", "2");
+                }
 
                 LOG.info("VID:{} GPS故障通知缓存 MSGID:{}", vid, gpsFaultNotice.get("msgId"));
 
@@ -767,8 +776,8 @@ public class CarRuleHandler implements InfoNotice {
         final int longitudeValue = NumberUtils.toInt(longitudeString);
         final int latitudeValue = NumberUtils.toInt(latitudeString);
 
-        if (DataUtils.isOrientationLongitudeUseful(longitudeValue)
-            && DataUtils.isOrientationLatitudeUseful(latitudeValue)) {
+        if (DataUtils.isLongitudeInChina(longitudeValue)
+            && DataUtils.isLatitudeInChina(latitudeValue)) {
 
             LOG.info("VID:{} 经度 {} 纬度 {} 有效, 判定为GPS正常.", vid, longitudeString, latitudeString);
             return false;
