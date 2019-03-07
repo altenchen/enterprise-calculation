@@ -479,6 +479,11 @@ public class CarRuleHandler implements InfoNotice {
             return null;
         }
 
+        final String msgType = dat.get(DataKey.MESSAGE_TYPE);
+        if(!CommandType.SUBMIT_REALTIME.equals(msgType)) {
+            return null;
+        }
+
         try {
 
             final String vid = dat.get(DataKey.VEHICLE_ID);

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
+import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.util.ConfigUtils;
 
@@ -51,6 +52,7 @@ class CarHighSocJudgeTest {
         //初始化车辆基础数据
         data = Maps.newTreeMap();
         data.put(DataKey.VEHICLE_ID, TEST_VID);
+        data.put(DataKey.MESSAGE_TYPE,CommandType.SUBMIT_REALTIME);
         data.put(DataKey._7615_STATE_OF_CHARGE, "99");
         data.put(DataKey._2502_LONGITUDE, "100");
         data.put(DataKey._2503_LATITUDE, "100");

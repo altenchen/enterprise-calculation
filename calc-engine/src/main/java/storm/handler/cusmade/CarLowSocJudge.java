@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.dto.notice.LowSocNotice;
+import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.system.NoticeType;
 import storm.util.ConfigUtils;
@@ -37,6 +38,10 @@ class CarLowSocJudge extends AbstractVehicleDelaySwitchJudge<LowSocNotice> {
     protected boolean ignore(final ImmutableMap<String, String> data) {
         final String socString = data.get(DataKey._7615_STATE_OF_CHARGE);
         if (!NumberUtils.isDigits(socString)) {
+            return true;
+        }
+        final String msgType = data.get(DataKey.MESSAGE_TYPE);
+        if(!CommandType.SUBMIT_REALTIME.equals(msgType)) {
             return true;
         }
         return false;

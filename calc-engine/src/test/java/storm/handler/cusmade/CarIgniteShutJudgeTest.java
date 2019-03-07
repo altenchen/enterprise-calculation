@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.constant.FormatConstant;
 import storm.extension.ObjectExtension;
+import storm.protocol.CommandType;
 import storm.system.DataKey;
 import storm.util.ConfigUtils;
 import storm.util.JsonUtils;
@@ -53,6 +54,7 @@ public class CarIgniteShutJudgeTest {
         data.put(DataKey._2503_LATITUDE, "100");
         data.put(DataKey._9999_PLATFORM_RECEIVE_TIME, TEST_TIME);
         data.put(DataKey.TIME, TEST_TIME);
+        data.put(DataKey.MESSAGE_TYPE,CommandType.SUBMIT_REALTIME);
 
 
         //车辆熄火
