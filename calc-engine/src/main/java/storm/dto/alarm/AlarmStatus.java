@@ -285,13 +285,11 @@ public final class AlarmStatus {
     private String getLocation(@NotNull final ImmutableMap<String, String> data,
                                @NotNull final ImmutableMap<String, String> cache) {
         if (data.containsKey(DataKey._2502_LONGITUDE) && data.containsKey(DataKey._2503_LATITUDE)) {
-            String lon = data.get(DataKey._2502_LONGITUDE);
-            String lat = data.get(DataKey._2503_LATITUDE);
-            return DataUtils.buildLocation(lon, lat);
+            return DataUtils.buildLocation(data.get(DataKey._2502_LONGITUDE), data.get(DataKey._2503_LATITUDE));
+        } else if (cache.containsKey(DataKey._2502_LONGITUDE) && cache.containsKey(DataKey._2503_LATITUDE)){
+            return DataUtils.buildLocation(cache.get(DataKey._2502_LONGITUDE), cache.get(DataKey._2503_LATITUDE));
         } else {
-            String lon = cache.get(DataKey._2502_LONGITUDE);
-            String lat = cache.get(DataKey._2503_LATITUDE);
-            return DataUtils.buildLocation(lon, lat);
+            return null;
         }
     }
 
