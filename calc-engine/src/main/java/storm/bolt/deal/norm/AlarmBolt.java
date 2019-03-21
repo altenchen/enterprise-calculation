@@ -346,6 +346,7 @@ public class AlarmBolt extends BaseRichBolt {
                         rule.ruleId,
                         rule.level,
                         data,
+                        cache,
                         rule,
                         notice -> emitNotice(input, vehicleId, rule.ruleId, notice)
                 );

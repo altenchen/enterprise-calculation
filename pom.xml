@@ -9,7 +9,7 @@
     <artifactId>enterprise-calculation</artifactId>
     <!-- 语义化版本 -->
     <!-- https://semver.org/lang/zh-CN/ -->
-    <version>0.5.x-SNAPSHOT</version>
+    <version>0.4.53_baodingchangan-0.1.0-SNAPSHOT</version>
 
     <!-- 打包方式 -->
     <packaging>pom</packaging>

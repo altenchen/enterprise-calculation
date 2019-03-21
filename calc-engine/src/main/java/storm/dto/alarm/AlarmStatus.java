@@ -3,6 +3,7 @@ package storm.dto.alarm;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang.BooleanUtils;
+import org.apache.commons.lang.LocaleUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -62,6 +63,7 @@ public final class AlarmStatus {
         @NotNull final String ruleId,
         final int level,
         @NotNull final ImmutableMap<String, String> data,
+        @NotNull final ImmutableMap<String, String> cache,
         @NotNull final EarlyWarn rule,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
         if(result) {
@@ -75,6 +77,7 @@ public final class AlarmStatus {
                         ruleId,
                         level,
                         data,
+                        cache,
                         rule,
                         noticeCallback);
                     setStatus(true);
@@ -92,6 +95,7 @@ public final class AlarmStatus {
                         ruleId,
                         level,
                         data,
+                        cache,
                         rule,
                         noticeCallback);
                 });
@@ -128,6 +132,7 @@ public final class AlarmStatus {
         @NotNull final String ruleId,
         final int level,
         @NotNull final ImmutableMap<String, String> data,
+        @NotNull final ImmutableMap<String, String> cache,
         @NotNull final EarlyWarn rule,
         @NotNull final Consumer<ImmutableMap<String, String>> noticeCallback) {
 
@@ -139,6 +144,7 @@ public final class AlarmStatus {
                 ruleId,
                 level,
                 data,
+                cache,
                 rule);
 
             noticeCallback.accept(startNotice);
@@ -152,6 +158,7 @@ public final class AlarmStatus {
         @NotNull final String ruleId,
         final int level,
         @NotNull final ImmutableMap<String, String> data,
+        @NotNull final ImmutableMap<String, String> cache,
         @NotNull final EarlyWarn rule) {
         final String alarmId = buildAlarmId(vehicleId, ruleId);
         final int alarmLevel = parseAlarmLevel(level, data);
@@ -159,6 +166,8 @@ public final class AlarmStatus {
         final String left2DataKey = ObjectExtension.defaultIfNull(rule.left2DataKey, "");
         final String leftExpression = ObjectExtension.defaultIfNull(rule.leftExpression, "");
         final String right2Value = ObjectExtension.defaultIfNull(rule.right2Value, "");
+        //增加经纬度信息
+        final String location = getLocation(data, cache);
 
         final Map<String, String> startNotice = Maps.newHashMap();
         startNotice.putAll(continueStatus);
@@ -180,6 +189,9 @@ public final class AlarmStatus {
         startNotice.put("sNoticeTime", DataUtils.buildFormatTime(System.currentTimeMillis()));
         startNotice.put("sThreshold", String.valueOf(positiveThreshold));
         startNotice.put("sTimeout", String.valueOf(positiveTimeout));
+        //增加位置信息
+        startNotice.put("sLocation", location);
+
 
         return ImmutableMap.copyOf(startNotice);
     }
@@ -262,6 +274,25 @@ public final class AlarmStatus {
         return 0 == level ? NumberUtils.toInt(
             data.get(DataKey._2920_ALARM_STATUS),
             level) : level;
+    }
+
+    /**
+     * 获经纬度信息
+     * @param data 从当前数据获取
+     * @param cache 如果当前数据不存在，则从缓存的上一帧有效数据中获取
+     * @return 经纬度信息
+     */
+    private String getLocation(@NotNull final ImmutableMap<String, String> data,
+                               @NotNull final ImmutableMap<String, String> cache) {
+        if (data.containsKey(DataKey._2502_LONGITUDE) && data.containsKey(DataKey._2503_LATITUDE)) {
+            String lon = data.get(DataKey._2502_LONGITUDE);
+            String lat = data.get(DataKey._2503_LATITUDE);
+            return DataUtils.buildLocation(lon, lat);
+        } else {
+            String lon = cache.get(DataKey._2502_LONGITUDE);
+            String lat = cache.get(DataKey._2503_LATITUDE);
+            return DataUtils.buildLocation(lon, lat);
+        }
     }
 
     @NotNull

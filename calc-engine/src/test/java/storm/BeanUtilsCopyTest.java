@@ -31,4 +31,10 @@ public class BeanUtilsCopyTest {
         System.out.println(JSON.toJSONString(n2));
     }
 
+    @Test
+    public void testUUID() {
+        String s = UUID.randomUUID().toString();
+        System.out.println(s);
+    }
+
 }
